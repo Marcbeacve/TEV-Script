@@ -1,12 +1,29 @@
 {
   "authority_files": [
-    "AGENTS.md",
-    "REPOSITORY_CHANNEL.json",
-    "LICENSE",
-    "README.md"
+    "DESIGN_DECISION.json",
+    "descriptor.json",
+    "docs/CANON.md",
+    "spec/TEV_SCRIPT_V0_2.ebnf",
+    "spec/PORTABLE_VALUE_MODEL_V1.md",
+    "spec/CANONICAL_JSON_PROFILE_V1.md",
+    "spec/RUNTIME_ABI_V1.md",
+    "spec/CONFORMANCE_PROTOCOL_V1.md",
+    "schemas/tev_script_program_ir_v2.schema.json",
+    "schemas/tev_script_conformance_scenario_v1.schema.json",
+    "schemas/tev_script_conformance_receipt_v1.schema.json",
+    "conformance/canonical.vectors.json",
+    "conformance/player.scenario.json",
+    "conformance/player.expected.json",
+    "conformance/matrix.scenario.json",
+    "conformance/matrix.expected.json",
+    "docs/VALIDATION.md"
   ],
   "language_version": "0.2.0",
-  "reference_implementations": [],
+  "reference_implementations": [
+    "tev_script/**",
+    "javascript/src/**",
+    "runtimes/csharp/TevScript.Core/**"
+  ],
   "schema": "TEV_SCRIPT_CANONICAL_INDEX_V1",
   "stable": false
 }

@@ -1,0 +1,163 @@
+{"output": "/tmp/tmpn89hyqlj/Player.ir.json", "schema": "TEV_SCRIPT_COMPILE_RESULT_V1", "semantic_hash": "f18d1b2428b96bf8c859463ab62a431c654933e65e23c3d8183335506d5adb5d", "status": "PASS"}
+{"output": "/tmp/tmpn89hyqlj/player.receipt.json", "receipt_hash": "b275ccc6530ad84c0f96320ba1c8893b401638a926a99a78479d99fbd3c4aba5", "schema": "TEV_SCRIPT_CONFORMANCE_RESULT_V1", "status": "PASS"}
+TAP version 13
+# Subtest: pure JavaScript SHA-256 matches standard vectors
+ok 1 - pure JavaScript SHA-256 matches standard vectors
+  ---
+  duration_ms: 1.94562
+  type: 'test'
+  ...
+# Subtest: TEV canonical JSON normative vectors match
+ok 2 - TEV canonical JSON normative vectors match
+  ---
+  duration_ms: 1.167816
+  type: 'test'
+  ...
+# Subtest: JavaScript runtime matches Python receipt byte-for-byte
+ok 3 - JavaScript runtime matches Python receipt byte-for-byte
+  ---
+  duration_ms: 8.070122
+  type: 'test'
+  ...
+# Subtest: JavaScript full matrix matches Python receipt byte-for-byte
+ok 4 - JavaScript full matrix matches Python receipt byte-for-byte
+  ---
+  duration_ms: 10.72698
+  type: 'test'
+  ...
+# Subtest: JavaScript exercises the Player else branch byte-for-byte
+ok 5 - JavaScript exercises the Player else branch byte-for-byte
+  ---
+  duration_ms: 4.664187
+  type: 'test'
+  ...
+# Subtest: JavaScript event chain and direct call match Python byte-for-byte
+ok 6 - JavaScript event chain and direct call match Python byte-for-byte
+  ---
+  duration_ms: 2.774602
+  type: 'test'
+  ...
+# Subtest: semantic hash tampering fails closed
+ok 7 - semantic hash tampering fails closed
+  ---
+  duration_ms: 4.818563
+  type: 'test'
+  ...
+# Subtest: arbitrary integers remain exact
+ok 8 - arbitrary integers remain exact
+  ---
+  duration_ms: 0.569521
+  type: 'test'
+  ...
+# Subtest: rational arithmetic is exact
+ok 9 - rational arithmetic is exact
+  ---
+  duration_ms: 0.258094
+  type: 'test'
+  ...
+# Subtest: missing capabilities fail closed
+ok 10 - missing capabilities fail closed
+  ---
+  duration_ms: 1.441418
+  type: 'test'
+  ...
+# Subtest: strict JSON rejects duplicate object members
+ok 11 - strict JSON rejects duplicate object members
+  ---
+  duration_ms: 0.256755
+  type: 'test'
+  ...
+# Subtest: strict JSON rejects floating-point numbers
+ok 12 - strict JSON rejects floating-point numbers
+  ---
+  duration_ms: 0.091083
+  type: 'test'
+  ...
+# Subtest: strict JSON rejects unsafe structural integers
+ok 13 - strict JSON rejects unsafe structural integers
+  ---
+  duration_ms: 0.067743
+  type: 'test'
+  ...
+# Subtest: strict JSON preserves tagged semantic integers
+ok 14 - strict JSON preserves tagged semantic integers
+  ---
+  duration_ms: 0.063965
+  type: 'test'
+  ...
+# Subtest: strict JSON rejects negative zero
+ok 15 - strict JSON rejects negative zero
+  ---
+  duration_ms: 0.059154
+  type: 'test'
+  ...
+# Subtest: debug hash tampering fails closed
+ok 16 - debug hash tampering fails closed
+  ---
+  duration_ms: 0.954487
+  type: 'test'
+  ...
+# Subtest: enabled boundaries fail closed even with recomputed semantic hash
+ok 17 - enabled boundaries fail closed even with recomputed semantic hash
+  ---
+  duration_ms: 0.638101
+  type: 'test'
+  ...
+# Subtest: noncanonical semantic integers fail closed
+ok 18 - noncanonical semantic integers fail closed
+  ---
+  duration_ms: 2.896629
+  type: 'test'
+  ...
+# Subtest: canonical JSON rejects negative zero and non-plain objects
+ok 19 - canonical JSON rejects negative zero and non-plain objects
+  ---
+  duration_ms: 0.166932
+  type: 'test'
+  ...
+# Subtest: canonical JSON rejects symbol keys
+ok 20 - canonical JSON rejects symbol keys
+  ---
+  duration_ms: 0.084395
+  type: 'test'
+  ...
+# Subtest: runtime owns a structured clone of the IR
+ok 21 - runtime owns a structured clone of the IR
+  ---
+  duration_ms: 0.916788
+  type: 'test'
+  ...
+1..21
+# tests 21
+# suites 0
+# pass 21
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 110.440781
+{"output": "/tmp/tev-script-conformance-ke0bmjp5/player.python.receipt.json", "receipt_hash": "b275ccc6530ad84c0f96320ba1c8893b401638a926a99a78479d99fbd3c4aba5", "schema": "TEV_SCRIPT_CONFORMANCE_RESULT_V1", "status": "PASS"}
+{"capability_trace":[{"arguments":["Player ready"],"capability_id":"debug.log","result":null},{"arguments":[],"capability_id":"input.move2d","result":[{"$rat":["1","1"]},{"$rat":["0","1"]}]},{"arguments":[[{"$rat":["5","1"]},{"$rat":["0","1"]}]],"capability_id":"motion.move2d","result":null},{"arguments":["Walk"],"capability_id":"animation.play","result":null}],"emitted_events":[{"arguments":[],"entity_id":"Player","event_id":"died"}],"final_states":[{"entity_id":"Player","state":{"health":{"type":"Int","value":{"$int":"0"}},"speed":{"type":"Rat","value":{"$rat":["5","1"]}}}}],"program_hash":"f18d1b2428b96bf8c859463ab62a431c654933e65e23c3d8183335506d5adb5d","receipt_hash":"b275ccc6530ad84c0f96320ba1c8893b401638a926a99a78479d99fbd3c4aba5","scenario_id":"player.basic.v1","schema":"TEV_SCRIPT_CONFORMANCE_RECEIPT_V1"}
+{"output": "/tmp/tev-script-conformance-ke0bmjp5/matrix.python.receipt.json", "receipt_hash": "70df629159b6088aa3807deea217d4cdb06f28a41042aac1f6ebff6332179500", "schema": "TEV_SCRIPT_CONFORMANCE_RESULT_V1", "status": "PASS"}
+{"capability_trace":[{"arguments":[],"capability_id":"time.delta","result":{"$rat":["1","60"]}}],"emitted_events":[{"arguments":[{"$int":"10"},{"$rat":["15","4"]},false,"frontera \u03a9 \ud83d\ude00",[{"$rat":["3","1"]},{"$rat":["-1","12"]}],[{"$rat":["7","2"]},{"$rat":["8","3"]},{"$rat":["10","1"]}]],"entity_id":"Matrix","event_id":"observed"}],"final_states":[{"entity_id":"Matrix","state":{"bool_and":{"type":"Bool","value":false},"bool_eq":{"type":"Bool","value":false},"bool_ge":{"type":"Bool","value":true},"bool_gt":{"type":"Bool","value":true},"bool_le":{"type":"Bool","value":false},"bool_lt":{"type":"Bool","value":false},"bool_ne":{"type":"Bool","value":true},"bool_not":{"type":"Bool","value":true},"bool_or":{"type":"Bool","value":true},"int_minus":{"type":"Int","value":{"$int":"4"}},"int_plus":{"type":"Int","value":{"$int":"10"}},"int_star":{"type":"Int","value":{"$int":"21"}},"int_unary":{"type":"Int","value":{"$int":"-7"}},"max_rat":{"type":"Rat","value":{"$rat":["7","1"]}},"min_int":{"type":"Int","value":{"$int":"3"}},"observed_delta":{"type":"Rat","value":{"$rat":["1","60"]}},"rat_div":{"type":"Rat","value":{"$rat":["15","4"]}},"rat_minus":{"type":"Rat","value":{"$rat":["11","6"]}},"rat_mixed":{"type":"Rat","value":{"$rat":["19","2"]}},"rat_plus":{"type":"Rat","value":{"$rat":["19","6"]}},"rat_star":{"type":"Rat","value":{"$rat":["5","3"]}},"rat_unary":{"type":"Rat","value":{"$rat":["-5","2"]}},"text_value":{"type":"Text","value":"frontera \u03a9 \ud83d\ude00"},"vec2_div":{"type":"Vec2","value":[{"$rat":["1","6"]},{"$rat":["-1","4"]}]},"vec2_minus":{"type":"Vec2","value":[{"$rat":["-1","6"]},{"$rat":["-13","4"]}]},"vec2_plus":{"type":"Vec2","value":[{"$rat":["3","1"]},{"$rat":["-1","12"]}]},"vec2_scaled_left":{"type":"Vec2","value":[{"$rat":["7","2"]},{"$rat":["-21","4"]}]},"vec2_scaled_right":{"type":"Vec2","value":[{"$rat":["1","3"]},{"$rat":["-1","2"]}]},"vec3_value":{"type":"Vec3","value":[{"$rat":["7","2"]},{"$rat":["8","3"]},{"$rat":["10","1"]}]}}}],"program_hash":"899c555b1825e340e53a53ad21aaf7e8fb7a4f7fe53e26f0a66b196515ed2393","receipt_hash":"70df629159b6088aa3807deea217d4cdb06f28a41042aac1f6ebff6332179500","scenario_id":"matrix.full.v1","schema":"TEV_SCRIPT_CONFORMANCE_RECEIPT_V1"}
+{"output": "/tmp/tev-script-conformance-ke0bmjp5/player-idle.python.receipt.json", "receipt_hash": "647d3211f7411b88c155d658ba4c9494482378cde75c9f427dc4e38475acd17c", "schema": "TEV_SCRIPT_CONFORMANCE_RESULT_V1", "status": "PASS"}
+{"capability_trace":[{"arguments":[],"capability_id":"input.move2d","result":[{"$rat":["0","1"]},{"$rat":["0","1"]}]},{"arguments":[[{"$rat":["0","1"]},{"$rat":["0","1"]}]],"capability_id":"motion.move2d","result":null},{"arguments":["Idle"],"capability_id":"animation.play","result":null}],"emitted_events":[],"final_states":[{"entity_id":"Player","state":{"health":{"type":"Int","value":{"$int":"100"}},"speed":{"type":"Rat","value":{"$rat":["5","1"]}}}}],"program_hash":"f18d1b2428b96bf8c859463ab62a431c654933e65e23c3d8183335506d5adb5d","receipt_hash":"647d3211f7411b88c155d658ba4c9494482378cde75c9f427dc4e38475acd17c","scenario_id":"player.idle.v1","schema":"TEV_SCRIPT_CONFORMANCE_RECEIPT_V1"}
+{"output": "/tmp/tev-script-conformance-ke0bmjp5/event-chain.python.receipt.json", "receipt_hash": "5fcbd07512192ec298ff18bc313c71418e079e04d303aa3514a49ab91462371d", "schema": "TEV_SCRIPT_CONFORMANCE_RESULT_V1", "status": "PASS"}
+{"capability_trace":[{"arguments":[[{"$rat":["0","1"]},{"$rat":["0","1"]}]],"capability_id":"motion.move2d","result":null}],"emitted_events":[{"arguments":[{"$int":"7"}],"entity_id":"Chain","event_id":"internal"},{"arguments":[{"$int":"7"}],"entity_id":"Chain","event_id":"completed"}],"final_states":[{"entity_id":"Chain","state":{"value":{"type":"Int","value":{"$int":"7"}}}}],"program_hash":"a362d9b7e2850c8327eb0f6a4cbebf949cb6edb82fb493f980a8c5c8c078aea5","receipt_hash":"5fcbd07512192ec298ff18bc313c71418e079e04d303aa3514a49ab91462371d","scenario_id":"event-chain.v1","schema":"TEV_SCRIPT_CONFORMANCE_RECEIPT_V1"}
+CONFORMANCE_SCENARIOS=4
+PYTHON_JAVASCRIPT_BYTE_PARITY=PASS
+STRICT_JSON_INPUT_BOUNDARY=PASS
+JSON_SCHEMA_VALIDATION=PASS
+CSHARP_PORTABLE_STATIC_BOUNDARY=PASS
+CSHARP_COMPILATION=HOLD_TOOLCHAIN_NOT_PROBED_BY_THIS_RUNNER
+EVENT-CHAIN_PROGRAM_HASH=a362d9b7e2850c8327eb0f6a4cbebf949cb6edb82fb493f980a8c5c8c078aea5
+EVENT-CHAIN_RECEIPT_HASH=5fcbd07512192ec298ff18bc313c71418e079e04d303aa3514a49ab91462371d
+MATRIX_PROGRAM_HASH=899c555b1825e340e53a53ad21aaf7e8fb7a4f7fe53e26f0a66b196515ed2393
+MATRIX_RECEIPT_HASH=70df629159b6088aa3807deea217d4cdb06f28a41042aac1f6ebff6332179500
+PLAYER_PROGRAM_HASH=f18d1b2428b96bf8c859463ab62a431c654933e65e23c3d8183335506d5adb5d
+PLAYER_RECEIPT_HASH=b275ccc6530ad84c0f96320ba1c8893b401638a926a99a78479d99fbd3c4aba5
+PLAYER-IDLE_PROGRAM_HASH=f18d1b2428b96bf8c859463ab62a431c654933e65e23c3d8183335506d5adb5d
+PLAYER-IDLE_RECEIPT_HASH=647d3211f7411b88c155d658ba4c9494482378cde75c9f427dc4e38475acd17c
+PROGRAM_HASH=f18d1b2428b96bf8c859463ab62a431c654933e65e23c3d8183335506d5adb5d
+RECEIPT_HASH=b275ccc6530ad84c0f96320ba1c8893b401638a926a99a78479d99fbd3c4aba5
+TEV_SCRIPT_PORTABLE_V0_2=PASS_WITH_CSHARP_PENDING_COMPILE

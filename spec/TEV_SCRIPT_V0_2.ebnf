@@ -1,0 +1,32 @@
+script       = "script" IDENT "version" STRING ";" entity+ EOF ;
+entity       = "entity" IDENT "{" entity_member* "}" ;
+entity_member = state | handler ;
+state        = "state" IDENT ":" type "=" expression ";" ;
+handler      = "on" IDENT [ "(" parameters ")" ] block ;
+parameters   = parameter ( "," parameter )* ;
+parameter    = IDENT ":" type ;
+type         = "Bool" | "Int" | "Rat" | "Text" | "Vec2" | "Vec3" | "Unit" ;
+block        = "{" statement* "}" ;
+statement    = let_statement
+             | assignment
+             | if_statement
+             | call_statement
+             | emit_statement
+             | log_statement
+             | move_statement
+             | animate_statement
+             | return_statement ;
+let_statement = "let" IDENT [ ":" type ] "=" expression ";" ;
+assignment   = IDENT "=" expression ";" ;
+if_statement = "if" expression block [ "else" block ] ;
+call_statement = "call" qualified_name arguments ";" ;
+emit_statement = "emit" IDENT arguments ";" ;
+log_statement = "log" expression ";" ;
+move_statement = "move" expression ";" ;
+animate_statement = "animate" expression ";" ;
+return_statement = "return" ";" ;
+arguments    = "(" [ expression ( "," expression )* ] ")" ;
+qualified_name = IDENT ( "." IDENT )* ;
+expression   = Pratt expression over:
+               or, and, ==, !=, <, <=, >, >=, +, -, *, /,
+               unary not/minus, literals, names and calls ;

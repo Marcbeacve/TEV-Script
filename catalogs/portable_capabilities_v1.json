@@ -1,0 +1,35 @@
+{
+  "schema": "TEV_SCRIPT_CAPABILITY_CATALOG_V1",
+  "capabilities": [
+    {
+      "capability_id": "animation.play",
+      "parameters": ["Text"],
+      "return_type": "Unit",
+      "kind": "effect"
+    },
+    {
+      "capability_id": "debug.log",
+      "parameters": ["Text"],
+      "return_type": "Unit",
+      "kind": "effect"
+    },
+    {
+      "capability_id": "input.move2d",
+      "parameters": [],
+      "return_type": "Vec2",
+      "kind": "observation"
+    },
+    {
+      "capability_id": "motion.move2d",
+      "parameters": ["Vec2"],
+      "return_type": "Unit",
+      "kind": "effect"
+    },
+    {
+      "capability_id": "time.delta",
+      "parameters": [],
+      "return_type": "Rat",
+      "kind": "observation"
+    }
+  ]
+}

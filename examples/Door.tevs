@@ -1,0 +1,13 @@
+script DoorGameplay version "0.2.0";
+
+entity Door {
+    state open: Bool = false;
+
+    on interact {
+        if not open {
+            open = true;
+            animate "Open";
+            log "Door opened";
+        }
+    }
+}

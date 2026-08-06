@@ -1,0 +1,133 @@
+{
+  "schema": "TEV_CANONICAL_JSON_VECTORS_V1",
+  "profile": "TEV_CANONICAL_JSON_V1",
+  "vectors": [
+    {
+      "id": "object-order",
+      "value": {
+        "z": 0,
+        "a": 1,
+        "m": 2
+      },
+      "canonical": "{\"a\":1,\"m\":2,\"z\":0}",
+      "sha256": "c36d3015784a7163bca85c476e0454d16c6b34df33d45d28cdffb3da02251e73"
+    },
+    {
+      "id": "nested",
+      "value": {
+        "b": [
+          3,
+          {
+            "y": false,
+            "x": null
+          }
+        ],
+        "a": "ok"
+      },
+      "canonical": "{\"a\":\"ok\",\"b\":[3,{\"x\":null,\"y\":false}]}",
+      "sha256": "d8c26096386dea7e2d2916620ece0288ce807fbe78eb8cba417ab2a2689674bd"
+    },
+    {
+      "id": "controls",
+      "value": "quote\" slash\\ back\b form\f line\n return\r tab\t",
+      "canonical": "\"quote\\\" slash\\\\ back\\b form\\f line\\n return\\r tab\\t\"",
+      "sha256": "f3e79f37aff8421aa6c470667f04c0ada714a578d6067e2a9b598cf964d586f2"
+    },
+    {
+      "id": "unicode",
+      "value": "frontera \u03a9 \u4e2d \ud83d\ude00",
+      "canonical": "\"frontera \\u03a9 \\u4e2d \\ud83d\\ude00\"",
+      "sha256": "b3f82b52419044c0bbdb90104d7984b3ee08f470fa7d8d4e2a38709cffccb13a"
+    },
+    {
+      "id": "scalar-key-order",
+      "value": {
+        "\ud83d\ude00": "astral",
+        "\ue000": "bmp-private",
+        "A": "ascii"
+      },
+      "canonical": "{\"A\":\"ascii\",\"\\ue000\":\"bmp-private\",\"\\ud83d\\ude00\":\"astral\"}",
+      "sha256": "ba6847387857dcb4d05841b2cbb7d8b59cf35586f784902630bae431f53970d3"
+    },
+    {
+      "id": "lone-surrogates",
+      "value": "\ud800X\udfff",
+      "canonical": "\"\\ud800X\\udfff\"",
+      "sha256": "ca8cc9229a3173a76fe3f59d9008fb8c123b6c05e27b811b9971aa73da5c3f2f"
+    },
+    {
+      "id": "safe-positive",
+      "value": 9007199254740991,
+      "canonical": "9007199254740991",
+      "sha256": "f40b423c2dd95ff2b2f027e22208f438cf7242862e5e746860e697308c9add26"
+    },
+    {
+      "id": "safe-negative",
+      "value": -9007199254740991,
+      "canonical": "-9007199254740991",
+      "sha256": "4c933a456bb8f2e9894b2d0b26480439cd72d52fb8a27cbf8fd7f323f22c7815"
+    },
+    {
+      "id": "tagged-int",
+      "value": {
+        "value": {
+          "$int": "123456789012345678901234567890"
+        }
+      },
+      "canonical": "{\"value\":{\"$int\":\"123456789012345678901234567890\"}}",
+      "sha256": "205e637484e02b001c1bdd9268629b466b618708d6f6e3c174150580db9d2dc4"
+    },
+    {
+      "id": "tagged-rat",
+      "value": {
+        "value": {
+          "$rat": [
+            "-22",
+            "7"
+          ]
+        }
+      },
+      "canonical": "{\"value\":{\"$rat\":[\"-22\",\"7\"]}}",
+      "sha256": "8c132ff9eed06dc7abe1e95cb46423e6b299758d8a5f09e029fff1e0dc9907a7"
+    },
+    {
+      "id": "vector",
+      "value": [
+        {
+          "$rat": [
+            "1",
+            "2"
+          ]
+        },
+        {
+          "$rat": [
+            "-3",
+            "4"
+          ]
+        },
+        {
+          "$rat": [
+            "5",
+            "6"
+          ]
+        }
+      ],
+      "canonical": "[{\"$rat\":[\"1\",\"2\"]},{\"$rat\":[\"-3\",\"4\"]},{\"$rat\":[\"5\",\"6\"]}]",
+      "sha256": "6ad34d8476dae7b186234448ed5335f5a32a13f34da8993d5f15b8aad4ef90cf"
+    },
+    {
+      "id": "mixed",
+      "value": {
+        "null": null,
+        "bool": true,
+        "text": "\u00e9",
+        "array": [
+          0,
+          -1
+        ]
+      },
+      "canonical": "{\"array\":[0,-1],\"bool\":true,\"null\":null,\"text\":\"\\u00e9\"}",
+      "sha256": "e854b7a02359d7acc62c23ffe677332015974ebf9527f8f267b4669b6a36d836"
+    }
+  ]
+}

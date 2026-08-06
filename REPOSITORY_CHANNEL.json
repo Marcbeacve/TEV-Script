@@ -3,11 +3,28 @@
     "AGENTS.md",
     "CANONICAL_INDEX.json",
     "REPOSITORY_CHANNEL.json",
-    "LICENSE",
-    "README.md"
+    "DESIGN_DECISION.json",
+    "descriptor.json",
+    "docs/CANON.md",
+    "docs/STATUS.md",
+    "spec/**",
+    "schemas/**",
+    "conformance/**",
+    "docs/VALIDATION.md"
   ],
   "ignore": [
-    ".git/**"
+    ".git/**",
+    ".venv/**",
+    "**/__pycache__/**",
+    "node_modules/**",
+    "build/**",
+    "dist/**",
+    "artifacts/**",
+    "reports/**",
+    "receipts/**",
+    "state/**",
+    "**/bin/**",
+    "**/obj/**"
   ],
   "publication": {
     "branch_prefix": "agent/",
@@ -21,9 +38,43 @@
   },
   "repository_kind": "multi_language_specification_and_runtimes",
   "schema": "lrcp.repository-manifest/v1",
-  "source_roots": [],
+  "source_roots": [
+    "spec",
+    "schemas",
+    "catalogs",
+    "conformance",
+    "tev_script",
+    "javascript/src",
+    "runtimes/csharp",
+    "adapters",
+    "tests",
+    "examples"
+  ],
   "validation": {
-    "full_after_changed_files": 1,
-    "rules": []
+    "full_after_changed_files": 64,
+    "rules": [
+      {
+        "commands": [
+          [
+            "python",
+            "RUN_PORTABLE_CONFORMANCE.py"
+          ]
+        ],
+        "exclude": [],
+        "horizon": "PORTABLE_CONFORMANCE",
+        "include": [
+          "spec/**",
+          "schemas/**",
+          "tev_script/**",
+          "javascript/**",
+          "conformance/**",
+          "tests/**",
+          "examples/**",
+          "runtimes/csharp/**"
+        ],
+        "priority": 100,
+        "rule_id": "portable-core"
+      }
+    ]
   }
 }

@@ -1,0 +1,27 @@
+script PlayerGameplay version "0.2.0";
+
+entity Player {
+    state speed: Rat = 5;
+    state health: Int = 100;
+
+    on start {
+        log "Player ready";
+    }
+
+    on update {
+        let direction: Vec2 = input.move2d();
+        move direction * speed;
+        if direction != vec2(0, 0) {
+            animate "Walk";
+        } else {
+            animate "Idle";
+        }
+    }
+
+    on damage(amount: Int) {
+        health = max(0, health - amount);
+        if health == 0 {
+            emit died();
+        }
+    }
+}

@@ -1,0 +1,15 @@
+{
+  "date": "2026-08-06",
+  "parser_executed_in_current_environment": false,
+  "reason": "pwsh and System.Management.Automation were unavailable",
+  "schema": "TEV_SCRIPT_POWERSHELL_STATIC_RECEIPT_V1",
+  "script": "PREPARAR_REPOSITORIO_TEV_SCRIPT_GITHUB_V1.ps1",
+  "static_checks": [
+    "balanced braces outside strings and comments",
+    "balanced parentheses and brackets outside strings and comments",
+    "no NUL bytes",
+    "required fail-closed markers present"
+  ],
+  "status": "PASS_STATIC_ONLY",
+  "historical_parser_receipt": "evidence/reference-v0.2/powershell-parser-receipt.json"
+}

@@ -1,0 +1,28 @@
+{
+  "canonical_json_profile": "TEV_CANONICAL_JSON_V1",
+  "conformance_receipt": "TEV_SCRIPT_CONFORMANCE_RECEIPT_V1",
+  "conformance_scenario_schema": "TEV_SCRIPT_CONFORMANCE_SCENARIO_V1",
+  "conformance_scenarios": [
+    "player.basic.v1",
+    "matrix.full.v1",
+    "player.idle.v1",
+    "event-chain.v1"
+  ],
+  "conformant_runtimes": [
+    "Python 3.11+",
+    "JavaScript ES2022"
+  ],
+  "ir_schema": "TEV_SCRIPT_PROGRAM_IR_V2",
+  "language_version": "0.2.0",
+  "pending_runtimes": [
+    "C#/.NET",
+    "Browser execution campaign",
+    "Unity adapter"
+  ],
+  "runtime_abi": "TEV_SCRIPT_RUNTIME_ABI_V1",
+  "schema": "TEV_SCRIPT_PORTABLE_DESCRIPTOR_V2",
+  "semantic_base_language": null,
+  "source_extension": ".tevs",
+  "strict_json_input": true,
+  "value_model": "TEV_PORTABLE_VALUE_MODEL_V1"
+}
