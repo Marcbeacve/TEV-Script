@@ -1,0 +1,51 @@
+{
+  "certified_parent_commit": "16175de856d0dc0ceeb7eaa45d73bf0004b763bb",
+  "files": [
+    {
+      "canonical": "runtimes/csharp/TevScript.Core/TevScriptCanonicalJson.cs",
+      "package": "unity/Package/Runtime/Core/TevScriptCanonicalJson.cs",
+      "sha256": "2351c61a5e7393b73a65a9145ae81fdfffbe1ac92133265af19fdcb845a026ae"
+    },
+    {
+      "canonical": "runtimes/csharp/TevScript.Core/TevScriptConformance.cs",
+      "package": "unity/Package/Runtime/Core/TevScriptConformance.cs",
+      "sha256": "9e8575b81bfdfda3ea024bfe9fcb5b098b2fbf07f562b17cb56c1edcda041eb8"
+    },
+    {
+      "canonical": "runtimes/csharp/TevScript.Core/TevScriptContracts.cs",
+      "package": "unity/Package/Runtime/Core/TevScriptContracts.cs",
+      "sha256": "c2ca69df9d5411cb87f2d4ab817ff9dcaf9e2c3fbffb9c0fd6084080a04429a1"
+    },
+    {
+      "canonical": "runtimes/csharp/TevScript.Core/TevScriptIrValidator.cs",
+      "package": "unity/Package/Runtime/Core/TevScriptIrValidator.cs",
+      "sha256": "c850d3f7b3c31894d2314093a81d65e783da6941890638b3838f0a0bdf707b64"
+    },
+    {
+      "canonical": "runtimes/csharp/TevScript.Core/TevScriptJson.cs",
+      "package": "unity/Package/Runtime/Core/TevScriptJson.cs",
+      "sha256": "d3810907f8cde6f81aeef0acdc66492e53e80877b97a65f9aa0c95c3f289d93e"
+    },
+    {
+      "canonical": "runtimes/csharp/TevScript.Core/TevScriptPrimitives.cs",
+      "package": "unity/Package/Runtime/Core/TevScriptPrimitives.cs",
+      "sha256": "9ef1e73e14efeb9e7d3f4d2ea6d062059e786317ce407735e6db0191160667f3"
+    },
+    {
+      "canonical": "runtimes/csharp/TevScript.Core/TevScriptProgram.cs",
+      "package": "unity/Package/Runtime/Core/TevScriptProgram.cs",
+      "sha256": "04fe56a52d744c3432a40db3ea269b3eb54eb8167156442b5f52f1b45126d3d2"
+    },
+    {
+      "canonical": "runtimes/csharp/TevScript.Core/TevScriptRuntime.cs",
+      "package": "unity/Package/Runtime/Core/TevScriptRuntime.cs",
+      "sha256": "692ebb320b82729468627c216a68ef1e1037209815d0d81972cd5433b32c9355"
+    },
+    {
+      "canonical": "runtimes/csharp/TevScript.Core/TevScriptValue.cs",
+      "package": "unity/Package/Runtime/Core/TevScriptValue.cs",
+      "sha256": "56dd6a48d4693acab745caddc420a50497d427eaed6136ddbe72c7176840f559"
+    }
+  ],
+  "schema": "TEV_SCRIPT_UNITY_CORE_SOURCE_IDENTITY_V1"
+}

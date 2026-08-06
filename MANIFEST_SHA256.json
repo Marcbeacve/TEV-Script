@@ -1,6 +1,6 @@
 {
-  "branch": "agent/tev-script-csharp-conformance-v1",
-  "file_count": 131,
+  "branch": "agent/tev-script-unity-editor-conformance-v1",
+  "file_count": 162,
   "files": [
     {
       "bytes": 195,
@@ -43,9 +43,9 @@
       "sha256": "23d38237f098ac6c03ee0b1a9ed7e93bfa9322530bd672663a18c854d7654af1"
     },
     {
-      "bytes": 3024,
+      "bytes": 3259,
       "path": "PROJECT_STATE.md",
-      "sha256": "a6cff13456a93a36f0645e637b912b507fdfc41e47ff9d7ebe3c9cacabd7eba4"
+      "sha256": "4ab855070999ca7835064958fc8a95c7113479248c3fcd16e996f84cbfbae7bd"
     },
     {
       "bytes": 4131,
@@ -73,14 +73,19 @@
       "sha256": "59071085d2604cca03686b02703406c814d3a23502de67227d0c89d9f3e951c4"
     },
     {
+      "bytes": 7835,
+      "path": "RUN_TEV_SCRIPT_UNITY_EDITOR_CONFORMANCE_V1.ps1",
+      "sha256": "41a822e059ff9c14f8afc1faef27e89131bacfd7287bafaa0e3d2a005a9211ea"
+    },
+    {
       "bytes": 4916,
       "path": "VALIDATION_RECEIPT.json",
       "sha256": "18db4aefb02fcd935dc99262dda5f1c852b7f92bd712ddcd6470769de5592377"
     },
     {
-      "bytes": 1104,
+      "bytes": 1644,
       "path": "adapters/unity/UNITY_ADAPTER_CONTRACT_V2.md",
-      "sha256": "afa23a2729de2b3ef361f468144fac5a67dc9741c42bb27e4ddca706be9054ae"
+      "sha256": "31b868bebccb12f34f207233f7294b6075fcd86cbe7a6439f5cb138583fc088a"
     },
     {
       "bytes": 497,
@@ -153,9 +158,9 @@
       "sha256": "e6ab4421ae1b8c1b59c4e954591c82c00d5da1bcb4d647c9be2207aef9b155bb"
     },
     {
-      "bytes": 1326,
+      "bytes": 1378,
       "path": "docs/STATUS.md",
-      "sha256": "aa5b14761f39f5f8fc47229e467dda489f81ea1b782bfde74d1563dee8825adb"
+      "sha256": "6734807e963ab5a689ab0396e1c9c04735f4803aebb77d871e460af7582259fc"
     },
     {
       "bytes": 2529,
@@ -221,6 +226,11 @@
       "bytes": 826,
       "path": "evidence/reference-v0.2/python.receipt.json",
       "sha256": "d5e99dbda29b55a94dea7a801a2bafd5abfbb6dc8eebb3f3844a09c89837b447"
+    },
+    {
+      "bytes": 972,
+      "path": "evidence/reference-v0.2/unity-editor-conformance-windows-unity6000.3.json",
+      "sha256": "16b67ca74b98233bc498a4f7fc94042d9ebd29263ef0fcf745c4d118f7e23598"
     },
     {
       "bytes": 3624,
@@ -656,6 +666,151 @@
       "bytes": 4353,
       "path": "tev_script/values.py",
       "sha256": "eaeca23acdefe758bd5cd46b9ff97070ade73541805c2ac33181cb8e8684be57"
+    },
+    {
+      "bytes": 2301,
+      "path": "unity/CORE_SOURCE_IDENTITY.json",
+      "sha256": "b068a5e127cd1c2a39ec01be61eb3dfae51102099a2e6ca85df58b5a2a179b28"
+    },
+    {
+      "bytes": 2991,
+      "path": "unity/FIXTURE_IDENTITY.json",
+      "sha256": "1f28a2651df933bf49e267738e658a965aa4241373012bb25697de8d737250bb"
+    },
+    {
+      "bytes": 426,
+      "path": "unity/Package/Editor/Marcbeacve.TevScript.EditorGate.asmdef",
+      "sha256": "8e9c9eb812ea527ec7ca10e805d5857eaa3280a32a6f57139e75051cd718b864"
+    },
+    {
+      "bytes": 6519,
+      "path": "unity/Package/Editor/TevScriptUnityEditorGate.cs",
+      "sha256": "1ca1722da50dc5edb6d1dd55719ed9c7b0f95088b9dcd778bb4c7e5153f7c46c"
+    },
+    {
+      "bytes": 561,
+      "path": "unity/Package/README.md",
+      "sha256": "8e399e0ae1a857023d02b60372a780d4abb645aa2f106bed3e8a1b7a891e665d"
+    },
+    {
+      "bytes": 360,
+      "path": "unity/Package/Runtime/Core/Marcbeacve.TevScript.Core.asmdef",
+      "sha256": "8541585aaa33ebcb9ccccbb6b309e08c975cbf82eea1a96cd16dc2fe5fe0119e"
+    },
+    {
+      "bytes": 3633,
+      "path": "unity/Package/Runtime/Core/TevScriptCanonicalJson.cs",
+      "sha256": "2351c61a5e7393b73a65a9145ae81fdfffbe1ac92133265af19fdcb845a026ae"
+    },
+    {
+      "bytes": 18322,
+      "path": "unity/Package/Runtime/Core/TevScriptConformance.cs",
+      "sha256": "9e8575b81bfdfda3ea024bfe9fcb5b098b2fbf07f562b17cb56c1edcda041eb8"
+    },
+    {
+      "bytes": 1863,
+      "path": "unity/Package/Runtime/Core/TevScriptContracts.cs",
+      "sha256": "c2ca69df9d5411cb87f2d4ab817ff9dcaf9e2c3fbffb9c0fd6084080a04429a1"
+    },
+    {
+      "bytes": 32630,
+      "path": "unity/Package/Runtime/Core/TevScriptIrValidator.cs",
+      "sha256": "c850d3f7b3c31894d2314093a81d65e783da6941890638b3838f0a0bdf707b64"
+    },
+    {
+      "bytes": 21234,
+      "path": "unity/Package/Runtime/Core/TevScriptJson.cs",
+      "sha256": "d3810907f8cde6f81aeef0acdc66492e53e80877b97a65f9aa0c95c3f289d93e"
+    },
+    {
+      "bytes": 5859,
+      "path": "unity/Package/Runtime/Core/TevScriptPrimitives.cs",
+      "sha256": "9ef1e73e14efeb9e7d3f4d2ea6d062059e786317ce407735e6db0191160667f3"
+    },
+    {
+      "bytes": 15197,
+      "path": "unity/Package/Runtime/Core/TevScriptProgram.cs",
+      "sha256": "04fe56a52d744c3432a40db3ea269b3eb54eb8167156442b5f52f1b45126d3d2"
+    },
+    {
+      "bytes": 26631,
+      "path": "unity/Package/Runtime/Core/TevScriptRuntime.cs",
+      "sha256": "692ebb320b82729468627c216a68ef1e1037209815d0d81972cd5433b32c9355"
+    },
+    {
+      "bytes": 9277,
+      "path": "unity/Package/Runtime/Core/TevScriptValue.cs",
+      "sha256": "56dd6a48d4693acab745caddc420a50497d427eaed6136ddbe72c7176840f559"
+    },
+    {
+      "bytes": 3619,
+      "path": "unity/Package/Tests/Fixtures/conformance/canonical.vectors.json",
+      "sha256": "a9ac8d0ba6c067be48186be29a19ecd988f1fde92d17b665eda4d3de807a1477"
+    },
+    {
+      "bytes": 620,
+      "path": "unity/Package/Tests/Fixtures/conformance/event-chain.expected.json",
+      "sha256": "3cfa00dea002ed058ca4745695c0539a6db952c795bebc0072502a8112e569af"
+    },
+    {
+      "bytes": 317,
+      "path": "unity/Package/Tests/Fixtures/conformance/event-chain.scenario.json",
+      "sha256": "e680cd67d065ec7fcb69b463e30931ed3efba176ef8929447ccac5c812e8bb37"
+    },
+    {
+      "bytes": 2241,
+      "path": "unity/Package/Tests/Fixtures/conformance/matrix.expected.json",
+      "sha256": "44abea03d9077834294150dbb03878012f6d2b80097c3237d6b505dd03ede729"
+    },
+    {
+      "bytes": 1072,
+      "path": "unity/Package/Tests/Fixtures/conformance/matrix.scenario.json",
+      "sha256": "a6fdb057ecd59e079b79c03e1d8757b23d58e4ee85daba2be0fa85fd3c27bd77"
+    },
+    {
+      "bytes": 699,
+      "path": "unity/Package/Tests/Fixtures/conformance/player-idle.expected.json",
+      "sha256": "b379adfde8cab9e68049558338562a9c9d1be752ad3940e1cb792205eb86a5a1"
+    },
+    {
+      "bytes": 560,
+      "path": "unity/Package/Tests/Fixtures/conformance/player-idle.scenario.json",
+      "sha256": "58ab158794d6819747c244d0680bcfdb97358c8b839542c2bba4b02a77ff1206"
+    },
+    {
+      "bytes": 826,
+      "path": "unity/Package/Tests/Fixtures/conformance/player.expected.json",
+      "sha256": "d5e99dbda29b55a94dea7a801a2bafd5abfbb6dc8eebb3f3844a09c89837b447"
+    },
+    {
+      "bytes": 861,
+      "path": "unity/Package/Tests/Fixtures/conformance/player.scenario.json",
+      "sha256": "5f482c0e60af6075666d282ded912714174b091222af4c3fab213e96e8729423"
+    },
+    {
+      "bytes": 27469,
+      "path": "unity/Package/Tests/Fixtures/examples/ConformanceMatrix.tevs.ir.json",
+      "sha256": "7c48f2115b1debb0a7d470c4a9afd808e5da33ce36790bb2b420058ef3b90141"
+    },
+    {
+      "bytes": 3679,
+      "path": "unity/Package/Tests/Fixtures/examples/EventChain.tevs.ir.json",
+      "sha256": "fe01856a12b6db64ef1cd7c4032144ce9799fa4500c5a90f6bb321924b6760c3"
+    },
+    {
+      "bytes": 8112,
+      "path": "unity/Package/Tests/Fixtures/examples/Player.tevs.ir.json",
+      "sha256": "dc7d75d80d7d1fa0cba3956db25d1504b7a5cab6eaddb3263aa209fc0bb06937"
+    },
+    {
+      "bytes": 402,
+      "path": "unity/Package/package.json",
+      "sha256": "6674b921e7843f9ed2d4ea6e191a93a525531d8e8c6457b9be5f65db9d3bdabe"
+    },
+    {
+      "bytes": 5637,
+      "path": "unity/VALIDATE_UNITY_PACKAGE.py",
+      "sha256": "63b397fae0d494e11b33ec0eeb5431f576106218b33f8c780fdb2ecbe199816e"
     }
   ]
 }

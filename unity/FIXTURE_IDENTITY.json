@@ -1,0 +1,66 @@
+{
+  "certified_parent_commit": "16175de856d0dc0ceeb7eaa45d73bf0004b763bb",
+  "files": [
+    {
+      "canonical": "conformance/canonical.vectors.json",
+      "package": "unity/Package/Tests/Fixtures/conformance/canonical.vectors.json",
+      "sha256": "a9ac8d0ba6c067be48186be29a19ecd988f1fde92d17b665eda4d3de807a1477"
+    },
+    {
+      "canonical": "conformance/player.scenario.json",
+      "package": "unity/Package/Tests/Fixtures/conformance/player.scenario.json",
+      "sha256": "5f482c0e60af6075666d282ded912714174b091222af4c3fab213e96e8729423"
+    },
+    {
+      "canonical": "conformance/player.expected.json",
+      "package": "unity/Package/Tests/Fixtures/conformance/player.expected.json",
+      "sha256": "d5e99dbda29b55a94dea7a801a2bafd5abfbb6dc8eebb3f3844a09c89837b447"
+    },
+    {
+      "canonical": "conformance/matrix.scenario.json",
+      "package": "unity/Package/Tests/Fixtures/conformance/matrix.scenario.json",
+      "sha256": "a6fdb057ecd59e079b79c03e1d8757b23d58e4ee85daba2be0fa85fd3c27bd77"
+    },
+    {
+      "canonical": "conformance/matrix.expected.json",
+      "package": "unity/Package/Tests/Fixtures/conformance/matrix.expected.json",
+      "sha256": "44abea03d9077834294150dbb03878012f6d2b80097c3237d6b505dd03ede729"
+    },
+    {
+      "canonical": "conformance/player-idle.scenario.json",
+      "package": "unity/Package/Tests/Fixtures/conformance/player-idle.scenario.json",
+      "sha256": "58ab158794d6819747c244d0680bcfdb97358c8b839542c2bba4b02a77ff1206"
+    },
+    {
+      "canonical": "conformance/player-idle.expected.json",
+      "package": "unity/Package/Tests/Fixtures/conformance/player-idle.expected.json",
+      "sha256": "b379adfde8cab9e68049558338562a9c9d1be752ad3940e1cb792205eb86a5a1"
+    },
+    {
+      "canonical": "conformance/event-chain.scenario.json",
+      "package": "unity/Package/Tests/Fixtures/conformance/event-chain.scenario.json",
+      "sha256": "e680cd67d065ec7fcb69b463e30931ed3efba176ef8929447ccac5c812e8bb37"
+    },
+    {
+      "canonical": "conformance/event-chain.expected.json",
+      "package": "unity/Package/Tests/Fixtures/conformance/event-chain.expected.json",
+      "sha256": "3cfa00dea002ed058ca4745695c0539a6db952c795bebc0072502a8112e569af"
+    },
+    {
+      "canonical": "examples/Player.tevs.ir.json",
+      "package": "unity/Package/Tests/Fixtures/examples/Player.tevs.ir.json",
+      "sha256": "dc7d75d80d7d1fa0cba3956db25d1504b7a5cab6eaddb3263aa209fc0bb06937"
+    },
+    {
+      "canonical": "examples/ConformanceMatrix.tevs.ir.json",
+      "package": "unity/Package/Tests/Fixtures/examples/ConformanceMatrix.tevs.ir.json",
+      "sha256": "7c48f2115b1debb0a7d470c4a9afd808e5da33ce36790bb2b420058ef3b90141"
+    },
+    {
+      "canonical": "examples/EventChain.tevs.ir.json",
+      "package": "unity/Package/Tests/Fixtures/examples/EventChain.tevs.ir.json",
+      "sha256": "fe01856a12b6db64ef1cd7c4032144ce9799fa4500c5a90f6bb321924b6760c3"
+    }
+  ],
+  "schema": "TEV_SCRIPT_UNITY_FIXTURE_IDENTITY_V1"
+}

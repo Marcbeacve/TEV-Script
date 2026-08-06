@@ -1,0 +1,17 @@
+{
+  "name": "com.marcbeacve.tev-script",
+  "version": "0.2.0-preview.1",
+  "displayName": "TEV Script Unity Host",
+  "description": "Unity host package for the certified portable TEV Script Core. Unity is a host, not the language authority.",
+  "unity": "6000.3",
+  "author": {
+    "name": "Marcbeacve"
+  },
+  "keywords": [
+    "TEV",
+    "script",
+    "portable",
+    "unity",
+    "conformance"
+  ]
+}
