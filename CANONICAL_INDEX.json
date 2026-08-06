@@ -1,0 +1,12 @@
+{
+  "authority_files": [
+    "AGENTS.md",
+    "REPOSITORY_CHANNEL.json",
+    "LICENSE",
+    "README.md"
+  ],
+  "language_version": "0.2.0",
+  "reference_implementations": [],
+  "schema": "TEV_SCRIPT_CANONICAL_INDEX_V1",
+  "stable": false
+}

@@ -1,0 +1,29 @@
+{
+  "authority_files": [
+    "AGENTS.md",
+    "CANONICAL_INDEX.json",
+    "REPOSITORY_CHANNEL.json",
+    "LICENSE",
+    "README.md"
+  ],
+  "ignore": [
+    ".git/**"
+  ],
+  "publication": {
+    "branch_prefix": "agent/",
+    "default_mode": "draft_pull_request",
+    "github_actions": false,
+    "merge_authority": false
+  },
+  "repository": {
+    "default_branch": "main",
+    "name": "Marcbeacve/TEV-Script"
+  },
+  "repository_kind": "multi_language_specification_and_runtimes",
+  "schema": "lrcp.repository-manifest/v1",
+  "source_roots": [],
+  "validation": {
+    "full_after_changed_files": 1,
+    "rules": []
+  }
+}
