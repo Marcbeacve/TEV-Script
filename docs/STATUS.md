@@ -10,11 +10,16 @@ STRICT_JSON_INPUT=PASS
 CONFORMANCE_SCENARIOS=4_PASS
 PYTHON_CONFORMANCE=PASS
 JAVASCRIPT_ES2022_CONFORMANCE=PASS
+CSHARP_SOURCE=IMPLEMENTED_SELF_CONTAINED
+CSHARP_COMPILE=PASS_OBSERVED_WINDOWS_DOTNET_10_0_302
+CSHARP_CANONICAL_VECTORS=12_PASS
+CSHARP_STRICT_JSON_BOUNDARY=PASS
+CSHARP_STRICT_UTF8_BOUNDARY=PASS
+CSHARP_IR_NEGATIVE_CAMPAIGN=PASS
+CSHARP_BYTE_PARITY=PASS_4_SCENARIOS
+THREE_RUNTIME_CONFORMANCE=PASS_OBSERVED
 DETERMINISTIC_UTF8_LF_OUTPUT=PASS
 REDIRECTED_STDIO_UNICODE=PASS
-CSHARP_SOURCE=IMPLEMENTED_SELF_CONTAINED
-CSHARP_COMPILE=HOLD_TOOLCHAIN_NOT_AVAILABLE_IN_VALIDATION_ENVIRONMENT
-CSHARP_BYTE_PARITY=PENDING
 BROWSER_EXECUTION_CAMPAIGN=PENDING
 UNITY_ADAPTER=PENDING
 MONO_IL2CPP=PENDING
@@ -22,8 +27,13 @@ LOWERING_TO_TEV_CAUSAL=PENDING
 LOWERING_TO_TEV_GENERAL=PENDING
 ```
 
-The current evidence proves Python/JavaScript byte parity for
-`player.basic.v1`, `matrix.full.v1`, `player.idle.v1`, and `event-chain.v1`. It also proves the canonical vectors, strict JSON input
-boundary, and strict schema validation in the observed environment. C# source
-is self-contained, but this package does not claim a successful C# compilation.
-It does not certify browsers, Unity, Mono, IL2CPP, or a stable release.
+Python, JavaScript and C# reproduce the four authoritative receipts byte for
+byte. The C# observation was produced on Windows x64 with .NET SDK 10.0.302 and
+`Microsoft.NETCore.App 10.0.10`; the runtime library itself remains
+`netstandard2.1`. Gate C#-2 did not modify the JSON schemas or conformance
+vectors, so the V7 Draft 2020-12 schema validation remains applicable by exact
+SHA-256 identity even when the optional `jsonschema` package is absent in the
+Windows run.
+
+This is still a preview. Browser execution, Unity/Mono/IL2CPP and stable release
+are not certified.

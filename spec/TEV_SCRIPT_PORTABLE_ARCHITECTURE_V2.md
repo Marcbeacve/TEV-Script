@@ -153,8 +153,8 @@ JavaScript arbitrary Int:        PASS
 Canonical JSON vectors:          PASS
 Strict JSON input boundary:      PASS
 JSON schemas:                    PASS
-Conformance scenarios:           2 PASS
-C# portable runtime source:      implemented, not compiled in this environment
+Conformance scenarios:           4 PASS
+C# portable runtime:             CONFORMANT observed Windows/.NET 10, 4 receipts byte-identical
 Unity adapter:                   contracted, not certified
 Causal/general lowering:         future tranche
 ```

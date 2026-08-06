@@ -9,45 +9,48 @@ IR portable V2:                            IMPLEMENTADO Y ESQUEMA ESTRICTO
 Perfil JSON canónico:                      IMPLEMENTADO CON VECTORES
 Carga JSON estricta Python/JavaScript:      PASS
 Compilador Python:                         PASS
-Runtime Python:                            PASS
-Runtime JavaScript ES2022:                 PASS
-Python/JavaScript byte parity:             PASS, 4 ESCENARIOS
-Runtime C# autocontenido:                   SOURCE IMPLEMENTED
-Proyecto C# netstandard2.1:                 PREPARADO
-Compilación C#:                            HOLD, TOOLCHAIN NO DISPONIBLE
-Receipt C# byte parity:                    PENDIENTE
-Unity adapter:                             CONTRATO, NO IMPLEMENTADO
+Runtime Python:                            CONFORMANT_REFERENCE
+Runtime JavaScript ES2022:                 CONFORMANT_ES2022_REFERENCE
+Runtime C# netstandard2.1:                 CONFORMANT_DOTNET_REFERENCE OBSERVED
+Python/JavaScript/C# byte parity:          PASS, 4 ESCENARIOS
+C# canonical vectors:                     12 PASS
+C# negative boundary campaign:            PASS
+Unity adapter:                             CONTRATO, NO CERTIFICADO
+Browser execution campaign:               PENDIENTE
 Lowering causal/general:                   PENDIENTE
 Stable release:                            NO
 ```
 
 ## Log de cambios
 
-- Se añadió una matriz de conformidad que cubre la superficie operacional V0.2.
-- Se endurecieron los esquemas de IR, escenario y recibo con Draft 2020-12.
-- Se definió `TEV_CANONICAL_JSON_V1` con vectores normativos.
-- Se cerró la carga JSON contra claves duplicadas, flotantes, `-0`, UTF-8
-  inválido y enteros estructurales fuera del rango portable.
-- Se hizo autocontenido el paquete npm, incluidas pruebas, fixtures y runner.
-- Se corrigió la decodificación JavaScript para argumentos y resultados
-  constantes de cualquier tipo portable.
-- Se fijó la salida de archivos en bytes UTF-8 con LF canónico, independiente
-  de la traducción de saltos de línea del host.
-- Se hizo segura la retransmisión de logs Unicode bajo stdio redirigido CP1252/ASCII.
+- Se cerró Gate C#-1 con compilación real de `TevScript.Core` y smoke dinámico.
+- Se añadió un runner C# de conformidad que consume los mismos escenarios que
+  Python/JavaScript y emite `TEV_SCRIPT_CONFORMANCE_RECEIPT_V1`.
+- C# reproduce byte por byte `player.basic.v1`, `matrix.full.v1`,
+  `player.idle.v1` y `event-chain.v1`.
+- C# pasa los 12 vectores JSON canónicos, UTF-8 estricto, JSON estricto,
+  tampering, forma de IR, opcodes, presupuestos y capability fail-closed.
+- `TevScriptProgram.Parse` valida ahora la forma estricta del IR antes de
+  ejecutar.
+- El host de prueba usa `RollForward=Major`; la biblioteca portable sigue
+  orientada a `netstandard2.1`.
+- Los schemas y vectores de V7 permanecen byte-idénticos; por tanto, un
+  `JSON_SCHEMA_VALIDATION=SKIPPED_DEPENDENCY_UNAVAILABLE` en el host Windows no
+  reabre una frontera que Gate C#-2 no modificó.
 
 ## Hipótesis falsable
 
-La especificación normativa y el IR pueden permanecer independientes de todos
-los lenguajes anfitrión mientras runtimes reemplazables reproducen las mismas
-trazas y recibos acotados byte por byte.
+La especificación normativa y el IR permanecen independientes del lenguaje
+anfitrión: tres runtimes diferentes (Python, JavaScript y C#) reproducen la
+misma semántica observable y los mismos recibos canónicos acotados.
 
 ## Tareas
 
-1. Compilar `TevScript.Core` en un entorno .NET funcional.
-2. Implementar en C# el codec completo del recibo de conformidad.
-3. Reproducir los cuatro recibos autoritativos y los vectores canónicos.
-4. Ejecutar una campaña separada en navegador real.
-5. Añadir el adaptador Unity como consumidor, no como autoridad semántica.
+1. Versionar y certificar el candidato C# sobre un commit exacto y árbol limpio.
+2. Publicar la rama C# y actualizar la PR Draft sin fusionarla.
+3. Ejecutar una campaña separada en navegador real.
+4. Integrar Unity como adapter/host sin convertirlo en autoridad semántica.
+5. Certificar Mono/IL2CPP después del adapter Unity.
 6. Registrar lowering hacia `.tev` y `.tevg` sin duplicar sus kernels.
 
 ## Verificación
@@ -56,11 +59,15 @@ trazas y recibos acotados byte por byte.
 PYTHON_TESTS=29 PASS
 JAVASCRIPT_TESTS=21 PASS
 CONFORMANCE_SCENARIOS=4 PASS
-STRICT_JSON_INPUT_BOUNDARY=PASS
-JSON_SCHEMA_VALIDATION=PASS
 PYTHON_JAVASCRIPT_BYTE_PARITY=PASS
-DETERMINISTIC_UTF8_LF_OUTPUT=PASS
-REDIRECTED_STDIO_UNICODE=PASS
-CSHARP_PORTABLE_STATIC_BOUNDARY=PASS
-CSHARP_COMPILE=HOLD
+CSHARP_CORE_BUILD=PASS
+CSHARP_GATE1=PASS
+CSHARP_CANONICAL_VECTORS=12 PASS
+CSHARP_STRICT_JSON_BOUNDARY=PASS
+CSHARP_STRICT_UTF8_BOUNDARY=PASS
+CSHARP_IR_NEGATIVE_CAMPAIGN=PASS
+CSHARP_MISSING_CAPABILITY_FAIL_CLOSED=PASS
+CSHARP_PYTHON_JAVASCRIPT_BYTE_PARITY=PASS
+THREE_RUNTIME_CONFORMANCE=PASS_OBSERVED_LOCAL
+STABLE_RELEASE=NO
 ```

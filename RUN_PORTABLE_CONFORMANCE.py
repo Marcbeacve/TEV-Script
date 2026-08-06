@@ -160,7 +160,7 @@ def validate_csharp_source() -> None:
     if not project.is_file():
         raise RuntimeError("csharp_project_missing")
     print("CSHARP_PORTABLE_STATIC_BOUNDARY=PASS")
-    print("CSHARP_COMPILATION=HOLD_TOOLCHAIN_NOT_PROBED_BY_THIS_RUNNER")
+    print("CSHARP_COMPILATION=NOT_PROBED_BY_PORTABLE_RUNNER")
 
 
 def validate_receipt_parity() -> dict[str, dict[str, str]]:
@@ -223,7 +223,7 @@ def main() -> int:
         print(prefix + "_RECEIPT_HASH=" + hashes[vector_id]["receipt_hash"])
     print("PROGRAM_HASH=" + hashes["player"]["program_hash"])
     print("RECEIPT_HASH=" + hashes["player"]["receipt_hash"])
-    print("TEV_SCRIPT_PORTABLE_V0_2=PASS_WITH_CSHARP_PENDING_COMPILE")
+    print("TEV_SCRIPT_PORTABLE_V0_2=PASS_PYTHON_JAVASCRIPT")
     return 0
 
 

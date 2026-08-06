@@ -11,7 +11,7 @@ C#, Unity, or any other implementation language.
     -> conforming runtime
        |- Python reference
        |- JavaScript ES2022 reference
-       |- C#/.NET candidate
+       |- C#/.NET conformant reference (observed Windows/.NET 10)
        `- future Rust, Java/Kotlin, WASM, and other hosts
 ```
 
@@ -40,7 +40,7 @@ STATUS=PREVIEW
 STABLE_RELEASE=NO
 PYTHON_RUNTIME=CONFORMANT_REFERENCE
 JAVASCRIPT_RUNTIME=CONFORMANT_ES2022_REFERENCE
-CSHARP_RUNTIME=SELF_CONTAINED_SOURCE_BUILD_HOLD_AND_BYTE_PARITY_PENDING
+CSHARP_RUNTIME=CONFORMANT_DOTNET_REFERENCE_OBSERVED_WINDOWS_NET10
 UNITY_ADAPTER=DESIGNED_NOT_IMPLEMENTED
 ```
 
@@ -86,8 +86,8 @@ REDIRECTED_STDIO_UNICODE=PASS
 STRICT_JSON_INPUT_BOUNDARY=PASS
 JSON_SCHEMA_VALIDATION=PASS
 CSHARP_PORTABLE_STATIC_BOUNDARY=PASS
-CSHARP_COMPILATION=HOLD_TOOLCHAIN_NOT_PROBED_BY_THIS_RUNNER
-TEV_SCRIPT_PORTABLE_V0_2=PASS_WITH_CSHARP_PENDING_COMPILE
+CSHARP_COMPILATION=NOT_PROBED_BY_PORTABLE_RUNNER
+TEV_SCRIPT_PORTABLE_V0_2=PASS_PYTHON_JAVASCRIPT
 ```
 
 ## Packages
@@ -109,7 +109,9 @@ npm run conformance
 ```
 
 C# runtime source is under `runtimes/csharp/TevScript.Core`. It is independent
-of `UnityEngine` and `Marcbeacve.TevLnu.Core`. Unity is a host adapter, not the
+of `UnityEngine` and `Marcbeacve.TevLnu.Core`. The observed Windows/.NET 10
+campaign reproduces all four authoritative receipts byte for byte and passes
+the C# negative-boundary campaign. Unity remains a host adapter, not the
 language authority.
 
 ## Relationship with the existing TEV languages

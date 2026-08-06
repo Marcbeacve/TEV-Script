@@ -6,7 +6,9 @@
 - Adds exact portable `Int` and `Rat` representations.
 - Adds the bounded synchronous capability ABI.
 - Adds conformant Python and JavaScript runtimes.
-- Adds a self-contained C# runtime candidate without claiming compilation.
+- Adds a self-contained C# runtime targeting `netstandard2.1`.
+- Closes observed C#/.NET conformance on Windows/.NET 10 for all four shared receipts.
+- Adds strict C# IR validation, canonical JSON tooling and negative-boundary gates.
 - Adds strict Draft 2020-12 schemas for program, scenario and receipt.
 - Adds `TEV_CANONICAL_JSON_V1` and normative vectors.
 - Adds strict Python and JavaScript JSON input boundaries.

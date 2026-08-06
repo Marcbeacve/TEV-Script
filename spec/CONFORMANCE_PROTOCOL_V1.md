@@ -30,8 +30,11 @@ The authoritative campaign contains:
 - `player.basic.v1`: representative lifecycle, state mutation, effects and
   emitted-event chaining;
 - `matrix.full.v1`: all V0.2 binary/unary operators, pure functions, portable
-  value kinds, typed event arguments, Unicode and controlled capability values.
+  value kinds, typed event arguments, Unicode and controlled capability values;
+- `player.idle.v1`: the alternate Player control-flow branch;
+- `event-chain.v1`: direct/local event chaining and typed emitted arguments.
 
-Python and JavaScript reproduce both receipts. A future runtime must also pass
-`conformance/canonical.vectors.json`, all negative boundary tests, and both
-receipts before it can be labelled conformant. C# has not yet crossed that gate.
+Python, JavaScript and the observed C#/.NET implementation reproduce all four
+receipts byte for byte. A future runtime must also pass
+`conformance/canonical.vectors.json`, the strict input/negative boundary tests,
+and all four receipts before it can be labelled conformant.

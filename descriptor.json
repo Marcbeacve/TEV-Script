@@ -10,12 +10,12 @@
   ],
   "conformant_runtimes": [
     "Python 3.11+",
-    "JavaScript ES2022"
+    "JavaScript ES2022",
+    "C#/.NET (observed Windows .NET 10)"
   ],
   "ir_schema": "TEV_SCRIPT_PROGRAM_IR_V2",
   "language_version": "0.2.0",
   "pending_runtimes": [
-    "C#/.NET",
     "Browser execution campaign",
     "Unity adapter"
   ],

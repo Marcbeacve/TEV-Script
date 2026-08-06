@@ -1,20 +1,33 @@
-# TEV Script Core — C# runtime candidate V0.2
+# TEV Script Core — C# runtime V0.2
 
 This directory implements `TEV_SCRIPT_PROGRAM_IR_V2` without dependencies on
 `UnityEngine`, `Marcbeacve.TevLnu.Core`, reflection, dynamic code, or source
 interpretation.
 
 ```text
-TevScript.Core.csproj       netstandard2.1 library
-../TevScript.Core.Smoke     dependency-free net8.0 smoke executable
+TevScript.Core.csproj                  netstandard2.1 library
+../TevScript.Core.Smoke                net8.0 smoke host, RollForward=Major
+../TevScript.Core.Conformance          net8.0 conformance host, RollForward=Major
 ```
 
-Build and smoke test:
+Observed Windows/.NET 10 evidence:
 
 ```text
-dotnet build runtimes/csharp/TevScript.Core/TevScript.Core.csproj
-dotnet run --project runtimes/csharp/TevScript.Core.Smoke -- examples/Player.tevs.ir.json
+CSHARP_CORE_BUILD=PASS
+CSHARP_GATE1_SMOKE=PASS
+CSHARP_CANONICAL_VECTORS=12_PASS
+CSHARP_IR_NEGATIVE_CAMPAIGN=PASS
+CSHARP_PYTHON_JAVASCRIPT_BYTE_PARITY=PASS
+CSHARP_CONFORMANCE_SCENARIOS=4_PASS
 ```
 
-The C# implementation remains non-conformant until it emits the exact shared
-receipt `b275ccc6530ad84c0f96320ba1c8893b401638a926a99a78479d99fbd3c4aba5`.
+Run the complete gate from the repository root:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass `
+  -File .\RUN_TEV_SCRIPT_CSHARP_CONFORMANCE_V1.ps1
+```
+
+This makes C# a conforming runtime implementation, not the language authority.
+The normative authority remains the grammar, IR, value model, ABI, canonical
+profile and conformance protocol.

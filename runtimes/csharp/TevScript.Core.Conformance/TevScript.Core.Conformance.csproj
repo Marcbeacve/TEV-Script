@@ -6,6 +6,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <Deterministic>true</Deterministic>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\TevScript.Core\TevScript.Core.csproj" />

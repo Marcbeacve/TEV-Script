@@ -35,6 +35,7 @@ namespace Marcbeacve.TevScript.Core
             Dictionary<string, object> root = TevJson.RequireObject(
                 TevJson.Parse(json),
                 "$");
+            TevScriptIrValidator.Validate(root);
             TevJson.RequireExactKeys(
                 root,
                 "$",

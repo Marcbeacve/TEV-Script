@@ -15,10 +15,12 @@
       "strict_json_loader": "javascript/src/strict-json.mjs"
     },
     {
-      "compilation_evidence": "evidence/reference-v0.2/csharp-build-attempt.json",
+      "compilation_evidence": "evidence/reference-v0.2/csharp-conformance-windows-dotnet10.json",
+      "conformance_scenarios": 4,
       "language": "C#",
       "path": "runtimes/csharp/TevScript.Core",
-      "status": "SELF_CONTAINED_SOURCE_BUILD_HOLD_ENVIRONMENT_BEFORE_COMPILER"
+      "status": "CONFORMANT_DOTNET_REFERENCE_OBSERVED_WINDOWS_NET10",
+      "strict_json_loader": "TevScriptCanonicalJson/TevJson strict parser"
     }
   ],
   "ir_schema": "TEV_SCRIPT_PROGRAM_IR_V2",

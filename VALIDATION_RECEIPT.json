@@ -18,14 +18,17 @@
     "json_schema_validation": "PASS",
     "pre_execution_ir_validation": [
       "Python",
-      "JavaScript"
+      "JavaScript",
+      "C#"
     ],
     "redirected_stdio_unicode_safe": "PASS",
     "strict_json_input_boundary": "PASS",
     "utf8_fixture_io_locale_independent": "PASS"
   },
   "cross_runtime": {
+    "csharp_python_javascript_byte_parity": "PASS_OBSERVED_WINDOWS_DOTNET10",
     "python_javascript_byte_parity": "PASS",
+    "runtime_count": 3,
     "scenario_count": 4,
     "scenarios": [
       {
@@ -51,11 +54,19 @@
     ]
   },
   "csharp": {
-    "compilation": "HOLD_NO_TOOLCHAIN_EVIDENCE_IN_CURRENT_ENVIRONMENT",
-    "conformance_byte_parity": "PENDING",
+    "canonical_vectors": "12_PASS",
+    "compilation": "PASS_OBSERVED_WINDOWS_DOTNET_10_0_302",
+    "conformance_byte_parity": "PASS",
+    "conformance_scenarios": 4,
+    "evidence": "evidence/reference-v0.2/csharp-conformance-windows-dotnet10.json",
+    "gate1_smoke": "PASS",
+    "ir_negative_campaign": "PASS",
+    "missing_capability_fail_closed": "PASS",
     "source_implemented": true,
     "source_self_contained": true,
     "static_boundary": "PASS",
+    "strict_json_boundary": "PASS",
+    "strict_utf8_boundary": "PASS",
     "target_framework": "netstandard2.1"
   },
   "date": "2026-08-06",
@@ -92,14 +103,14 @@
     "wheel_isolated_conformance": "PASS",
     "wheel_isolated_conformance_scenarios": 4
   },
-  "receipt_hash": "ced2ebf89cae1bfd70d2ce901d8f965ef9b6f65e1b46f5e40bbeabf366d72c62",
+  "receipt_hash": "51b065ab4530c16bbf7257b4e24db44675cc64f078296f11c0205dab32ca5ad3",
   "repository_tree": {
     "binary_distribution_artifacts_committed": false,
     "generated_python_bytecode_committed": false,
     "github_actions_present": false
   },
-  "schema": "TEV_SCRIPT_PORTABLE_VALIDATION_RECEIPT_V7",
-  "status": "PASS_WITH_CSHARP_COMPILE_HOLD",
+  "schema": "TEV_SCRIPT_PORTABLE_VALIDATION_RECEIPT_CSHARP_V1",
+  "status": "PASS_THREE_RUNTIME_CONFORMANCE_CSHARP_OBSERVED_WINDOWS",
   "validation_logs": {
     "redirected_stderr": {
       "bytes": 3624,
