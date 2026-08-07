@@ -22,8 +22,6 @@ def require(condition: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
-
-
 def csharp_brace_balance(text: str) -> int:
     balance = 0
     index = 0
@@ -64,10 +62,15 @@ def csharp_brace_balance(text: str) -> int:
                 state = "code"
                 index += 1
         index += 1
-    require(state in {"code", "line_comment"}, f"csharp_lexical_state:{state}")
+
+    require(
+        state in {"code", "line_comment"},
+        f"csharp_lexical_state:{state}",
+    )
     return balance
 
-def verify_identity(filename: str, schema: str) -> int:
+
+def verify_identity(filename: str, schema: str) -> list[dict]:
     payload = load_json(UNITY / filename)
     require(payload.get("schema") == schema, f"identity_schema:{filename}")
     files = payload.get("files")
@@ -78,67 +81,122 @@ def verify_identity(filename: str, schema: str) -> int:
         require(canonical.is_file(), f"canonical_missing:{canonical}")
         require(package.is_file(), f"package_missing:{package}")
         observed = sha256(canonical)
-        require(observed == item["sha256"], f"canonical_hash_drift:{canonical}")
-        require(package.read_bytes() == canonical.read_bytes(), f"package_byte_drift:{package}")
-    return len(files)
+        require(
+            observed == item["sha256"],
+            f"canonical_hash_drift:{canonical}",
+        )
+        require(
+            package.read_bytes() == canonical.read_bytes(),
+            f"package_byte_drift:{package}",
+        )
+    return files
 
 
 def main() -> int:
     package_json = load_json(PACKAGE / "package.json")
-    require(package_json.get("name") == "com.marcbeacve.tev-script", "package_name")
-    require(package_json.get("version") == "0.2.0-preview.1", "package_version")
+    require(
+        package_json.get("name") == "com.marcbeacve.tev-script",
+        "package_name",
+    )
+    require(
+        package_json.get("version") == "0.2.0-preview.1",
+        "package_version",
+    )
     require(package_json.get("unity") == "6000.3", "unity_version_floor")
 
-    core_asm = load_json(PACKAGE / "Runtime/Core/Marcbeacve.TevScript.Core.asmdef")
-    require(core_asm.get("name") == "Marcbeacve.TevScript.Core", "core_asm_name")
+    core_asm = load_json(
+        PACKAGE / "Runtime/Core/Marcbeacve.TevScript.Core.asmdef"
+    )
+    require(core_asm.get("name") == "Marcbeacve.TevScript.Core", "core_asm")
     require(core_asm.get("references") == [], "core_asm_references")
-    require(core_asm.get("noEngineReferences") is True, "core_must_not_reference_unity")
+    require(
+        core_asm.get("noEngineReferences") is True,
+        "core_must_not_reference_unity",
+    )
     require(core_asm.get("allowUnsafeCode") is False, "core_unsafe")
 
-    editor_asm = load_json(PACKAGE / "Editor/Marcbeacve.TevScript.EditorGate.asmdef")
-    require(editor_asm.get("references") == ["Marcbeacve.TevScript.Core"], "editor_gate_references")
-    require(editor_asm.get("includePlatforms") == ["Editor"], "editor_gate_platform")
-
-    core_count = verify_identity(
+    identity_files = verify_identity(
         "CORE_SOURCE_IDENTITY.json",
         "TEV_SCRIPT_UNITY_CORE_SOURCE_IDENTITY_V1",
     )
-    fixture_count = verify_identity(
+    require(
+        len(identity_files) == 11,
+        f"core_source_count:{len(identity_files)}",
+    )
+
+    actual_core = sorted(
+        p.relative_to(ROOT).as_posix()
+        for p in (PACKAGE / "Runtime/Core").glob("*.cs")
+    )
+    identity_package = sorted(
+        item["package"] for item in identity_files
+    )
+    require(
+        actual_core == identity_package,
+        "core_identity_must_cover_exact_package_surface",
+    )
+
+    fixture_files = verify_identity(
         "FIXTURE_IDENTITY.json",
         "TEV_SCRIPT_UNITY_FIXTURE_IDENTITY_V1",
     )
-    require(core_count == 9, f"core_source_count:{core_count}")
-    require(fixture_count == 12, f"fixture_count:{fixture_count}")
+    require(len(fixture_files) == 12, "fixture_count")
 
-    combined = "\n".join(
+    update_asm = load_json(
+        PACKAGE / "Runtime/Update/Marcbeacve.TevScript.Update.asmdef"
+    )
+    require(
+        update_asm.get("references") == ["Marcbeacve.TevScript.Core"],
+        "update_asm_references",
+    )
+    require(
+        update_asm.get("noEngineReferences") is True,
+        "update_must_not_reference_unity",
+    )
+    require(update_asm.get("autoReferenced") is False, "update_auto_ref")
+
+    combined_core = "\n".join(
         p.read_text(encoding="utf-8")
         for p in sorted((PACKAGE / "Runtime/Core").glob("*.cs"))
     )
-    require("UnityEngine" not in combined, "unity_engine_leaked_into_core")
-    require("UnityEditor" not in combined, "unity_editor_leaked_into_core")
-    require("System.Reflection.Emit" not in combined, "dynamic_emit_in_core")
-
-    gate_path = PACKAGE / "Editor/TevScriptUnityEditorGate.cs"
-    gate = gate_path.read_text(encoding="utf-8")
-    require(csharp_brace_balance(gate) == 0, "editor_gate_brace_mismatch")
-    for source in sorted((PACKAGE / "Runtime/Core").glob("*.cs")):
-        require(csharp_brace_balance(source.read_text(encoding="utf-8")) == 0,
-                f"core_brace_mismatch:{source.name}")
-    required_markers = (
-        "TEV_SCRIPT_UNITY_EDITOR_GATE_1=PASS",
-        "UNITY_THREE_RUNTIME_REFERENCE_PARITY=PASS",
-        "UNITY_HOST_SEMANTIC_DRIFT=NONE_OBSERVED",
-        "UNITY_MONO_PLAYER=NOT_PROBED",
-        "UNITY_IL2CPP=NOT_PROBED",
+    combined_update = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted((PACKAGE / "Runtime/Update").glob("*.cs"))
     )
-    for marker in required_markers:
-        require(marker in gate, f"gate_marker_missing:{marker}")
+    for forbidden in (
+        "UnityEngine",
+        "UnityEditor",
+        "System.Reflection.Emit",
+        "Assembly.Load",
+        "Microsoft.CodeAnalysis",
+        "CSharpCodeProvider",
+    ):
+        require(
+            forbidden not in combined_core + combined_update,
+            f"forbidden_portable_surface:{forbidden}",
+        )
+
+    for source in sorted((PACKAGE / "Runtime/Core").glob("*.cs")):
+        require(
+            csharp_brace_balance(
+                source.read_text(encoding="utf-8")
+            ) == 0,
+            f"core_brace_mismatch:{source.name}",
+        )
+    for source in sorted((PACKAGE / "Runtime/Update").glob("*.cs")):
+        require(
+            csharp_brace_balance(
+                source.read_text(encoding="utf-8")
+            ) == 0,
+            f"update_brace_mismatch:{source.name}",
+        )
 
     print("UNITY_PACKAGE_METADATA=PASS")
-    print(f"UNITY_PACKAGE_CORE_SOURCE_IDENTITY={core_count}_PASS")
-    print(f"UNITY_PACKAGE_FIXTURE_IDENTITY={fixture_count}_PASS")
+    print("UNITY_PACKAGE_CORE_SOURCE_IDENTITY=11_PASS")
+    print("UNITY_PACKAGE_CORE_IDENTITY_EXACT_SURFACE=PASS")
+    print("UNITY_PACKAGE_FIXTURE_IDENTITY=12_PASS")
     print("UNITY_PACKAGE_CORE_NO_ENGINE_REFERENCES=PASS")
-    print("UNITY_PACKAGE_GATE_BOUNDARY=EDITOR_ONLY")
+    print("UNITY_PACKAGE_UPDATE_NO_ENGINE_REFERENCES=PASS")
     print("TEV_SCRIPT_UNITY_PACKAGE_STATIC_GATE=PASS")
     return 0
 

@@ -3,87 +3,105 @@
 ## Progreso
 
 ```text
-Python / JavaScript / C# conformance:      PASS CERTIFICADO
-Unity Editor host/Core parity:             PASS CERTIFICADO
-Unity PlayMode capability ABI:             PASS CERTIFICADO
-Unity Mono Player Windows x64:             PASS CERTIFICADO
-Unity IL2CPP Player Windows x64:           PASS CERTIFICADO
-Gate-5A transactional program swap:        PASS CERTIFICADO
-Gate-5B swap inside IL2CPP/AOT Player:     PASS OBSERVED LOCAL PRECOMMIT
-Gate-5B old behavior witness:              PASS
-Gate-5B updated behavior witness:          PASS
-Gate-5B compatible state migration:        PASS
-Gate-5B additive state initialization:     PASS
-Gate-5B capability ceiling:                EXPLICIT PASS
-Gate-5B rollback exact runtime:            PASS
-Gate-5B rollback behavior restored:        PASS
-Gate-5B stale-plan rejection:              FAIL CLOSED PASS
-Gate-5B product/Core changes:              0
-Gate-5B dynamic code:                      ABSENT PASS
-Gate-5B network transport:                 NOT IN SCOPE
-Gate-5B signature authority:               NOT IN SCOPE
-Gate-5B WASM:                              NOT IN SCOPE
-Stable release:                            NO
+Python / JavaScript / C# conformance:             PASS CERTIFICADO
+Unity Editor / PlayMode / Mono / IL2CPP:          PASS CERTIFICADO
+Gate-5A transactional program swap:               PASS CERTIFICADO
+Gate-5B transactional swap inside IL2CPP/AOT:     PASS CERTIFICADO
+
+Gate-5C signed canonical update package:          PASS OBSERVED LOCAL PRECOMMIT
+Gate-5D durable anti-replay authority:             PASS OBSERVED LOCAL PRECOMMIT
+Gate-5E remote transport inside IL2CPP:            PASS OBSERVED LOCAL PRECOMMIT
+
+Gate-5C algorithm:                                ES256 / P-256 / SHA-256
+Gate-5C signature format:                         IEEE-P1363 fixed 64-byte r||s
+Gate-5C runtime private key:                      ABSENT PASS
+Gate-5D durable restart restoration:              PASS
+Gate-5D replay after restart:                     FAIL_CLOSED PASS
+Gate-5D hostile store rollback:                   NOT IN SCOPE
+Gate-5E transport:                                LOOPBACK HTTP
+Gate-5E signature provider on Windows IL2CPP:     WINDOWS CNG PASS
+Gate-5E network bytes authority:                  UNTRUSTED UNTIL VERIFIED PASS
+Gate-5E public WAN:                               NOT PROBED
+Browser/WASM:                                     PENDING
+Stable release:                                   NO
 ```
 
 ## Log de cambios
 
-- Gate-5B reutiliza sin cambios el supervisor transaccional certificado en Gate-5A.
-- El harness se ejecuta dentro de un Windows x64 Player construido con IL2CPP/AOT.
-- El comportamiento inicial ejecuta `damage(10)` y lleva `health` de 100 a 90.
-- El candidato conserva el estado vivo, añade un estado nuevo y sustituye el comportamiento de `damage` por un no-op.
-- Tras el commit transaccional, `health=90` permanece y un nuevo `damage(10)` deja el valor en 90, demostrando que el comportamiento nuevo está activo.
-- El rollback restaura el objeto runtime anterior exacto; otro `damage(10)` lleva `health` de 90 a 80, demostrando que vuelve también la semántica anterior.
-- State removal, capability escalation, program-id drift, plan reuse y stale plan fallan cerrados.
-- `GameAssembly.dll` y `global-metadata.dat` están presentes y `MonoBleedingEdge` está ausente.
-- Gate-4 y Gate-5A se reejecutan como regresiones inferiores.
-- Gate-5B no modifica ningún archivo productivo del Core ni del adapter.
+- Gate-5C introduces a canonical signed full-program update package.
+- The signed body includes channel, program identity, epoch, sequence,
+  semantic hash, IR SHA-256 and the complete canonical TEV IR.
+- Gate-5C uses ES256 (ECDSA P-256 + SHA-256) with a fixed 64-byte
+  IEEE-P1363 `r || s` signature.
+- Test private-key material is confined to the fixture tool; product/runtime
+  code contains no private signing key.
+- `ITevUpdateSignatureVerifier` separates update semantics from the physical
+  cryptographic provider.
+- .NET Gate-5C/5D uses the managed ECDSA provider.
+- Windows IL2CPP Gate-5E uses the Windows CNG provider through
+  `BCryptImportKeyPair` / `BCryptVerifySignature`.
+- Gate-5D persists the accepted signed package plus monotonic epoch/sequence.
+- Bootstrap, replay, old epoch, invalid epoch transition and stale update
+  plans fail closed.
+- If durable commit fails, the runtime update is rolled back.
+- A fresh runtime can reconstruct and reverify the installed signed package
+  from durable state.
+- Gate-5E downloads bytes through UnityWebRequest. Network bytes acquire no
+  authority before canonical parse, signature verification, anti-replay and
+  transactional prepare/commit.
+- Gate-5E rejects tampered packages, truncated packages, HTTP errors and replay.
+- A second real IL2CPP Player restores the durable package, rejects its remote
+  replay and accepts the next epoch.
+- Unity Core source identity was refreshed to the actual 11-file Core surface.
 
 ## Hipótesis falsable
 
-El reemplazo transaccional Gate-5A no depende de JIT, reflection ni compilación
-dinámica: el mismo mecanismo puede ejecutar un cambio real de comportamiento,
-migrar estado y restaurar el comportamiento anterior dentro de un Player
-IL2CPP/AOT nativo.
+A TEV program update can be delivered as untrusted network data and become
+authoritative only after deterministic package parsing, cryptographic
+authentication, monotonic anti-replay validation and the already certified
+transactional runtime swap, while remaining compatible with a real
+Windows x64 IL2CPP/AOT Player.
 
 ## Tareas
 
-1. Certificar Gate-5B sobre un commit exacto y árbol Git limpio.
-2. Ejecutar Batch Hot Update 5C→5E:
-   firma de paquete → anti-replay/versionado → transporte remoto.
-3. Abrir la campaña WASM una vez cerrado el batch hot-update.
-4. Mantener el Core matemático y el orden semántico preparados para la futura
-   frontera de determinismo distribuido.
+1. Certify Gates 5C/5D/5E together on one exact clean Git commit.
+2. Publish the certified batch by normal fast-forward only.
+3. Open the WASM batch:
+   Unity Web/browser → pure TEV Core WASM → WASI/serverless.
+4. Preserve exact arithmetic, canonical receipts and deterministic event
+   ordering for the later distributed-determinism campaign.
 
-## Verificación
+## Verificación precommit
 
 ```text
-GATE5B_GATE4_REGRESSION=PASS
-GATE5B_GATE5A_REGRESSION=PASS
-GATE5B_IL2CPP_BUILD=PASS
-GATE5B_IL2CPP_EXECUTION=PASS
-GATE5B_BACKEND=IL2CPP
-GATE5B_AOT=PASS
-GATE5B_GAMEASSEMBLY=PASS
-GATE5B_GLOBAL_METADATA=PASS
-GATE5B_MONO_RUNTIME=ABSENT_PASS
-GATE5B_TRANSACTIONAL_SWAP=PASS_INSIDE_IL2CPP
-GATE5B_STATE_MIGRATION=EXACT_EXISTING_TYPES_PASS
-GATE5B_UPDATED_BEHAVIOR=PASS
-GATE5B_ADDITIVE_STATE=PASS
-GATE5B_CAPABILITY_CEILING=EXPLICIT_PASS
-GATE5B_ROLLBACK=EXACT_PREVIOUS_RUNTIME_PASS
-GATE5B_ROLLBACK_BEHAVIOR=RESTORED_PASS
-GATE5B_STALE_PLAN=FAIL_CLOSED_PASS
-GATE5B_DYNAMIC_CODE=ABSENT_PASS
-GATE5B_PRECOMMIT_PLAYER_EXE_SHA256=c05ef2b9ae780cac8fc66d81eef3179cb52b49694235b5ba38c863b26b22f180
-GATE5B_PRECOMMIT_GAMEASSEMBLY_SHA256=4c12a147cbb8a9c0955369a0cbe657a35ca6721e7a28d9c5af6ab5630ac7dc92
-GATE5B_PRECOMMIT_GLOBAL_METADATA_SHA256=c275fb10db88810f7fcc0eb2f96fce2ed6d0f8a260a0f4747944845170277266
-GATE5B_PRECOMMIT_BUILD_EVIDENCE_SHA256=e0711c90633579e175f6caa3d3c15d9780c13295cbc3d8a690d6df6c38f519c9
-GATE5B_PRECOMMIT_PLAYER_EVIDENCE_SHA256=6a0fb8a91f201296d085b97798135f12efb3082feb9d412e040df1398b25069c
+HOT_UPDATE_GATE5B_REGRESSION=PASS
+GATE5C_SIGNED_PACKAGE=PASS
+GATE5C_ALGORITHM=ES256_P256_SHA256
+GATE5C_SIGNATURE_FORMAT=IEEE_P1363_FIXED_64
+GATE5C_TEST_PRIVATE_KEY_RUNTIME=ABSENT_PASS
+
+GATE5D_ANTI_REPLAY=DURABLE_STATE_PASS
+GATE5D_RESTART_RESTORE=PASS
+GATE5D_HOSTILE_STORE_ROLLBACK=NOT_IN_SCOPE
+
+GATE5E_REMOTE_TRANSPORT=LOOPBACK_HTTP_PASS_INSIDE_IL2CPP
+GATE5E_SIGNATURE_PROVIDER=WINDOWS_CNG_PASS
+GATE5E_BACKEND=IL2CPP
+GATE5E_AOT=PASS
+GATE5E_NETWORK_BYTES=UNTRUSTED_UNTIL_VERIFIED_PASS
+GATE5E_TAMPER_FAIL_CLOSED=PASS
+GATE5E_TRUNCATION_FAIL_CLOSED=PASS
+GATE5E_HTTP_ERROR_FAIL_CLOSED=PASS
+GATE5E_REPLAY_AFTER_RESTART_FAIL_CLOSED=PASS
+GATE5E_PUBLIC_WAN=NOT_PROBED
+
+HOT_UPDATE_BATCH_PRECOMMIT_EVIDENCE_SHA256=
+3c1f52e56c52117bcfb4ffd548afeb564e9dec16a68552a7ad73b6e2b6308f38
+
+WASM=NOT_IN_SCOPE
 STABLE_RELEASE=NO
 ```
 
-This committed state records Gate-5B as a precommit observation only. Exact
-Gate-5B commit authority is established by the subsequent clean-tree rerun and
-external certification receipt.
+This committed state records Gates 5C/5D/5E as observed precommit. Exact
+certification authority is established by the subsequent clean-tree batch
+rerun and its ignored external receipt.

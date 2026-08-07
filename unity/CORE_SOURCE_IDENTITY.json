@@ -1,5 +1,5 @@
 {
-  "certified_parent_commit": "16175de856d0dc0ceeb7eaa45d73bf0004b763bb",
+  "certified_parent_commit": "8a560f349a8ca7ad7f893e16648c140d771020cb",
   "files": [
     {
       "canonical": "runtimes/csharp/TevScript.Core/TevScriptCanonicalJson.cs",
@@ -39,7 +39,17 @@
     {
       "canonical": "runtimes/csharp/TevScript.Core/TevScriptRuntime.cs",
       "package": "unity/Package/Runtime/Core/TevScriptRuntime.cs",
-      "sha256": "692ebb320b82729468627c216a68ef1e1037209815d0d81972cd5433b32c9355"
+      "sha256": "be222ad7963189fb7de74f2c8088c3913d56ce54673e162f0a1958b85b95b92b"
+    },
+    {
+      "canonical": "runtimes/csharp/TevScript.Core/TevScriptRuntimeHotSwap.cs",
+      "package": "unity/Package/Runtime/Core/TevScriptRuntimeHotSwap.cs",
+      "sha256": "219f8d24d5f4de8e02126c70938d869b0986edb414dc419becf6a1dff687b6b3"
+    },
+    {
+      "canonical": "runtimes/csharp/TevScript.Core/TevScriptUpdate.cs",
+      "package": "unity/Package/Runtime/Core/TevScriptUpdate.cs",
+      "sha256": "ce92a4141e0eb534630ccffd91720643c1f39546ad6e5d717766f6e449be852e"
     },
     {
       "canonical": "runtimes/csharp/TevScript.Core/TevScriptValue.cs",

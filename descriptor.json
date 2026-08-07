@@ -1,7 +1,13 @@
 {
   "canonical_json_profile": "TEV_CANONICAL_JSON_V1",
+  "certified_hosts": [
+    "Unity Editor 6000.3.10f1",
+    "Unity PlayMode 6000.3.10f1",
+    "Unity Windows x64 Mono Player 6000.3.10f1",
+    "Unity Windows x64 IL2CPP/AOT Player 6000.3.10f1",
+    "Unity Windows x64 IL2CPP transactional-swap Player 6000.3.10f1"
+  ],
   "conformance_receipt": "TEV_SCRIPT_CONFORMANCE_RECEIPT_V1",
-  "conformance_scenario_schema": "TEV_SCRIPT_CONFORMANCE_SCENARIO_V1",
   "conformance_scenarios": [
     "player.basic.v1",
     "matrix.full.v1",
@@ -11,33 +17,44 @@
   "conformant_runtimes": [
     "Python 3.11+",
     "JavaScript ES2022",
-    "C#/.NET (observed Windows .NET 10)"
-  ],
-  "certified_or_observed_hosts": [
-    "Unity Editor 6000.3.10f1 (certified Gate 1)",
-    "Unity PlayMode capability ABI 6000.3.10f1 (certified Gate 2)",
-    "Unity Windows x64 Mono Player 6000.3.10f1 (certified Gate 3)",
-    "Unity Windows x64 IL2CPP Player 6000.3.10f1 (certified Gate 4)",
-    "Unity Windows x64 IL2CPP transactional swap Player 6000.3.10f1 (Gate 5B observed; clean-commit certification required)"
+    "C#/.NET"
   ],
   "ir_schema": "TEV_SCRIPT_PROGRAM_IR_V2",
   "language_version": "0.2.0",
-  "pending_runtimes": [
-    "Browser/WASM execution campaign"
-  ],
-  "pending_update_boundaries": [
-    "Signed update package",
-    "Anti-replay / monotonic versioning",
-    "Remote transport"
-  ],
-  "pending_unity_providers": [
-    "Input System device binding",
-    "Animator Controller binding"
+  "observed_update_boundaries_requiring_clean_commit_certification": {
+    "gate5c_signed_package": {
+      "algorithm": "ES256_P256_SHA256",
+      "signature_format": "IEEE_P1363_FIXED_64",
+      "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+      "test_private_key_runtime": false
+    },
+    "gate5d_anti_replay": {
+      "durable_state": true,
+      "hostile_store_rollback": "NOT_IN_SCOPE",
+      "restart_restore": true,
+      "status": "PASS_OBSERVED_LOCAL_PRECOMMIT"
+    },
+    "gate5e_remote_transport": {
+      "host": "WINDOWS_X64_IL2CPP",
+      "network_bytes": "UNTRUSTED_UNTIL_VERIFIED",
+      "public_wan": "NOT_PROBED",
+      "signature_provider": "WINDOWS_CNG",
+      "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+      "transport": "LOOPBACK_HTTP"
+    }
+  },
+  "pending": [
+    "Production signing-key provisioning",
+    "Hostile rollback-resistant monotonic store",
+    "Public WAN/TLS/DNS/CDN campaign",
+    "Browser/WASM execution campaign",
+    "Distributed deterministic replay/lockstep campaign",
+    "Unity Input System device provider",
+    "Unity Animator Controller provider"
   ],
   "runtime_abi": "TEV_SCRIPT_RUNTIME_ABI_V1",
   "schema": "TEV_SCRIPT_PORTABLE_DESCRIPTOR_V2",
-  "semantic_base_language": null,
   "source_extension": ".tevs",
-  "strict_json_input": true,
+  "stable": false,
   "value_model": "TEV_PORTABLE_VALUE_MODEL_V1"
 }

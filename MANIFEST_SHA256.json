@@ -1,6 +1,6 @@
 {
-  "branch": "agent/tev-script-unity-il2cpp-transactional-swap-v1",
-  "file_count": 201,
+  "branch": "agent/tev-script-hot-update-batch-v1",
+  "file_count": 221,
   "files": [
     {
       "bytes": 195,
@@ -43,9 +43,9 @@
       "sha256": "23d38237f098ac6c03ee0b1a9ed7e93bfa9322530bd672663a18c854d7654af1"
     },
     {
-      "bytes": 4215,
+      "bytes": 4591,
       "path": "PROJECT_STATE.md",
-      "sha256": "61d0c84df20599525df31888237a4b99d5c0720fc5fc2d4aaa4afe379b3e29ad"
+      "sha256": "6a5a18fcae2f5b2ab87bd264537c4bac3106da3f6c366a00b6e131d75d457602"
     },
     {
       "bytes": 4131,
@@ -66,6 +66,11 @@
       "bytes": 6461,
       "path": "RUN_TEV_SCRIPT_CSHARP_CONFORMANCE_V1.ps1",
       "sha256": "f16972cb8d8546ddd0b4e932175c3a0616e04bdbc03fc436d06268ee0b7fc99c"
+    },
+    {
+      "bytes": 22390,
+      "path": "RUN_TEV_SCRIPT_HOT_UPDATE_BATCH_5C_5E_V1.ps1",
+      "sha256": "f98f9459264aebf417338cb32fa8312c9570129b1ba3059d7ef177534a7a7ebf"
     },
     {
       "bytes": 378,
@@ -168,9 +173,9 @@
       "sha256": "5f482c0e60af6075666d282ded912714174b091222af4c3fab213e96e8729423"
     },
     {
-      "bytes": 1466,
+      "bytes": 1967,
       "path": "descriptor.json",
-      "sha256": "c360cef91d79461f50d3e765c3d59653ace7b56edcae2bc1fc82ac47a949501d"
+      "sha256": "e77b1e21c9cc21f1ff6367e2e6903c8b777485be4837e03e9e4b0596b8f7a8a9"
     },
     {
       "bytes": 4731,
@@ -183,9 +188,14 @@
       "sha256": "e6ab4421ae1b8c1b59c4e954591c82c00d5da1bcb4d647c9be2207aef9b155bb"
     },
     {
-      "bytes": 1578,
+      "bytes": 2728,
+      "path": "docs/HOT_UPDATE_BATCH_5C_5E_V1.md",
+      "sha256": "bd9e4455debf9f582ddb3eee2782ffc08f0cfc350bf93c6a9f37c684fa57acd3"
+    },
+    {
+      "bytes": 1594,
       "path": "docs/STATUS.md",
-      "sha256": "31330d58b8871b38be26c8caa465e8c3b634f9b7daeeca826c6fd9442502affd"
+      "sha256": "69b093a4917f2d4bfe671558781353aee08ecf0b299b95e5770287906de665be"
     },
     {
       "bytes": 2087,
@@ -216,6 +226,11 @@
       "bytes": 620,
       "path": "evidence/reference-v0.2/event-chain.python.receipt.json",
       "sha256": "3cfa00dea002ed058ca4745695c0539a6db952c795bebc0072502a8112e569af"
+    },
+    {
+      "bytes": 1766,
+      "path": "evidence/reference-v0.2/hot-update-batch-5c-5e-windows-unity6000.3.json",
+      "sha256": "30a3e589100ab0771dd16ce9405ffcb16f68a51e841942e28a1b9227f1131041"
     },
     {
       "bytes": 826,
@@ -583,9 +598,34 @@
       "sha256": "219f8d24d5f4de8e02126c70938d869b0986edb414dc419becf6a1dff687b6b3"
     },
     {
+      "bytes": 27474,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptUpdate.cs",
+      "sha256": "ce92a4141e0eb534630ccffd91720643c1f39546ad6e5d717766f6e449be852e"
+    },
+    {
       "bytes": 9277,
       "path": "runtimes/csharp/TevScript.Core/TevScriptValue.cs",
       "sha256": "56dd6a48d4693acab745caddc420a50497d427eaed6136ddbe72c7176840f559"
+    },
+    {
+      "bytes": 15143,
+      "path": "runtimes/csharp/TevScript.HotUpdateBatchGate/Program.cs",
+      "sha256": "78ea91ace91c8b83ffb01f745306d363e9bdb4e3322949ddd6ec24f28294f545"
+    },
+    {
+      "bytes": 461,
+      "path": "runtimes/csharp/TevScript.HotUpdateBatchGate/TevScript.HotUpdateBatchGate.csproj",
+      "sha256": "d1241525c9964daac969f5d0dff70bfd654c03fec9c2dbaea5b18b05bea87508"
+    },
+    {
+      "bytes": 12983,
+      "path": "runtimes/csharp/TevScript.HotUpdateFixtureTool/Program.cs",
+      "sha256": "691b444ac4094410f47c02de8d4c7fbf0d27c01f97cef61a6d52fa52c36c905d"
+    },
+    {
+      "bytes": 382,
+      "path": "runtimes/csharp/TevScript.HotUpdateFixtureTool/TevScript.HotUpdateFixtureTool.csproj",
+      "sha256": "3f8226aca5b2ea92a1d44697f0d0952dddcbdcc1ab9453e7d2f41b20f0694957"
     },
     {
       "bytes": 12140,
@@ -596,6 +636,16 @@
       "bytes": 344,
       "path": "runtimes/csharp/TevScript.TransactionalSwapGate/TevScript.TransactionalSwapGate.csproj",
       "sha256": "b9afb0beed223f6b94f1615098ef3d54a18a4836a9ecfd30711c513d036fe0c0"
+    },
+    {
+      "bytes": 356,
+      "path": "runtimes/csharp/TevScript.Update/TevScript.Update.csproj",
+      "sha256": "087c33a92ea1089ef49186ec7b9f31a9f270060d6a6b5f61230bcf5d486cb317"
+    },
+    {
+      "bytes": 11885,
+      "path": "runtimes/csharp/TevScript.Update/TevScriptUpdateSecurity.cs",
+      "sha256": "5dd28038a3f756037b004959e2cf7b8ef4e541e27db5ca50964f055a38a9b72e"
     },
     {
       "bytes": 3941,
@@ -748,14 +798,29 @@
       "sha256": "06e2b25a2c6e8de4bf3a186097062607ba06fc71096e58940eb4bee245d516ac"
     },
     {
+      "bytes": 1705,
+      "path": "tools/refresh_unity_core_identity.py",
+      "sha256": "a5e67ac12d3bc5597c5b184c57d6b6f858595f3afb9984cf03db8844a696c606"
+    },
+    {
+      "bytes": 2249,
+      "path": "tools/serve_hot_update_gate5e.py",
+      "sha256": "248950a695c0c1f830b3b2c4b99fec66c5b2ba4f4abb9cb6fc32565c6044bf01"
+    },
+    {
+      "bytes": 5681,
+      "path": "tools/validate_hot_update_batch_5c_5e.py",
+      "sha256": "7a188471b941c87c3577f302ce9b2d5d8743d077dc1c95b49d4a44b5d7cb749e"
+    },
+    {
       "bytes": 3703,
       "path": "tools/validate_transactional_swap_gate5a.py",
       "sha256": "3383027bfdd77f12a8f38af2afe547a0397340f8f9bac62ea565ad4b4d739ed3"
     },
     {
-      "bytes": 2301,
+      "bytes": 2785,
       "path": "unity/CORE_SOURCE_IDENTITY.json",
-      "sha256": "b068a5e127cd1c2a39ec01be61eb3dfae51102099a2e6ca85df58b5a2a179b28"
+      "sha256": "12fc3dcb04875dea00b74f52e356f1d74332773c66b853c041791e256ceaa066"
     },
     {
       "bytes": 2991,
@@ -828,6 +893,11 @@
       "sha256": "219f8d24d5f4de8e02126c70938d869b0986edb414dc419becf6a1dff687b6b3"
     },
     {
+      "bytes": 27474,
+      "path": "unity/Package/Runtime/Core/TevScriptUpdate.cs",
+      "sha256": "ce92a4141e0eb534630ccffd91720643c1f39546ad6e5d717766f6e449be852e"
+    },
+    {
       "bytes": 9277,
       "path": "unity/Package/Runtime/Core/TevScriptValue.cs",
       "sha256": "56dd6a48d4693acab745caddc420a50497d427eaed6136ddbe72c7176840f559"
@@ -846,6 +916,16 @@
       "bytes": 6776,
       "path": "unity/Package/Runtime/Unity/TevScriptUnityCapabilities.cs",
       "sha256": "710d30a750561b026bda3dba374b2ae34bacacabfbaeb6a32ec95f64cceee39b"
+    },
+    {
+      "bytes": 399,
+      "path": "unity/Package/Runtime/Update/Marcbeacve.TevScript.Update.asmdef",
+      "sha256": "821024435c78f06b7ef60f2267ac9255292295190ee7305bb7696de66111f089"
+    },
+    {
+      "bytes": 11885,
+      "path": "unity/Package/Runtime/Update/TevScriptUpdateSecurity.cs",
+      "sha256": "5dd28038a3f756037b004959e2cf7b8ef4e541e27db5ca50964f055a38a9b72e"
     },
     {
       "bytes": 3619,
@@ -983,6 +1063,26 @@
       "sha256": "c7ef94e15e0e14e49674aa0e817278eeca5b69821a78a655a8ffcb5a11d6ad19"
     },
     {
+      "bytes": 471,
+      "path": "unity/PlayerGates/RemoteUpdate/Editor/Marcbeacve.TevScript.Gate5E.RemoteUpdate.Editor.asmdef",
+      "sha256": "d807e443f88b58ee9c009ef49997a4d2bd4dc1d455a70d07cd5fb95bea60eea8"
+    },
+    {
+      "bytes": 2715,
+      "path": "unity/PlayerGates/RemoteUpdate/Editor/TevScriptRemoteUpdateBuildGate.cs",
+      "sha256": "810136e3ad1f8281a5372a62ca14306681cff7833bfef5dd1ee5407de075139e"
+    },
+    {
+      "bytes": 461,
+      "path": "unity/PlayerGates/RemoteUpdate/Runtime/Marcbeacve.TevScript.Gate5E.RemoteUpdate.asmdef",
+      "sha256": "1037aa9b451f180b572f0e640420cfddd23507784c84e601f79b2acc0b7ca8ff"
+    },
+    {
+      "bytes": 13640,
+      "path": "unity/PlayerGates/RemoteUpdate/Runtime/TevScriptRemoteUpdateGate.cs",
+      "sha256": "f4db6b814ad3c28662883b87c0c1afc3d71a69386a16bc9d3a6c47952581f625"
+    },
+    {
       "bytes": 4874,
       "path": "unity/VALIDATE_UNITY_IL2CPP_PLAYER_GATE4.py",
       "sha256": "c9ac49f61172e80876a1ee1abe3d2ac3a593c004b017b9ebc3c52d4aa3aa50aa"
@@ -998,9 +1098,9 @@
       "sha256": "a98a9082f808fa854a16fabf4550a2c821ce8d9cef34a175519dae9eb7776e76"
     },
     {
-      "bytes": 5637,
+      "bytes": 6385,
       "path": "unity/VALIDATE_UNITY_PACKAGE.py",
-      "sha256": "63b397fae0d494e11b33ec0eeb5431f576106218b33f8c780fdb2ecbe199816e"
+      "sha256": "234373bfa6d73b617848e56e448e3b4f47484b17c86caf5566677c577a263b81"
     },
     {
       "bytes": 6316,
