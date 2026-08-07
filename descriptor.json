@@ -49,8 +49,7 @@
     "Public WAN/TLS/DNS/CDN campaign",
     "Distributed deterministic replay/lockstep campaign",
     "Unity Input System device provider",
-    "Unity Animator Controller provider",
-    "Gate-6D signed transactional update on WASM"
+    "Unity Animator Controller provider"
   ],
   "runtime_abi": "TEV_SCRIPT_RUNTIME_ABI_V1",
   "schema": "TEV_SCRIPT_PORTABLE_DESCRIPTOR_V2",
@@ -79,5 +78,22 @@
     "physical_files_changed": 2,
     "logical_core_changes": 1,
     "reason": "WASI_SHA256_CREATE_PLATFORM_NOT_SUPPORTED"
+  },
+  "observed_wasm_signed_update_boundary_requiring_clean_commit_certification": {
+    "gate6d_browser": {
+      "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+      "authority": "SAME_TEV_UPDATE_AUTHORITY",
+      "durable_store": "LOCALSTORAGE_REAL_PROCESS_RESTART",
+      "crypto": "TEV_MANAGED_ES256_WITH_WEBCRYPTO_INDEPENDENT_ORACLE"
+    },
+    "gate6d_wasi": {
+      "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+      "authority": "SAME_TEV_UPDATE_AUTHORITY",
+      "durable_store": "FILE_STORE_TWO_WASMTIME_PROCESSES",
+      "crypto": "TEV_MANAGED_ES256"
+    },
+    "core_product_changes": 0,
+    "update_product_changes": "2_PHYSICAL_1_LOGICAL",
+    "precommit_evidence_sha256": "024fdd1125afc8ab4b6300e042a341415738650a9ce845868757ae32bb3d558e"
   }
 }

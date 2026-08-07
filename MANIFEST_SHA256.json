@@ -1,6 +1,6 @@
 {
-  "branch": "agent/tev-script-wasm-batch-6a-6c-v1",
-  "file_count": 237,
+  "branch": "agent/tev-script-wasm-signed-update-gate6d-v1",
+  "file_count": 250,
   "files": [
     {
       "bytes": 195,
@@ -43,9 +43,9 @@
       "sha256": "23d38237f098ac6c03ee0b1a9ed7e93bfa9322530bd672663a18c854d7654af1"
     },
     {
-      "bytes": 4096,
+      "bytes": 4193,
       "path": "PROJECT_STATE.md",
-      "sha256": "b0827cfdf38377dbdd54ba82943a2be9892b439e8b8f5dd888b9484d411c6225"
+      "sha256": "0977b58a9abcfd33a0fe78018776353269bc7be909c09c97f48017bcd7c60c5e"
     },
     {
       "bytes": 4131,
@@ -113,6 +113,11 @@
       "sha256": "24e701607469a0463a2156965aa928bc481a6a4413d8c0770ae327bb838ac418"
     },
     {
+      "bytes": 19331,
+      "path": "RUN_TEV_SCRIPT_WASM_SIGNED_UPDATE_GATE6D_V1.ps1",
+      "sha256": "2b271f665ea2fc1607674e48d66ff6b6a64fc62ea3f17d22a6b357828c47399f"
+    },
+    {
       "bytes": 4916,
       "path": "VALIDATION_RECEIPT.json",
       "sha256": "18db4aefb02fcd935dc99262dda5f1c852b7f92bd712ddcd6470769de5592377"
@@ -178,9 +183,9 @@
       "sha256": "5f482c0e60af6075666d282ded912714174b091222af4c3fab213e96e8729423"
     },
     {
-      "bytes": 2838,
+      "bytes": 3537,
       "path": "descriptor.json",
-      "sha256": "4f06d07809b027f3a330799f46732284b8f113cf7d020b79f74b4cee355505ca"
+      "sha256": "b09be0aeeb8f2e2e9f48c0b39b01d400d77e4bc95781b6718bed2bcb26db2a07"
     },
     {
       "bytes": 4731,
@@ -198,9 +203,9 @@
       "sha256": "bd9e4455debf9f582ddb3eee2782ffc08f0cfc350bf93c6a9f37c684fa57acd3"
     },
     {
-      "bytes": 1922,
+      "bytes": 1863,
       "path": "docs/STATUS.md",
-      "sha256": "a717e0a35b36ad2613c196ccc4c8517a3d7feac06de2022bfc7bca5ae9b0aa13"
+      "sha256": "598ff60ca4255e474bbc985d675430d8598d9fa77f4faa640cf2472c60f57a60"
     },
     {
       "bytes": 2087,
@@ -216,6 +221,11 @@
       "bytes": 4674,
       "path": "docs/WASM_BATCH_6A_6C_V1.md",
       "sha256": "0a2177efcd026b1b0c43975476af9df0d86d4abe72cde8f708bec890217b9554"
+    },
+    {
+      "bytes": 2889,
+      "path": "docs/WASM_SIGNED_UPDATE_GATE6D_V1.md",
+      "sha256": "baf6e7b2c4aab80edcd2482870d9617b50c5eaa8dbe22e8faeb651179ec6e3f7"
     },
     {
       "bytes": 1576,
@@ -341,6 +351,11 @@
       "bytes": 1400,
       "path": "evidence/reference-v0.2/wasm-batch-6a-6c-windows-unity6000.3.json",
       "sha256": "46f97b6064e06cf14e4abdd731a4cf0d3d304b0197a80fdb30b70c06280f3751"
+    },
+    {
+      "bytes": 1610,
+      "path": "evidence/reference-v0.2/wasm-signed-update-gate6d-windows-dotnet10.json",
+      "sha256": "7be8a772d4cf7d103f3f473622dc31bed0825bace4c4e567878220828bfe428e"
     },
     {
       "bytes": 2301,
@@ -558,6 +573,26 @@
       "sha256": "05780ecfd849f2599e1be0ce5bcccb53f17e5e446b7a8cae1f48c277c3caa2bc"
     },
     {
+      "bytes": 12640,
+      "path": "runtimes/csharp/TevScript.BrowserWasmUpdateGate/Program.cs",
+      "sha256": "4fa266edb665faea33eb685c3478f92ac0740f9e3b9bee3d61a1878acdeb5308"
+    },
+    {
+      "bytes": 1202,
+      "path": "runtimes/csharp/TevScript.BrowserWasmUpdateGate/TevScript.BrowserWasmUpdateGate.csproj",
+      "sha256": "c836de47e91caf70ca8e4e2e5ea50ca6cc11460507e9e1b2f85a8db14c6c4740"
+    },
+    {
+      "bytes": 185,
+      "path": "runtimes/csharp/TevScript.BrowserWasmUpdateGate/index.html",
+      "sha256": "75ab0987b1abbf027f3096b4094f8ada04d96708fc8345db6675bfab8271e3b5"
+    },
+    {
+      "bytes": 4114,
+      "path": "runtimes/csharp/TevScript.BrowserWasmUpdateGate/main.mjs",
+      "sha256": "b99fb7f15c76f554cd81b423fff23ce74a01e3e6f80b1a703024e3f8439b185d"
+    },
+    {
       "bytes": 11647,
       "path": "runtimes/csharp/TevScript.Core.Conformance/Program.cs",
       "sha256": "7c8c0eabd552112f04911a6546443c6d2b030ff454004af3093d6cde5b3c6d2a"
@@ -673,6 +708,11 @@
       "sha256": "b9afb0beed223f6b94f1615098ef3d54a18a4836a9ecfd30711c513d036fe0c0"
     },
     {
+      "bytes": 13250,
+      "path": "runtimes/csharp/TevScript.Update/TevManagedEcdsaP256Sha256Verifier.cs",
+      "sha256": "e59b74f22603f629488fc06fd603125551c8249dcc388c8487603249a5d7a55e"
+    },
+    {
       "bytes": 356,
       "path": "runtimes/csharp/TevScript.Update/TevScript.Update.csproj",
       "sha256": "087c33a92ea1089ef49186ec7b9f31a9f270060d6a6b5f61230bcf5d486cb317"
@@ -691,6 +731,16 @@
       "bytes": 681,
       "path": "runtimes/csharp/TevScript.WasiGate/TevScript.WasiGate.csproj",
       "sha256": "0c00d74b150450756191c67f858f3780cfe5f99561ca509af0f37252c5443fe1"
+    },
+    {
+      "bytes": 9683,
+      "path": "runtimes/csharp/TevScript.WasiUpdateGate/Program.cs",
+      "sha256": "a491e12a40dc2bb8278ba2d465e07122c49a4650c1fbad0ef84b3744e1e63c14"
+    },
+    {
+      "bytes": 820,
+      "path": "runtimes/csharp/TevScript.WasiUpdateGate/TevScript.WasiUpdateGate.csproj",
+      "sha256": "0ba10ce3b1d166c43798c3a94843a6786336c97c5f95a4e82834613bab4a7d63"
     },
     {
       "bytes": 3941,
@@ -848,6 +898,11 @@
       "sha256": "a5e67ac12d3bc5597c5b184c57d6b6f858595f3afb9984cf03db8844a696c606"
     },
     {
+      "bytes": 5789,
+      "path": "tools/serve_gate6d_browser.py",
+      "sha256": "3fb33dbb5215b4c493d56bdbe8906d0f6f24e27c355d7987c3113ec94567f8a0"
+    },
+    {
       "bytes": 2249,
       "path": "tools/serve_hot_update_gate5e.py",
       "sha256": "248950a695c0c1f830b3b2c4b99fec66c5b2ba4f4abb9cb6fc32565c6044bf01"
@@ -871,6 +926,11 @@
       "bytes": 14346,
       "path": "tools/validate_wasm_batch_6a_6c.py",
       "sha256": "00017ad88498acabdb1c3c1e23017c65c3b53fd91e327b75635b0724a304d6be"
+    },
+    {
+      "bytes": 9093,
+      "path": "tools/validate_wasm_signed_update_gate6d.py",
+      "sha256": "9bf3ec803fd57895242aaa0c60bc8fed79d111b90d445e6a0d83294ff5119542"
     },
     {
       "bytes": 2785,
@@ -976,6 +1036,11 @@
       "bytes": 399,
       "path": "unity/Package/Runtime/Update/Marcbeacve.TevScript.Update.asmdef",
       "sha256": "821024435c78f06b7ef60f2267ac9255292295190ee7305bb7696de66111f089"
+    },
+    {
+      "bytes": 13250,
+      "path": "unity/Package/Runtime/Update/TevManagedEcdsaP256Sha256Verifier.cs",
+      "sha256": "e59b74f22603f629488fc06fd603125551c8249dcc388c8487603249a5d7a55e"
     },
     {
       "bytes": 11885,
