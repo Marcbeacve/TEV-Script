@@ -7,101 +7,61 @@ Python / JavaScript / C# conformance:             PASS CERTIFICADO
 Unity Editor / PlayMode / Mono / IL2CPP:          PASS CERTIFICADO
 Gate-5A transactional program swap:               PASS CERTIFICADO
 Gate-5B transactional swap inside IL2CPP/AOT:     PASS CERTIFICADO
+Gate-5C signed canonical update package:          PASS CERTIFICADO
+Gate-5D durable anti-replay authority:             PASS CERTIFICADO WITH BOUNDARY
+Gate-5E remote transport inside IL2CPP:            PASS CERTIFICADO LOOPBACK_HTTP
 
-Gate-5C signed canonical update package:          PASS OBSERVED LOCAL PRECOMMIT
-Gate-5D durable anti-replay authority:             PASS OBSERVED LOCAL PRECOMMIT
-Gate-5E remote transport inside IL2CPP:            PASS OBSERVED LOCAL PRECOMMIT
+Gate-6A Unity Web -> IL2CPP/WASM -> browser:       PASS OBSERVED LOCAL PRECOMMIT
+Gate-6B pure TEV Core -> browser-wasm:             PASS OBSERVED LOCAL PRECOMMIT
+Gate-6C pure TEV Core -> WASI/Wasmtime:            PASS OBSERVED LOCAL PRECOMMIT
+Gate-6D signed transactional update on WASM:      NOT IN SCOPE
 
-Gate-5C algorithm:                                ES256 / P-256 / SHA-256
-Gate-5C signature format:                         IEEE-P1363 fixed 64-byte r||s
-Gate-5C runtime private key:                      ABSENT PASS
-Gate-5D durable restart restoration:              PASS
-Gate-5D replay after restart:                     FAIL_CLOSED PASS
-Gate-5D hostile store rollback:                   NOT IN SCOPE
-Gate-5E transport:                                LOOPBACK HTTP
-Gate-5E signature provider on Windows IL2CPP:     WINDOWS CNG PASS
-Gate-5E network bytes authority:                  UNTRUSTED UNTIL VERIFIED PASS
-Gate-5E public WAN:                               NOT PROBED
-Browser/WASM:                                     PENDING
+Browser authority:                                LOOPBACK_HTTP_WITNESS
+Gate-6B AOT:                                      PASS REQUESTED AND EXECUTED
+Gate-6C Wasmtime:                                 47.0.3
+Gate-6C WASI HTTP:                                ENABLED FOR LINKAGE ONLY
+Core SHA-256 provider:                            TEV MANAGED HOST INDEPENDENT
+Core product changes:                             2 PHYSICAL / 1 LOGICAL
 Stable release:                                   NO
 ```
 
 ## Log de cambios
 
-- Gate-5C introduces a canonical signed full-program update package.
-- The signed body includes channel, program identity, epoch, sequence,
-  semantic hash, IR SHA-256 and the complete canonical TEV IR.
-- Gate-5C uses ES256 (ECDSA P-256 + SHA-256) with a fixed 64-byte
-  IEEE-P1363 `r || s` signature.
-- Test private-key material is confined to the fixture tool; product/runtime
-  code contains no private signing key.
-- `ITevUpdateSignatureVerifier` separates update semantics from the physical
-  cryptographic provider.
-- .NET Gate-5C/5D uses the managed ECDSA provider.
-- Windows IL2CPP Gate-5E uses the Windows CNG provider through
-  `BCryptImportKeyPair` / `BCryptVerifySignature`.
-- Gate-5D persists the accepted signed package plus monotonic epoch/sequence.
-- Bootstrap, replay, old epoch, invalid epoch transition and stale update
-  plans fail closed.
-- If durable commit fails, the runtime update is rolled back.
-- A fresh runtime can reconstruct and reverify the installed signed package
-  from durable state.
-- Gate-5E downloads bytes through UnityWebRequest. Network bytes acquire no
-  authority before canonical parse, signature verification, anti-replay and
-  transactional prepare/commit.
-- Gate-5E rejects tampered packages, truncated packages, HTTP errors and replay.
-- A second real IL2CPP Player restores the durable package, rejects its remote
-  replay and accepts the next epoch.
-- Unity Core source identity was refreshed to the actual 11-file Core surface.
+- Gate-6A proves TEV Script through Unity WebGL, IL2CPP/WebAssembly and a real Chromium browser.
+- Gate-6A browser authority is a nonce-bound loopback HTTP witness; `dump-dom`, browser stdout and CDP WebSocket are not authorities.
+- Gate-6B proves the pure C# TEV Core in `browser-wasm`, including requested AOT and real browser execution.
+- Gate-6C proves the pure C# TEV Core under .NET WASI and Wasmtime using the SDK-generated non-single-file execution contract.
+- Gate-6C enables Wasmtime `-S http` only to satisfy .NET runtime linkage; this is not a TEV semantic capability.
+- Real WASI execution falsified the previous host crypto assumption: `SHA256.Create()` raised `PlatformNotSupportedException`.
+- The canonical TEV SHA-256 path now uses a managed host-independent implementation mirrored byte-identically between C# Core and Unity Core.
+- The SHA-256 replacement preserved the canonical hash semantics under the existing C# conformance vectors and cross-runtime byte parity.
+- No signed-update crypto provider was changed; Gate-6D remains out of scope.
 
 ## Hipótesis falsable
 
-A TEV program update can be delivered as untrusted network data and become
-authoritative only after deterministic package parsing, cryptographic
-authentication, monotonic anti-replay validation and the already certified
-transactional runtime swap, while remaining compatible with a real
-Windows x64 IL2CPP/AOT Player.
+The same TEV Core semantics, canonical JSON identity and deterministic state transition behavior can execute unchanged across Unity WebGL/browser, pure .NET browser-wasm and .NET WASI/Wasmtime when host-specific execution and observation mechanisms remain outside the semantic Core. Canonical SHA-256 identity must be independent of host cryptography-provider availability.
 
 ## Tareas
 
-1. Certify Gates 5C/5D/5E together on one exact clean Git commit.
-2. Publish the certified batch by normal fast-forward only.
-3. Open the WASM batch:
-   Unity Web/browser → pure TEV Core WASM → WASI/serverless.
-4. Preserve exact arithmetic, canonical receipts and deterministic event
-   ordering for the later distributed-determinism campaign.
+1. Create one exact local commit for Gates 6A/6B/6C and the justified portable SHA-256 Core change.
+2. Repeat Gates 6A/6B/6C from that exact clean commit and bind an external certification receipt to HEAD/TREE.
+3. Only after the clean rerun passes, publish the certified branch by normal push and independently verify it on GitHub.
+4. Fast-forward the PR head branch only after certified publication; keep PR #1 Draft/Open/Unmerged.
+5. Open Gate-6D separately: signed transactional update on WASM with host-specific crypto provider boundaries.
 
 ## Verificación precommit
 
 ```text
-HOT_UPDATE_GATE5B_REGRESSION=PASS
-GATE5C_SIGNED_PACKAGE=PASS
-GATE5C_ALGORITHM=ES256_P256_SHA256
-GATE5C_SIGNATURE_FORMAT=IEEE_P1363_FIXED_64
-GATE5C_TEST_PRIVATE_KEY_RUNTIME=ABSENT_PASS
-
-GATE5D_ANTI_REPLAY=DURABLE_STATE_PASS
-GATE5D_RESTART_RESTORE=PASS
-GATE5D_HOSTILE_STORE_ROLLBACK=NOT_IN_SCOPE
-
-GATE5E_REMOTE_TRANSPORT=LOOPBACK_HTTP_PASS_INSIDE_IL2CPP
-GATE5E_SIGNATURE_PROVIDER=WINDOWS_CNG_PASS
-GATE5E_BACKEND=IL2CPP
-GATE5E_AOT=PASS
-GATE5E_NETWORK_BYTES=UNTRUSTED_UNTIL_VERIFIED_PASS
-GATE5E_TAMPER_FAIL_CLOSED=PASS
-GATE5E_TRUNCATION_FAIL_CLOSED=PASS
-GATE5E_HTTP_ERROR_FAIL_CLOSED=PASS
-GATE5E_REPLAY_AFTER_RESTART_FAIL_CLOSED=PASS
-GATE5E_PUBLIC_WAN=NOT_PROBED
-
-HOT_UPDATE_BATCH_PRECOMMIT_EVIDENCE_SHA256=
-3c1f52e56c52117bcfb4ffd548afeb564e9dec16a68552a7ad73b6e2b6308f38
-
-WASM=NOT_IN_SCOPE
+GATE6A=PASS_OBSERVED_LOCAL_PRECOMMIT_REAL_BROWSER
+GATE6B=PASS_OBSERVED_LOCAL_PRECOMMIT_PURE_CORE_BROWSER_WASM
+GATE6B_AOT=PASS_REQUESTED_AND_BROWSER_EXECUTED
+GATE6C=PASS_OBSERVED_LOCAL_PRECOMMIT_PURE_CORE_WASI
+GATE6C_WASMTIME_EXECUTION=PASS
+GATE6D=NOT_IN_SCOPE
+CORE_PRODUCT_CHANGES=2_PHYSICAL_1_LOGICAL
+CORE_SHA256_PROVIDER=TEV_MANAGED_HOST_INDEPENDENT
+PRECOMMIT_EVIDENCE_SHA256=08a8c949ffb4e8991030a5684dec0523d2691adc9b9fcc9d76e0642109bc09bf
 STABLE_RELEASE=NO
 ```
 
-This committed state records Gates 5C/5D/5E as observed precommit. Exact
-certification authority is established by the subsequent clean-tree batch
-rerun and its ignored external receipt.
+This committed state records Gates 6A/6B/6C as observed precommit. Exact certification authority is established only by the subsequent clean-tree rerun on this commit and its ignored external receipt.

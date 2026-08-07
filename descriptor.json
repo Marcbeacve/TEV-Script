@@ -47,14 +47,37 @@
     "Production signing-key provisioning",
     "Hostile rollback-resistant monotonic store",
     "Public WAN/TLS/DNS/CDN campaign",
-    "Browser/WASM execution campaign",
     "Distributed deterministic replay/lockstep campaign",
     "Unity Input System device provider",
-    "Unity Animator Controller provider"
+    "Unity Animator Controller provider",
+    "Gate-6D signed transactional update on WASM"
   ],
   "runtime_abi": "TEV_SCRIPT_RUNTIME_ABI_V1",
   "schema": "TEV_SCRIPT_PORTABLE_DESCRIPTOR_V2",
   "source_extension": ".tevs",
   "stable": false,
-  "value_model": "TEV_PORTABLE_VALUE_MODEL_V1"
+  "value_model": "TEV_PORTABLE_VALUE_MODEL_V1",
+  "observed_wasm_boundaries_requiring_clean_commit_certification": {
+    "gate6a_unity_web_browser": {
+      "authority": "LOOPBACK_HTTP_WITNESS",
+      "host": "UNITY_6000_3_WEBGL_IL2CPP_WASM_REAL_CHROMIUM",
+      "status": "PASS_OBSERVED_LOCAL_PRECOMMIT"
+    },
+    "gate6b_pure_core_browser_wasm": {
+      "aot": "PASS_REQUESTED_AND_BROWSER_EXECUTED",
+      "host": "DOTNET_BROWSER_WASM_REAL_CHROMIUM",
+      "status": "PASS_OBSERVED_LOCAL_PRECOMMIT"
+    },
+    "gate6c_pure_core_wasi": {
+      "host": "DOTNET_WASI_WASMTIME_47_0_3",
+      "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+      "wasi_http": "ENABLED_FOR_LINKAGE_ONLY"
+    }
+  },
+  "core_portability": {
+    "canonical_sha256_provider": "TEV_MANAGED_HOST_INDEPENDENT",
+    "physical_files_changed": 2,
+    "logical_core_changes": 1,
+    "reason": "WASI_SHA256_CREATE_PLATFORM_NOT_SUPPORTED"
+  }
 }

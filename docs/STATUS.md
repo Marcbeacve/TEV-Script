@@ -7,39 +7,33 @@ LANGUAGE_STABLE=NO
 UNITY_IL2CPP_PLAYER=PASS_CERTIFIED
 TRANSACTIONAL_PROGRAM_SWAP_GATE5A=PASS_CERTIFIED
 IL2CPP_TRANSACTIONAL_SWAP_GATE5B=PASS_CERTIFIED
+SIGNED_UPDATE_GATE5C=PASS_CERTIFIED
+ANTI_REPLAY_GATE5D=PASS_CERTIFIED_WITH_DURABLE_STATE_BOUNDARY
+REMOTE_TRANSPORT_GATE5E=PASS_CERTIFIED_LOOPBACK_HTTP_IL2CPP
 
-SIGNED_UPDATE_GATE5C=PASS_OBSERVED_LOCAL_PRECOMMIT
-SIGNED_UPDATE_ALGORITHM=ES256_P256_SHA256
-SIGNED_UPDATE_SIGNATURE_FORMAT=IEEE_P1363_FIXED_64
-SIGNED_UPDATE_TEST_PRIVATE_KEY_RUNTIME=ABSENT_PASS
+UNITY_WEB_WASM_GATE6A=PASS_OBSERVED_LOCAL_PRECOMMIT_REAL_BROWSER
+PURE_CORE_BROWSER_WASM_GATE6B=PASS_OBSERVED_LOCAL_PRECOMMIT
+PURE_CORE_BROWSER_WASM_AOT=PASS_REQUESTED_AND_BROWSER_EXECUTED
+PURE_CORE_WASI_GATE6C=PASS_OBSERVED_LOCAL_PRECOMMIT
+WASMTIME_EXECUTION=PASS
+WASMTIME_VERSION=47.0.3
+WASI_HTTP=ENABLED_FOR_LINKAGE_ONLY
 
-ANTI_REPLAY_GATE5D=PASS_OBSERVED_LOCAL_PRECOMMIT
-ANTI_REPLAY_DURABLE_STATE=PASS
-ANTI_REPLAY_RESTART_RESTORE=PASS
-ANTI_REPLAY_HOSTILE_STORE_ROLLBACK=NOT_IN_SCOPE
+BROWSER_AUTHORITY=LOOPBACK_HTTP_WITNESS
+CORE_SHA256_PROVIDER=TEV_MANAGED_HOST_INDEPENDENT
+CORE_PRODUCT_CHANGES=2_PHYSICAL_1_LOGICAL
 
-REMOTE_TRANSPORT_GATE5E=PASS_OBSERVED_LOCAL_PRECOMMIT
-REMOTE_TRANSPORT_BOUNDARY=LOOPBACK_HTTP_IL2CPP
-REMOTE_SIGNATURE_PROVIDER=WINDOWS_CNG_PASS
-REMOTE_NETWORK_BYTES=UNTRUSTED_UNTIL_VERIFIED_PASS
-REMOTE_PUBLIC_WAN=NOT_PROBED
-
-BROWSER_WASM=PENDING
-DISTRIBUTED_DETERMINISM=PENDING_AFTER_WASM
+SIGNED_WASM_UPDATE_GATE6D=NOT_IN_SCOPE
+DISTRIBUTED_DETERMINISM=PENDING_AFTER_WASM_UPDATE
 STABLE_RELEASE=NO
 ```
 
-Gate-5C authenticates a canonical full-program TEV package. Gate-5D adds
-durable monotonic update authority and restart reconstruction. Gate-5E proves
-that a real Windows x64 IL2CPP Player can fetch untrusted bytes, authenticate
-them using a host-specific Windows CNG ES256 provider, apply anti-replay and
-perform the certified transactional runtime update.
+Gates 6A/6B/6C are observed PASS on the local precommit candidate. Gate-6A uses a real browser and nonce-bound loopback HTTP witness. Gate-6B executes the pure TEV Core under browser-wasm with requested AOT. Gate-6C executes the pure TEV Core under .NET WASI and Wasmtime.
+
+WASI exposed a real Core portability defect in the previous use of `SHA256.Create()`. The canonical hash implementation is now managed and host-independent while preserving the existing canonical vectors and cross-runtime byte identity. This change affects two mirrored physical files but one logical Core implementation.
 
 Precommit campaign evidence SHA-256:
 
-`3c1f52e56c52117bcfb4ffd548afeb564e9dec16a68552a7ad73b6e2b6308f38`
+`08a8c949ffb4e8991030a5684dec0523d2691adc9b9fcc9d76e0642109bc09bf`
 
-The public-WAN/TLS/DNS/CDN boundary, hostile rollback of the local durable
-store, production key provisioning, WebAssembly and stable release are not
-claimed here. Exact Gates 5C/5D/5E commit authority requires the post-commit
-clean-tree rerun and external receipt.
+Gate-6D, stable release, public WAN/TLS/DNS/CDN, production signing-key provisioning, hostile rollback-resistant durable storage and distributed deterministic replay/lockstep are not claimed here. Exact Gates 6A/6B/6C commit authority requires the post-commit clean-tree rerun and external receipt.
