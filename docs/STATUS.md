@@ -26,16 +26,22 @@ UNITY_PLAYMODE=PASS_3_TESTS_CERTIFIED
 UNITY_CAPABILITY_ABI=PASS_5_BINDINGS
 UNITY_FLOAT_BOUNDARY=EXPLICIT_AUDITED_PASS
 UNITY_PROVIDER_AUTHORITY=EXPLICIT_PASS
-UNITY_MONO_PLAYER=PASS_OBSERVED_LOCAL_PRECOMMIT
+UNITY_MONO_PLAYER=PASS_CERTIFIED
 UNITY_MONO_PLAYER_BACKEND=MONO
 UNITY_MONO_PLAYER_BUILD=PASS
 UNITY_MONO_PLAYER_EXECUTION=PASS_EXIT_0
-UNITY_MONO_PLAYER_CAPABILITY_ABI=PASS
-UNITY_MONO_PLAYER_FLOAT_BOUNDARY=EXPLICIT_AUDITED_PASS
-UNITY_MONO_PLAYER_PROVIDER_AUTHORITY=EXPLICIT_PASS
+UNITY_IL2CPP_PLAYER=PASS_OBSERVED_LOCAL_PRECOMMIT
+UNITY_IL2CPP_PLAYER_BACKEND=IL2CPP
+UNITY_IL2CPP_PLAYER_AOT=PASS
+UNITY_IL2CPP_GAMEASSEMBLY=PASS
+UNITY_IL2CPP_GLOBAL_METADATA=PASS
+UNITY_IL2CPP_MONO_RUNTIME=ABSENT_PASS
+UNITY_IL2CPP_PLAYER_EXECUTION=PASS_EXIT_0
+UNITY_IL2CPP_PLAYER_CAPABILITY_ABI=PASS
+UNITY_IL2CPP_PLAYER_FLOAT_BOUNDARY=EXPLICIT_AUDITED_PASS
+UNITY_IL2CPP_PLAYER_PROVIDER_AUTHORITY=EXPLICIT_PASS
 UNITY_INPUT_SYSTEM_DEVICE=NOT_PROBED
 UNITY_ANIMATOR_CONTROLLER=NOT_PROBED
-UNITY_IL2CPP=PENDING
 DETERMINISTIC_UTF8_LF_OUTPUT=PASS
 REDIRECTED_STDIO_UNICODE=PASS
 BROWSER_EXECUTION_CAMPAIGN=PENDING
@@ -43,6 +49,6 @@ LOWERING_TO_TEV_CAUSAL=PENDING
 LOWERING_TO_TEV_GENERAL=PENDING
 ```
 
-Python, JavaScript and C# reproduce the four authoritative receipts byte for byte. Unity Editor and PlayMode are certified hosts/surfaces for the unchanged portable Core and capability ABI. Gate Unity-3 additionally observed a real Windows x64 Standalone Player built with backend Mono: the managed Core/adapter/harness assemblies were present, IL2CPP `GameAssembly.dll` was absent, and the Player process executed TEV Script/capabilities and exited 0.
+Python, JavaScript and C# reproduce the four authoritative receipts byte for byte. Unity Editor, PlayMode and the Windows x64 Mono Player are certified surfaces/hosts for the unchanged portable Core and capability ABI. Gate Unity-4 additionally observed a real Windows x64 IL2CPP Player: `GameAssembly.dll` and `global-metadata.dat` were present, the Mono runtime layout was absent, and the Player process executed TEV Script/capabilities and exited 0.
 
-This file records the Gate-3 precommit observation. Exact Gate-3 commit authority is established only by the subsequent clean-tree rerun and external certification receipt. Input System device binding, Animator Controller binding, IL2CPP, browser execution and stable release remain uncertified.
+This file records the Gate-4 precommit observation. Exact Gate-4 commit authority is established only by the subsequent clean-tree rerun and external certification receipt. Input System device binding, Animator Controller binding, browser execution and stable release remain uncertified.

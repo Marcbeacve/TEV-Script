@@ -1,6 +1,6 @@
 {
-  "branch": "agent/tev-script-unity-mono-player-v1",
-  "file_count": 177,
+  "branch": "agent/tev-script-unity-il2cpp-player-v1",
+  "file_count": 184,
   "files": [
     {
       "bytes": 195,
@@ -43,9 +43,9 @@
       "sha256": "23d38237f098ac6c03ee0b1a9ed7e93bfa9322530bd672663a18c854d7654af1"
     },
     {
-      "bytes": 4510,
+      "bytes": 4604,
       "path": "PROJECT_STATE.md",
-      "sha256": "0af7376826aad07ddcfa62a6c1982d186f9630391e2d0c4387304e3f9a54b590"
+      "sha256": "429e2278e3fb58e5fd576352dd8c63d667397be64fab71262ffad866129d7a42"
     },
     {
       "bytes": 4131,
@@ -78,6 +78,11 @@
       "sha256": "41a822e059ff9c14f8afc1faef27e89131bacfd7287bafaa0e3d2a005a9211ea"
     },
     {
+      "bytes": 15746,
+      "path": "RUN_TEV_SCRIPT_UNITY_IL2CPP_PLAYER_CONFORMANCE_V1.ps1",
+      "sha256": "b8fda716b7ff5f93cf11d57d165ae3aa87f1fe9b29f0b23a77947a1e35463dd2"
+    },
+    {
       "bytes": 15928,
       "path": "RUN_TEV_SCRIPT_UNITY_MONO_PLAYER_CONFORMANCE_V1.ps1",
       "sha256": "c8aa2b2cd2aa46df8076ed5efcb6e8f84a39020316d6b00482279b7350797391"
@@ -93,9 +98,9 @@
       "sha256": "18db4aefb02fcd935dc99262dda5f1c852b7f92bd712ddcd6470769de5592377"
     },
     {
-      "bytes": 2657,
+      "bytes": 3137,
       "path": "adapters/unity/UNITY_ADAPTER_CONTRACT_V2.md",
-      "sha256": "1ec84d4b64dbdc0ebdbd695716ea1e5e2708f872b7b4cc541c2a3cee2436c7a0"
+      "sha256": "c29ec6974f5da0042763d9eaac2a9485c5392fb3e6c1b635b4f8aa6967b3fa63"
     },
     {
       "bytes": 497,
@@ -153,9 +158,9 @@
       "sha256": "5f482c0e60af6075666d282ded912714174b091222af4c3fab213e96e8729423"
     },
     {
-      "bytes": 1189,
+      "bytes": 1239,
       "path": "descriptor.json",
-      "sha256": "ad70a23c2873153f07149c1d1a6a26a7986ced0f88a7b78313c826ac49941e50"
+      "sha256": "8ea1066da83a3448b141fccf2dd6376f52f7e239220a1895113bc77faf816aa0"
     },
     {
       "bytes": 4731,
@@ -168,9 +173,9 @@
       "sha256": "e6ab4421ae1b8c1b59c4e954591c82c00d5da1bcb4d647c9be2207aef9b155bb"
     },
     {
-      "bytes": 2172,
+      "bytes": 2393,
       "path": "docs/STATUS.md",
-      "sha256": "1d21eae6d80668662bb16687bd6f5b2d02f8b7d1ac2ed09805434da253ece208"
+      "sha256": "dde09b7651f0588829d5292670fc508ec3bc03324f550fa02c77d4ffffe7e6be"
     },
     {
       "bytes": 2529,
@@ -241,6 +246,11 @@
       "bytes": 972,
       "path": "evidence/reference-v0.2/unity-editor-conformance-windows-unity6000.3.json",
       "sha256": "16b67ca74b98233bc498a4f7fc94042d9ebd29263ef0fcf745c4d118f7e23598"
+    },
+    {
+      "bytes": 2629,
+      "path": "evidence/reference-v0.2/unity-il2cpp-player-conformance-windows-unity6000.3.json",
+      "sha256": "f3200b23d08db42d3f6d441b8f3d887b7e9e265cf747a4ee7b2a529868a5d64e"
     },
     {
       "bytes": 2431,
@@ -708,9 +718,9 @@
       "sha256": "1ca1722da50dc5edb6d1dd55719ed9c7b0f95088b9dcd778bb4c7e5153f7c46c"
     },
     {
-      "bytes": 1119,
+      "bytes": 1567,
       "path": "unity/Package/README.md",
-      "sha256": "6e054218ebba732889ce684623d9d22f2bfca03ede54b9a23975e859856afbed"
+      "sha256": "9b4878aaf2ad326396defd22de9a6205a00342442ac5aa1e7389b75e07bbe30d"
     },
     {
       "bytes": 360,
@@ -858,6 +868,26 @@
       "sha256": "6674b921e7843f9ed2d4ea6e191a93a525531d8e8c6457b9be5f65db9d3bdabe"
     },
     {
+      "bytes": 468,
+      "path": "unity/PlayerGates/IL2CPP/Editor/Marcbeacve.TevScript.Gate4.Il2CppPlayer.Editor.asmdef",
+      "sha256": "4b42b3d7c5052a2100acfcb30d8875de237664377784b2c4e8a790292d498d71"
+    },
+    {
+      "bytes": 2918,
+      "path": "unity/PlayerGates/IL2CPP/Editor/TevScriptIl2CppPlayerBuildGate.cs",
+      "sha256": "97dcde7829a94711a947ad556d1ff081e50f3db8f1245e11c86dee1279652051"
+    },
+    {
+      "bytes": 458,
+      "path": "unity/PlayerGates/IL2CPP/Runtime/Marcbeacve.TevScript.Gate4.Il2CppPlayer.asmdef",
+      "sha256": "c7f4c897616dd60021fd5fcddd8a0dfa13411203da2bfcee28d5c00272163989"
+    },
+    {
+      "bytes": 8989,
+      "path": "unity/PlayerGates/IL2CPP/Runtime/TevScriptIl2CppPlayerGate.cs",
+      "sha256": "dd76d88febfcb3784000b2ae6240e98add4a58bb25caf5f046ac947d6612fc14"
+    },
+    {
       "bytes": 442,
       "path": "unity/PlayerGates/Mono/Marcbeacve.TevScript.Gate3.MonoPlayer.asmdef",
       "sha256": "e7c2d16e7c6ba409b56a6a9a7dae6698ff6788b9ffe06bb24c4aa328dd5f1b71"
@@ -871,6 +901,11 @@
       "bytes": 7974,
       "path": "unity/PlayerGates/Mono/TevScriptMonoPlayerGate.cs",
       "sha256": "c7ef94e15e0e14e49674aa0e817278eeca5b69821a78a655a8ffcb5a11d6ad19"
+    },
+    {
+      "bytes": 4874,
+      "path": "unity/VALIDATE_UNITY_IL2CPP_PLAYER_GATE4.py",
+      "sha256": "c9ac49f61172e80876a1ee1abe3d2ac3a593c004b017b9ebc3c52d4aa3aa50aa"
     },
     {
       "bytes": 4654,
