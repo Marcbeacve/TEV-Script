@@ -1,5 +1,6 @@
 import { canonicalHash } from "./canonical.mjs";
 import { decodeTypedValue, TevScriptError } from "./values.mjs";
+import { validateEntityHandlerFlow } from "./ir-flow.mjs";
 
 export const IR_SCHEMA = "TEV_SCRIPT_PROGRAM_IR_V2";
 export const LANGUAGE_VERSION = "0.2.0";
@@ -294,6 +295,7 @@ function validateEntity(raw, path) {
         events,
       });
     }
+    validateEntityHandlerFlow(item, handler, handlerPath);
   }
 
   return entityId;

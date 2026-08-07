@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from fractions import Fraction
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Any
 
 from .ast import (
@@ -35,6 +36,8 @@ from .values import encode_typed_value
 from .diagnostics import SourceSpan, TevScriptError
 from .lexer import Lexer
 from .parser import Parser
+from .ir_validation import validate_program_ir
+from .capability_catalog import merge_capability_catalogs
 from .source import SourceUnit
 from .types import (
     CAPABILITIES,
@@ -51,6 +54,7 @@ class HandlerContext:
     state_types: dict[str, str]
     parameter_types: dict[str, str]
     handler_signatures: dict[str, tuple[str, ...]]
+    capability_catalog: Mapping[str, tuple[Signature, ...]]
     local_types: dict[str, str] = field(default_factory=dict)
     capability_requirements: dict[str, Signature] = field(default_factory=dict)
     emitted_events: dict[str, tuple[str, ...]] = field(default_factory=dict)
@@ -81,6 +85,7 @@ def compile_bytes(
     data: bytes,
     *,
     debug_source_name: str | None = None,
+    capability_catalog: Mapping[str, tuple[Signature, ...]] | None = None,
 ) -> CompilationBundle:
     if len(data) > MAX_SOURCE_BYTES:
         raise TevScriptError(
@@ -93,6 +98,7 @@ def compile_bytes(
     ir = compile_declaration(
         declaration,
         debug_source_name=debug_source_name or path,
+        capability_catalog=capability_catalog,
     )
     return CompilationBundle(ir=ir, canonical_json=canonical_json(ir))
 
@@ -101,12 +107,14 @@ def compile_path(
     path: str | Path,
     *,
     debug_source_name: str | None = None,
+    capability_catalog: Mapping[str, tuple[Signature, ...]] | None = None,
 ) -> CompilationBundle:
     selected = Path(path)
     return compile_bytes(
         selected.as_posix(),
         selected.read_bytes(),
         debug_source_name=debug_source_name or selected.name,
+        capability_catalog=capability_catalog,
     )
 
 
@@ -114,6 +122,7 @@ def compile_declaration(
     declaration: ScriptDecl,
     *,
     debug_source_name: str | None = None,
+    capability_catalog: Mapping[str, tuple[Signature, ...]] | None = None,
 ) -> dict[str, Any]:
     if declaration.language_version != LANGUAGE_VERSION:
         raise TevScriptError(
@@ -128,6 +137,7 @@ def compile_declaration(
             declaration.span,
         )
 
+    resolved_capabilities = merge_capability_catalogs(CAPABILITIES, capability_catalog)
     entity_names: set[str] = set()
     entities: list[dict[str, Any]] = []
     debug_entities: list[dict[str, Any]] = []
@@ -139,7 +149,7 @@ def compile_declaration(
                 entity.span,
             )
         entity_names.add(entity.name)
-        semantic, debug = _compile_entity(entity)
+        semantic, debug = _compile_entity(entity, resolved_capabilities)
         entities.append(semantic)
         debug_entities.append(debug)
 
@@ -169,6 +179,7 @@ def compile_declaration(
     }
     result["debug"] = debug
     result["debug_hash"] = canonical_hash(debug)
+    validate_program_ir(result)
     return result
 
 
@@ -184,7 +195,10 @@ def _replace_debug_paths(value: Any, source_name: str) -> Any:
     return value
 
 
-def _compile_entity(entity: EntityDecl) -> tuple[dict[str, Any], dict[str, Any]]:
+def _compile_entity(
+    entity: EntityDecl,
+    capability_catalog: Mapping[str, tuple[Signature, ...]],
+) -> tuple[dict[str, Any], dict[str, Any]]:
     if len(entity.states) > MAX_STATES_PER_ENTITY:
         raise TevScriptError(
             "TEVS_COMPILE_STATE_BUDGET",
@@ -280,6 +294,7 @@ def _compile_entity(entity: EntityDecl) -> tuple[dict[str, Any], dict[str, Any]]
             handler,
             state_types,
             handler_signatures,
+            capability_catalog,
         )
         handlers.append(semantic)
         debug_handlers.append(debug)
@@ -344,6 +359,7 @@ def _compile_handler(
     handler: HandlerDecl,
     state_types: dict[str, str],
     handler_signatures: dict[str, tuple[str, ...]],
+    capability_catalog: Mapping[str, tuple[Signature, ...]],
 ) -> tuple[
     dict[str, Any],
     dict[str, Any],
@@ -357,6 +373,7 @@ def _compile_handler(
         state_types=state_types,
         parameter_types=parameter_types,
         handler_signatures=handler_signatures,
+        capability_catalog=capability_catalog,
     )
     for statement in handler.body:
         _compile_statement(statement, context, allow_local_declaration=True)
@@ -561,7 +578,7 @@ def _infer_expr(expression: Expr, context: HandlerContext) -> str:
     if expression.kind == "call":
         name = str(expression.value)
         actual = tuple(_infer_expr(item, context) for item in expression.children)
-        signatures = PURE_FUNCTIONS.get(name) or CAPABILITIES.get(name)
+        signatures = PURE_FUNCTIONS.get(name) or context.capability_catalog.get(name)
         if signatures is None:
             raise TevScriptError(
                 "TEVS_COMPILE_CALL_UNKNOWN",
@@ -681,7 +698,7 @@ def _emit_call(
     signatures = PURE_FUNCTIONS.get(name)
     pure = signatures is not None
     if not pure:
-        signatures = CAPABILITIES.get(name)
+        signatures = context.capability_catalog.get(name)
     if signatures is None:
         raise TevScriptError(
             "TEVS_COMPILE_CALL_UNKNOWN",

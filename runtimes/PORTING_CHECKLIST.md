@@ -33,3 +33,7 @@ strict JSON loader
 
 Future Rust, Java, Kotlin, Swift and Go runtimes should begin here rather than
 translating Python or C# implementation details.
+
+## Language-completeness additions
+
+A conforming runtime must also: (14) reject the shared `language-negative-v1` corpus with `TEVS_IR_FLOW_INVALID`; (15) implement typed acyclic CFG/stack verification before runtime construction; (16) reject non-canonical invocation and capability-binding ids without trimming; (17) preserve the V0.2 operator/type matrix; and (18) pass all four positive receipt vectors after those negative boundaries.

@@ -27,6 +27,10 @@
     "./ir-validation": {
       "types": "./src/ir-validation.d.ts",
       "import": "./src/ir-validation.mjs"
+    },
+    "./ir-flow": {
+      "types": "./src/ir-flow.d.ts",
+      "import": "./src/ir-flow.mjs"
     }
   },
   "files": [
@@ -38,6 +42,8 @@
     "src/strict-json-node.mjs",
     "src/ir-validation.mjs",
     "src/ir-validation.d.ts",
+    "src/ir-flow.mjs",
+    "src/ir-flow.d.ts",
     "src/values.mjs",
     "src/runtime.mjs",
     "src/runtime.d.ts",

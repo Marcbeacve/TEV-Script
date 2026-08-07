@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import deque
 from copy import deepcopy
 from dataclasses import dataclass
@@ -11,6 +12,20 @@ from .ir_validation import validate_program_ir
 from .values import decode_typed_value, encode_typed_value
 
 Capability = Callable[..., Any]
+_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_STABLE_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
+
+
+def _require_identifier(value: Any) -> str:
+    if not isinstance(value, str) or _IDENTIFIER.fullmatch(value) is None:
+        raise TevScriptError("TEVS_RUNTIME_INVOCATION_ID", f"non-canonical invocation id {value!r}")
+    return value
+
+
+def _require_binding_id(value: Any) -> str:
+    if not isinstance(value, str) or _STABLE_ID.fullmatch(value) is None:
+        raise TevScriptError("TEVS_RUNTIME_CAPABILITY_BINDING_ID", f"non-canonical capability binding id {value!r}")
+    return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +51,8 @@ class ScriptRuntime:
     ) -> None:
         self.ir = deepcopy(dict(ir))
         self.capabilities = dict(capabilities or {})
+        for capability_id in self.capabilities:
+            _require_binding_id(capability_id)
         self.entities: dict[str, EntityRuntime] = {}
         self.emitted: list[EmittedEvent] = []
         self._validate_program()
@@ -64,6 +81,8 @@ class ScriptRuntime:
         event_id: str,
         *arguments: Any,
     ) -> tuple[EmittedEvent, ...]:
+        entity_id = _require_identifier(entity_id)
+        event_id = _require_identifier(event_id)
         entity = self.entities.get(entity_id)
         if entity is None:
             raise TevScriptError(

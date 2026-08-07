@@ -1,32 +1,64 @@
-script       = "script" IDENT "version" STRING ";" entity+ EOF ;
-entity       = "entity" IDENT "{" entity_member* "}" ;
-entity_member = state | handler ;
-state        = "state" IDENT ":" type "=" expression ";" ;
-handler      = "on" IDENT [ "(" parameters ")" ] block ;
-parameters   = parameter ( "," parameter )* ;
-parameter    = IDENT ":" type ;
-type         = "Bool" | "Int" | "Rat" | "Text" | "Vec2" | "Vec3" | "Unit" ;
-block        = "{" statement* "}" ;
-statement    = let_statement
-             | assignment
-             | if_statement
-             | call_statement
-             | emit_statement
-             | log_statement
-             | move_statement
-             | animate_statement
-             | return_statement ;
-let_statement = "let" IDENT [ ":" type ] "=" expression ";" ;
-assignment   = IDENT "=" expression ";" ;
-if_statement = "if" expression block [ "else" block ] ;
-call_statement = "call" qualified_name arguments ";" ;
-emit_statement = "emit" IDENT arguments ";" ;
-log_statement = "log" expression ";" ;
-move_statement = "move" expression ";" ;
+script          = "script" identifier "version" string_literal ";" entity+ EOF ;
+entity          = "entity" identifier "{" entity_member* "}" ;
+entity_member   = state | handler ;
+state           = "state" identifier ":" type "=" expression ";" ;
+handler         = "on" identifier [ "(" parameters ")" ] block ;
+parameters      = parameter ( "," parameter )* ;
+parameter       = identifier ":" type ;
+type            = "Bool" | "Int" | "Rat" | "Text" | "Vec2" | "Vec3" | "Unit" ;
+block           = "{" statement* "}" ;
+statement       = let_statement
+                | assignment
+                | if_statement
+                | call_statement
+                | emit_statement
+                | log_statement
+                | move_statement
+                | animate_statement
+                | return_statement ;
+let_statement   = "let" identifier [ ":" type ] "=" expression ";" ;
+assignment      = identifier "=" expression ";" ;
+if_statement    = "if" expression block [ "else" block ] ;
+call_statement  = "call" qualified_name arguments ";" ;
+emit_statement  = "emit" identifier arguments ";" ;
+log_statement   = "log" expression ";" ;
+move_statement  = "move" expression ";" ;
 animate_statement = "animate" expression ";" ;
 return_statement = "return" ";" ;
-arguments    = "(" [ expression ( "," expression )* ] ")" ;
-qualified_name = IDENT ( "." IDENT )* ;
-expression   = Pratt expression over:
-               or, and, ==, !=, <, <=, >, >=, +, -, *, /,
-               unary not/minus, literals, names and calls ;
+arguments       = "(" [ expression ( "," expression )* ] ")" ;
+qualified_name  = identifier ( "." identifier )* ;
+
+expression      = or_expression ;
+or_expression   = and_expression ( "or" and_expression )* ;
+and_expression  = equality_expression ( "and" equality_expression )* ;
+equality_expression = relational_expression ( ( "==" | "!=" ) relational_expression )* ;
+relational_expression = additive_expression ( ( "<" | "<=" | ">" | ">=" ) additive_expression )* ;
+additive_expression = multiplicative_expression ( ( "+" | "-" ) multiplicative_expression )* ;
+multiplicative_expression = unary_expression ( ( "*" | "/" ) unary_expression )* ;
+unary_expression = ( "not" | "-" ) unary_expression | primary_expression ;
+primary_expression = integer_literal
+                   | decimal_literal
+                   | string_literal
+                   | "true"
+                   | "false"
+                   | qualified_name [ arguments ]
+                   | "(" expression ")" ;
+
+identifier      = identifier_start identifier_continue* ;
+identifier_start = ASCII_ALPHA | "_" ;
+identifier_continue = ASCII_ALPHA | ASCII_DIGIT | "_" ;
+integer_literal = ASCII_DIGIT+ ;
+decimal_literal = ASCII_DIGIT+ "." ASCII_DIGIT+ ;
+string_literal  = '"' string_character* '"' ;
+string_character = any Unicode scalar except '"', "\\", CR, LF
+                 | "\\n" | "\\r" | "\\t" | '\\"' | "\\\\" ;
+comment         = "#" any character except CR or LF* ;
+whitespace      = " " | HT | CR | LF ;
+ASCII_ALPHA     = "A".."Z" | "a".."z" ;
+ASCII_DIGIT     = "0".."9" ;
+
+# Lexical policy:
+# - UTF-8 source is required; one leading UTF-8 BOM is accepted and discarded.
+# - whitespace and comments may occur between tokens.
+# - identifiers and numeric tokens are ASCII-only; Unicode remains valid in strings/comments.
+# - keywords are lowercase and reserved exactly as written above.

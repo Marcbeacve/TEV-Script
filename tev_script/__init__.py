@@ -10,6 +10,7 @@ from .diagnostics import Diagnostic, SourceSpan, TevScriptError
 from .runtime import EmittedEvent, ScriptRuntime
 from .conformance import run_conformance
 from .values import decode_typed_value, encode_typed_value
+from .capability_catalog import load_capability_catalog, parse_capability_catalog
 
 __all__ = [
     "CompilationBundle",
@@ -26,4 +27,6 @@ __all__ = [
     "decode_typed_value",
     "encode_typed_value",
     "run_conformance",
+    "load_capability_catalog",
+    "parse_capability_catalog",
 ]

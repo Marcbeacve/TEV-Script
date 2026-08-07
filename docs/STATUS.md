@@ -33,3 +33,7 @@ Precommit campaign evidence SHA-256:
 `00a890f61a29c046c6c0dfb84ffbadd7c5a337621b83fddae9fbeeeb44b6dc25`
 
 Production signing-key lifecycle, hostile rollback-resistant durable storage, public WAN/TLS/DNS/CDN and stable release remain separate boundaries. Exact Gate-7 commit authority is bound without a duplicate dynamic rerun: the external receipt proves byte-identical identity of the 20 dynamically tested functional files through the clean commit, while the five added closure files are metadata not consumed by the runner.
+
+## TEV_SCRIPT_LANGUAGE_COMPLETENESS_V1
+
+`TEV_SCRIPT_LANGUAGE_COMPLETE=PASS_PRECOMMIT` on the language-completeness candidate. Functional identity `e7af8fbe431507d52981600bef9721960a44dcccba7d97dd6ce6a79bcd413eef`. This closes V0.2 language semantics; it does not promote stable release, production key management, hostile-store rollback resistance, public WAN transport, self-assembly, or decentralized consensus.

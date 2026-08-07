@@ -30,14 +30,16 @@ namespace Marcbeacve.TevScript.Core
                             "Capabilities cannot contain null.",
                             nameof(capabilities));
                     }
-                    if (_capabilities.ContainsKey(capability.CapabilityId))
+                    string capabilityId = TevScriptId.RequireStableId(
+                        capability.CapabilityId,
+                        "TEVS_RUNTIME_CAPABILITY_BINDING_ID");
+                    if (_capabilities.ContainsKey(capabilityId))
                     {
                         throw new TevContractException(
                             "TEVS_CS_CAPABILITY_DUPLICATE",
-                            "Duplicate capability " +
-                            capability.CapabilityId + ".");
+                            "Duplicate capability " + capabilityId + ".");
                     }
-                    _capabilities.Add(capability.CapabilityId, capability);
+                    _capabilities.Add(capabilityId, capability);
                 }
             }
 
@@ -57,6 +59,12 @@ namespace Marcbeacve.TevScript.Core
             string eventId,
             params TevScriptValue[] arguments)
         {
+            entityId = TevScriptId.RequireIdentifier(
+                entityId,
+                "TEVS_RUNTIME_INVOCATION_ID");
+            eventId = TevScriptId.RequireIdentifier(
+                eventId,
+                "TEVS_RUNTIME_INVOCATION_ID");
             RuntimeEntity entity;
             if (!_entities.TryGetValue(entityId, out entity))
             {
@@ -64,17 +72,11 @@ namespace Marcbeacve.TevScript.Core
                     "TEVS_CS_ENTITY_UNKNOWN",
                     "Unknown entity " + entityId + ".");
             }
-            if (string.IsNullOrWhiteSpace(eventId))
-            {
-                throw new ArgumentException(
-                    "An event id is required.",
-                    nameof(eventId));
-            }
 
             int start = _emitted.Count;
             var queue = new Queue<PendingEvent>();
             queue.Enqueue(new PendingEvent(
-                eventId.Trim(),
+                eventId,
                 Array.AsReadOnly(arguments ?? new TevScriptValue[0])));
             int processed = 0;
 

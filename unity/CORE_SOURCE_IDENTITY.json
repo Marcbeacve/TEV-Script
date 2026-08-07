@@ -1,5 +1,5 @@
 {
-  "certified_parent_commit": "8a560f349a8ca7ad7f893e16648c140d771020cb",
+  "certified_parent_commit": "6a33404eb9712b5fae30367d1beb189d8e42f170",
   "files": [
     {
       "canonical": "runtimes/csharp/TevScript.Core/TevScriptCanonicalJson.cs",
@@ -14,17 +14,22 @@
     {
       "canonical": "runtimes/csharp/TevScript.Core/TevScriptContracts.cs",
       "package": "unity/Package/Runtime/Core/TevScriptContracts.cs",
-      "sha256": "c2ca69df9d5411cb87f2d4ab817ff9dcaf9e2c3fbffb9c0fd6084080a04429a1"
+      "sha256": "e184c897f9bdd88fc8441c18e5180e6977e8acf518fb831e3dd2ae0e94cf0994"
+    },
+    {
+      "canonical": "runtimes/csharp/TevScript.Core/TevScriptIrFlowVerifier.cs",
+      "package": "unity/Package/Runtime/Core/TevScriptIrFlowVerifier.cs",
+      "sha256": "8a996fa0896a74fdfa56b6c717adf68b1376597217bad344ebe82f46a2ca9832"
     },
     {
       "canonical": "runtimes/csharp/TevScript.Core/TevScriptIrValidator.cs",
       "package": "unity/Package/Runtime/Core/TevScriptIrValidator.cs",
-      "sha256": "c850d3f7b3c31894d2314093a81d65e783da6941890638b3838f0a0bdf707b64"
+      "sha256": "6b5744b035bb2574aa3f1d8c7b126a347ea2914b0d4ee2ad4c32f9135c4ad066"
     },
     {
       "canonical": "runtimes/csharp/TevScript.Core/TevScriptJson.cs",
       "package": "unity/Package/Runtime/Core/TevScriptJson.cs",
-      "sha256": "d3810907f8cde6f81aeef0acdc66492e53e80877b97a65f9aa0c95c3f289d93e"
+      "sha256": "a50866b4cb8bd3b69ae119ace1438dec1849eb74bd3d01c0912383d376847da0"
     },
     {
       "canonical": "runtimes/csharp/TevScript.Core/TevScriptPrimitives.cs",
@@ -39,7 +44,12 @@
     {
       "canonical": "runtimes/csharp/TevScript.Core/TevScriptRuntime.cs",
       "package": "unity/Package/Runtime/Core/TevScriptRuntime.cs",
-      "sha256": "be222ad7963189fb7de74f2c8088c3913d56ce54673e162f0a1958b85b95b92b"
+      "sha256": "698098d3c18057012b24e36f2166eac774bb716de45e199a91e3dc6e247ab518"
+    },
+    {
+      "canonical": "runtimes/csharp/TevScript.Core/TevScriptRuntimeCheckpoint.cs",
+      "package": "unity/Package/Runtime/Core/TevScriptRuntimeCheckpoint.cs",
+      "sha256": "4e2cab6129860b6af32439971c9df584391a8ab3e7609a2e7af454b0eb0c6c14"
     },
     {
       "canonical": "runtimes/csharp/TevScript.Core/TevScriptRuntimeHotSwap.cs",

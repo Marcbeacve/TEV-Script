@@ -428,6 +428,7 @@ namespace Marcbeacve.TevScript.Core
                         capabilities,
                         events);
                 }
+                TevScriptIrFlowVerifier.Validate(entity, handler, handlerPath);
             }
 
             return entityId;

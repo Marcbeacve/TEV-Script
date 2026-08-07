@@ -20,8 +20,8 @@ def main() -> int:
 
     if [p.name for p in canonical] != [p.name for p in package]:
         raise RuntimeError("CORE_IDENTITY_NAME_SET_MISMATCH")
-    if len(canonical) != 11:
-        raise RuntimeError(f"CORE_IDENTITY_EXPECTED_11 observed={len(canonical)}")
+    if len(canonical) != 13:
+        raise RuntimeError(f"CORE_IDENTITY_EXPECTED_13 observed={len(canonical)}")
 
     files = []
     for left, right in zip(canonical, package):
@@ -39,7 +39,7 @@ def main() -> int:
 
     payload = {
         "certified_parent_commit":
-            "8a560f349a8ca7ad7f893e16648c140d771020cb",
+            "6a33404eb9712b5fae30367d1beb189d8e42f170",
         "files": files,
         "schema": "TEV_SCRIPT_UNITY_CORE_SOURCE_IDENTITY_V1",
     }
@@ -48,7 +48,7 @@ def main() -> int:
         encoding="utf-8",
         newline="\n",
     )
-    print("UNITY_CORE_SOURCE_IDENTITY_REFRESHED=11_PASS")
+    print("UNITY_CORE_SOURCE_IDENTITY_REFRESHED=13_PASS")
     return 0
 
 

@@ -1,4 +1,21 @@
 import { IR_SCHEMA, LANGUAGE_VERSION, validateProgramIr } from "./ir-validation.mjs";
+const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const STABLE_ID = /^[A-Za-z_][A-Za-z0-9_.:/-]*$/;
+
+function requireInvocationId(value) {
+  if (typeof value !== "string" || !IDENTIFIER.test(value)) {
+    throw new TevScriptError("TEVS_RUNTIME_INVOCATION_ID", `non-canonical invocation id ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+
+function requireBindingId(value) {
+  if (typeof value !== "string" || !STABLE_ID.test(value)) {
+    throw new TevScriptError("TEVS_RUNTIME_CAPABILITY_BINDING_ID", `non-canonical capability binding id ${String(value)}`);
+  }
+  return value;
+}
+
 import {
   Rational,
   TevScriptError,
@@ -93,6 +110,7 @@ export class ScriptRuntime {
   constructor(ir, capabilities = {}) {
     this.ir = structuredClone(ir);
     this.capabilities = { ...capabilities };
+    for (const capabilityId of Reflect.ownKeys(this.capabilities)) requireBindingId(capabilityId);
     this.entities = new Map();
     this.emitted = [];
     this.validateProgram();
@@ -118,6 +136,8 @@ export class ScriptRuntime {
   }
 
   invoke(entityId, eventId, ...args) {
+    entityId = requireInvocationId(entityId);
+    eventId = requireInvocationId(eventId);
     const entity = this.entities.get(entityId);
     if (!entity) throw new TevScriptError("TEVS_RUNTIME_ENTITY_UNKNOWN", `unknown entity ${entityId}`);
     const start = this.emitted.length;

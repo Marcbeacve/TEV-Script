@@ -20,6 +20,7 @@ from .diagnostics import TevScriptError
 from .canonical import canonical_json
 from .conformance import run_conformance
 from .json_io import load_strict_json
+from .capability_catalog import load_capability_catalog
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -31,17 +32,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     check = commands.add_parser("check")
     check.add_argument("source", type=Path)
+    check.add_argument("--capability-catalog", type=Path)
     check.set_defaults(handler=_check)
 
     compile_command = commands.add_parser("compile")
     compile_command.add_argument("source", type=Path)
     compile_command.add_argument("--output", type=Path, required=True)
+    compile_command.add_argument("--capability-catalog", type=Path)
     compile_command.set_defaults(handler=_compile)
 
     conformance = commands.add_parser("conformance")
     conformance.add_argument("source", type=Path)
     conformance.add_argument("scenario", type=Path)
     conformance.add_argument("--output", type=Path)
+    conformance.add_argument("--capability-catalog", type=Path)
     conformance.set_defaults(handler=_conformance)
     return parser
 
@@ -72,8 +76,13 @@ def _descriptor(_arguments: argparse.Namespace) -> int:
     return 0
 
 
+def _catalog(arguments: argparse.Namespace):
+    selected = getattr(arguments, "capability_catalog", None)
+    return None if selected is None else load_capability_catalog(selected)
+
+
 def _check(arguments: argparse.Namespace) -> int:
-    bundle = compile_path(arguments.source)
+    bundle = compile_path(arguments.source, capability_catalog=_catalog(arguments))
     print(
         json.dumps(
             {
@@ -90,7 +99,7 @@ def _check(arguments: argparse.Namespace) -> int:
 
 
 def _compile(arguments: argparse.Namespace) -> int:
-    bundle = compile_path(arguments.source)
+    bundle = compile_path(arguments.source, capability_catalog=_catalog(arguments))
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     arguments.output.write_bytes((bundle.canonical_json + "\n").encode("utf-8"))
     print(
@@ -109,7 +118,7 @@ def _compile(arguments: argparse.Namespace) -> int:
 
 
 def _conformance(arguments: argparse.Namespace) -> int:
-    bundle = compile_path(arguments.source)
+    bundle = compile_path(arguments.source, capability_catalog=_catalog(arguments))
     scenario = load_strict_json(arguments.scenario)
     receipt = run_conformance(bundle.ir, scenario)
     output = canonical_json(receipt) + "\n"

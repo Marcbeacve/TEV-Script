@@ -76,3 +76,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass `
 ```
 
 No GitHub Action is authoritative or required.
+
+## TEV_SCRIPT_LANGUAGE_COMPLETENESS_V1
+
+Language-closure evidence is stored at `evidence/reference-v0.2/language-completeness-v1-windows-dotnet10.json`. The dynamic language regression ran once. Gates 5, 6 and 7 were not dynamically rerun. Functional payload SHA-256 identity: `e7af8fbe431507d52981600bef9721960a44dcccba7d97dd6ce6a79bcd413eef`. Stable release remains NO.

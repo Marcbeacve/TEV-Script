@@ -93,12 +93,18 @@ class Lexer:
             if char == '"':
                 tokens.append(self._string(start))
                 continue
-            if char.isdigit():
+            if _is_ascii_digit(char):
                 tokens.append(self._number(start))
                 continue
-            if char.isalpha() or char == "_":
+            if _is_ascii_identifier_start(char):
                 tokens.append(self._identifier(start))
                 continue
+            if char.isalpha() or char.isdigit():
+                raise TevScriptError(
+                    "TEVS_LEX_IDENTIFIER_NON_ASCII",
+                    f"identifier characters must be ASCII, got {char!r}",
+                    self._span(start),
+                )
             raise TevScriptError(
                 "TEVS_LEX_UNKNOWN_CHARACTER",
                 f"unexpected character {char!r}",
@@ -143,25 +149,25 @@ class Lexer:
     def _identifier(self, start: tuple[int, int, int]) -> Token:
         while self.index < len(self.text):
             char = self.text[self.index]
-            if not (char.isalnum() or char == "_"):
+            if not _is_ascii_identifier_continue(char):
                 break
             self._advance(char)
         value = self.text[start[0] : self.index]
         return self._token(KEYWORDS.get(value, "IDENT"), value, start)
 
     def _number(self, start: tuple[int, int, int]) -> Token:
-        while self.index < len(self.text) and self.text[self.index].isdigit():
+        while self.index < len(self.text) and _is_ascii_digit(self.text[self.index]):
             self._advance(self.text[self.index])
         kind = "INT"
         if (
             self.index < len(self.text)
             and self.text[self.index] == "."
             and self.index + 1 < len(self.text)
-            and self.text[self.index + 1].isdigit()
+            and _is_ascii_digit(self.text[self.index + 1])
         ):
             kind = "DECIMAL"
             self._advance(".")
-            while self.index < len(self.text) and self.text[self.index].isdigit():
+            while self.index < len(self.text) and _is_ascii_digit(self.text[self.index]):
                 self._advance(self.text[self.index])
         return self._token(kind, self.text[start[0] : self.index], start)
 
@@ -207,6 +213,18 @@ class Lexer:
             "unterminated string literal",
             self._span(start),
         )
+
+
+def _is_ascii_digit(char: str) -> bool:
+    return "0" <= char <= "9"
+
+
+def _is_ascii_identifier_start(char: str) -> bool:
+    return ("A" <= char <= "Z") or ("a" <= char <= "z") or char == "_"
+
+
+def _is_ascii_identifier_continue(char: str) -> bool:
+    return _is_ascii_identifier_start(char) or _is_ascii_digit(char)
 
 
 def decimal_fraction(text: str) -> Fraction:

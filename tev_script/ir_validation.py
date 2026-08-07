@@ -22,6 +22,7 @@ from .contracts import (
 )
 from .diagnostics import TevScriptError
 from .values import decode_typed_value
+from .ir_flow import validate_entity_handler_flow
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _STABLE_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
@@ -348,6 +349,7 @@ def _validate_entity(raw: Any, path: str) -> str:
                 capabilities=capabilities,
                 events=events,
             )
+        validate_entity_handler_flow(item, handler, handler_path)
 
     return entity_id
 

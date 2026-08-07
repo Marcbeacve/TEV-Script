@@ -132,3 +132,7 @@ receipt-based. Publication uses a feature branch and draft pull request. No
 merge, tag, stable release, or promotion is authorized by this seed.
 
 Validation details: `docs/VALIDATION.md`.
+
+## TEV Script V0.2 language closure
+
+The V0.2 source/IR/runtime contract now has complete lexical grammar, static semantics, operational IR semantics, typed capability-catalog extension, a pre-execution typed CFG verifier, canonical ABI identifiers, and a shared Python/JavaScript/C# negative corpus. `stable` remains false; language completeness is not a stable-release or production-security claim.
