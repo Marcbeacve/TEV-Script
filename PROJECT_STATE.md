@@ -6,78 +6,74 @@
 Decisión de autoridad multilenguaje:       CERRADA
 Implementación completa del lenguaje:      NO, PREVIEW 0.2
 IR portable V2:                            IMPLEMENTADO Y ESQUEMA ESTRICTO
-Perfil JSON canónico:                      IMPLEMENTADO CON VECTORES
-Carga JSON estricta Python/JavaScript:      PASS
-Compilador Python:                         PASS
-Runtime Python:                            CONFORMANT_REFERENCE
-Runtime JavaScript ES2022:                 CONFORMANT_ES2022_REFERENCE
-Runtime C# netstandard2.1:                 CONFORMANT_DOTNET_REFERENCE
 Python/JavaScript/C# byte parity:          PASS, 4 ESCENARIOS
-C# canonical vectors:                     12 PASS
-C# negative boundary campaign:            PASS
-Unity Editor 6000.3 host/Core parity:      PASS CERTIFICADO, 4 ESCENARIOS
-Unity host semantic drift:                 NONE OBSERVED
-Unity PlayMode capability ABI:             PASS CERTIFICADO, 3 TESTS
-Unity Rat/float physical boundary:         EXPLICIT_AUDITED_PASS
-Unity provider authority:                  EXPLICIT_PASS
+Unity Editor 6000.3 host/Core parity:      PASS CERTIFICADO
+Unity PlayMode capability ABI:             PASS CERTIFICADO
 Unity Mono Player Windows x64:             PASS CERTIFICADO
-Unity Mono backend identity:               MONO2X + ARTIFACT LAYOUT PASS
-Unity Mono Player execution:               EXIT 0 + RUNTIME WITNESSES PASS
-Unity IL2CPP Player Windows x64:            PASS OBSERVED LOCAL PRECOMMIT
-Unity IL2CPP backend identity:              IL2CPP + AOT ARTIFACTS PASS
-Unity IL2CPP Player execution:              EXIT 0 + RUNTIME WITNESSES PASS
-Unity Input System device:                 NO PROBADO
-Unity Animator Controller:                 NO PROBADO
-Browser execution campaign:               PENDIENTE
-Lowering causal/general:                   PENDIENTE
+Unity IL2CPP Player Windows x64:            PASS CERTIFICADO
+Gate-5A transactional program swap:        PASS OBSERVED LOCAL PRECOMMIT
+Gate-5A state migration:                   EXACT EXISTING TYPES PASS
+Gate-5A additive state:                    PASS
+Gate-5A capability ceiling:                EXPLICIT PASS
+Gate-5A rollback:                          EXACT PREVIOUS RUNTIME PASS
+Gate-5A stale-plan rejection:              FAIL CLOSED PASS
+Gate-5A network transport:                 NOT IN SCOPE
+Gate-5A signature authority:               NOT IN SCOPE
+Browser/WASM execution campaign:           PENDIENTE
 Stable release:                            NO
 ```
 
 ## Log de cambios
 
-- Gate Unity-3 está certificado en `79fe95c8847f1d41be18b55d2e386919ffe57e56` y Gate Unity-4 lo reejecuta desde un clone aislado antes de construir el Player AOT.
-- El harness Gate-4 vive en `Marcbeacve.TevScript.Gate4.Il2CppPlayer` y referencia explícitamente `Marcbeacve.TevScript.Core` y `Marcbeacve.TevScript.Unity`; el builder vive en una assembly Editor separada.
-- Unity 6000.3.10f1 construyó un `StandaloneWindows64` forzando `ScriptingImplementation.IL2CPP`.
-- El artefacto IL2CPP contiene `GameAssembly.dll` y `il2cpp_data/Metadata/global-metadata.dat`; `MonoBleedingEdge` permanece ausente, separando la autoridad AOT de la evidencia Mono.
-- `TEVScriptIl2CppGate.exe` arrancó fuera del Editor en `-batchmode -nographics`, ejecutó el IR canónico, comprobó estado runtime y atravesó `input.move2d`, Transform `motion.move2d`, `animation.play`, `time.delta` y `debug.log`, y terminó con código 0.
-- La frontera `float <-> Rat`, el testigo de redondeo y el fail-closed de no finitos se reprodujeron dentro del Player IL2CPP.
-- El Core y el adapter productivo permanecen sin modificaciones; Gate-4 añade sólo harness/build/runner de certificación.
-- Input System físico y Animator Controller permanecen providers separados, no requisitos del lenguaje.
+- Gate Unity-4 está certificado en `39060bfc80bb0b7cc88515261d4f18d9c462a2b6`.
+- Gate-5A mantiene `TevScriptRuntime` como runtime de programa fijo y añade un supervisor `TevScriptRuntimeHost`.
+- `PrepareSwap` valida primero un `TEV_SCRIPT_PROGRAM_IR_V2`, continuidad de `program_id`, identidad de entidades, continuidad de estados y un ceiling explícito de capabilities.
+- El runtime candidato se construye aisladamente y recibe un snapshot compatible antes de cualquier cambio de autoridad.
+- `Commit` realiza el único cambio autoritativo: sustituye la referencia al runtime activo bajo lock.
+- `RollbackLastCommit` recupera el objeto runtime anterior exacto.
+- Los planes reutilizados o stale fallan cerrados.
+- Gate-5A no incorpora red, firmas, anti-replay, WASM ni claims de políticas de stores.
+- El Core C# y su mirror Unity permanecen byte-idénticos.
 
 ## Hipótesis falsable
 
-El mismo paquete TEV Script ya certificado en Editor, PlayMode y Mono Player puede sobrevivir a la conversión IL2CPP/AOT y ejecutarse como Windows Standalone Player nativo, preservando el Core, el ABI de capabilities y la frontera numérica explícita.
+Un host TEV puede sustituir transaccionalmente un programa IR V2 completo sin mutar
+en caliente el motor de ejecución, preservando el estado compatible, sin ampliar
+la autoridad de capabilities y con rollback exacto.
 
 ## Tareas
 
-1. Certificar Gate Unity-4 sobre un commit exacto y árbol Git limpio.
-2. Publicar el commit IL2CPP Player y actualizar la PR Draft sólo después de la certificación limpia.
-3. Ejecutar una campaña separada en navegador real.
-4. Añadir providers opcionales para Input System y Animator sin convertirlos en requisitos del lenguaje.
-5. Registrar lowering hacia `.tev` y `.tevg` sin duplicar sus kernels.
-6. Revisar las fronteras restantes antes de declarar una release estable.
+1. Certificar Gate-5A sobre un commit exacto y árbol Git limpio.
+2. Probar el mismo swap dentro de un Player IL2CPP/AOT (Gate-5B).
+3. Añadir paquete firmado y autoridad de clave (Gate-5C).
+4. Añadir anti-replay/versionado monótono (Gate-5D).
+5. Añadir transporte remoto (Gate-5E).
+6. Certificar navegador/WASM como frontera separada.
 
 ## Verificación
 
 ```text
-PYTHON_TESTS=29 PASS
-JAVASCRIPT_TESTS=21 PASS
-CONFORMANCE_SCENARIOS=4 PASS
-PYTHON_JAVASCRIPT_BYTE_PARITY=PASS
-CSHARP_FULL_CONFORMANCE=PASS
-THREE_RUNTIME_CONFORMANCE=PASS
-UNITY_GATE3_REGRESSION=PASS_ISOLATED_CERTIFIED_BASE
-UNITY_IL2CPP_BUILD_PROCESS_EXIT_CODE=0
-UNITY_IL2CPP_PLAYER_BUILD_BACKEND=IL2CPP
-UNITY_IL2CPP_GAMEASSEMBLY=PASS
-UNITY_IL2CPP_GLOBAL_METADATA=PASS
-UNITY_IL2CPP_MONO_RUNTIME=ABSENT_PASS
-UNITY_IL2CPP_PLAYER_PROCESS_EXIT_CODE=0
-UNITY_IL2CPP_PLAYER_CORE_PARSE=PASS
-UNITY_IL2CPP_PLAYER_CAPABILITY_ABI=PASS
-UNITY_IL2CPP_PLAYER_FLOAT_BOUNDARY=EXPLICIT_AUDITED_PASS
-UNITY_IL2CPP_PLAYER_PROVIDER_AUTHORITY=EXPLICIT_PASS
-UNITY_INPUT_SYSTEM_DEVICE=NOT_PROBED
-UNITY_ANIMATOR_CONTROLLER=NOT_PROBED
+GATE5A_GATE_BINARY_VERSION=V4
+GATE5A_PREPARE_NON_AUTHORITATIVE=PASS
+GATE5A_COMMIT_ATOMIC_REFERENCE_SWAP=PASS
+GATE5A_EXISTING_STATE_MIGRATION=PASS
+GATE5A_ADDITIVE_STATE_INITIALIZATION=PASS
+GATE5A_PLAN_REUSE_FAIL_CLOSED=PASS
+GATE5A_STATE_REMOVAL_VALID_IR_REACHES_HOST=PASS
+GATE5A_STATE_REMOVAL_FAIL_CLOSED=PASS
+GATE5A_CAPABILITY_CEILING_FAIL_CLOSED=PASS
+GATE5A_PROGRAM_ID_CONTINUITY_FAIL_CLOSED=PASS
+GATE5A_ROLLBACK_EXACT_RUNTIME_RESTORE=PASS
+GATE5A_STALE_PLAN_FAIL_CLOSED=PASS
+GATE5A_TRANSACTION_BOUNDARY=PASS
+GATE5A_DYNAMIC_CODE=ABSENT_PASS
+GATE5A_NETWORK=NOT_IN_SCOPE
+GATE5A_SIGNATURE_AUTHORITY=NOT_IN_SCOPE
+GATE5A_WASM=NOT_IN_SCOPE
+GATE5A_PRECOMMIT_EVIDENCE_SHA256=794297c539d4f9c2a891d7952cdea080b6f109617c8e1687d30cf7a8c28b6d8a
 STABLE_RELEASE=NO
 ```
+
+This committed state records the Gate-5A precommit observation. Exact Gate-5A
+commit authority is established only by the subsequent clean-tree rerun and
+external certification receipt.

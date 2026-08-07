@@ -5,7 +5,7 @@ using System.Numerics;
 
 namespace Marcbeacve.TevScript.Core
 {
-    public sealed class TevScriptRuntime
+    public sealed partial class TevScriptRuntime
     {
         private readonly TevScriptProgram _program;
         private readonly Dictionary<string, ITevScriptCapability> _capabilities;

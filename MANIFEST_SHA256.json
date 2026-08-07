@@ -1,6 +1,6 @@
 {
-  "branch": "agent/tev-script-unity-il2cpp-player-v1",
-  "file_count": 184,
+  "branch": "agent/tev-script-transactional-swap-v1",
+  "file_count": 193,
   "files": [
     {
       "bytes": 195,
@@ -43,9 +43,9 @@
       "sha256": "23d38237f098ac6c03ee0b1a9ed7e93bfa9322530bd672663a18c854d7654af1"
     },
     {
-      "bytes": 4604,
+      "bytes": 3582,
       "path": "PROJECT_STATE.md",
-      "sha256": "429e2278e3fb58e5fd576352dd8c63d667397be64fab71262ffad866129d7a42"
+      "sha256": "34ef3beeb10e76110b838a4f26362a439592940482a3c9de912373224ccd9897"
     },
     {
       "bytes": 4131,
@@ -71,6 +71,11 @@
       "bytes": 378,
       "path": "RUN_TEV_SCRIPT_PORTABLE_V0_2.ps1",
       "sha256": "59071085d2604cca03686b02703406c814d3a23502de67227d0c89d9f3e951c4"
+    },
+    {
+      "bytes": 6285,
+      "path": "RUN_TEV_SCRIPT_TRANSACTIONAL_SWAP_GATE5A_V1.ps1",
+      "sha256": "3d0073a603abe6befb465ca430c88e75833fe2f937449083136f3436395eb7eb"
     },
     {
       "bytes": 7835,
@@ -158,9 +163,9 @@
       "sha256": "5f482c0e60af6075666d282ded912714174b091222af4c3fab213e96e8729423"
     },
     {
-      "bytes": 1239,
+      "bytes": 1203,
       "path": "descriptor.json",
-      "sha256": "8ea1066da83a3448b141fccf2dd6376f52f7e239220a1895113bc77faf816aa0"
+      "sha256": "5748d50c49a6df57496d459772b242622abc56c74fbd2ba79cd614d41ba29525"
     },
     {
       "bytes": 4731,
@@ -173,9 +178,14 @@
       "sha256": "e6ab4421ae1b8c1b59c4e954591c82c00d5da1bcb4d647c9be2207aef9b155bb"
     },
     {
-      "bytes": 2393,
+      "bytes": 1585,
       "path": "docs/STATUS.md",
-      "sha256": "dde09b7651f0588829d5292670fc508ec3bc03324f550fa02c77d4ffffe7e6be"
+      "sha256": "bc4cbf0a6514c336929c988faa339174f5750371787a44175a09fcb967e44c5c"
+    },
+    {
+      "bytes": 1993,
+      "path": "docs/TRANSACTIONAL_PROGRAM_UPDATE_V1.md",
+      "sha256": "ae5d42af056c2319a8d3b2a3d31fe8190ef8e3ca07850b75be35487415fae4b4"
     },
     {
       "bytes": 2529,
@@ -241,6 +251,11 @@
       "bytes": 826,
       "path": "evidence/reference-v0.2/python.receipt.json",
       "sha256": "d5e99dbda29b55a94dea7a801a2bafd5abfbb6dc8eebb3f3844a09c89837b447"
+    },
+    {
+      "bytes": 1408,
+      "path": "evidence/reference-v0.2/transactional-program-swap-windows-dotnet10.json",
+      "sha256": "9d4e100960f3f3f93a166b86be43dc3a943479592e0222ba6bb4b56c6f10b12d"
     },
     {
       "bytes": 972,
@@ -548,14 +563,29 @@
       "sha256": "04fe56a52d744c3432a40db3ea269b3eb54eb8167156442b5f52f1b45126d3d2"
     },
     {
-      "bytes": 26631,
+      "bytes": 26639,
       "path": "runtimes/csharp/TevScript.Core/TevScriptRuntime.cs",
-      "sha256": "692ebb320b82729468627c216a68ef1e1037209815d0d81972cd5433b32c9355"
+      "sha256": "be222ad7963189fb7de74f2c8088c3913d56ce54673e162f0a1958b85b95b92b"
+    },
+    {
+      "bytes": 18737,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptRuntimeHotSwap.cs",
+      "sha256": "219f8d24d5f4de8e02126c70938d869b0986edb414dc419becf6a1dff687b6b3"
     },
     {
       "bytes": 9277,
       "path": "runtimes/csharp/TevScript.Core/TevScriptValue.cs",
       "sha256": "56dd6a48d4693acab745caddc420a50497d427eaed6136ddbe72c7176840f559"
+    },
+    {
+      "bytes": 12140,
+      "path": "runtimes/csharp/TevScript.TransactionalSwapGate/Program.cs",
+      "sha256": "3e05bd51c07f6d78db53aa5610d3f18790c7468065f2e614836db59cd788f48c"
+    },
+    {
+      "bytes": 344,
+      "path": "runtimes/csharp/TevScript.TransactionalSwapGate/TevScript.TransactionalSwapGate.csproj",
+      "sha256": "b9afb0beed223f6b94f1615098ef3d54a18a4836a9ecfd30711c513d036fe0c0"
     },
     {
       "bytes": 3941,
@@ -698,6 +728,16 @@
       "sha256": "eaeca23acdefe758bd5cd46b9ff97070ade73541805c2ac33181cb8e8684be57"
     },
     {
+      "bytes": 6676,
+      "path": "tools/generate_transactional_swap_gate5a_fixtures.py",
+      "sha256": "d583359341019fc57ae7894ded6bd1a54e836124c1f8c2d4eee7b58c353b34bf"
+    },
+    {
+      "bytes": 3703,
+      "path": "tools/validate_transactional_swap_gate5a.py",
+      "sha256": "3383027bfdd77f12a8f38af2afe547a0397340f8f9bac62ea565ad4b4d739ed3"
+    },
+    {
       "bytes": 2301,
       "path": "unity/CORE_SOURCE_IDENTITY.json",
       "sha256": "b068a5e127cd1c2a39ec01be61eb3dfae51102099a2e6ca85df58b5a2a179b28"
@@ -763,9 +803,14 @@
       "sha256": "04fe56a52d744c3432a40db3ea269b3eb54eb8167156442b5f52f1b45126d3d2"
     },
     {
-      "bytes": 26631,
+      "bytes": 26639,
       "path": "unity/Package/Runtime/Core/TevScriptRuntime.cs",
-      "sha256": "692ebb320b82729468627c216a68ef1e1037209815d0d81972cd5433b32c9355"
+      "sha256": "be222ad7963189fb7de74f2c8088c3913d56ce54673e162f0a1958b85b95b92b"
+    },
+    {
+      "bytes": 18737,
+      "path": "unity/Package/Runtime/Core/TevScriptRuntimeHotSwap.cs",
+      "sha256": "219f8d24d5f4de8e02126c70938d869b0986edb414dc419becf6a1dff687b6b3"
     },
     {
       "bytes": 9277,

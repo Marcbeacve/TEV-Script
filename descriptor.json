@@ -17,7 +17,7 @@
     "Unity Editor 6000.3.10f1 (certified Gate 1)",
     "Unity PlayMode capability ABI 6000.3.10f1 (certified Gate 2)",
     "Unity Windows x64 Mono Player 6000.3.10f1 (certified Gate 3)",
-    "Unity Windows x64 IL2CPP Player 6000.3.10f1 (Gate 4 observed; clean-commit certification required)"
+    "Unity Windows x64 IL2CPP Player 6000.3.10f1 (certified Gate 4)"
   ],
   "ir_schema": "TEV_SCRIPT_PROGRAM_IR_V2",
   "language_version": "0.2.0",
