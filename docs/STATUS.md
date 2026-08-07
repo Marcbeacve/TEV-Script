@@ -10,27 +10,26 @@ REMOTE_TRANSPORT_GATE5E=PASS_CERTIFIED_LOOPBACK_HTTP_IL2CPP
 UNITY_WEB_WASM_GATE6A=PASS_CERTIFIED
 PURE_CORE_BROWSER_WASM_GATE6B=PASS_CERTIFIED_AOT
 PURE_CORE_WASI_GATE6C=PASS_CERTIFIED_WASMTIME
+SIGNED_WASM_UPDATE_GATE6D=PASS_CERTIFIED_BROWSER_AND_WASI
 
-SIGNED_WASM_UPDATE_GATE6D_BROWSER=PASS_OBSERVED_LOCAL_PRECOMMIT
-SIGNED_WASM_UPDATE_GATE6D_WASI=PASS_OBSERVED_LOCAL_PRECOMMIT
-GATE6D_UPDATE_AUTHORITY=SAME_TEV_AUTHORITY
-GATE6D_MANAGED_ES256=PASS
-GATE6D_BROWSER_WEBCRYPTO_ORACLE=PASS
-GATE6D_BROWSER_RESTART_RESTORE=PASS_LOCALSTORAGE
-GATE6D_WASI_TWO_PROCESS_RESTORE=PASS_FILE_STORE
-GATE6D_REPLAY_AFTER_RESTORE=FAIL_CLOSED_PASS
-GATE6D_STORE_FAILURE_RUNTIME_ROLLBACK=PASS
-GATE6D_CORE_PRODUCT_CHANGES=0
-GATE6D_UPDATE_PRODUCT_CHANGES=2_PHYSICAL_1_LOGICAL
+DETERMINISTIC_REPLAY_GATE7A=PASS_OBSERVED_LOCAL_PRECOMMIT
+CROSS_HOST_LOCKSTEP_GATE7B=PASS_OBSERVED_LOCAL_PRECOMMIT
+FIRST_DIVERGENCE_GATE7C=PASS_OBSERVED_LOCAL_PRECOMMIT
+CANONICAL_CHECKPOINT_GATE7D=PASS_OBSERVED_LOCAL_PRECOMMIT
+SIGNED_UPDATE_LOCKSTEP_GATE7E=PASS_OBSERVED_LOCAL_PRECOMMIT
+GATE7_CHECKPOINT_SCHEMA=TEV_SCRIPT_RUNTIME_CHECKPOINT_V1
+GATE7_CORE_PRODUCT_CHANGES=2_PHYSICAL_1_LOGICAL
 
-DISTRIBUTED_DETERMINISM=PENDING_AFTER_GATE6D
+PRODUCTION_KEY_PROVISIONING=PENDING
+HOSTILE_ROLLBACK_RESISTANT_STORE=PENDING
+PUBLIC_WAN_TLS_DNS_CDN=PENDING
 STABLE_RELEASE=NO
 ```
 
-Gate-6D is observed PASS on the local precommit candidate in both a real browser and Wasmtime. It reuses the same signed transactional TEV authority certified in Gates 5C/5D. The only shared product addition is a host-independent managed ES256 verifier in the Update layer, mirrored byte-identically for C# and Unity; TEV Core changes are zero.
+Gate-7 demonstrates byte-identical deterministic replay and lockstep across Python, JavaScript, native C#, real browser-wasm AOT and WASI/Wasmtime. It also adds an exact canonical runtime checkpoint whose continuation is reproduced after real browser and Wasmtime process restarts. The same signed update produces the same lockstep receipt on native C#, Browser-WASM and WASI.
 
 Precommit campaign evidence SHA-256:
 
-`024fdd1125afc8ab4b6300e042a341415738650a9ce845868757ae32bb3d558e`
+`00a890f61a29c046c6c0dfb84ffbadd7c5a337621b83fddae9fbeeeb44b6dc25`
 
-The browser durable witness is scoped to persistent `localStorage` on the same loopback origin/profile across a true process restart. The WASI durable witness is scoped to a file store shared by two Wasmtime processes. Hostile rollback-resistant storage, production signing-key provisioning, public WAN/TLS/DNS/CDN, distributed deterministic replay/lockstep and stable release are not claimed here. Exact Gate-6D commit authority requires the post-commit clean-tree rerun and external receipt.
+Production signing-key lifecycle, hostile rollback-resistant durable storage, public WAN/TLS/DNS/CDN and stable release remain separate boundaries. Exact Gate-7 commit authority is bound without a duplicate dynamic rerun: the external receipt proves byte-identical identity of the 20 dynamically tested functional files through the clean commit, while the five added closure files are metadata not consumed by the runner.

@@ -13,54 +13,53 @@ Gate-5E remote transport inside IL2CPP:            PASS CERTIFICADO LOOPBACK_HTT
 Gate-6A Unity Web / browser-WASM:                  PASS CERTIFICADO
 Gate-6B pure Core browser-WASM AOT:                PASS CERTIFICADO
 Gate-6C pure Core WASI / Wasmtime:                 PASS CERTIFICADO
+Gate-6D signed update Browser + WASI:              PASS CERTIFICADO
 
-Gate-6D signed update / Browser:                   PASS OBSERVED LOCAL PRECOMMIT
-Gate-6D signed update / WASI:                      PASS OBSERVED LOCAL PRECOMMIT
-Gate-6D Core product changes:                     0
-Gate-6D Update product changes:                   2 PHYSICAL / 1 LOGICAL
-Gate-6D verifier:                                 MANAGED ES256 P-256 SHA-256
-Browser durable store:                            localStorage + process restart
-Browser independent crypto oracle:                WebCrypto PASS
-WASI durable store:                               file store + two Wasmtime processes
+Gate-7A deterministic replay:                     PASS OBSERVED LOCAL PRECOMMIT
+Gate-7B cross-host lockstep:                      PASS OBSERVED LOCAL PRECOMMIT
+Gate-7C first divergence localization:            PASS OBSERVED LOCAL PRECOMMIT
+Gate-7D canonical checkpoint / restart:           PASS OBSERVED LOCAL PRECOMMIT
+Gate-7E signed-update lockstep:                   PASS OBSERVED LOCAL PRECOMMIT
+Gate-7 Core product changes:                      2 PHYSICAL / 1 LOGICAL
+Gate-7 checkpoint:                                TEV_SCRIPT_RUNTIME_CHECKPOINT_V1
 Stable release:                                   NO
 ```
 
 ## Log de cambios
 
-- Gate-6D reuses the exact `TevScriptUpdateAuthority` certified by Gates 5C/5D instead of introducing a WASM-specific update authority.
-- A synchronous managed ES256/P-256/SHA-256 public-key verifier is added only to the Update layer; TEV Core remains byte-identical to the certified Gate-6A/6B/6C Core.
-- The verifier has no private key, native cryptography dependency, `DllImport`, `ECDsa.Create()` or `SHA256.Create()` dependency.
-- Browser-WASM verifies and commits signed packages, rejects signature negatives, rolls runtime state back when durable commit fails, persists the installed package through `localStorage`, and restores it after a real browser-process restart.
-- Browser WebCrypto independently verifies the same fixed 64-byte IEEE-P1363 signature and is an oracle, not TEV authority.
-- WASI/Wasmtime executes the same signed update authority with a file-backed durable store across two independent Wasmtime processes.
-- Replay after restore fails closed and the next epoch transition succeeds in both the governed update semantics and the WASI campaign.
-- Gate-5C/5D desktop signed-update semantics are rerun as a regression before the WASM campaign.
-- R2/R3 browser persistence and diagnostic hardening changed harness behavior only; no Core semantics were changed.
+- Gate-7A executes the same governed episode 64 times per Python, JavaScript and C# runtime and requires byte-identical replay receipts.
+- Gate-7B compares the exact canonical receipt across Python, JavaScript, native C#, real browser-wasm AOT and WASI/Wasmtime.
+- Gate-7C introduces an intentional single input change at invocation 7 and proves that prefix receipts localize the first semantic divergence exactly at invocation 7, even when the episode can later reconverge.
+- Gate-7D adds `TEV_SCRIPT_RUNTIME_CHECKPOINT_V1`, a canonical exact-state checkpoint bound to `program_id`, `semantic_hash`, complete entity set and complete typed state set.
+- Checkpoint restore is exact-only and cannot be used as a compatibility path across semantic program versions.
+- Browser checkpoint continuation is reproduced after a true Chromium process restart.
+- WASI checkpoint continuation is reproduced in a second Wasmtime process.
+- Gate-7E applies the same signed package through the already certified `TevScriptUpdateAuthority` on native C#, browser-wasm and WASI and requires a byte-identical signed-update lockstep receipt.
+- The C# Core and Unity Core checkpoint implementations are byte-identical mirrors.
+- No production key provisioning, hostile rollback-resistant store or public WAN boundary is claimed.
 
 ## Hipótesis falsable
 
-The signed transactional update authority certified on desktop/IL2CPP can execute unchanged under browser-WASM and WASI when signature verification and durable storage are supplied by host-portable Update-layer providers. A process restart must preserve monotonic anti-replay authority, and a failed durable commit must roll the runtime back to its prior program.
+Given the same canonical TEV program, exact initial checkpoint and ordered invocation sequence, independent hosts must produce the same canonical observable receipts. If one invocation changes, the first divergent prefix must be localized exactly. A canonical checkpoint restored by another process must reproduce the uninterrupted continuation, and the same signed update must produce the same authoritative transition across native C#, browser-wasm and WASI.
 
 ## Tareas
 
-1. Create one exact local Gate-6D commit from the observed 12-file candidate plus closure metadata.
-2. Repeat the full Gate-6D Browser + WASI campaign from that exact clean child commit and bind the external receipt to HEAD/TREE.
-3. Publish only after the clean rerun succeeds; then fast-forward PR #1 while keeping it Draft/Open/Unmerged.
-4. After Gate-6D certification, open the distributed deterministic replay/lockstep campaign as a separate frontier.
+1. Create one exact local Gate-7A→7E commit from the observed candidate plus closure metadata.
+2. Bind the dynamic evidence to the clean child commit by exact SHA-256 identity of all 20 functional Gate-7 files; the five closure-only files are metadata and are not consumed by the runner.
+3. Publish only after content-identity certification succeeds; keep PR #1 Draft/Open/Unmerged.
+4. After semantic distributed determinism, close the remaining production-hardening boundaries separately.
 
 ## Verificación precommit
 
 ```text
-TEV_SCRIPT_WASM_SIGNED_UPDATE_GATE_6D=PASS
-GATE6D_BROWSER=PASS
-GATE6D_BROWSER_WEBCRYPTO_ORACLE=PASS
-GATE6D_WASI=PASS
-GATE6D_WASI_TWO_PROCESS_RESTORE=PASS
-GATE6D_GATE5C_5D_REGRESSION=PASS
-GATE6D_CORE_PRODUCT_CHANGES=0
-GATE6D_UPDATE_PRODUCT_CHANGES=2_PHYSICAL_1_LOGICAL
-PRECOMMIT_EVIDENCE_SHA256=024fdd1125afc8ab4b6300e042a341415738650a9ce845868757ae32bb3d558e
+GATE7A_DETERMINISTIC_REPLAY=PASS
+GATE7B_CROSS_HOST_LOCKSTEP=PASS
+GATE7C_FIRST_DIVERGENCE_LOCALIZATION=PASS
+GATE7D_CHECKPOINT_RESTART=PASS
+GATE7E_SIGNED_UPDATE_LOCKSTEP=PASS
+GATE7_CORE_PRODUCT_CHANGES=2_PHYSICAL_1_LOGICAL
+PRECOMMIT_EVIDENCE_SHA256=00a890f61a29c046c6c0dfb84ffbadd7c5a337621b83fddae9fbeeeb44b6dc25
 STABLE_RELEASE=NO
 ```
 
-This committed state records Gate-6D as observed precommit. Exact Gate-6D certification authority is established only by the subsequent clean-tree rerun on this commit and its ignored external receipt.
+This committed state records Gate-7A→7E as observed dynamically on the exact 20-file functional payload. Exact commit authority is established by content-identity binding: every functional file must remain byte-identical through the clean commit, the five closure-only files must remain non-executable metadata, and the external receipt binds that payload identity to HEAD/TREE.

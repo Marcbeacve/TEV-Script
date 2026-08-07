@@ -5,22 +5,32 @@
     "Unity PlayMode 6000.3.10f1",
     "Unity Windows x64 Mono Player 6000.3.10f1",
     "Unity Windows x64 IL2CPP/AOT Player 6000.3.10f1",
-    "Unity Windows x64 IL2CPP transactional-swap Player 6000.3.10f1"
+    "Unity Windows x64 IL2CPP transactional-swap Player 6000.3.10f1",
+    "Real Chromium browser-wasm",
+    "Wasmtime 47.0.3"
   ],
   "conformance_receipt": "TEV_SCRIPT_CONFORMANCE_RECEIPT_V1",
   "conformance_scenarios": [
     "player.basic.v1",
     "matrix.full.v1",
     "player.idle.v1",
-    "event-chain.v1"
+    "event-chain.v1",
+    "distributed.lockstep.v1"
   ],
   "conformant_runtimes": [
     "Python 3.11+",
     "JavaScript ES2022",
-    "C#/.NET"
+    "C#/.NET",
+    "C# browser-wasm AOT",
+    "C# WASI/Wasmtime"
   ],
   "ir_schema": "TEV_SCRIPT_PROGRAM_IR_V2",
   "language_version": "0.2.0",
+  "runtime_abi": "TEV_SCRIPT_RUNTIME_ABI_V1",
+  "schema": "TEV_SCRIPT_PORTABLE_DESCRIPTOR_V2",
+  "source_extension": ".tevs",
+  "stable": false,
+  "value_model": "TEV_PORTABLE_VALUE_MODEL_V1",
   "observed_update_boundaries_requiring_clean_commit_certification": {
     "gate5c_signed_package": {
       "algorithm": "ES256_P256_SHA256",
@@ -43,19 +53,6 @@
       "transport": "LOOPBACK_HTTP"
     }
   },
-  "pending": [
-    "Production signing-key provisioning",
-    "Hostile rollback-resistant monotonic store",
-    "Public WAN/TLS/DNS/CDN campaign",
-    "Distributed deterministic replay/lockstep campaign",
-    "Unity Input System device provider",
-    "Unity Animator Controller provider"
-  ],
-  "runtime_abi": "TEV_SCRIPT_RUNTIME_ABI_V1",
-  "schema": "TEV_SCRIPT_PORTABLE_DESCRIPTOR_V2",
-  "source_extension": ".tevs",
-  "stable": false,
-  "value_model": "TEV_PORTABLE_VALUE_MODEL_V1",
   "observed_wasm_boundaries_requiring_clean_commit_certification": {
     "gate6a_unity_web_browser": {
       "authority": "LOOPBACK_HTTP_WITNESS",
@@ -95,5 +92,62 @@
     "core_product_changes": 0,
     "update_product_changes": "2_PHYSICAL_1_LOGICAL",
     "precommit_evidence_sha256": "024fdd1125afc8ab4b6300e042a341415738650a9ce845868757ae32bb3d558e"
-  }
+  },
+  "gate6d_certification": {
+    "status": "PASS_CERTIFIED_LOCAL_AND_PUBLISHED",
+    "head": "f6fec7c196b6caa7f2ffe39f449ac243cdb7ae7a",
+    "tree": "f96d367ef0716e60d90520a8a610b017e9fb2cb0",
+    "clean_rerun_evidence_sha256": "0b9179a7340a600b79450eea8e554da91cf1924e332d82795c38df1e681e64b5",
+    "certification_receipt_sha256": "a40fd15e80a1e64059ddbc1d31cf17d0461c4c6e4bf9b1878203b58589aa8bb3"
+  },
+  "observed_distributed_determinism_boundary_requiring_clean_commit_certification": {
+    "gate7a_deterministic_replay": {
+      "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+      "replays_per_runtime": 64
+    },
+    "gate7b_cross_host_lockstep": {
+      "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+      "hosts": [
+        "PYTHON",
+        "JAVASCRIPT",
+        "CSHARP_DOTNET",
+        "CSHARP_BROWSER_WASM_AOT",
+        "CSHARP_WASI_WASMTIME"
+      ],
+      "authority": "BYTE_IDENTICAL_CANONICAL_RECEIPT"
+    },
+    "gate7c_first_divergence": {
+      "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+      "expected_first_divergence": 7,
+      "observed_first_divergence": 7
+    },
+    "gate7d_canonical_checkpoint": {
+      "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+      "schema": "TEV_SCRIPT_RUNTIME_CHECKPOINT_V1",
+      "restore": "EXACT_PROGRAM_AND_SEMANTIC_HASH_ONLY",
+      "browser_process_restart": true,
+      "wasi_second_process": true
+    },
+    "gate7e_signed_update_lockstep": {
+      "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+      "authority": "SAME_TEV_UPDATE_AUTHORITY",
+      "hosts": [
+        "CSHARP_DOTNET",
+        "CSHARP_BROWSER_WASM_AOT",
+        "CSHARP_WASI_WASMTIME"
+      ]
+    },
+    "core_product_changes": "2_PHYSICAL_1_LOGICAL",
+    "precommit_evidence_sha256": "00a890f61a29c046c6c0dfb84ffbadd7c5a337621b83fddae9fbeeeb44b6dc25",
+    "certification_mode": "CONTENT_IDENTITY_BINDING",
+    "clean_dynamic_rerun": "NOT_REQUIRED_FUNCTIONAL_PAYLOAD_BYTE_IDENTICAL"
+  },
+  "pending": [
+    "Production signing-key provisioning and rotation",
+    "Hostile rollback-resistant monotonic store",
+    "Public WAN/TLS/DNS/CDN campaign",
+    "Unity Input System device provider",
+    "Unity Animator Controller provider",
+    "Stable release"
+  ]
 }

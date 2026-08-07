@@ -1,0 +1,43 @@
+{
+  "schema": "TEV_SCRIPT_DISTRIBUTED_DETERMINISM_GATE7A_7E_EVIDENCE_V1",
+  "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+  "branch": "agent/tev-script-distributed-determinism-gate7a-7e-v1",
+  "base_head": "f6fec7c196b6caa7f2ffe39f449ac243cdb7ae7a",
+  "base_tree": "f96d367ef0716e60d90520a8a610b017e9fb2cb0",
+  "precommit_evidence_sha256": "00a890f61a29c046c6c0dfb84ffbadd7c5a337621b83fddae9fbeeeb44b6dc25",
+  "gates": {
+    "7A": "PASS_DETERMINISTIC_REPLAY_64",
+    "7B": "PASS_CROSS_HOST_BYTE_LOCKSTEP",
+    "7C": "PASS_FIRST_DIVERGENCE_INDEX_7",
+    "7D": "PASS_CANONICAL_CHECKPOINT_PROCESS_RESTART",
+    "7E": "PASS_SIGNED_UPDATE_LOCKSTEP"
+  },
+  "checkpoint": {
+    "schema": "TEV_SCRIPT_RUNTIME_CHECKPOINT_V1",
+    "restore": "EXACT_PROGRAM_AND_SEMANTIC_HASH_ONLY",
+    "csharp_unity_mirror": "BYTE_IDENTICAL"
+  },
+  "hosts": [
+    "PYTHON",
+    "JAVASCRIPT",
+    "CSHARP_DOTNET",
+    "CSHARP_BROWSER_WASM_AOT_REAL_CHROMIUM",
+    "CSHARP_WASI_WASMTIME"
+  ],
+  "core_product_changes": "2_PHYSICAL_1_LOGICAL",
+  "certification": {
+    "commit": "NOT_YET_CREATED",
+    "mode": "CONTENT_IDENTITY_BINDING",
+    "clean_tree_rerun": "NOT_REQUIRED_FUNCTIONAL_PAYLOAD_BYTE_IDENTICAL",
+    "functional_payload_identity_sha256": "47a8ccc3ee453f129b26b4a57d9a89555fb1a6284e829ad4a7e53627ff680cdc",
+    "remote_push": false,
+    "pr_modified": false,
+    "merge": false
+  },
+  "boundaries": {
+    "production_key_provisioning": "PENDING",
+    "hostile_rollback_resistant_store": "PENDING",
+    "public_wan_tls_dns_cdn": "PENDING",
+    "stable_release": false
+  }
+}
