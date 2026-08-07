@@ -13,11 +13,20 @@
     "JavaScript ES2022",
     "C#/.NET (observed Windows .NET 10)"
   ],
+  "certified_or_observed_hosts": [
+    "Unity Editor 6000.3.10f1 (certified Gate 1)",
+    "Unity PlayMode capability ABI 6000.3.10f1 (Gate 2 observed; clean-commit certification required)"
+  ],
   "ir_schema": "TEV_SCRIPT_PROGRAM_IR_V2",
   "language_version": "0.2.0",
   "pending_runtimes": [
     "Browser execution campaign",
-    "Unity adapter"
+    "Unity Mono Player",
+    "Unity IL2CPP"
+  ],
+  "pending_unity_providers": [
+    "Input System device binding",
+    "Animator Controller binding"
   ],
   "runtime_abi": "TEV_SCRIPT_RUNTIME_ABI_V1",
   "schema": "TEV_SCRIPT_PORTABLE_DESCRIPTOR_V2",

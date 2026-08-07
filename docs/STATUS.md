@@ -20,9 +20,14 @@ THREE_RUNTIME_CONFORMANCE=PASS
 UNITY_PACKAGE=com.marcbeacve.tev-script@0.2.0-preview.1
 UNITY_EDITOR_VERSION=6000.3.10f1
 UNITY_CORE_SOURCE_IDENTITY=9_PASS
-UNITY_EDITOR_CONFORMANCE=PASS_4_SCENARIOS_OBSERVED
+UNITY_EDITOR_CONFORMANCE=PASS_4_SCENARIOS_CERTIFIED
 UNITY_HOST_SEMANTIC_DRIFT=NONE_OBSERVED
-UNITY_PLAYMODE=PENDING
+UNITY_PLAYMODE=PASS_3_TESTS_OBSERVED
+UNITY_CAPABILITY_ABI=PASS_5_BINDINGS
+UNITY_FLOAT_BOUNDARY=EXPLICIT_AUDITED_PASS
+UNITY_PROVIDER_AUTHORITY=EXPLICIT_PASS
+UNITY_INPUT_SYSTEM_DEVICE=NOT_PROBED
+UNITY_ANIMATOR_CONTROLLER=NOT_PROBED
 UNITY_MONO_PLAYER=PENDING
 UNITY_IL2CPP=PENDING
 DETERMINISTIC_UTF8_LF_OUTPUT=PASS
@@ -32,6 +37,6 @@ LOWERING_TO_TEV_CAUSAL=PENDING
 LOWERING_TO_TEV_GENERAL=PENDING
 ```
 
-Python, JavaScript and C# reproduce the four authoritative receipts byte for byte. Unity Editor 6000.3.10f1 has additionally compiled and executed a UPM package containing the same nine C# Core source files byte-for-byte and reproduced the same four receipts without observed semantic drift.
+Python, JavaScript and C# reproduce the four authoritative receipts byte for byte. Unity Editor 6000.3.10f1 compiles and executes the byte-identical C# Core without observed semantic drift. Gate Unity-2 additionally exercises the capability ABI in real PlayMode: explicit input, Transform motion, animation-state sink, `Time.deltaTime`, `Debug.Log`, and an audited exact/rounded `Rat`/IEEE-754 boundary.
 
-This is still a preview. Unity PlayMode/capability bindings, Mono Player, IL2CPP, browser execution and stable release are not certified.
+This is still a preview. Input System device binding, Animator Controller binding, Mono Player, IL2CPP, browser execution and stable release are not certified.

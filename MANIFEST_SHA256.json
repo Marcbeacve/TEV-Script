@@ -1,6 +1,6 @@
 {
-  "branch": "agent/tev-script-unity-editor-conformance-v1",
-  "file_count": 162,
+  "branch": "agent/tev-script-unity-playmode-capabilities-v1",
+  "file_count": 171,
   "files": [
     {
       "bytes": 195,
@@ -43,9 +43,9 @@
       "sha256": "23d38237f098ac6c03ee0b1a9ed7e93bfa9322530bd672663a18c854d7654af1"
     },
     {
-      "bytes": 3259,
+      "bytes": 4241,
       "path": "PROJECT_STATE.md",
-      "sha256": "4ab855070999ca7835064958fc8a95c7113479248c3fcd16e996f84cbfbae7bd"
+      "sha256": "044c3cb56738c3bb906823155ac49eb2ee00e3c547eb148db273676a88480f37"
     },
     {
       "bytes": 4131,
@@ -78,14 +78,19 @@
       "sha256": "41a822e059ff9c14f8afc1faef27e89131bacfd7287bafaa0e3d2a005a9211ea"
     },
     {
+      "bytes": 13168,
+      "path": "RUN_TEV_SCRIPT_UNITY_PLAYMODE_CONFORMANCE_V1.ps1",
+      "sha256": "5c4d36bb8078690a8b7ec13f548fb77772350f02951915843bdd52634651d3c5"
+    },
+    {
       "bytes": 4916,
       "path": "VALIDATION_RECEIPT.json",
       "sha256": "18db4aefb02fcd935dc99262dda5f1c852b7f92bd712ddcd6470769de5592377"
     },
     {
-      "bytes": 1644,
+      "bytes": 2313,
       "path": "adapters/unity/UNITY_ADAPTER_CONTRACT_V2.md",
-      "sha256": "31b868bebccb12f34f207233f7294b6075fcd86cbe7a6439f5cb138583fc088a"
+      "sha256": "e5b4cceda82b03095b5dae95ff6b06d93668c25f94546ce437136a8aa4d2f038"
     },
     {
       "bytes": 497,
@@ -143,9 +148,9 @@
       "sha256": "5f482c0e60af6075666d282ded912714174b091222af4c3fab213e96e8729423"
     },
     {
-      "bytes": 823,
+      "bytes": 1146,
       "path": "descriptor.json",
-      "sha256": "3c9377ccd35993709e79faa082e2e7b2bf08d18adf41ee121f654af8b28f43e6"
+      "sha256": "af321a3ec31556204b18607729e01c8ab53d844927177be5842099ad1eb332c0"
     },
     {
       "bytes": 4731,
@@ -158,9 +163,9 @@
       "sha256": "e6ab4421ae1b8c1b59c4e954591c82c00d5da1bcb4d647c9be2207aef9b155bb"
     },
     {
-      "bytes": 1378,
+      "bytes": 1720,
       "path": "docs/STATUS.md",
-      "sha256": "6734807e963ab5a689ab0396e1c9c04735f4803aebb77d871e460af7582259fc"
+      "sha256": "b0d564d5d46ed5029d4cb60020537757d677b18b8b8f05eb23bcdfde49ff251c"
     },
     {
       "bytes": 2529,
@@ -231,6 +236,11 @@
       "bytes": 972,
       "path": "evidence/reference-v0.2/unity-editor-conformance-windows-unity6000.3.json",
       "sha256": "16b67ca74b98233bc498a4f7fc94042d9ebd29263ef0fcf745c4d118f7e23598"
+    },
+    {
+      "bytes": 1973,
+      "path": "evidence/reference-v0.2/unity-playmode-conformance-windows-unity6000.3.json",
+      "sha256": "8dbb89acd6da077e30ab3628369ecda57da4c0cd3cb6f496dbf92dd3fb153557"
     },
     {
       "bytes": 3624,
@@ -688,9 +698,9 @@
       "sha256": "1ca1722da50dc5edb6d1dd55719ed9c7b0f95088b9dcd778bb4c7e5153f7c46c"
     },
     {
-      "bytes": 561,
+      "bytes": 931,
       "path": "unity/Package/README.md",
-      "sha256": "8e399e0ae1a857023d02b60372a780d4abb645aa2f106bed3e8a1b7a891e665d"
+      "sha256": "92d1b71349e56b8c247c6a140020b48babff0f692bdec778f70b5b86c8fca607"
     },
     {
       "bytes": 360,
@@ -741,6 +751,21 @@
       "bytes": 9277,
       "path": "unity/Package/Runtime/Core/TevScriptValue.cs",
       "sha256": "56dd6a48d4693acab745caddc420a50497d427eaed6136ddbe72c7176840f559"
+    },
+    {
+      "bytes": 397,
+      "path": "unity/Package/Runtime/Unity/Marcbeacve.TevScript.Unity.asmdef",
+      "sha256": "d342be5484f4d45a61effe3c8835a53bcacea39ea86c2e3edf9fea4abde7262c"
+    },
+    {
+      "bytes": 5094,
+      "path": "unity/Package/Runtime/Unity/TevScriptUnityBoundary.cs",
+      "sha256": "329a67590f86eec99b58450b7010eff76abcad6b1c58cea95b3fbb869d0700a5"
+    },
+    {
+      "bytes": 6776,
+      "path": "unity/Package/Runtime/Unity/TevScriptUnityCapabilities.cs",
+      "sha256": "710d30a750561b026bda3dba374b2ae34bacacabfbaeb6a32ec95f64cceee39b"
     },
     {
       "bytes": 3619,
@@ -803,6 +828,21 @@
       "sha256": "dc7d75d80d7d1fa0cba3956db25d1504b7a5cab6eaddb3263aa209fc0bb06937"
     },
     {
+      "bytes": 536,
+      "path": "unity/Package/Tests/PlayMode/Marcbeacve.TevScript.Tests.PlayMode.asmdef",
+      "sha256": "c3a3f002329bc835c0eee5e03f39a5aa2b2055bb4f4d94732bad730206a339b2"
+    },
+    {
+      "bytes": 8112,
+      "path": "unity/Package/Tests/PlayMode/Resources/TevScriptGate2Player.json",
+      "sha256": "dc7d75d80d7d1fa0cba3956db25d1504b7a5cab6eaddb3263aa209fc0bb06937"
+    },
+    {
+      "bytes": 6445,
+      "path": "unity/Package/Tests/PlayMode/TevScriptUnityPlayModeGateTests.cs",
+      "sha256": "46d6cb39f51ea07609168639ce16d94c1286e5a21b4011d6dfcf7e1f74a3ad0d"
+    },
+    {
       "bytes": 402,
       "path": "unity/Package/package.json",
       "sha256": "6674b921e7843f9ed2d4ea6e191a93a525531d8e8c6457b9be5f65db9d3bdabe"
@@ -811,6 +851,11 @@
       "bytes": 5637,
       "path": "unity/VALIDATE_UNITY_PACKAGE.py",
       "sha256": "63b397fae0d494e11b33ec0eeb5431f576106218b33f8c780fdb2ecbe199816e"
+    },
+    {
+      "bytes": 6316,
+      "path": "unity/VALIDATE_UNITY_PLAYMODE_GATE2.py",
+      "sha256": "3bf7d544e2ac65483baf639efd25cb8a0ab4acc122dc442ee24a7eb0f22bdc39"
     }
   ]
 }
