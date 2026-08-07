@@ -36,8 +36,10 @@ The `.tevs` importer runs the compiler only in Editor, stores the V2 IR as an as
 
 ## Gate status
 
-Gate Unity-1 certifies host neutrality of the C# Core. The package `com.marcbeacve.tev-script@0.2.0-preview.1` contains nine Core C# source files that remain byte-identical to `runtimes/csharp/TevScript.Core`. Unity Editor 6000.3.10f1 compiled and executed those sources and reproduced all four authoritative conformance receipts without observed semantic drift.
+Gate Unity-1 certifies host neutrality of the C# Core. Unity Editor 6000.3.10f1 compiled and executed the byte-identical Core and reproduced all four authoritative conformance receipts without observed semantic drift.
 
-Gate Unity-2 exercises the capability ABI in Unity PlayMode while leaving the Core unchanged. Its observed campaign validates explicit providers for `input.move2d`, Transform-backed `motion.move2d`, an explicit Unity animation-state sink, `time.delta`, and `debug.log`, plus the audited `Rat`/float boundary and non-finite fail-closed behavior. Gate Unity-1 is re-run from its exact certified commit in an isolated clone before Gate Unity-2.
+Gate Unity-2 certifies the capability ABI in Unity PlayMode while leaving the Core unchanged. It validates explicit providers for `input.move2d`, Transform-backed `motion.move2d`, an explicit Unity animation-state sink, `time.delta`, and `debug.log`, plus the audited `Rat`/float boundary and non-finite fail-closed behavior.
 
-Gate Unity-2 does **not** certify a physical Input System device, a real Animator Controller, Mono Player or IL2CPP. Those remain separate falsifiable gates.
+Gate Unity-3 treats Mono Player as a separate host/backend boundary. Before building it reruns the exact certified Gate-2 commit in an isolated clone. The build script explicitly selects `ScriptingImplementation.Mono2x` for `StandaloneWindows64`; the resulting artifact must expose the managed Core/Unity/harness assemblies and Mono runtime layout while rejecting `GameAssembly.dll`. The produced Player is then executed outside the Editor and must reproduce the capability and numeric-boundary witnesses before exiting 0. The Gate-3 harness is certification-only and does not alter the product Core or adapter.
+
+Gate Unity-3 does **not** certify IL2CPP/AOT, a physical Input System device, or a real Animator Controller. Those remain separate falsifiable gates.

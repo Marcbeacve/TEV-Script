@@ -22,13 +22,19 @@ UNITY_EDITOR_VERSION=6000.3.10f1
 UNITY_CORE_SOURCE_IDENTITY=9_PASS
 UNITY_EDITOR_CONFORMANCE=PASS_4_SCENARIOS_CERTIFIED
 UNITY_HOST_SEMANTIC_DRIFT=NONE_OBSERVED
-UNITY_PLAYMODE=PASS_3_TESTS_OBSERVED
+UNITY_PLAYMODE=PASS_3_TESTS_CERTIFIED
 UNITY_CAPABILITY_ABI=PASS_5_BINDINGS
 UNITY_FLOAT_BOUNDARY=EXPLICIT_AUDITED_PASS
 UNITY_PROVIDER_AUTHORITY=EXPLICIT_PASS
+UNITY_MONO_PLAYER=PASS_OBSERVED_LOCAL_PRECOMMIT
+UNITY_MONO_PLAYER_BACKEND=MONO
+UNITY_MONO_PLAYER_BUILD=PASS
+UNITY_MONO_PLAYER_EXECUTION=PASS_EXIT_0
+UNITY_MONO_PLAYER_CAPABILITY_ABI=PASS
+UNITY_MONO_PLAYER_FLOAT_BOUNDARY=EXPLICIT_AUDITED_PASS
+UNITY_MONO_PLAYER_PROVIDER_AUTHORITY=EXPLICIT_PASS
 UNITY_INPUT_SYSTEM_DEVICE=NOT_PROBED
 UNITY_ANIMATOR_CONTROLLER=NOT_PROBED
-UNITY_MONO_PLAYER=PENDING
 UNITY_IL2CPP=PENDING
 DETERMINISTIC_UTF8_LF_OUTPUT=PASS
 REDIRECTED_STDIO_UNICODE=PASS
@@ -37,6 +43,6 @@ LOWERING_TO_TEV_CAUSAL=PENDING
 LOWERING_TO_TEV_GENERAL=PENDING
 ```
 
-Python, JavaScript and C# reproduce the four authoritative receipts byte for byte. Unity Editor 6000.3.10f1 compiles and executes the byte-identical C# Core without observed semantic drift. Gate Unity-2 additionally exercises the capability ABI in real PlayMode: explicit input, Transform motion, animation-state sink, `Time.deltaTime`, `Debug.Log`, and an audited exact/rounded `Rat`/IEEE-754 boundary.
+Python, JavaScript and C# reproduce the four authoritative receipts byte for byte. Unity Editor and PlayMode are certified hosts/surfaces for the unchanged portable Core and capability ABI. Gate Unity-3 additionally observed a real Windows x64 Standalone Player built with backend Mono: the managed Core/adapter/harness assemblies were present, IL2CPP `GameAssembly.dll` was absent, and the Player process executed TEV Script/capabilities and exited 0.
 
-This is still a preview. Input System device binding, Animator Controller binding, Mono Player, IL2CPP, browser execution and stable release are not certified.
+This file records the Gate-3 precommit observation. Exact Gate-3 commit authority is established only by the subsequent clean-tree rerun and external certification receipt. Input System device binding, Animator Controller binding, IL2CPP, browser execution and stable release remain uncertified.

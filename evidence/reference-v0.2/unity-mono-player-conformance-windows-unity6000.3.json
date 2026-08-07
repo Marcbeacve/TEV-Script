@@ -1,0 +1,73 @@
+{
+  "schema": "TEV_SCRIPT_UNITY_MONO_PLAYER_CONFORMANCE_EVIDENCE_V1",
+  "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+  "date": "2026-08-07",
+  "branch": "agent/tev-script-unity-mono-player-v1",
+  "base_head": "c32f9305e61bd31321a654b3192c72fef28cd33e",
+  "base_tree": "1e312b2daba6201bbdf852f914ee7c259d5f649c",
+  "environment": {
+    "unity_editor": "6000.3.10f1",
+    "platform": "Windows",
+    "build_target": "StandaloneWindows64",
+    "scripting_backend": "Mono2x"
+  },
+  "gate2_regression": {
+    "status": "PASS",
+    "isolation": "CERTIFIED_BASE_NAMED_BRANCH_CLONE",
+    "head": "c32f9305e61bd31321a654b3192c72fef28cd33e"
+  },
+  "build": {
+    "status": "PASS",
+    "process_exit_code": 0,
+    "backend": "MONO",
+    "artifact_layout": "PASS",
+    "managed_core_assembly": "PASS",
+    "managed_unity_adapter_assembly": "PASS",
+    "managed_gate3_harness_assembly": "PASS",
+    "harness_assembly_references": "EXPLICIT_PASS",
+    "gameassembly_dll": "ABSENT_PASS",
+    "player_exe_sha256": "44697487931ca64d09883de957c845c6f138aaf3cd975397e99865ba6aab987f"
+  },
+  "player_execution": {
+    "status": "PASS",
+    "process_exit_code": 0,
+    "platform": "WINDOWS_PLAYER_PASS",
+    "core_parse": "PASS",
+    "runtime_state": "PASS"
+  },
+  "capability_abi": {
+    "input.move2d": "PASS",
+    "motion.move2d": "PASS_TRANSFORM2D",
+    "animation.play": "PASS_EXPLICIT_UNITY_SINK",
+    "time.delta": "PASS",
+    "debug.log": "PASS"
+  },
+  "numeric_boundary": {
+    "float_to_rat_exact": "PASS",
+    "rat_to_float_boundary_witness": "PASS",
+    "time_delta_boundary_witness": "PASS",
+    "nonfinite_float_fail_closed": "PASS"
+  },
+  "authority": {
+    "provider_selection": "EXPLICIT_PASS",
+    "core_modified": false,
+    "adapter_modified": false,
+    "harness_assembly_references": "EXPLICIT_PASS"
+  },
+  "observed_receipts": {
+    "unity_mono_build_log_sha256": "22f73ea601ce7067b5efca298d4fad5badb15c96774c2faf5d1ad60d0479a66f",
+    "unity_mono_player_log_sha256": "cac6a7d944315e7fd9078f79ad0612a2ae29090d359f405bf23ec8a5272b105e"
+  },
+  "remaining_boundaries": {
+    "input_system_device": "NOT_PROBED",
+    "animator_controller": "NOT_PROBED",
+    "il2cpp": "NOT_PROBED"
+  },
+  "provenance": {
+    "commit_created": false,
+    "remote_push": false,
+    "pr_modified": false,
+    "merge": false,
+    "note": "Historical precommit observation. Exact commit authority is established only by a subsequent clean-tree rerun."
+  }
+}

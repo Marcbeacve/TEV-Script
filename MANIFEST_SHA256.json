@@ -1,6 +1,6 @@
 {
-  "branch": "agent/tev-script-unity-playmode-capabilities-v1",
-  "file_count": 171,
+  "branch": "agent/tev-script-unity-mono-player-v1",
+  "file_count": 177,
   "files": [
     {
       "bytes": 195,
@@ -43,9 +43,9 @@
       "sha256": "23d38237f098ac6c03ee0b1a9ed7e93bfa9322530bd672663a18c854d7654af1"
     },
     {
-      "bytes": 4241,
+      "bytes": 4510,
       "path": "PROJECT_STATE.md",
-      "sha256": "044c3cb56738c3bb906823155ac49eb2ee00e3c547eb148db273676a88480f37"
+      "sha256": "0af7376826aad07ddcfa62a6c1982d186f9630391e2d0c4387304e3f9a54b590"
     },
     {
       "bytes": 4131,
@@ -78,6 +78,11 @@
       "sha256": "41a822e059ff9c14f8afc1faef27e89131bacfd7287bafaa0e3d2a005a9211ea"
     },
     {
+      "bytes": 15928,
+      "path": "RUN_TEV_SCRIPT_UNITY_MONO_PLAYER_CONFORMANCE_V1.ps1",
+      "sha256": "c8aa2b2cd2aa46df8076ed5efcb6e8f84a39020316d6b00482279b7350797391"
+    },
+    {
       "bytes": 13168,
       "path": "RUN_TEV_SCRIPT_UNITY_PLAYMODE_CONFORMANCE_V1.ps1",
       "sha256": "5c4d36bb8078690a8b7ec13f548fb77772350f02951915843bdd52634651d3c5"
@@ -88,9 +93,9 @@
       "sha256": "18db4aefb02fcd935dc99262dda5f1c852b7f92bd712ddcd6470769de5592377"
     },
     {
-      "bytes": 2313,
+      "bytes": 2657,
       "path": "adapters/unity/UNITY_ADAPTER_CONTRACT_V2.md",
-      "sha256": "e5b4cceda82b03095b5dae95ff6b06d93668c25f94546ce437136a8aa4d2f038"
+      "sha256": "1ec84d4b64dbdc0ebdbd695716ea1e5e2708f872b7b4cc541c2a3cee2436c7a0"
     },
     {
       "bytes": 497,
@@ -148,9 +153,9 @@
       "sha256": "5f482c0e60af6075666d282ded912714174b091222af4c3fab213e96e8729423"
     },
     {
-      "bytes": 1146,
+      "bytes": 1189,
       "path": "descriptor.json",
-      "sha256": "af321a3ec31556204b18607729e01c8ab53d844927177be5842099ad1eb332c0"
+      "sha256": "ad70a23c2873153f07149c1d1a6a26a7986ced0f88a7b78313c826ac49941e50"
     },
     {
       "bytes": 4731,
@@ -163,9 +168,9 @@
       "sha256": "e6ab4421ae1b8c1b59c4e954591c82c00d5da1bcb4d647c9be2207aef9b155bb"
     },
     {
-      "bytes": 1720,
+      "bytes": 2172,
       "path": "docs/STATUS.md",
-      "sha256": "b0d564d5d46ed5029d4cb60020537757d677b18b8b8f05eb23bcdfde49ff251c"
+      "sha256": "1d21eae6d80668662bb16687bd6f5b2d02f8b7d1ac2ed09805434da253ece208"
     },
     {
       "bytes": 2529,
@@ -236,6 +241,11 @@
       "bytes": 972,
       "path": "evidence/reference-v0.2/unity-editor-conformance-windows-unity6000.3.json",
       "sha256": "16b67ca74b98233bc498a4f7fc94042d9ebd29263ef0fcf745c4d118f7e23598"
+    },
+    {
+      "bytes": 2431,
+      "path": "evidence/reference-v0.2/unity-mono-player-conformance-windows-unity6000.3.json",
+      "sha256": "a6be344cb61e2e05196e242286470b33cc294711ee0c711ff9eb845491cc239e"
     },
     {
       "bytes": 1973,
@@ -698,9 +708,9 @@
       "sha256": "1ca1722da50dc5edb6d1dd55719ed9c7b0f95088b9dcd778bb4c7e5153f7c46c"
     },
     {
-      "bytes": 931,
+      "bytes": 1119,
       "path": "unity/Package/README.md",
-      "sha256": "92d1b71349e56b8c247c6a140020b48babff0f692bdec778f70b5b86c8fca607"
+      "sha256": "6e054218ebba732889ce684623d9d22f2bfca03ede54b9a23975e859856afbed"
     },
     {
       "bytes": 360,
@@ -846,6 +856,26 @@
       "bytes": 402,
       "path": "unity/Package/package.json",
       "sha256": "6674b921e7843f9ed2d4ea6e191a93a525531d8e8c6457b9be5f65db9d3bdabe"
+    },
+    {
+      "bytes": 442,
+      "path": "unity/PlayerGates/Mono/Marcbeacve.TevScript.Gate3.MonoPlayer.asmdef",
+      "sha256": "e7c2d16e7c6ba409b56a6a9a7dae6698ff6788b9ffe06bb24c4aa328dd5f1b71"
+    },
+    {
+      "bytes": 2606,
+      "path": "unity/PlayerGates/Mono/TevScriptMonoPlayerBuildGate.cs",
+      "sha256": "5d8e8d59031c8374b04cf7622ad1670d35e50da8487b6be7f1785574f0300371"
+    },
+    {
+      "bytes": 7974,
+      "path": "unity/PlayerGates/Mono/TevScriptMonoPlayerGate.cs",
+      "sha256": "c7ef94e15e0e14e49674aa0e817278eeca5b69821a78a655a8ffcb5a11d6ad19"
+    },
+    {
+      "bytes": 4654,
+      "path": "unity/VALIDATE_UNITY_MONO_PLAYER_GATE3.py",
+      "sha256": "a98a9082f808fa854a16fabf4550a2c821ce8d9cef34a175519dae9eb7776e76"
     },
     {
       "bytes": 5637,
