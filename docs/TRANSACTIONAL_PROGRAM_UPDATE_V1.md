@@ -1,82 +1,67 @@
 # Transactional Program Update V1
 
-Gate-5A introduces a portable transactional supervisor for replacing a complete
-`TEV_SCRIPT_PROGRAM_IR_V2` at runtime.
+## Core model
 
-This is **not** a network update system and is **not** a signature authority.
-Those are later gates.
+`TevScriptRuntime` remains a fixed-program runtime. `TevScriptRuntimeHost`
+owns replacement authority and prepares an isolated candidate runtime before
+the active runtime reference may change.
 
-## Authority model
-
-The existing `TevScriptRuntime` remains a fixed-program runtime. It is not
-mutated in place.
-
-`TevScriptRuntimeHost` owns one active runtime and performs:
-
-```text
-candidate JSON
-    |
-    v
-strict TevScriptProgram.Parse
-    |
-    v
-program/entity/state compatibility
-    |
-    v
-explicit capability ceiling
-    |
-    v
-construct isolated candidate runtime
-    |
-    v
-restore compatible snapshot
-    |
-    v
-TevScriptRuntimeSwapPlan
-    |
-    +-- reject -> active runtime unchanged
-    |
-    `-- Commit -> single active-reference swap
-```
-
-The previous runtime object is retained for one explicit rollback.
-
-## Gate-5A compatibility contract
-
-Required:
+The Gate-5A compatibility contract remains:
 
 - identical `program_id`;
 - identical entity identity set;
 - every existing state remains present;
-- every existing state keeps the exact same TEV type;
-- candidate capability declarations stay inside the host-provided capability
-  ceiling.
+- every existing state keeps the exact TEV type;
+- candidate capabilities remain within the explicit host ceiling;
+- new states may be added and use candidate initial values.
 
-Allowed:
+`PrepareSwap` is non-authoritative. `Commit` performs the authoritative runtime
+reference change. Reused/stale plans fail closed. `RollbackLastCommit` restores
+the exact previous runtime object.
 
-- handler/instruction changes allowed by IR V2;
-- different semantic hash;
-- new states, initialized from the candidate program;
-- changes to initial values of existing states (the live snapshot wins).
+## Gate-5B AOT witness
 
-Not yet included:
+Gate-5B does not change the Gate-5A implementation. It places the same
+transactional host inside a Windows x64 IL2CPP/AOT Player.
 
-- network transport;
-- package signatures;
-- anti-replay / monotonic release counters;
-- persistent crash recovery;
-- arbitrary state-schema migrations;
-- entity addition/removal;
-- WASM/browser transport;
-- app-store policy claims.
+The behavioral campaign is deliberately stronger than semantic-hash identity:
 
-## Atomicity
+```text
+Runtime A
+health=100
+damage(10) -> health=90
 
-Preparation never changes the active runtime.
+prepare/commit Runtime B
+health migrates as 90
+damage(10) -> health remains 90   # candidate behavior is active
 
-Commit validates plan ownership and generation, then performs one authoritative
-reference replacement while holding the host lock. Plans prepared against an
-older generation fail closed.
+rollback to exact Runtime A
+health remains 90
+damage(10) -> health=80           # previous behavior is restored
+```
 
-Rollback restores the exact previous runtime object rather than reconstructing
-it from serialized data.
+The same Player also verifies fail-closed state removal, capability escalation,
+program-id drift, reused plans and stale plans.
+
+Gate-5B requires IL2CPP/AOT artifact evidence:
+
+- `GameAssembly.dll` present;
+- exactly one `global-metadata.dat` under `il2cpp_data/Metadata`;
+- `MonoBleedingEdge` absent.
+
+No JIT, reflection, runtime source compilation, dynamic assembly loading,
+network delivery or signature authority is introduced.
+
+## Remaining update frontier
+
+The next batch is:
+
+```text
+5C  signed update package and explicit key authority
+5D  anti-replay / monotonic version or epoch
+5E  remote transport with full-package activation
+```
+
+Transport is deliberately last: bytes received from the network must never
+become authoritative before the package and replay contracts are independently
+validated.
