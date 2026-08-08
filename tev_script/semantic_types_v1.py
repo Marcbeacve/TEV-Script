@@ -3,9 +3,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from .ast_v1 import CapabilityDecl, EnumDecl, FunctionDecl, RecordDecl, TypeRef
+from .ast_v1 import CapabilityDecl, EnumDecl, Expr, FunctionDecl, RecordDecl, TypeRef
+from .contracts_v1 import MAX_PURE_FUNCTION_CALL_DEPTH
 from .diagnostics import SourceSpan, TevScriptError
-from .linker_v1 import LinkPlanV1, NAMESPACE_TYPE, resolve_symbol
+from .graph_validation_v1 import validate_bounded_dag_v1
+from .linker_v1 import (
+    LinkPlanV1,
+    NAMESPACE_FUNCTION,
+    NAMESPACE_TYPE,
+    resolve_symbol,
+)
 from .types import CAPABILITIES, PURE_FUNCTIONS, SUPPORTED_TYPES, Signature
 
 
@@ -246,6 +253,7 @@ def build_type_environment(plan: LinkPlanV1) -> TypeEnvironmentV1:
         tuple(records), tuple(enums), tuple(functions), tuple(capabilities)
     )
     _validate_record_acyclic(environment)
+    _validate_pure_function_graph_precheck(plan, environment)
     return environment
 
 
@@ -356,6 +364,64 @@ def _validate_record_acyclic(environment: TypeEnvironmentV1) -> None:
             popped = path.pop()
             assert popped == type_id
             state[type_id] = 2
+
+
+def _validate_pure_function_graph_precheck(
+    plan: LinkPlanV1,
+    environment: TypeEnvironmentV1,
+) -> None:
+    source_functions = {
+        item.callable_id: item
+        for item in environment.functions
+        if isinstance(item.declaration, FunctionDecl)
+    }
+    graph: dict[str, tuple[str, ...]] = {}
+
+    for function_id, signature in source_functions.items():
+        declaration = signature.declaration
+        assert isinstance(declaration, FunctionDecl)
+        calls: set[str] = set()
+        stack: list[Expr] = [declaration.expression]
+        while stack:
+            expression = stack.pop()
+            if expression.kind == "call" and expression.children:
+                callee = expression.children[0]
+                if callee.kind == "name":
+                    try:
+                        symbol = resolve_symbol(
+                            plan,
+                            signature.owner_id,
+                            str(callee.value),
+                            NAMESPACE_FUNCTION,
+                            span=callee.span,
+                        )
+                    except TevScriptError as exc:
+                        if exc.diagnostic.code == "TEVS_V1_LINK_NAME_AMBIGUOUS":
+                            raise
+                    else:
+                        if isinstance(symbol.declaration, FunctionDecl):
+                            calls.add(symbol.semantic_id)
+                stack.extend(expression.children[1:])
+                continue
+            if expression.kind == "record":
+                _type_name, field_inits = expression.value
+                stack.extend(field.expression for field in field_inits)
+            stack.extend(expression.children)
+        graph[function_id] = tuple(sorted(calls))
+
+    validate_bounded_dag_v1(
+        graph,
+        maximum_depth=MAX_PURE_FUNCTION_CALL_DEPTH,
+        cycle_code="TEVS_V1_PURITY_RECURSION",
+        depth_code="TEVS_V1_PURITY_CALL_DEPTH",
+        span_for_node=lambda node_id: (
+            source_functions[node_id].declaration.span
+            if node_id in source_functions
+            and isinstance(source_functions[node_id].declaration, FunctionDecl)
+            else None
+        ),
+        graph_name="pure-function call graph",
+    )
 
 
 def _dedupe_capability_signatures(
