@@ -56,6 +56,11 @@ class V1PublicApiTests(unittest.TestCase):
             "run_ir_v3_conformance",
             "ScriptRuntimeV3",
             "RuntimeCheckpointV2",
+            "PythonCapabilityContractV1",
+            "PythonProgramArtifactV1",
+            "PythonRuntimeHostV1",
+            "build_python_program_v1",
+            "build_python_program_v1_paths",
         ):
             self.assertTrue(hasattr(tev_script, name), name)
             self.assertIn(name, tev_script.__all__)
@@ -106,6 +111,17 @@ class V1PublicApiTests(unittest.TestCase):
             compiled.analysis.linked_program,
             compiled.target,
         )
+
+    def test_public_python_host_builds_ir_v3_and_runs_without_source_at_runtime(self) -> None:
+        artifact = tev_script.build_python_program_v1(
+            {
+                "counter.tevs": b'script Counter version "1.0.0"; entity E { state x: Int = 0; on inc { x = x + 1; } }',
+            }
+        )
+        self.assertEqual(artifact.ir()["schema"], "TEV_SCRIPT_PROGRAM_IR_V3")
+        host = tev_script.PythonRuntimeHostV1(artifact)
+        host.invoke("E", "inc")
+        self.assertEqual(host.state("E")["x"], 1)
 
     def test_unversioned_runtime_alias_still_names_v02_runtime(self) -> None:
         self.assertIsNot(tev_script.ScriptRuntime, tev_script.ScriptRuntimeV3)
