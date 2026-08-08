@@ -54,6 +54,8 @@ RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py
 
 This gate verifies the Python distribution/embedding boundary on one exact clean commit. Its mandatory scope includes the current Python/frontend/IR V3 closure, V0.2 Python regression, governance, zero runtime dependencies, two independent offline wheel builds, byte-identical reproducible `py3-none-any` wheel output, isolated wheel installation, installed-module origin, explicit deployed IR V3 compilation, IR-only runtime execution, least-authority capability preflight, serialized/non-reentrant host access with fail-closed `TEVS_PYTHON_V1_HOST_BUSY`, typed capability execution, Runtime Checkpoint V2 continuation and a deterministic 10,000-event soak.
 
+External schema-validation libraries such as `jsonschema` are not runtime dependencies of the Python wheel and are not part of the least-authority host ABI. A host/product certificate therefore does not by itself claim the stronger global zero-skip/schema-validation property defined in Stage B.
+
 The canonical Python product contract requires:
 
 ```text
@@ -122,9 +124,10 @@ Authority:
 RUN_TEV_SCRIPT_V1_PRECERTIFY.py
 ```
 
-The gate runs from one exact clean checkout and requires all of the following without V1/V3 skips:
+The gate runs from one exact clean checkout and requires all of the following without V1/V3/V0.2-regression unittest skips:
 
-- reference V1 frontend/static/lowering closure;
+- reference V1 frontend/static/lowering closure executed with `--require-zero-skips`;
+- explicit zero-skip counters for the V1, IR V3 and V0.2 Python regression suites;
 - V0.2 Python regression inside the closure gate;
 - C# V0.2/V3 assembly-isolation and reflection/AOT surface guard;
 - regex-free closed ASCII lexical admission in the portable C# V3 assembly;
@@ -137,12 +140,14 @@ The gate runs from one exact clean checkout and requires all of the following wi
 - signed-update V3 Browser-WASM campaign;
 - signed-update V3 WASI fresh/restore campaign;
 - complete portable V0.2 Python/JavaScript regression;
-- independent V0.2 Browser-WASM AOT and WASI/Wasmtime dynamic witnesses from
-  `tools/validate_v0_2_portable_hosts.py`;
-- explicit classification of optional `jsonschema` validation as either PASS
-  or `OPTIONAL_DEPENDENCY_UNAVAILABLE`;
+- independent V0.2 Browser-WASM AOT and WASI/Wasmtime dynamic witnesses from `tools/validate_v0_2_portable_hosts.py`;
+- `jsonschema` installed in the **certification environment** and `JSON_SCHEMA_VALIDATION=PASS` for the V0.2 portable campaign;
 - clean worktree before and after;
 - identical commit and tree before and after validation.
+
+`jsonschema` is a certification-tool dependency only. It MUST NOT be added to the TEV Script Python runtime dependency set merely to satisfy this gate. The production wheel remains governed by its independent zero-runtime-dependency contract.
+
+The global gate may not reinterpret `jsonschema` absence as a successful partial result. `OPTIONAL_DEPENDENCY_UNAVAILABLE` remains useful for ordinary development/diagnostic runs of the portable conformance tool, but it is a failed admission environment for global `V1_PRECERTIFY`/`CERTIFY_FULL`.
 
 A successful run emits one canonical JSON receipt:
 
@@ -150,7 +155,7 @@ A successful run emits one canonical JSON receipt:
 TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V6
 ```
 
-and its SHA-256.
+The receipt binds the certification `jsonschema` version, explicit zero-skip frontend evidence, the exact Git branch/commit/tree and the remaining mandatory cross-host witnesses, and is itself bound by a SHA-256.
 
 `V1_PRECERTIFY=PASS` still means:
 
@@ -179,10 +184,11 @@ The gate:
 4. requires exactly one successful pre-certify receipt and receipt SHA-256;
 5. parses that receipt rather than trusting terminal prose;
 6. verifies that the embedded commit/tree/branch equal the current checkout;
-7. verifies that every mandatory V1/V3 evidence field is `PASS` or its exact stronger PASS token;
-8. verifies `certify_full=false` and `language_stable=false` in the pre-certify evidence, proving the child did not self-promote;
-9. re-checks the repository remains clean and the exact commit/tree are unchanged after all validation;
-10. emits a new technical certificate bound to that exact commit/tree and the exact pre-certify receipt hash.
+7. requires a non-empty certification `jsonschema` version and exact `v0_2_jsonschema_validation=PASS`;
+8. verifies the explicit `v1_frontend_zero_skips=PASS` evidence and every remaining mandatory V1/V3 field;
+9. verifies `certify_full=false` and `language_stable=false` in the pre-certify evidence, proving the child did not self-promote;
+10. re-checks the repository remains clean and the exact commit/tree are unchanged after all validation;
+11. emits a new technical certificate bound to that exact commit/tree and the exact pre-certify receipt hash.
 
 The global technical certificate schema is:
 
@@ -251,11 +257,13 @@ Every certified Git commit/tree and host artifact must be the identity observed 
 
 ## 8. No skipped mandatory target
 
-For global V1 full certification, a missing Node, .NET, Chromium, Wasmtime, .NET WASI pack or required wasi-sdk is a failed admission environment, not a successful partial certification.
+For global V1 full certification, a missing Node, .NET, Chromium, Wasmtime, .NET WASI pack, required wasi-sdk **or certification-time `jsonschema`** is a failed admission environment, not a successful partial certification.
 
-For Python full certification, a missing/incompatible local Python 3.11+, pip or setuptools build environment, a non-reproducible wheel, a failed isolated install or any mandatory runtime/authority/serialization/checkpoint/soak witness is likewise a failed host admission.
+All unittest suites included by the global frontend closure must report explicit skip count zero. Relying on a test runner's stdout/stderr formatting is not sufficient evidence; the closure emits machine-readable skip counters and `V1_PRECERTIFY` requires their zero values.
 
-Individual development gates may report `SKIPPED_*` when a tool is unavailable. Python production/certification and global `PRECERTIFY`/`CERTIFY_FULL` must reject skips in their mandatory scope.
+For Python full certification, a missing/incompatible local Python 3.11+, pip or setuptools build environment, a non-reproducible wheel, a failed isolated install or any mandatory runtime/authority/serialization/checkpoint/soak witness is likewise a failed host admission. External schema validation remains outside that host/product runtime dependency contract unless a later Python certificate version explicitly promotes it into scope.
+
+Individual development gates may report `SKIPPED_*` when a tool is unavailable. Global `PRECERTIFY`/`CERTIFY_FULL` must reject all skips in their mandatory scope.
 
 ## 9. Production-security boundary
 
