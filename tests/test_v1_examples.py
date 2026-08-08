@@ -53,7 +53,8 @@ class V1ExampleTests(unittest.TestCase):
 
     def test_algebraic_capability_example_requires_ir_v3(self) -> None:
         analysis = analyze_v1_paths([EXAMPLES / "AlgebraicCapability.tevs"])
-        self.assertFalse(analysis.ir_v2_boundary.admissible)
+        self.assertFalse(analysis.ir_v2_boundary.lowerable)
+        self.assertTrue(analysis.ir_v2_boundary.blockers)
         target = lower_linked_program_v1_to_ir_v3(analysis.linked_program)
         self.assertEqual(target.ir["schema"], "TEV_SCRIPT_PROGRAM_IR_V3")
         type_ids = {item["type_id"] for item in target.ir["types"]}
