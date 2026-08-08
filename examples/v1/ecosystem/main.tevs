@@ -1,0 +1,43 @@
+script Ecosystem version "1.0.0";
+
+import ecosystem.model;
+import ecosystem.rules;
+import ecosystem.storage;
+
+behavior EnergyConsumer {
+    state energy: Rat = 1;
+
+    on update {
+        let dt = time.delta();
+        energy = ecosystem.rules.normalize(energy - dt * 0.01);
+    }
+}
+
+entity Harvester {
+    use EnergyConsumer;
+
+    state selected: Option<ecosystem.model.Resource> = None;
+
+    on harvest(amount: Rat) {
+        let remaining = storage.remainingCapacity();
+
+        if remaining > 0 {
+            let acceptedAmount = ecosystem.rules.normalize(min(amount, remaining));
+            let resource = ecosystem.model.Resource(
+                amount = acceptedAmount,
+                kind = ecosystem.model.ResourceKind::Mineral
+            );
+
+            selected = Some(resource);
+
+            match selected {
+                Some(value) => {
+                    call storage.deposit(value);
+                }
+                None => {
+                    log "selection disappeared";
+                }
+            }
+        }
+    }
+}
