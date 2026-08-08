@@ -76,7 +76,7 @@ V1 does not reinterpret those receipts. The C# V0.2 assembly remains `TevScript.
 ## Rama de trabajo actual
 
 ```text
-BRANCH=agent/tev-script-v1-global-certification-fix-v1
+BRANCH=agent/tev-script-v1-global-certification-fix-v2
 BASE_CERTIFIED_V0_2=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5
 PYTHON_CERTIFIED_REFERENCE=5d2bd345b2bd0c852d95fbf2795566722186a67f
 STABLE_RELEASE=NO
@@ -302,7 +302,7 @@ program_id
 ir_schema
 IR semantic_hash
 source_schema
-source_semantic_hash
+source semantic_hash
 exact entity set
 exact state set
 each state type
@@ -520,12 +520,11 @@ The shared IR V3 negative corpus must force Python, JavaScript and C# to reject 
 
 1. Materialize one isolated clean checkout/worktree of the exact current global-certification HEAD; do not use or alter the WIP checkout at `C:\mio\TEV-Script`.
 2. Verify the certification environment provides Python 3.11+, `jsonschema`, Node, .NET, Chromium, Wasmtime and the required .NET WASI/wasi-sdk surfaces.
-3. Execute `RUN_TEV_SCRIPT_V1_PRECERTIFY.py` once as the diagnostic global campaign. Do not waive or reinterpret any zero-skip, schema, Browser-WASM, WASI or signed-update failure.
-4. Fix every real failure on this isolated global-certification branch without weakening the corresponding gate, then restart the campaign from one exact clean commit/tree.
-5. When and only when `V1_PRECERTIFY=PASS`, execute `RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py`. The full certifier re-runs PRECERTIFY and independently verifies its receipt.
-6. Preserve `CERTIFY_FULL=NO` and `LANGUAGE_STABLE=NO` until the exact current commit dynamically earns the global certificate.
-7. Only after global `CERTIFY_FULL=PASS` should a stable-admission/version commit be considered. That new commit must be re-certified rather than inheriting the candidate certificate. If the release includes the Python distribution, rerun Python production + Python full certification on that promoted commit as well.
-8. Do not merge, tag, publish or mark stable without explicit authorization.
+3. Execute `RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py` once on that exact clean checkout. The certifier runs PRECERTIFY V6 internally, so a separate preliminary PRECERTIFY run would duplicate the full campaign.
+4. Fix every real failure without weakening or skipping the corresponding gate; any fix creates a new Git identity and therefore requires restarting the one-shot certificate campaign from that new exact clean commit/tree.
+5. Preserve `CERTIFY_FULL=NO` and `LANGUAGE_STABLE=NO` until the exact current commit dynamically earns the global certificate.
+6. Only after global `CERTIFY_FULL=PASS` should a stable-admission/version commit be considered. That new commit must be re-certified rather than inheriting the candidate certificate. If the release includes the Python distribution, rerun Python production + Python full certification on that promoted commit as well.
+7. Do not merge, tag, publish or mark stable without explicit authorization.
 
 ## Production boundaries unchanged
 
