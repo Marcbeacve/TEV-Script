@@ -13,6 +13,7 @@ V1_JSON_INPUTS = (
     "conformance/v1-static-semantics-cases.json",
     "conformance/v1-behavior-composition-cases.json",
     "conformance/v1-constant-cases.json",
+    "conformance/v1-irv2-lowering-cases.json",
     "spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json",
     "schemas/tev_script_linked_program_v1.schema.json",
     "CANONICAL_INDEX.json",
@@ -21,7 +22,7 @@ V0_2_TESTS = ("test_canonical.py", "test_compiler.py", "test_conformance.py")
 
 
 def main() -> int:
-    print("TEV_SCRIPT_V1_FRONTEND_CLOSURE_SCHEMA=V1")
+    print("TEV_SCRIPT_V1_FRONTEND_CLOSURE_SCHEMA=V2")
     print("V0_2_CERTIFIED_BASE=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5")
 
     compiled = compileall.compile_dir(str(ROOT / "tev_script"), quiet=1) and compileall.compile_dir(
@@ -76,6 +77,7 @@ def main() -> int:
     if not v02_result.wasSuccessful():
         return 1
 
+    print("TEV_SCRIPT_V1_IRV2_ERASABLE_LOWERING=PASS_CANDIDATE")
     print("V1_RUNTIME_IR3=NOT_IMPLEMENTED")
     print("V1_CROSS_RUNTIME_PARITY=NOT_CLAIMED")
     print("V1_STABLE_RELEASE=NO")
