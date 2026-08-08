@@ -52,7 +52,15 @@ Authority:
 RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py
 ```
 
-This gate verifies the Python distribution/embedding boundary on one exact clean commit. Its mandatory scope includes the current Python/frontend/IR V3 closure, V0.2 Python regression, governance, zero runtime dependencies, two independent offline wheel builds, byte-identical reproducible `py3-none-any` wheel output, isolated wheel installation, installed-module origin, explicit deployed IR V3 compilation, IR-only runtime execution, least-authority capability preflight, typed capability execution, Runtime Checkpoint V2 continuation and a deterministic 10,000-event soak.
+This gate verifies the Python distribution/embedding boundary on one exact clean commit. Its mandatory scope includes the current Python/frontend/IR V3 closure, V0.2 Python regression, governance, zero runtime dependencies, two independent offline wheel builds, byte-identical reproducible `py3-none-any` wheel output, isolated wheel installation, installed-module origin, explicit deployed IR V3 compilation, IR-only runtime execution, least-authority capability preflight, serialized/non-reentrant host access with fail-closed `TEVS_PYTHON_V1_HOST_BUSY`, typed capability execution, Runtime Checkpoint V2 continuation and a deterministic 10,000-event soak.
+
+The canonical Python product contract requires:
+
+```text
+python_production_surface.serialized_host_access=true
+```
+
+A capability-driven attempt to reenter the same active host must be rejected and must not mutate TEV state. The host does not turn Python thread scheduling into an implicit TEV ordering rule.
 
 It emits:
 
@@ -73,12 +81,18 @@ Authority:
 RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py
 ```
 
-This gate is read-only with respect to tracked repository content. It captures its own exact HEAD/tree, re-runs Python production admission, parses the canonical production receipt rather than trusting terminal prose, independently recomputes the receipt hash, requires the embedded hash and external hash to agree, validates every mandatory Python product witness, rechecks repository/canonical/state immutability and emits a certificate bound to the exact production receipt and wheel SHA-256.
+This gate is read-only with respect to tracked repository content. It captures its own exact HEAD/tree, verifies `serialized_host_access=true`, re-runs Python production admission, parses the canonical production receipt rather than trusting terminal prose, independently recomputes the receipt hash, requires the embedded hash and external hash to agree, validates every mandatory Python product witness including `reentrant_access_rejected=PASS`, rechecks repository/canonical/state immutability and emits a certificate bound to the exact production receipt and wheel SHA-256.
 
 The Python certificate schema is:
 
 ```text
 TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V1
+```
+
+Its certified scope explicitly includes:
+
+```text
+V1_PYTHON_SERIALIZED_HOST_ACCESS_GUARD
 ```
 
 A successful Python-host admission emits:
@@ -233,7 +247,7 @@ Every certified Git commit/tree and host artifact must be the identity observed 
 
 For global V1 full certification, a missing Node, .NET, Chromium, Wasmtime, .NET WASI pack or required wasi-sdk is a failed admission environment, not a successful partial certification.
 
-For Python full certification, a missing/incompatible local Python 3.11+, pip or setuptools build environment, a non-reproducible wheel, a failed isolated install or any mandatory runtime/authority/checkpoint/soak witness is likewise a failed host admission.
+For Python full certification, a missing/incompatible local Python 3.11+, pip or setuptools build environment, a non-reproducible wheel, a failed isolated install or any mandatory runtime/authority/serialization/checkpoint/soak witness is likewise a failed host admission.
 
 Individual development gates may report `SKIPPED_*` when a tool is unavailable. Python production/certification and global `PRECERTIFY`/`CERTIFY_FULL` must reject skips in their mandatory scope.
 
@@ -242,6 +256,7 @@ Individual development gates may report `SKIPPED_*` when a tool is unavailable. 
 Neither Python `PYTHON_CERTIFY_FULL` nor global language/runtime `CERTIFY_FULL` certifies:
 
 - arbitrary Python host callbacks as safe or resource-bounded;
+- deterministic scheduling between multiple independent Python host instances unless the application makes that ordering explicit;
 - production signing-key custody/rotation;
 - hostile rollback-resistant monotonic storage;
 - public WAN/TLS/DNS/CDN deployment;
