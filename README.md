@@ -1,138 +1,636 @@
 # TEV Script
 
-TEV Script is a bounded, typed, portable language for reactive behaviour and
-explicit host capabilities. The language is not defined by Python, JavaScript,
-C#, Unity, or any other implementation language.
+TEV Script is a bounded, statically typed, deterministic reactive language with explicit host-capability boundaries.
+
+The language is not defined by Python, JavaScript, C#, Unity, Browser-WASM or WASI. Those are replaceable implementations/targets that are conformant only when they reproduce the canonical TEV semantics and receipts.
+
+TEV Script currently has two important layers in this repository:
 
 ```text
-.tevs source
-    -> typed frontend
+V0.2
+    certified bounded language/runtime oracle
+    TEV_SCRIPT_PROGRAM_IR_V2
+
+V1 candidate
+    modules + pure functions + records/enums + Option/Result
+    behavior composition + bounded for + exhaustive match
+    deterministic linked semantic program
+    TEV_SCRIPT_PROGRAM_IR_V2 when V1 abstractions are losslessly erasable
+    TEV_SCRIPT_PROGRAM_IR_V3 for full algebraic runtime semantics
+```
+
+**V1 is an implementation candidate, not yet a stable release.** The repository intentionally keeps technical implementation, full certification and stable-release admission as separate states.
+
+---
+
+## Architecture
+
+### V0.2 certified path
+
+```text
+.tevs V0.2 source
+    -> exact V0.2 frontend
     -> TEV_SCRIPT_PROGRAM_IR_V2
     -> conforming runtime
-       |- Python reference
-       |- JavaScript ES2022 reference
-       |- C#/.NET conformant reference (observed Windows/.NET 10)
-       `- future Rust, Java/Kotlin, WASM, and other hosts
 ```
 
-## Authority
-
-The normative authority is the combination of:
-
-- `spec/TEV_SCRIPT_V0_2.ebnf`;
-- `spec/PORTABLE_VALUE_MODEL_V1.md`;
-- `spec/CANONICAL_JSON_PROFILE_V1.md`;
-- `spec/RUNTIME_ABI_V1.md`;
-- the three Draft 2020-12 schemas under `schemas/`;
-- canonical JSON vectors;
-- conformance scenarios and byte-identical receipts.
-
-Implementations are replaceable. A runtime becomes conformant only after it
-passes the canonical vectors and reproduces every authoritative receipt byte
-for byte.
-
-## Status
+The certified V0.2 language-completeness oracle is:
 
 ```text
-LANGUAGE_VERSION=0.2.0
-IR_SCHEMA=TEV_SCRIPT_PROGRAM_IR_V2
-STATUS=PREVIEW
-STABLE_RELEASE=NO
-PYTHON_RUNTIME=CONFORMANT_REFERENCE
-JAVASCRIPT_RUNTIME=CONFORMANT_ES2022_REFERENCE
-CSHARP_RUNTIME=CONFORMANT_DOTNET_REFERENCE_OBSERVED_WINDOWS_NET10
-UNITY_ADAPTER=DESIGNED_NOT_IMPLEMENTED
+COMMIT=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5
+TREE=4d97cc4c50096325c6ccb1f36edf22afebea19fc
 ```
 
-Python and JavaScript currently reproduce four authoritative scenarios:
+V1 work does not reinterpret that historical certification.
+
+### V1 source-semantic path
 
 ```text
-PLAYER_PROGRAM_HASH=f18d1b2428b96bf8c859463ab62a431c654933e65e23c3d8183335506d5adb5d
-PLAYER_RECEIPT_HASH=b275ccc6530ad84c0f96320ba1c8893b401638a926a99a78479d99fbd3c4aba5
-MATRIX_PROGRAM_HASH=899c555b1825e340e53a53ad21aaf7e8fb7a4f7fe53e26f0a66b196515ed2393
-MATRIX_RECEIPT_HASH=70df629159b6088aa3807deea217d4cdb06f28a41042aac1f6ebff6332179500
-PLAYER_IDLE_RECEIPT_HASH=647d3211f7411b88c155d658ba4c9494482378cde75c9f427dc4e38475acd17c
-EVENT_CHAIN_PROGRAM_HASH=a362d9b7e2850c8327eb0f6a4cbebf949cb6edb82fb493f980a8c5c8c078aea5
-EVENT_CHAIN_RECEIPT_HASH=5fcbd07512192ec298ff18bc313c71418e079e04d303aa3514a49ab91462371d
+one V1 script root + zero or more V1 modules
+    ↓
+lexer / parser
+    ↓
+deterministic import linker
+    ↓
+name + visibility resolution
+    ↓
+nominal / constructed type analysis
+    ↓
+purity + capability-effect + event analysis
+    ↓
+constant evaluation
+    ↓
+behavior composition
+    ↓
+TEV_SCRIPT_LINKED_PROGRAM_V1
+    ├── losslessly erasable profile ──→ TEV_SCRIPT_PROGRAM_IR_V2
+    └── full algebraic profile ───────→ TEV_SCRIPT_PROGRAM_IR_V3
 ```
 
-The campaign exercises both `if` branches, all V0.2 operators and pure
-functions, every portable value kind, typed event arguments, Unicode, exact
-`Int`/`Rat`, direct capability calls, and bounded local event chaining.
+`TEV_SCRIPT_LINKED_PROGRAM_V1` is the canonical source-semantic authority. Runtime backends do not independently reinterpret imports, visibility or source naming.
 
-## Validate
+---
 
-Windows:
+## V1 language surface
+
+V1 adds a substantial programming model while preserving boundedness and deterministic execution.
+
+### Source organization
+
+```text
+script root
+module
+import
+export/private module declarations
+```
+
+Module identity comes from the declared module id, not a filesystem path.
+
+### Values
+
+Primitive portable values remain:
+
+```text
+Bool
+Int
+Rat
+Text
+Vec2
+Vec3
+Unit
+```
+
+V1 adds:
+
+```text
+record
+ enum
+Option<T>
+Result<T,E>
+```
+
+Records/enums are nominal. `Option`/`Result` are built-in closed algebraic type families. `Unit` is capability-return-only and is not a storable value.
+
+### Computation
+
+```text
+fn                       pure user function
+let                      immutable lexical binding
+if / else                deterministic branch
+for i in A .. B          statically bounded half-open integer iteration
+match                    exhaustive enum/Option/Result matching
+```
+
+There is no recursion or unbounded loop in V1.0.
+
+### Reactive state
+
+```text
+entity
+state
+on event(...)
+emit event(...)
+return
+```
+
+State is the explicit persistent mutable surface. Events are deterministic local event-machine messages, not threads.
+
+### Reuse/composition
+
+```text
+behavior
+use
+```
+
+Behaviors are compile-time deterministic composition units, not classes, base classes or runtime trait objects.
+
+### Host authority
+
+```tevs
+capability world.temperature(Vec2) -> Rat observation;
+capability storage.deposit(Resource) -> Unit effect;
+```
+
+Capabilities are typed ports. They make external observations/effects visible in the language contract instead of granting ambient host-object access.
+
+---
+
+## What V1 deliberately does not add
+
+V1.0 intentionally excludes:
+
+```text
+unbounded loops
+recursion
+async/await
+threads / implicit concurrency
+classes / inheritance
+reflection
+runtime code generation
+runtime source compilation
+user-defined generics
+general user List/Map/Set containers
+host-native object references
+exceptions as normal language control flow
+package-registry/network import resolution
+wildcard imports
+implicit re-export
+```
+
+These are not hidden implementation gaps. Each would enlarge the semantic and verification surface and therefore requires a separate language revision.
+
+---
+
+# Quick start
+
+## Python package
+
+From the repository root:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass `
-  -File .\RUN_TEV_SCRIPT_PORTABLE_V0_2.ps1 `
-  -Python "C:\path\to\python.exe"
+python -m pip install -e .
 ```
 
-Portable command:
+Two command surfaces are deliberately kept separate:
 
 ```text
-python RUN_PORTABLE_CONFORMANCE.py
+tev-script       V0.2 certified CLI
+tev-script-v1    V1 implementation-candidate CLI
 ```
 
-Expected terminal witness:
+The V1 work does not silently replace the V0.2 command.
 
-```text
-CONFORMANCE_SCENARIOS=4
-PYTHON_JAVASCRIPT_BYTE_PARITY=PASS
-DETERMINISTIC_UTF8_LF_OUTPUT=PASS
-REDIRECTED_STDIO_UNICODE=PASS
-STRICT_JSON_INPUT_BOUNDARY=PASS
-JSON_SCHEMA_VALIDATION=PASS
-CSHARP_PORTABLE_STATIC_BOUNDARY=PASS
-CSHARP_COMPILATION=NOT_PROBED_BY_PORTABLE_RUNNER
-TEV_SCRIPT_PORTABLE_V0_2=PASS_PYTHON_JAVASCRIPT
+---
+
+## V1: check a program
+
+```powershell
+tev-script-v1 check .\examples\v1\Calculator.tevs
 ```
 
-## Packages
-
-Python frontend and reference runtime:
+`check` performs the complete source-semantic pipeline and reports:
 
 ```text
-python -m tev_script.cli check examples/Player.tevs
-python -m tev_script.cli compile examples/Player.tevs --output Player.ir.json
-python -m tev_script.cli conformance examples/Player.tevs conformance/player.scenario.json
+program_id
+linked_semantic_hash
+static_semantic_hash
+whether IR V2 is losslessly available
+IR V2 blocker count
+default runtime IR
 ```
 
-JavaScript runtime and distribution checks:
+---
 
-```text
-cd javascript
-npm test
-npm run conformance
+## V1: compile with automatic target selection
+
+```powershell
+tev-script-v1 compile `
+  .\examples\v1\Calculator.tevs `
+  --target auto `
+  -o .\Calculator.ir.json
 ```
 
-C# runtime source is under `runtimes/csharp/TevScript.Core`. It is independent
-of `UnityEngine` and `Marcbeacve.TevLnu.Core`. The observed Windows/.NET 10
-campaign reproduces all four authoritative receipts byte for byte and passes
-the C# negative-boundary campaign. Unity remains a host adapter, not the
-language authority.
-
-## Relationship with the existing TEV languages
+`auto` is semantic, not heuristic:
 
 ```text
-.tevs  everyday bounded reactive behaviour
+V1 runtime surface is provably erasable to V0.2 values/opcodes
+    -> TEV_SCRIPT_PROGRAM_IR_V2
+
+otherwise
+    -> TEV_SCRIPT_PROGRAM_IR_V3
+```
+
+A programmer may also force a target:
+
+```powershell
+tev-script-v1 compile source.tevs --target irv2 -o program.json
+tev-script-v1 compile source.tevs --target irv3 -o program.json
+```
+
+Forcing IR V2 on a V1 program requiring runtime records/enums/Option/Result fails closed rather than creating a lossy encoding.
+
+---
+
+## V1: link a multi-file program
+
+The source set is explicit and finite:
+
+```powershell
+tev-script-v1 check `
+  .\examples\v1\ecosystem\main.tevs `
+  .\examples\v1\ecosystem\model.tevs `
+  .\examples\v1\ecosystem\rules.tevs `
+  .\examples\v1\ecosystem\storage.tevs
+```
+
+To emit canonical source semantics:
+
+```powershell
+tev-script-v1 link `
+  .\examples\v1\ecosystem\main.tevs `
+  .\examples\v1\ecosystem\model.tevs `
+  .\examples\v1\ecosystem\rules.tevs `
+  .\examples\v1\ecosystem\storage.tevs `
+  -o .\Ecosystem.linked.v1.json
+```
+
+Input source order and physical file relocation must not change canonical linked bytes when semantics are unchanged.
+
+---
+
+# V1 examples
+
+The examples under `examples/v1/` are executable test assets, not illustrative pseudocode.
+
+```text
+Calculator.tevs
+    enum + Result + exhaustive match + exact Rat arithmetic
+
+ErasableToIrV2.tevs
+    V1 fn + behaviors + bounded for, but runtime surface erases to IR V2
+
+AlgebraicCapability.tevs
+    record + enum + Option/Result + algebraic capability ABI -> IR V3
+
+ecosystem/
+    complete multi-module domain/rules/capability/root decomposition
+```
+
+See:
+
+```text
+examples/v1/README.md
+```
+
+for commands and learning order.
+
+---
+
+# IR V3
+
+IR V3 extends the bounded acyclic V0.2 runtime model without turning it into a general heap/object VM.
+
+It adds a closed type table and immutable algebraic values.
+
+## Algebraic instructions
+
+```text
+MAKE_RECORD
+LOAD_FIELD
+MAKE_VARIANT
+TEST_VARIANT
+LOAD_VARIANT_PAYLOAD
+```
+
+The rest of the machine remains explicitly typed and bounded:
+
+```text
+state
+parameters
+locals
+stack
+forward-only CFG
+pure calls
+capability calls
+event emission
+RETURN
+```
+
+No runtime reflection, host object reference or code generation is introduced.
+
+---
+
+## IR V3 verification
+
+A V3 program is validated before execution for:
+
+- strict JSON shape and duplicate keys;
+- exact profile/boundary values;
+- closed and sorted type table;
+- nominal/constructed type references;
+- state/capability/event ABI;
+- canonical semantic/source hashes;
+- typed stack flow;
+- definite local initialization;
+- CFG merge consistency;
+- algebraic opcode stack effects;
+- forward-only control flow.
+
+---
+
+# Runtime implementations
+
+## Python
+
+The Python reference contains:
+
+```text
+V1 frontend/linker/static semantics
+canonical linked-program emitter
+IR V2 and IR V3 lowering
+IR V3 validator/type/value model
+IR V3 runtime
+checkpoint V2
+conformance receipt runner
+```
+
+## JavaScript
+
+The ES2022 V3 runtime provides exact `BigInt`/rational semantics, V3 type/value validation, typed CFG, runtime execution, conformance receipt and checkpoint V2 support.
+
+The V0.2 JavaScript runtime remains separately usable.
+
+## C#
+
+The repository deliberately keeps two assemblies:
+
+```text
+TevScript.Core
+    certified V0.2 runtime
+    netstandard2.1
+
+TevScript.Core.V3
+    additive V1/IR V3 runtime candidate
+    net8.0
+```
+
+Normal V3 runtime consumers do not depend on the signed-update cryptographic provider.
+
+Signed-update gates additionally bind the existing managed ES256 verifier through `TevScript.Update`.
+
+## Browser-WASM
+
+The V3 Browser-WASM gate AOT-compiles the C# V3 runtime and must reproduce host-oracle conformance-receipt and checkpoint hashes through an authenticated loopback witness.
+
+A page-load smoke is not treated as runtime parity.
+
+## WASI
+
+The V3 WASI gate uses separate `fresh` and `restore` Wasmtime processes. The first writes a canonical checkpoint; the second starts from a new process, restores it and continues execution.
+
+---
+
+# Runtime Checkpoint V2
+
+Checkpoint V2 binds exact runtime state to:
+
+```text
+program_id
+IR schema
+IR semantic_hash
+source schema
+source semantic_hash
+exact entity set
+exact state set
+state type
+canonical algebraic value
+```
+
+It is an exact-target restart mechanism, not a generic arbitrary-program migration format.
+
+Python, JavaScript and C# implementations exist, with cross-runtime byte-lock gates. WASI additionally transports the checkpoint between separate processes.
+
+---
+
+# Governed updates V3
+
+V3 does not reinterpret the historical V0.2 update package. It defines additive contracts:
+
+```text
+TEV_SCRIPT_SIGNED_UPDATE_PACKAGE_V2
+TEV_SCRIPT_UPDATE_BODY_V2
+TEV_SCRIPT_INSTALLED_UPDATE_V2
+```
+
+A signed transition binds:
+
+```text
+channel
+program
+epoch + sequence
+from_ir_semantic_hash
+target_ir_semantic_hash
+target_source_semantic_hash
+target canonical IR SHA-256
+target canonical IR
+signature algorithm / key id / signature
+```
+
+This means an update authorizes the exact transition:
+
+```text
+A -> B
+```
+
+not merely “install B from any prior state”.
+
+The transactional runtime layer validates a candidate in isolation, validates state migration and the full capability ABI ceiling, then performs one authoritative commit. If durable-store commit fails, runtime rollback is required.
+
+Host, Browser-WASM and WASI signed-update gates are implemented as certification candidates.
+
+---
+
+# Determinism
+
+The V1 model requires semantic identity to remain invariant under changes that are not program meaning, including:
+
+```text
+source path relocation
+input source enumeration order
+filesystem ordering
+path separator
+locale
+timezone
+host dictionary iteration order
+```
+
+Meaningful order remains meaningful, including:
+
+```text
+statement order
+behavior use order
+function argument order
+record constructor expression order
+event order
+```
+
+Exact integers and rationals are never delegated to host floating-point conventions.
+
+---
+
+# Documentation
+
+Programmer-facing V1 documentation:
+
+```text
+docs/TEV_SCRIPT_V1_LANGUAGE_REFERENCE.md
+    full language reference
+
+docs/TEV_SCRIPT_V1_PROGRAMMING_MODEL.md
+    TEV-native architecture, design patterns and data structures
+
+examples/v1/README.md
+    executable learning path and CLI usage
+```
+
+Compiler/runtime architecture:
+
+```text
+docs/V1_COMPILER_RUNTIME_BOUNDARY_DECISION.md
+docs/V1_IMPLEMENTATION_PLAN.md
+```
+
+Certification/governance:
+
+```text
+docs/V1_CERTIFICATION_PROTOCOL.md
+PROJECT_STATE.md
+CANONICAL_INDEX.json
+spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json
+```
+
+Historical V0.2 validation remains documented under the existing V0.2 specs and `docs/VALIDATION.md`.
+
+---
+
+# Validation levels
+
+TEV Script deliberately distinguishes implementation from certification.
+
+## Development closure
+
+```powershell
+python .\RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py
+```
+
+This covers the Python V1 source-semantic/lowering suite, V3 Python tests, V1 CLI/examples and selected V0.2 Python regressions.
+
+## Full pre-certification
+
+```powershell
+python .\RUN_TEV_SCRIPT_V1_PRECERTIFY.py
+```
+
+`PRECERTIFY V5` requires, from one exact clean checkout:
+
+1. governance consistency;
+2. V1 frontend/static/lowering closure;
+3. C# V0.2/V3 assembly and AOT surface guard;
+4. Python/JavaScript/C# IR V3 receipt byte lock;
+5. Python/JavaScript/C# checkpoint V2 byte lock + restart;
+6. Browser-WASM V3 AOT receipt/checkpoint parity;
+7. WASI V3 fresh/restore parity;
+8. signed-update host campaign;
+9. signed-update Browser-WASM campaign;
+10. signed-update WASI fresh/restore campaign;
+11. V0.2 complete portable regression;
+12. clean and immutable Git HEAD/tree before/after.
+
+Mandatory V1/V3 `SKIPPED_*` results are not accepted as a full precertification.
+
+## Technical full certification
+
+```powershell
+python .\RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py
+```
+
+This gate is read-only. It re-runs pre-certify, validates the canonical pre-certify receipt and binds the certificate to the exact Git commit/tree.
+
+A technical success means:
+
+```text
+CERTIFY_FULL=PASS
+LANGUAGE_STABLE=NO
+```
+
+Stable release admission is intentionally a separate governance operation. If stable metadata changes the tree, the resulting commit must itself be pre-certified and certified; certification is not inherited transitively from its parent.
+
+See `docs/V1_CERTIFICATION_PROTOCOL.md`.
+
+---
+
+# Current repository status
+
+The current V1 branch contains the complete implementation/gate candidate described above, but this README does **not** claim that the exact current HEAD has completed full pre-certification.
+
+The authoritative current status is `PROJECT_STATE.md`.
+
+Until the exact clean commit passes the required admission sequence:
+
+```text
+V1_CERTIFY_FULL=NO
+V1_LANGUAGE_STABLE=NO
+```
+
+---
+
+# Relationship with the existing TEV languages
+
+```text
+.tevs  bounded portable reactive behavior
 .tev   governed causal actions
 .tevg  finite multi-entity workflows
 ```
 
-Future lowering from `.tevs` governed constructs must target the existing
-causal/general IRs rather than creating a second causal kernel.
+TEV Script does not create a second hidden causal kernel. Where a feature belongs to the governed causal/general layer, lowering/adaptation should target the existing TEV causal contracts rather than duplicating authority semantics inside `.tevs`.
 
-## Publication boundary
+---
 
-This repository contains no GitHub Actions workflow. Validation is local and
-receipt-based. Publication uses a feature branch and draft pull request. No
-merge, tag, stable release, or promotion is authorized by this seed.
+# V0.2 historical validation
 
-Validation details: `docs/VALIDATION.md`.
+The original V0.2 portable campaign remains meaningful as a regression oracle.
 
-## TEV Script V0.2 language closure
+Portable entry point:
 
-The V0.2 source/IR/runtime contract now has complete lexical grammar, static semantics, operational IR semantics, typed capability-catalog extension, a pre-execution typed CFG verifier, canonical ABI identifiers, and a shared Python/JavaScript/C# negative corpus. `stable` remains false; language completeness is not a stable-release or production-security claim.
+```powershell
+python .\RUN_PORTABLE_CONFORMANCE.py
+```
+
+Historical V0.2 source CLI:
+
+```powershell
+tev-script check .\examples\Player.tevs
+tev-script compile .\examples\Player.tevs --output .\Player.ir.json
+```
+
+The V1 implementation is additive and is required to preserve those certified semantics while expanding the source model and runtime value system through explicit versioned boundaries.
