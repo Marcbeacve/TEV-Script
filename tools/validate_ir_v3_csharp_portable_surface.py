@@ -16,6 +16,8 @@ V3_SOURCES = (
     "TevScriptV3Validation.cs",
     "TevScriptRuntimeV3.cs",
     "TevScriptRuntimeCheckpointV2.cs",
+    "TevScriptRuntimeHotSwapV3.cs",
+    "TevScriptUpdateV3.cs",
     "TevScriptV3Conformance.cs",
 )
 CONSUMERS = (
@@ -128,6 +130,41 @@ def main() -> int:
     ):
         require(checkpoint, witness, "IR_V3_CSHARP_CHECKPOINT")
 
+    hot_swap = sources["TevScriptRuntimeHotSwapV3.cs"]
+    for witness in (
+        "TevScriptCapabilityContractV3",
+        "SameSignature",
+        "CaptureSnapshot",
+        "RestoreCompatibleSnapshot",
+        "TevScriptRuntimeSwapPlanV3",
+        "SourceGeneration",
+        "SourceSemanticHash",
+        "TEVS_IR_V3_SWAP_PLAN_STALE",
+        "RollbackLastCommit",
+        "TEVS_IR_V3_SWAP_CAPABILITY_SIGNATURE_CEILING",
+    ):
+        require(hot_swap, witness, "IR_V3_CSHARP_TRANSACTIONAL_SWAP")
+
+    update = sources["TevScriptUpdateV3.cs"]
+    for witness in (
+        'PackageSchema = "TEV_SCRIPT_SIGNED_UPDATE_PACKAGE_V2"',
+        'BodySchema = "TEV_SCRIPT_UPDATE_BODY_V2"',
+        "from_ir_semantic_hash",
+        "target_ir_semantic_hash",
+        "target_source_semantic_hash",
+        "VerifySignature",
+        "TEVS_UPDATE_V3_FROM_HASH",
+        "ValidateReplay",
+        "TEVS_UPDATE_V3_REPLAY",
+        "TEVS_UPDATE_V3_EPOCH_ROLLBACK",
+        "TEVS_UPDATE_V3_EPOCH_JUMP",
+        "TEVS_UPDATE_V3_STORE_COMMIT",
+        "RollbackLastCommit",
+        "TryLoadInstalledPackage",
+    ):
+        require(update, witness, "IR_V3_CSHARP_SIGNED_UPDATE")
+    forbid(update, "TryRestoreInstalled", "IR_V3_CSHARP_SIGNED_UPDATE_RESTART_BOUNDARY")
+
     for consumer in CONSUMERS:
         text = consumer.read_text(encoding="utf-8")
         require(text, "TevScript.Core.V3", "IR_V3_CSHARP_CONSUMER_BINDING")
@@ -142,6 +179,8 @@ def main() -> int:
     print("TEV_SCRIPT_IR_V3_CSHARP_PORTABLE_SHA256=PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_MODERN_API_GUARD=PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_CHECKPOINT_BOUNDARY=PASS")
+    print("TEV_SCRIPT_IR_V3_CSHARP_TRANSACTIONAL_SWAP=PASS")
+    print("TEV_SCRIPT_IR_V3_CSHARP_SIGNED_UPDATE=PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_PORTABLE_SURFACE=PASS")
     return 0
 
