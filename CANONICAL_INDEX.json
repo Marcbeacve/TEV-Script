@@ -38,6 +38,7 @@
       "status": "SPEC_CLOSED_IMPLEMENTATION_PENDING",
       "stable": false,
       "authority_files": [
+        "spec/TEV_SCRIPT_V1_LEXICAL_PROFILE.md",
         "spec/TEV_SCRIPT_V1.ebnf",
         "spec/TEV_SCRIPT_V1_SEMANTIC_CONTRACT.md",
         "spec/TEV_SCRIPT_V1_LINK_MODEL.md",
