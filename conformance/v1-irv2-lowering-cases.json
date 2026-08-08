@@ -1,0 +1,126 @@
+{
+  "schema": "TEV_SCRIPT_V1_IRV2_LOWERING_CASES_V1",
+  "language_version": "1.0.0",
+  "target_ir": "TEV_SCRIPT_PROGRAM_IR_V2",
+  "positive": [
+    {
+      "id": "minimal-v1-to-irv2",
+      "sources": [
+        {"path":"root.tevs","source":"script Minimal version \"1.0.0\"; entity E { state x: Int = 1; on start { x = x + 1; } }"}
+      ]
+    },
+    {
+      "id": "modules-and-pure-function-inlining",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; import math; entity E { state out: Rat = 0; on update { out = twice(3); } }"},
+        {"path":"math.tevs","source":"module math version \"1.0.0\"; export fn twice(x: Rat) -> Rat = x * 2;"}
+      ]
+    },
+    {
+      "id": "call-by-value-observation-argument",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; fn twice(x: Rat) -> Rat = x + x; entity E { state out: Rat = 0; on update { out = twice(time.delta()); } }"}
+      ]
+    },
+    {
+      "id": "behavior-effect-order",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior A { on update { log \"A\"; } } behavior B { on update { log \"B\"; } } entity E { use A; use B; on update { log \"E\"; } }"}
+      ]
+    },
+    {
+      "id": "bounded-for-unroll",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; entity E { state sum: Int = 0; on start { for i in 0 .. 4 { sum = sum + i; } } }"}
+      ]
+    },
+    {
+      "id": "short-circuit-observations",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; capability probe.read() -> Bool observation; entity E { state hits: Int = 0; on update { if false and probe.read() { hits = hits + 1; } if true or probe.read() { hits = hits + 1; } } }"}
+      ]
+    },
+    {
+      "id": "custom-primitive-capabilities",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; capability sensor.read() -> Int observation; capability sink.write(Int) -> Unit effect; entity E { state x: Int = 0; on update { x = sensor.read(); call sink.write(x); } }"}
+      ]
+    },
+    {
+      "id": "behavior-event-chain-with-widening",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior Producer { on start { emit pulse(1); } } behavior Consumer { state seen: Rat = 0; on pulse(value: Rat) { seen = value; } } entity E { use Producer; use Consumer; on update { return; } }"}
+      ]
+    },
+    {
+      "id": "unused-v1-type-declarations-do-not-block",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; record R { x: Int; } enum K { A; B; } entity E { state x: Int = 1; on start { x = x + 1; } }"}
+      ]
+    },
+    {
+      "id": "v1-only-constant-intermediate-erases-before-ir",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; record R { x: Int; } fn get(r: R) -> Int = r.x; entity E { state x: Int = get(R(x = 7)); on start { return; } }"}
+      ]
+    }
+  ],
+  "negative": [
+    {
+      "id": "record-runtime-state",
+      "code": "TEVS_V1_LOWER_IR3_REQUIRED",
+      "sources": [
+        {"path":"root.tevs","source":"script Bad version \"1.0.0\"; record R { x: Int; } entity E { state r: R = R(x = 1); on start { return; } }"}
+      ]
+    },
+    {
+      "id": "enum-runtime-state",
+      "code": "TEVS_V1_LOWER_IR3_REQUIRED",
+      "sources": [
+        {"path":"root.tevs","source":"script Bad version \"1.0.0\"; enum K { A; } entity E { state k: K = K::A; on start { return; } }"}
+      ]
+    },
+    {
+      "id": "option-runtime-state",
+      "code": "TEVS_V1_LOWER_IR3_REQUIRED",
+      "sources": [
+        {"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { state x: Option<Int> = Some(1); on start { return; } }"}
+      ]
+    },
+    {
+      "id": "result-runtime-state",
+      "code": "TEVS_V1_LOWER_IR3_REQUIRED",
+      "sources": [
+        {"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { state x: Result<Int, Text> = Ok(1); on start { return; } }"}
+      ]
+    },
+    {
+      "id": "runtime-record-local",
+      "code": "TEVS_V1_LOWER_IR3_REQUIRED",
+      "sources": [
+        {"path":"root.tevs","source":"script Bad version \"1.0.0\"; record R { x: Int; } entity E { on update { let r = R(x = 1); log \"x\"; } }"}
+      ]
+    },
+    {
+      "id": "runtime-match",
+      "code": "TEVS_V1_LOWER_IR3_REQUIRED",
+      "sources": [
+        {"path":"root.tevs","source":"script Bad version \"1.0.0\"; enum K { A; B; } entity E { state x: Int = 0; on update { let k = K::A; match k { K::A => { x = 1; } K::B => { x = 2; } } } }"}
+      ]
+    },
+    {
+      "id": "v1-type-capability",
+      "code": "TEVS_V1_LOWER_IR3_REQUIRED",
+      "sources": [
+        {"path":"root.tevs","source":"script Bad version \"1.0.0\"; record R { x: Int; } capability sink.write(R) -> Unit effect; entity E { on update { call sink.write(R(x = 1)); } }"}
+      ]
+    },
+    {
+      "id": "pure-function-runtime-v1-internal",
+      "code": "TEVS_V1_LOWER_IR3_REQUIRED",
+      "sources": [
+        {"path":"root.tevs","source":"script Bad version \"1.0.0\"; record R { x: Int; } fn make() -> Int = R(x = 1).x; entity E { state out: Int = 0; on update { out = make(); } }"}
+      ]
+    }
+  ]
+}
