@@ -26,6 +26,7 @@ IR V3 Python runtime:                                  IMPLEMENTED CANDIDATE
 V1 Python production IR-only host:                     IMPLEMENTED CANDIDATE
 V1 Python least-authority capability preflight:        IMPLEMENTED CANDIDATE
 V1 Python reproducible-wheel production admission:     GATE IMPLEMENTED
+V1 Python host-specific full certification:            GATE IMPLEMENTED
 IR V3 JavaScript runtime:                              IMPLEMENTED CANDIDATE
 IR V3 C# runtime assembly:                             IMPLEMENTED CANDIDATE
 IR V3 Python/JS/C# canonical receipt byte lock:        GATE IMPLEMENTED
@@ -41,7 +42,9 @@ IR V3 signed update WASI fresh/restore campaign:       GATE IMPLEMENTED
 V1 full precertify orchestration:                       IMPLEMENTED CANDIDATE V5
 
 Current exact-HEAD Python production gate:              NOT EXECUTED IN THIS CHAT RUNTIME
+Current exact-HEAD Python host full certification:      NOT EXECUTED IN THIS CHAT RUNTIME
 Current exact-HEAD dynamic full precertify:             NOT EXECUTED IN THIS CHAT RUNTIME
+V1 PYTHON_CERTIFY_FULL:                                NO
 V1 CERTIFY_FULL:                                       NO
 V1 LANGUAGE_STABLE:                                    NO
 ```
@@ -65,6 +68,7 @@ V1 does not reinterpret those receipts. The C# V0.2 assembly remains `TevScript.
 BRANCH=agent/tev-script-v1-irv3-spec-v1
 BASE_CERTIFIED_V0_2=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5
 STABLE_RELEASE=NO
+PYTHON_CERTIFY_FULL=NO
 CERTIFY_FULL=NO
 ```
 
@@ -235,7 +239,11 @@ The Python product surface additionally contains:
 
 The runtime host accepts only precompiled validated IR V3. Source compilation stays a build/tooling concern and cannot be requested through the runtime host.
 
-`RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` implements a clean-commit Python product gate. It runs the Python/frontend closure, builds two wheels from independent `git archive HEAD` trees with fixed build epoch, requires identical wheel bytes, installs the wheel offline in a fresh venv, verifies installed console scripts/descriptor, compiles explicit IR V3 outside the checkout, executes the installed runtime host, captures/restores a checkpoint and requires continuation after restore. The final receipt binds commit, tree and wheel SHA-256 while still declaring `CERTIFY_FULL=NO` and `LANGUAGE_STABLE=NO`.
+`RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` implements a clean-commit Python product admission gate. It validates governance and the Python/frontend closure, requires zero runtime dependencies, builds two wheels from independent `git archive HEAD` trees under an offline fixed build environment, requires identical `py3-none-any` wheel bytes, installs the wheel in a fresh venv, proves the imported module comes from that venv, compiles explicit IR V3 outside the checkout, checks least-authority negative cases and typed-capability execution, performs checkpoint/restore continuation and a deterministic 10,000-event soak. The receipt binds commit, tree, Python/build-tool identity and wheel SHA-256 while still declaring `CERTIFY_FULL=NO` and `LANGUAGE_STABLE=NO`.
+
+`RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py` is the read-only Python-host certificate admission. It re-runs the complete production admission on the same exact commit, independently verifies the production receipt's embedded and external hashes, rebinds all mandatory evidence to its own HEAD/tree, requires repository/canonical/state immutability, and emits `TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V1`. A successful host certificate may emit `PYTHON_CERTIFY_FULL=PASS` while deliberately retaining global `CERTIFY_FULL=NO`, `LANGUAGE_STABLE=NO` and `stable_release_authorized=false`.
+
+This allows the Python V1 host/product profile to be certified independently of Unity or global multi-runtime V1 certification without redefining the meaning of the global language certificate.
 
 Capability callback implementations remain trusted embedding code. TEV instruction/event budgets constrain TEV execution, not arbitrary Python code supplied by the embedding application. Untrusted callbacks require process/container isolation at the application boundary.
 
@@ -388,11 +396,11 @@ Implemented campaigns exist for:
 11. clean worktree before and after;
 12. identical HEAD/tree throughout validation.
 
-The Python distribution/product admission is intentionally available as the separate `RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` gate. It does not replace the cross-host language/runtime precertification campaign.
+Python product certification is intentionally split into `RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` plus `RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py`. Those gates certify the Python distribution/host profile and do not replace the cross-host language/runtime precertification campaign.
 
 Any V1/V3 `SKIPPED_*` is a pre-certification failure.
 
-A successful pre-certify deliberately still emits:
+A successful global pre-certify deliberately still emits:
 
 ```text
 V1_PRECERTIFY=PASS
@@ -411,6 +419,7 @@ Therefore the current exact-HEAD status is deliberately:
 ```text
 CODE_AND_GATES=PUBLISHED_CANDIDATE
 CURRENT_HEAD_PYTHON_PRODUCTION_GATE=NOT_EXECUTED_HERE
+CURRENT_HEAD_PYTHON_CERTIFY_FULL=NOT_EXECUTED_HERE
 CURRENT_HEAD_FULL_PRECERTIFY=NOT_EXECUTED_HERE
 CURRENT_HEAD_CERTIFY_FULL=NO
 LANGUAGE_STABLE=NO
@@ -468,14 +477,19 @@ A Python production host must reject execution before startup when a required ca
 
 Two offline wheel builds from independent archives of the same exact commit, with the governed fixed build epoch, must produce the same filename and SHA-256 bytes.
 
+### H13 — Python certification identity
+
+A Python full certificate is valid only if the independently recomputed production receipt hash, embedded receipt hash, external receipt hash, certificate HEAD/tree and wheel identity all agree exactly and the repository remains unchanged throughout certification.
+
 ## Tareas siguientes
 
 1. Execute `RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` on the exact current clean branch with Python 3.11+ and a locally available compatible setuptools build backend; fix any failure without weakening the gate.
-2. Execute `RUN_TEV_SCRIPT_V1_PRECERTIFY.py` on the same exact current clean branch in the Windows development environment with Node, .NET, Chromium, Wasmtime and the .NET-required wasi-sdk available.
-3. Fix every failure without weakening or skipping a gate.
-4. Re-run from one exact clean commit/tree until the Python production gate and `V1_PRECERTIFY=PASS` both pass with zero skips.
-5. Freeze the resulting evidence receipts and execute the separate read-only `CERTIFY_FULL` admission bound to that exact commit/tree.
-6. Only after `CERTIFY_FULL` should a stable-admission commit be considered; that promoted commit must itself re-run the Python production gate, PRECERTIFY and CERTIFY_FULL rather than inheriting certification from its parent.
+2. Execute `RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py` on that exact clean commit; this re-runs and independently validates the production admission and is the Python-host certificate authority.
+3. Separately, execute `RUN_TEV_SCRIPT_V1_PRECERTIFY.py` on the same exact current clean branch in the Windows development environment with Node, .NET, Chromium, Wasmtime and the .NET-required wasi-sdk available.
+4. Fix every failure without weakening or skipping a gate.
+5. Re-run from one exact clean commit/tree until `PYTHON_CERTIFY_FULL=PASS` and, for global V1 certification, `V1_PRECERTIFY=PASS` both pass with zero skips.
+6. Execute the separate global read-only `RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py` only for the cross-runtime V1 certificate.
+7. Only after the intended certificate scope passes should a stable-admission/version commit be considered; that promoted commit must itself re-run Python production + Python full certification and, if globally promoted, PRECERTIFY + global CERTIFY_FULL rather than inheriting certification from its parent.
 
 ## Production boundaries unchanged
 
