@@ -40,6 +40,16 @@ REQUIRED_BUILD_TOOLING = {
     "docs/V1_PROJECT_MANIFEST.md",
 }
 
+REQUIRED_INTROSPECTION = {
+    "schemas/tev_script_descriptor_v3.schema.json",
+    "tev_script/descriptor_v1.py",
+    "tev_script/describe_v1.py",
+    "tev_script/runtime_cli_v3.py",
+    "tests/test_v1_descriptor.py",
+    "tests/test_v1_descriptor_schema_cardinality.py",
+    "tests/test_v1_runtime_cli_v3.py",
+}
+
 REQUIRED_GATE_MAP = {
     "implementation": "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py",
     "csharp_surface": "tools/validate_ir_v3_csharp_portable_surface.py",
@@ -138,6 +148,9 @@ def main() -> int:
     cli_text = (ROOT / "tev_script" / "cli_v1.py").read_text(encoding="utf-8")
     project_text = (ROOT / "tev_script" / "project_v1.py").read_text(encoding="utf-8")
     artifact_text = (ROOT / "tev_script" / "artifact_write_v1.py").read_text(encoding="utf-8")
+    descriptor_text = (ROOT / "tev_script" / "descriptor_v1.py").read_text(encoding="utf-8")
+    describe_text = (ROOT / "tev_script" / "describe_v1.py").read_text(encoding="utf-8")
+    runtime_tool_text = (ROOT / "tev_script" / "runtime_cli_v3.py").read_text(encoding="utf-8")
 
     require(canonical.get("schema") == "TEV_SCRIPT_CANONICAL_INDEX_V1", "V1_GOVERNANCE_CANONICAL_SCHEMA", repr(canonical.get("schema")))
     require(canonical.get("stable") is False, "V1_GOVERNANCE_CANONICAL_STABLE", repr(canonical.get("stable")))
@@ -151,8 +164,20 @@ def main() -> int:
     require(target.get("stable") is False, "V1_GOVERNANCE_TARGET_STABLE", repr(target.get("stable")))
     require_contains(target.get("authority_files"), REQUIRED_AUTHORITY, "V1_GOVERNANCE_AUTHORITY")
     require_contains(target.get("build_tooling_authority"), REQUIRED_BUILD_TOOLING, "V1_GOVERNANCE_BUILD_TOOLING")
-    for relative in REQUIRED_AUTHORITY | REQUIRED_BUILD_TOOLING | REQUIRED_PRODUCT_FILES:
+    for relative in REQUIRED_AUTHORITY | REQUIRED_BUILD_TOOLING | REQUIRED_PRODUCT_FILES | REQUIRED_INTROSPECTION:
         require_file(relative)
+
+    introspection = target.get("introspection_surface")
+    require(isinstance(introspection, dict), "V1_GOVERNANCE_INTROSPECTION", "missing")
+    for key, expected in {
+        "schema": "schemas/tev_script_descriptor_v3.schema.json",
+        "generator": "tev_script/descriptor_v1.py",
+        "module_cli": "tev_script/describe_v1.py",
+        "installed_cli": "tev-script-v1-describe",
+        "descriptor_is_generated_from_v1_contract_constants": True,
+        "stable_claim": False,
+    }.items():
+        require(introspection.get(key) == expected, "V1_GOVERNANCE_INTROSPECTION", f"{key}:{introspection.get(key)!r}")
 
     gates = target.get("gates")
     require(isinstance(gates, dict), "V1_GOVERNANCE_GATE_MAP", "missing")
@@ -166,6 +191,8 @@ def main() -> int:
         "python_package": "tev_script",
         "v0_2_cli": "tev-script",
         "v1_cli": "tev-script-v1",
+        "v1_descriptor_cli": "tev-script-v1-describe",
+        "v1_ir_tool_cli": "tev-script-v1-ir",
         "v1_module_cli": "python -m tev_script.cli_v1",
         "v1_python_pipeline": "tev_script.pipeline_v1",
         "v1_project_manifest": "tev_script.project_v1",
@@ -173,8 +200,12 @@ def main() -> int:
     }.items():
         require(interfaces.get(key) == expected, "V1_GOVERNANCE_PUBLIC_INTERFACE", f"{key}:{interfaces.get(key)!r}")
 
-    require('tev-script = "tev_script.cli:main"' in pyproject_text, "V1_GOVERNANCE_V0_2_CLI", "binding")
-    require('tev-script-v1 = "tev_script.cli_v1:main"' in pyproject_text, "V1_GOVERNANCE_V1_CLI", "binding")
+    require_tokens(pyproject_text, (
+        'tev-script = "tev_script.cli:main"',
+        'tev-script-v1 = "tev_script.cli_v1:main"',
+        'tev-script-v1-describe = "tev_script.describe_v1:main"',
+        'tev-script-v1-ir = "tev_script.runtime_cli_v3:main"',
+    ), "V1_GOVERNANCE_CLI_BINDINGS")
     require_tokens(package_text, (
         "compile_v1_paths_auto", "compile_v1_paths_to_ir_v2", "compile_v1_paths_to_ir_v3",
         "ProjectManifestV1", "load_v1_project", "verify_v1_project_inputs",
@@ -197,6 +228,23 @@ def main() -> int:
         "os.replace(staged_receipt, receipt)", "receipt presence is the final commit",
         "TEVS_V1_ARTIFACT_ROLLBACK", "TEVS_V1_ARTIFACT_PATH_COLLISION",
     ), "V1_GOVERNANCE_ARTIFACT_POLICY")
+    require_tokens(descriptor_text, (
+        'DESCRIPTOR_SCHEMA_V1 = "TEV_SCRIPT_DESCRIPTOR_V3"',
+        '"language_version": V1_LANGUAGE_VERSION',
+        '"artifact_commit_policy": "EVIDENCE_SAFE_RECEIPT_LAST_V1"',
+        '"current_v1_certify_full_claim": False',
+        '"current_v1_language_stable_claim": False',
+        "canonical_hash(descriptor)",
+    ), "V1_GOVERNANCE_DESCRIPTOR")
+    require_tokens(describe_text, (
+        "v1_descriptor_json", "print(v1_descriptor_json())",
+    ), "V1_GOVERNANCE_DESCRIPTOR_CLI")
+    require_tokens(runtime_tool_text, (
+        "Read-only TEV Script IR V3 validation/conformance tooling",
+        "does not act as a generic production execution host",
+        '"describe"', '"validate"', '"conformance"',
+        "run_ir_v3_conformance", "validate_program_ir_v3", "write_text_artifact_v1",
+    ), "V1_GOVERNANCE_IR_TOOL")
 
     require(matrix.get("schema") == EXPECTED_MATRIX, "V1_GOVERNANCE_MATRIX_SCHEMA", repr(matrix.get("schema")))
     require(matrix.get("target_language_version") == "1.0.0", "V1_GOVERNANCE_MATRIX_VERSION", repr(matrix.get("target_language_version")))
@@ -232,6 +280,7 @@ def main() -> int:
     print("TEV_SCRIPT_V1_GOVERNANCE_BUILD_TOOLING=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_GATE_BINDINGS=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PUBLIC_SURFACE=PASS")
+    print("TEV_SCRIPT_V1_GOVERNANCE_INTROSPECTION_SURFACE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_ARTIFACT_COMMIT_POLICY=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PRECERTIFY_CERTIFY_PROTOCOL=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_NO_TRANSITIVE_CERTIFICATION=PASS")
