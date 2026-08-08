@@ -62,19 +62,27 @@ class V1DescriptorTests(unittest.TestCase):
             CURRENT_V1_LANGUAGE_STABLE_CLAIM,
         )
 
-    def test_candidate_release_metadata_does_not_self_promote(self) -> None:
-        if RELEASE_PROFILE != "candidate":
-            self.skipTest("candidate-only invariant")
+    def test_release_metadata_profile_invariants_without_skip(self) -> None:
         descriptor = v1_descriptor()
-        self.assertEqual(descriptor["release_status"], "IMPLEMENTATION_CANDIDATE_UNCERTIFIED")
-        self.assertIs(descriptor["stable"], False)
-        self.assertEqual(descriptor["certification"]["technical_parent_commit"], "")
-        self.assertEqual(
-            descriptor["certification"]["technical_parent_certificate_sha256"],
-            "",
-        )
-        self.assertIs(descriptor["certification"]["current_v1_certify_full_claim"], False)
-        self.assertIs(descriptor["certification"]["current_v1_language_stable_claim"], False)
+        certification = descriptor["certification"]
+        if RELEASE_PROFILE == "candidate":
+            self.assertEqual(descriptor["release_status"], "IMPLEMENTATION_CANDIDATE_UNCERTIFIED")
+            self.assertIs(descriptor["stable"], False)
+            self.assertEqual(certification["technical_parent_commit"], "")
+            self.assertEqual(certification["technical_parent_certificate_sha256"], "")
+            self.assertIs(certification["current_v1_certify_full_claim"], False)
+            self.assertIs(certification["current_v1_language_stable_claim"], False)
+        else:
+            self.assertEqual(RELEASE_PROFILE, "stable")
+            self.assertEqual(descriptor["release_status"], "STABLE_1_0_0")
+            self.assertIs(descriptor["stable"], True)
+            self.assertRegex(certification["technical_parent_commit"], r"^[0-9a-f]{40}$")
+            self.assertRegex(
+                certification["technical_parent_certificate_sha256"],
+                r"^[0-9a-f]{64}$",
+            )
+            self.assertIs(certification["current_v1_certify_full_claim"], True)
+            self.assertIs(certification["current_v1_language_stable_claim"], True)
 
     def test_descriptor_boundaries_preserve_bounded_language(self) -> None:
         boundaries = v1_descriptor()["boundaries"]
