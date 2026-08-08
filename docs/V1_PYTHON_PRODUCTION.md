@@ -39,6 +39,8 @@ PythonRuntimeHostV1
         |
         +---- explicit host capabilities only
         |
+        +---- serialized non-reentrant host access
+        |
         +---- bounded deterministic TEV execution
         |
         +---- RuntimeCheckpointV2 capture / exact restore
@@ -146,7 +148,39 @@ The host delegates execution to `ScriptRuntimeV3`; it does not duplicate interpr
 - exact rational arithmetic;
 - canonical algebraic values.
 
-## 6. Checkpoint and process restart
+## 6. Serialized host-access boundary
+
+One `PythonRuntimeHostV1` instance is exactly one serialized TEV execution domain. Its mutable runtime state must not acquire an implicit Python thread scheduler or callback-reentrancy semantic that does not exist in TEV Script.
+
+The host therefore uses a non-reentrant, non-blocking access guard around:
+
+```text
+invoke
+state
+canonical_state
+capture_checkpoint
+restore_checkpoint
+```
+
+If another thread or a capability callback tries to enter the same host while one of those operations is active, the host fails closed with:
+
+```text
+TEVS_PYTHON_V1_HOST_BUSY
+```
+
+It does **not** queue, block and later select an order based on host scheduling. That would make Python scheduling part of program meaning without an explicit TEV event.
+
+A capability may call arbitrary trusted host code, but it must not recursively manipulate the same TEV host instance during the active event. If an application needs parallel work, use separate host instances or an explicit application scheduler/queue that chooses when to invoke each host. Any ordering that should be part of TEV semantics should instead enter the machine as explicit events/state.
+
+This contract is canonically recorded as:
+
+```text
+python_production_surface.serialized_host_access=true
+```
+
+and is mandatory evidence for Python full certification.
+
+## 7. Checkpoint and process restart
 
 ```python
 checkpoint_text = host.capture_checkpoint_json()
@@ -169,7 +203,7 @@ host.restore_checkpoint(checkpoint_text)
 
 This is exact restoration, not schema migration. Runtime update/migration remains the separate governed hot-swap/update mechanism.
 
-## 7. Python production admission
+## 8. Python production admission
 
 Run from a clean exact commit with Python 3.11+:
 
@@ -201,10 +235,11 @@ The gate is intentionally stronger than an in-repository unit-test pass. It perf
 20. checkpoint capture, continued execution, exact restore and continuation after restore;
 21. rejection of surplus capability authority;
 22. rejection of missing capability authority;
-23. successful execution of an explicitly bound typed capability;
-24. a 10,000-event installed-wheel soak with exact final-state witness;
-25. clean-worktree and identical HEAD/tree verification after the campaign;
-26. emission of `TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V1` bound to commit, tree, Python/build-tool versions, wheel SHA-256, authority witnesses and soak cardinality.
+23. rejection of capability-driven reentrant access to the active host with `TEVS_PYTHON_V1_HOST_BUSY`, including proof that the failed reentry did not mutate state;
+24. successful execution of an explicitly bound typed capability;
+25. a 10,000-event installed-wheel soak with exact final-state witness;
+26. clean-worktree and identical HEAD/tree verification after the campaign;
+27. emission of `TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V1` bound to commit, tree, Python/build-tool versions, wheel SHA-256, authority/serialization witnesses and soak cardinality.
 
 The soak is a deterministic semantic endurance witness, not a hardware-independent latency benchmark. It deliberately has no wall-clock threshold because a fixed timing threshold would make certification depend on machine load/hardware rather than TEV semantics.
 
@@ -220,7 +255,7 @@ LANGUAGE_STABLE=NO
 
 `PASS_CANDIDATE` means the exact commit demonstrated the Python distribution and production-host properties above. It is evidence input to the Python-specific certification gate; it is not itself a certificate.
 
-## 8. Python-specific full certification
+## 9. Python-specific full certification
 
 Python can be certified as a host/product profile without waiting for Unity, Browser-WASM or the global multi-host V1 certificate:
 
@@ -232,17 +267,17 @@ This gate is read-only with respect to tracked repository content. It:
 
 1. requires a clean exact commit and captures HEAD/tree/branch;
 2. verifies certified V0.2 ancestry;
-3. verifies canonical Python production/certification gate bindings and stable=false authority metadata;
+3. verifies canonical Python production/certification gate bindings, `serialized_host_access=true` and stable=false authority metadata;
 4. runs `RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` on that exact commit;
 5. rejects any skipped result;
 6. parses exactly one production receipt and one external receipt hash;
 7. removes the embedded receipt hash and independently recomputes canonical SHA-256;
 8. requires the embedded hash, external hash and recomputed hash to agree;
 9. requires the production receipt commit/tree/branch/oracle to equal the certifier's own captured identity;
-10. requires zero runtime dependencies, `py3-none-any`, reproducible wheel, isolated install, venv module origin, installed IR V3 compilation/runtime, least-authority rejection cases, typed capability execution, checkpoint/restart and the exact 10,000-event soak;
+10. requires zero runtime dependencies, `py3-none-any`, reproducible wheel, isolated install, venv module origin, installed IR V3 compilation/runtime, least-authority rejection cases, reentrant-access rejection, typed capability execution, checkpoint/restart and the exact 10,000-event soak;
 11. requires non-empty Python/pip/setuptools/package/wheel identity witnesses and a valid lowercase SHA-256 wheel hash;
 12. verifies the worktree is still clean and HEAD/tree plus canonical governance/state files are unchanged;
-13. emits `TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V1` bound to the exact production receipt and wheel.
+13. emits `TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V1` bound to the exact production receipt and wheel, with `V1_PYTHON_SERIALIZED_HOST_ACCESS_GUARD` inside the certified scope.
 
 A successful Python certificate ends with:
 
@@ -260,7 +295,7 @@ The distinction is intentional:
 
 The certificate also explicitly carries `global_certify_full=false` and `stable_release_authorized=false`.
 
-## 9. What neither Python gate claims
+## 10. What neither Python gate claims
 
 Neither a production admission nor a Python-specific certificate means:
 
@@ -269,9 +304,10 @@ Neither a production admission nor a Python-specific certificate means:
 - the package version may be relabeled `1.0.0` without creating and re-certifying the changed commit;
 - arbitrary Python capability implementations are sandboxed;
 - a different wheel, build toolchain or commit inherits the certificate;
-- a host callback is bounded by TEV instruction budgets.
+- a host callback is bounded by TEV instruction budgets;
+- multiple host instances acquire an implicit deterministic inter-host scheduler.
 
-## 10. Stable release sequence
+## 11. Stable release sequence
 
 The intended Python-first sequence is:
 
@@ -294,7 +330,7 @@ explicit promotion/version commit S
 
 No certification is transitive across a source, metadata, package-version or build-system change. A Python certificate for C cannot certify S merely because S is a descendant.
 
-## 11. Operational deployment checklist
+## 12. Operational deployment checklist
 
 For an actual Python service or desktop application:
 
@@ -302,6 +338,8 @@ For an actual Python service or desktop application:
 - store the canonical IR V3 artifact and its lowering/build evidence with the release;
 - construct capability maps explicitly per application role;
 - keep default unused-capability rejection unless a broader capability table is a deliberate architectural decision;
+- treat one `PythonRuntimeHostV1` as one serialized execution domain; use separate hosts or explicit application scheduling for parallel workloads;
+- do not reenter the active host from a capability callback;
 - do not expose source compilation to untrusted runtime requests;
 - persist Runtime Checkpoint V2 only when exact restart is required;
 - keep application-level timeouts/process isolation around untrusted or failure-prone host capabilities;
