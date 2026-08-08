@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -8,8 +9,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parent
 V0_2_ORACLE = "6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5"
-PRODUCTION_RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V1"
-CERTIFY_RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V1"
+PRODUCTION_RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V2"
+CERTIFY_RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V2"
 EXPECTED_SOAK_EVENTS = 10_000
 
 
@@ -87,7 +88,7 @@ def require_equal(label: str, observed: object, expected: object) -> None:
     print(label + "=PASS")
 
 
-def validate_authority_metadata() -> tuple[str, str]:
+def validate_authority_metadata(profile: str) -> tuple[str, str]:
     canonical = json.loads((ROOT / "CANONICAL_INDEX.json").read_text(encoding="utf-8"))
     require_equal(
         "V1_PYTHON_CERTIFY_FULL_CANONICAL_INDEX_SCHEMA",
@@ -95,7 +96,7 @@ def validate_authority_metadata() -> tuple[str, str]:
         "TEV_SCRIPT_CANONICAL_INDEX_V1",
     )
     require_equal(
-        "V1_PYTHON_CERTIFY_FULL_REPOSITORY_STABLE_FALSE",
+        "V1_PYTHON_CERTIFY_FULL_V0_2_TOP_LEVEL_STABLE_FALSE",
         canonical.get("stable"),
         False,
     )
@@ -110,10 +111,11 @@ def validate_authority_metadata() -> tuple[str, str]:
             f"EXPECTED_ONE_V1_TARGET OBSERVED={len(targets)}",
         )
     target = targets[0]
+    expected_stable = profile == "stable"
     require_equal(
-        "V1_PYTHON_CERTIFY_FULL_TARGET_STABLE_FALSE",
+        "V1_PYTHON_CERTIFY_FULL_TARGET_STABLE",
         target.get("stable"),
-        False,
+        expected_stable,
     )
     require_equal(
         "V1_PYTHON_CERTIFY_FULL_PRODUCTION_GATE_BINDING",
@@ -142,9 +144,9 @@ def validate_authority_metadata() -> tuple[str, str]:
         True,
     )
     require_equal(
-        "V1_PYTHON_CERTIFY_FULL_SURFACE_STABLE_FALSE",
+        "V1_PYTHON_CERTIFY_FULL_SURFACE_STABLE",
         surface.get("stable_claim"),
-        False,
+        expected_stable,
     )
     return (
         file_sha256("CANONICAL_INDEX.json"),
@@ -152,7 +154,15 @@ def validate_authority_metadata() -> tuple[str, str]:
     )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="TEV Script V1 Python technical certification")
+    parser.add_argument("--profile", choices=("candidate", "stable"), default="candidate")
+    parser.add_argument("--artifact-out-dir")
+    args = parser.parse_args(argv)
+    profile = args.profile
+    expected_stable = profile == "stable"
+    print("V1_PYTHON_CERTIFY_FULL_PROFILE=" + profile)
+
     require_clean("PYTHON_CERTIFY_BEFORE")
     head = git_text("rev-parse", "HEAD")
     tree = git_text("rev-parse", "HEAD^{tree}")
@@ -163,14 +173,25 @@ def main() -> int:
         abort("V1_PYTHON_CERTIFY_FULL_V0_2_ANCESTRY", "FAIL", ancestry)
     print("V1_PYTHON_CERTIFY_FULL_V0_2_ANCESTRY=PASS")
 
-    canonical_sha, project_state_sha = validate_authority_metadata()
+    canonical_sha, project_state_sha = validate_authority_metadata(profile)
 
-    production = run(
-        [sys.executable, str(ROOT / "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py")]
-    )
+    production_arguments = [
+        sys.executable,
+        str(ROOT / "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py"),
+        "--profile",
+        profile,
+    ]
+    if args.artifact_out_dir:
+        production_arguments.extend(["--artifact-out-dir", args.artifact_out_dir])
+    production = run(production_arguments)
     if production.returncode != 0:
         abort("V1_PYTHON_CERTIFY_FULL_PRODUCTION", "COMMAND_FAILED", production)
-    if "TEV_SCRIPT_V1_PYTHON_PRODUCTION=PASS_CANDIDATE" not in production.stdout.splitlines():
+    expected_witness = (
+        "TEV_SCRIPT_V1_PYTHON_PRODUCTION=PASS_STABLE_CANDIDATE"
+        if expected_stable
+        else "TEV_SCRIPT_V1_PYTHON_PRODUCTION=PASS_CANDIDATE"
+    )
+    if expected_witness not in production.stdout.splitlines():
         abort("V1_PYTHON_CERTIFY_FULL_PRODUCTION", "PASS_WITNESS_MISSING", production)
     if "SKIPPED_" in production.stdout or "skipped=" in production.stdout.lower():
         abort("V1_PYTHON_CERTIFY_FULL_PRODUCTION", "UNEXPECTED_SKIP", production)
@@ -212,6 +233,7 @@ def main() -> int:
         receipt.get("schema"),
         PRODUCTION_RECEIPT_SCHEMA,
     )
+    require_equal("V1_PYTHON_CERTIFY_FULL_PRODUCTION_PROFILE", receipt.get("admission_profile"), profile)
     require_equal("V1_PYTHON_CERTIFY_FULL_PRODUCTION_BRANCH", receipt.get("branch"), branch)
     require_equal("V1_PYTHON_CERTIFY_FULL_PRODUCTION_COMMIT", receipt.get("commit"), head)
     require_equal("V1_PYTHON_CERTIFY_FULL_PRODUCTION_TREE", receipt.get("tree"), tree)
@@ -234,6 +256,7 @@ def main() -> int:
         "installed_runtime_host": "PASS",
         "least_authority": "PASS",
         "reentrant_access_rejected": "PASS",
+        "concurrent_access_rejected": "PASS",
         "typed_capability": "PASS",
         "checkpoint_restart_continuation": "PASS",
         "soak_events": EXPECTED_SOAK_EVENTS,
@@ -265,6 +288,13 @@ def main() -> int:
             )
         print("V1_PYTHON_CERTIFY_FULL_EVIDENCE_" + key.upper() + "=PASS")
 
+    expected_version = "1.0.0" if expected_stable else "0.2.0"
+    require_equal(
+        "V1_PYTHON_CERTIFY_FULL_PACKAGE_VERSION",
+        receipt.get("package_version"),
+        expected_version,
+    )
+
     wheel_sha256 = str(receipt["wheel_sha256"])
     if len(wheel_sha256) != 64 or any(char not in "0123456789abcdef" for char in wheel_sha256):
         abort(
@@ -289,6 +319,7 @@ def main() -> int:
 
     certificate = {
         "schema": CERTIFY_RECEIPT_SCHEMA,
+        "admission_profile": profile,
         "branch": branch,
         "commit": head,
         "tree": tree,
