@@ -16,6 +16,16 @@ from tev_script.contracts_v1 import (
 )
 from tev_script.describe_v1 import main as describe_main
 from tev_script.descriptor_v1 import v1_descriptor, v1_descriptor_json
+from tev_script.release_metadata_v1 import (
+    CURRENT_V1_CERTIFY_FULL_CLAIM,
+    CURRENT_V1_LANGUAGE_STABLE_CLAIM,
+    RELEASE_PROFILE,
+    RELEASE_STATUS,
+    STABLE,
+    TECHNICAL_PARENT_CERTIFICATE_SHA256,
+    TECHNICAL_PARENT_COMMIT,
+    validate_release_metadata,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -29,12 +39,40 @@ class V1DescriptorTests(unittest.TestCase):
         self.assertEqual(observed, canonical_hash(body))
         self.assertEqual(v1_descriptor_json(), canonical_json(descriptor))
 
-    def test_descriptor_reports_exact_candidate_identity(self) -> None:
+    def test_descriptor_reports_exact_release_identity(self) -> None:
+        validate_release_metadata()
         descriptor = v1_descriptor()
         self.assertEqual(descriptor["schema"], "TEV_SCRIPT_DESCRIPTOR_V3")
         self.assertEqual(descriptor["language_version"], V1_LANGUAGE_VERSION)
+        self.assertEqual(descriptor["release_profile"], RELEASE_PROFILE)
+        self.assertEqual(descriptor["release_status"], RELEASE_STATUS)
+        self.assertIs(descriptor["stable"], STABLE)
+        certification = descriptor["certification"]
+        self.assertEqual(certification["technical_parent_commit"], TECHNICAL_PARENT_COMMIT)
+        self.assertEqual(
+            certification["technical_parent_certificate_sha256"],
+            TECHNICAL_PARENT_CERTIFICATE_SHA256,
+        )
+        self.assertIs(
+            certification["current_v1_certify_full_claim"],
+            CURRENT_V1_CERTIFY_FULL_CLAIM,
+        )
+        self.assertIs(
+            certification["current_v1_language_stable_claim"],
+            CURRENT_V1_LANGUAGE_STABLE_CLAIM,
+        )
+
+    def test_candidate_release_metadata_does_not_self_promote(self) -> None:
+        if RELEASE_PROFILE != "candidate":
+            self.skipTest("candidate-only invariant")
+        descriptor = v1_descriptor()
         self.assertEqual(descriptor["release_status"], "IMPLEMENTATION_CANDIDATE_UNCERTIFIED")
         self.assertIs(descriptor["stable"], False)
+        self.assertEqual(descriptor["certification"]["technical_parent_commit"], "")
+        self.assertEqual(
+            descriptor["certification"]["technical_parent_certificate_sha256"],
+            "",
+        )
         self.assertIs(descriptor["certification"]["current_v1_certify_full_claim"], False)
         self.assertIs(descriptor["certification"]["current_v1_language_stable_claim"], False)
 
@@ -106,7 +144,7 @@ class V1DescriptorTests(unittest.TestCase):
         self.assertIs(tooling["formatter"], False)
         self.assertIs(tooling["independent_semantic_authority"], False)
 
-    def test_descriptor_schema_asset_matches_descriptor_version(self) -> None:
+    def test_descriptor_schema_asset_matches_descriptor_version_and_profiles(self) -> None:
         schema = json.loads(
             (ROOT / "schemas" / "tev_script_descriptor_v3.schema.json").read_text(
                 encoding="utf-8"
@@ -114,7 +152,13 @@ class V1DescriptorTests(unittest.TestCase):
         )
         self.assertEqual(schema["properties"]["schema"]["const"], "TEV_SCRIPT_DESCRIPTOR_V3")
         self.assertEqual(schema["properties"]["language_version"]["const"], V1_LANGUAGE_VERSION)
-        self.assertEqual(schema["properties"]["stable"]["const"], False)
+        self.assertEqual(schema["properties"]["release_profile"]["enum"], ["candidate", "stable"])
+        self.assertEqual(
+            schema["properties"]["release_status"]["enum"],
+            ["IMPLEMENTATION_CANDIDATE_UNCERTIFIED", "STABLE_1_0_0"],
+        )
+        self.assertEqual(schema["properties"]["stable"], {"type": "boolean"})
+        self.assertEqual(len(schema["allOf"]), 2)
         self.assertIn("editor_tooling", schema["required"])
         self.assertFalse(schema["properties"]["editor_tooling"]["additionalProperties"])
 
