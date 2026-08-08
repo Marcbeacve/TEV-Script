@@ -45,7 +45,8 @@ internal static class TevScriptLexicalV3
         if (value.Length == 0) return false;
         var firstDigit = value[0] == '-' ? 1 : 0;
         if (firstDigit == value.Length) return false;
-        if (value[firstDigit] == '0') return firstDigit + 1 == value.Length;
+        if (value[firstDigit] == '0')
+            return firstDigit == 0 && firstDigit + 1 == value.Length;
         if (value[firstDigit] is not (>= '1' and <= '9')) return false;
         for (var index = firstDigit + 1; index < value.Length; ++index)
             if (value[index] is not (>= '0' and <= '9')) return false;
