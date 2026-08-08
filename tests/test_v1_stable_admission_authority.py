@@ -77,6 +77,19 @@ class V1StableAdmissionAuthorityTests(unittest.TestCase):
         self.assertIn("STABLE_JAVASCRIPT_TEST=PASS", stable)
         self.assertIn("STABLE_JAVASCRIPT_PACK=PASS", stable)
 
+    def test_javascript_artifact_identity_is_not_filename_only(self) -> None:
+        stable = (ROOT / "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py").read_text(encoding="utf-8")
+        for token in (
+            "STABLE_JAVASCRIPT_PACK_NAME",
+            "STABLE_JAVASCRIPT_PACK_VERSION",
+            "STABLE_JAVASCRIPT_PACK_FILENAME",
+            "STABLE_JAVASCRIPT_PACK_INTEGRITY",
+            "sha256_file(package_path)",
+            '"javascript_package_sha256": package_hash',
+            '"javascript_npm_integrity": declared_integrity',
+        ):
+            self.assertIn(token, stable)
+
     def test_feature_matrix_keeps_full_stable_promotion_chain(self) -> None:
         matrix = json.loads(
             (ROOT / "spec" / "TEV_SCRIPT_V1_FEATURE_MATRIX.json").read_text(
