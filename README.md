@@ -19,7 +19,7 @@ V1 candidate
     TEV_SCRIPT_PROGRAM_IR_V3 for full algebraic runtime semantics
 ```
 
-**V1 is an implementation candidate, not yet a stable release.** The repository intentionally keeps technical implementation, full certification and stable-release admission as separate states.
+**V1 is an implementation candidate, not yet a stable release.** The repository intentionally keeps technical implementation, host-specific certification, global certification and stable-release admission as separate states.
 
 ---
 
@@ -390,7 +390,19 @@ build_python_program_v1 / build_python_program_v1_paths
     explicit build-time source -> IR V3 helpers
 ```
 
-The production host does not accept source and does not compile at runtime. Physical authority enters only through explicit capability bindings; surplus authority is rejected by default. See `docs/V1_PYTHON_PRODUCTION.md`.
+The production host does not accept source and does not compile at runtime. Physical authority enters only through explicit capability bindings; surplus authority is rejected by default.
+
+Python also has two exact-commit product gates:
+
+```text
+RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py
+    reproducible-wheel + isolated-runtime admission
+
+RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py
+    read-only Python-host certificate authority over the production receipt
+```
+
+The Python certificate is intentionally host-specific: it may assert `PYTHON_CERTIFY_FULL=PASS` while global `CERTIFY_FULL=NO` and `LANGUAGE_STABLE=NO`. See `docs/V1_PYTHON_PRODUCTION.md`.
 
 ## JavaScript
 
@@ -528,7 +540,7 @@ docs/TEV_SCRIPT_V1_PROGRAMMING_MODEL.md
     TEV-native architecture, design patterns and data structures
 
 docs/V1_PYTHON_PRODUCTION.md
-    Python IR-only deployment boundary, least-authority host and production admission
+    Python IR-only deployment boundary, least-authority host, production admission and host-specific certification
 
 examples/v1/README.md
     executable learning path and CLI usage
@@ -556,7 +568,7 @@ Historical V0.2 validation remains documented under the existing V0.2 specs and 
 
 # Validation levels
 
-TEV Script deliberately distinguishes implementation from certification.
+TEV Script deliberately distinguishes implementation from host certification, global certification and stable release.
 
 ## Development closure
 
@@ -582,7 +594,25 @@ CERTIFY_FULL=NO
 LANGUAGE_STABLE=NO
 ```
 
-It is a Python product/distribution admission, not a substitute for V1 cross-runtime certification.
+It is a Python product/distribution admission, not yet a Python certificate and not a substitute for V1 cross-runtime certification.
+
+## Python full certification
+
+```powershell
+python .\RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py
+```
+
+This read-only gate re-runs the production admission on the exact same clean commit, independently recomputes and verifies the production receipt hash, requires all wheel/install/runtime/authority/checkpoint/soak evidence, rechecks HEAD/tree and canonical/state immutability, and emits a certificate bound to the exact production receipt and wheel SHA-256.
+
+A Python-host success means:
+
+```text
+PYTHON_CERTIFY_FULL=PASS
+CERTIFY_FULL=NO
+LANGUAGE_STABLE=NO
+```
+
+This permits Python to reach host-specific technical certification without waiting for Unity. It does not declare the global language/runtime matrix certified or authorize a stable package version.
 
 ## Full pre-certification
 
@@ -613,24 +643,24 @@ Mandatory V1/V3 `SKIPPED_*` results are not accepted as a full precertification.
 python .\RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py
 ```
 
-This gate is read-only. It re-runs pre-certify, validates the canonical pre-certify receipt and binds the certificate to the exact Git commit/tree.
+This gate is read-only. It re-runs pre-certify, validates the canonical pre-certify receipt and binds the global certificate to the exact Git commit/tree.
 
-A technical success means:
+A global technical success means:
 
 ```text
 CERTIFY_FULL=PASS
 LANGUAGE_STABLE=NO
 ```
 
-Stable release admission is intentionally a separate governance operation. If stable metadata changes the tree, the resulting commit must itself be pre-certified and certified; certification is not inherited transitively from its parent.
+Stable release admission is intentionally a separate governance operation. If stable metadata changes the tree, the resulting commit must itself be re-run through the certificate scope being claimed; certification is not inherited transitively from its parent.
 
-See `docs/V1_CERTIFICATION_PROTOCOL.md`.
+See `docs/V1_CERTIFICATION_PROTOCOL.md` and `docs/V1_PYTHON_PRODUCTION.md`.
 
 ---
 
 # Current repository status
 
-The current V1 branch contains the complete implementation/gate candidate described above, but this README does **not** claim that the exact current HEAD has completed either the Python production admission or full pre-certification in this ChatGPT runtime.
+The current V1 branch contains the complete implementation/gate candidate described above, but this README does **not** claim that the exact current HEAD has completed Python production admission, Python host-specific certification or global pre-certification in this ChatGPT runtime.
 
 The authoritative current status is `PROJECT_STATE.md`.
 
@@ -638,6 +668,7 @@ Until the exact clean commit passes the required admission sequence:
 
 ```text
 CURRENT_HEAD_PYTHON_PRODUCTION_GATE=NOT_EXECUTED_HERE
+CURRENT_HEAD_PYTHON_CERTIFY_FULL=NOT_EXECUTED_HERE
 V1_CERTIFY_FULL=NO
 V1_LANGUAGE_STABLE=NO
 ```
