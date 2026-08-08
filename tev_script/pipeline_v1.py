@@ -11,6 +11,10 @@ from .lowering_ir_v2_linked_v1 import (
     LinkedV1IrV2Bundle,
     lower_linked_program_v1_to_ir_v2,
 )
+from .lowering_ir_v3_linked_v1 import (
+    LinkedV1IrV3Bundle,
+    lower_linked_program_v1_to_ir_v3,
+)
 from .static_semantics_v1 import StaticSemanticsV1, analyze_v1_static_semantics
 
 
@@ -26,6 +30,19 @@ class V1AnalysisBundle:
 class V1IrV2CompilationBundle:
     analysis: V1AnalysisBundle
     target: LinkedV1IrV2Bundle
+
+
+@dataclass(frozen=True, slots=True)
+class V1IrV3CompilationBundle:
+    analysis: V1AnalysisBundle
+    target: LinkedV1IrV3Bundle
+
+
+@dataclass(frozen=True, slots=True)
+class V1AutoCompilationBundle:
+    analysis: V1AnalysisBundle
+    target_ir: str
+    target: LinkedV1IrV2Bundle | LinkedV1IrV3Bundle
 
 
 def analyze_v1_sources(
@@ -102,3 +119,83 @@ def compile_v1_paths_to_ir_v2(
             )
         )
     return compile_v1_sources_to_ir_v2(inputs)
+
+
+def compile_v1_sources_to_ir_v3(
+    sources: Iterable[SourceInputV1],
+) -> V1IrV3CompilationBundle:
+    analysis = analyze_v1_sources(sources)
+    target = lower_linked_program_v1_to_ir_v3(
+        analysis.linked_program
+    )
+    return V1IrV3CompilationBundle(
+        analysis=analysis,
+        target=target,
+    )
+
+
+def compile_v1_mapping_to_ir_v3(
+    sources: Mapping[str, bytes],
+) -> V1IrV3CompilationBundle:
+    return compile_v1_sources_to_ir_v3(
+        SourceInputV1(path, data)
+        for path, data in sources.items()
+    )
+
+
+def compile_v1_paths_to_ir_v3(
+    paths: Iterable[str | Path],
+) -> V1IrV3CompilationBundle:
+    inputs = []
+    for path in paths:
+        selected = Path(path)
+        inputs.append(
+            SourceInputV1(
+                selected.as_posix(),
+                selected.read_bytes(),
+            )
+        )
+    return compile_v1_sources_to_ir_v3(inputs)
+
+
+def compile_v1_sources_auto(
+    sources: Iterable[SourceInputV1],
+) -> V1AutoCompilationBundle:
+    analysis = analyze_v1_sources(sources)
+    if analysis.ir_v2_boundary.lowerable:
+        target_ir = "TEV_SCRIPT_PROGRAM_IR_V2"
+        target: LinkedV1IrV2Bundle | LinkedV1IrV3Bundle = (
+            lower_linked_program_v1_to_ir_v2(analysis.linked_program)
+        )
+    else:
+        target_ir = "TEV_SCRIPT_PROGRAM_IR_V3"
+        target = lower_linked_program_v1_to_ir_v3(analysis.linked_program)
+    return V1AutoCompilationBundle(
+        analysis=analysis,
+        target_ir=target_ir,
+        target=target,
+    )
+
+
+def compile_v1_mapping_auto(
+    sources: Mapping[str, bytes],
+) -> V1AutoCompilationBundle:
+    return compile_v1_sources_auto(
+        SourceInputV1(path, data)
+        for path, data in sources.items()
+    )
+
+
+def compile_v1_paths_auto(
+    paths: Iterable[str | Path],
+) -> V1AutoCompilationBundle:
+    inputs = []
+    for path in paths:
+        selected = Path(path)
+        inputs.append(
+            SourceInputV1(
+                selected.as_posix(),
+                selected.read_bytes(),
+            )
+        )
+    return compile_v1_sources_auto(inputs)
