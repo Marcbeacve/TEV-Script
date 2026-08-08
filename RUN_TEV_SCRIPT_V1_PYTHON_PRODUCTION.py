@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
@@ -14,7 +15,7 @@ import venv
 
 ROOT = Path(__file__).resolve().parent
 V0_2_ORACLE = "6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5"
-RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V1"
+RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V2"
 SOAK_EVENTS = 10_000
 
 
@@ -207,8 +208,35 @@ def canonical_json(value: object) -> str:
     )
 
 
-def main() -> int:
-    print("TEV_SCRIPT_V1_PYTHON_PRODUCTION_GATE_SCHEMA=V1")
+def prepare_artifact_dir(raw: str | None) -> Path | None:
+    if raw is None:
+        return None
+    destination = Path(raw).expanduser().resolve()
+    repository = ROOT.resolve()
+    try:
+        destination.relative_to(repository)
+    except ValueError:
+        pass
+    else:
+        fail("TEV_SCRIPT_V1_PYTHON_ARTIFACT_DIR", "MUST_BE_OUTSIDE_REPOSITORY")
+    destination.mkdir(parents=True, exist_ok=True)
+    if any(destination.iterdir()):
+        fail("TEV_SCRIPT_V1_PYTHON_ARTIFACT_DIR", "MUST_BE_EMPTY=" + str(destination))
+    return destination
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="TEV Script V1 Python production admission")
+    parser.add_argument("--profile", choices=("candidate", "stable"), default="candidate")
+    parser.add_argument("--artifact-out-dir")
+    args = parser.parse_args(argv)
+    profile = args.profile
+    expected_stable = profile == "stable"
+    expected_package_version = "1.0.0" if expected_stable else "0.2.0"
+    artifact_out = prepare_artifact_dir(args.artifact_out_dir)
+
+    print("TEV_SCRIPT_V1_PYTHON_PRODUCTION_GATE_SCHEMA=V2")
+    print("TEV_SCRIPT_V1_PYTHON_PRODUCTION_PROFILE=" + profile)
     print("V0_2_CERTIFIED_BASE=" + V0_2_ORACLE)
     if sys.version_info < (3, 11):
         fail(
@@ -243,16 +271,23 @@ def main() -> int:
         fail("V0_2_ORACLE_ANCESTRY", "FAIL", ancestry)
     print("V0_2_ORACLE_ANCESTRY=PASS")
 
-    governance = run(
-        (sys.executable, str(ROOT / "tools" / "validate_v1_governance.py"))
+    governance_script = (
+        "tools/validate_v1_stable_governance.py"
+        if expected_stable
+        else "tools/validate_v1_governance.py"
     )
-    require_success(
-        "TEV_SCRIPT_V1_PYTHON_GOVERNANCE",
-        governance,
-        "TEV_SCRIPT_V1_GOVERNANCE=PASS",
+    governance = run((sys.executable, str(ROOT / governance_script)))
+    governance_witness = (
+        "TEV_SCRIPT_V1_STABLE_GOVERNANCE=PASS"
+        if expected_stable
+        else "TEV_SCRIPT_V1_GOVERNANCE=PASS"
     )
+    require_success("TEV_SCRIPT_V1_PYTHON_GOVERNANCE", governance, governance_witness)
 
-    frontend = run((sys.executable, str(ROOT / "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py")))
+    frontend_arguments = [sys.executable, str(ROOT / "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py")]
+    if expected_stable:
+        frontend_arguments.append("--require-zero-skips")
+    frontend = run(tuple(frontend_arguments))
     require_success(
         "TEV_SCRIPT_V1_PYTHON_FRONTEND_CLOSURE",
         frontend,
@@ -260,10 +295,17 @@ def main() -> int:
     )
     if "SKIPPED_" in frontend.stdout or "skipped=" in frontend.stdout.lower():
         fail("TEV_SCRIPT_V1_PYTHON_FRONTEND_CLOSURE", "TEST_SKIP_DETECTED", frontend)
+    if expected_stable and "TEV_SCRIPT_V1_FRONTEND_ZERO_SKIPS=PASS" not in frontend.stdout.splitlines():
+        fail("TEV_SCRIPT_V1_PYTHON_FRONTEND_CLOSURE", "ZERO_SKIP_WITNESS_MISSING", frontend)
 
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     package_name = str(project["name"])
     package_version = str(project["version"])
+    if package_version != expected_package_version:
+        fail(
+            "TEV_SCRIPT_V1_PYTHON_PACKAGE_VERSION",
+            f"EXPECTED={expected_package_version} OBSERVED={package_version}",
+        )
     dependencies = project.get("dependencies", [])
     if dependencies != []:
         fail(
@@ -352,8 +394,10 @@ def main() -> int:
             fail("TEV_SCRIPT_V1_PYTHON_INSTALLED_DESCRIPTOR", "INVALID_JSON=" + str(exc), descriptor_run)
         if descriptor.get("schema") != "TEV_SCRIPT_DESCRIPTOR_V3":
             fail("TEV_SCRIPT_V1_PYTHON_INSTALLED_DESCRIPTOR", "SCHEMA_MISMATCH", descriptor_run)
-        if descriptor.get("stable") is not False:
-            fail("TEV_SCRIPT_V1_PYTHON_INSTALLED_DESCRIPTOR", "UNAUTHORIZED_STABLE_CLAIM", descriptor_run)
+        if descriptor.get("release_profile") != profile:
+            fail("TEV_SCRIPT_V1_PYTHON_INSTALLED_DESCRIPTOR", "PROFILE_MISMATCH", descriptor_run)
+        if descriptor.get("stable") is not expected_stable:
+            fail("TEV_SCRIPT_V1_PYTHON_INSTALLED_DESCRIPTOR", "STABLE_CLAIM_MISMATCH", descriptor_run)
 
         counter_source = work / "production_counter.tevs"
         counter_source.write_text(
@@ -559,6 +603,7 @@ print(f"TEV_SCRIPT_V1_PYTHON_SOAK_EVENTS={soak_events}")
 
         receipt_without_hash = {
             "schema": RECEIPT_SCHEMA,
+            "admission_profile": profile,
             "branch": branch,
             "commit": head,
             "tree": tree,
@@ -598,7 +643,17 @@ print(f"TEV_SCRIPT_V1_PYTHON_SOAK_EVENTS={soak_events}")
         print("TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_JSON=" + canonical_json(receipt))
         print("TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_SHA256=" + receipt_hash)
 
-    print("TEV_SCRIPT_V1_PYTHON_PRODUCTION=PASS_CANDIDATE")
+        if artifact_out is not None:
+            exported = artifact_out / wheel_a.name
+            shutil.copyfile(wheel_a, exported)
+            if sha256(exported) != wheel_a_hash:
+                fail("TEV_SCRIPT_V1_PYTHON_ARTIFACT_EXPORT", "HASH_MISMATCH")
+            print("TEV_SCRIPT_V1_PYTHON_ARTIFACT_EXPORT=PASS path=" + str(exported))
+
+    print(
+        "TEV_SCRIPT_V1_PYTHON_PRODUCTION="
+        + ("PASS_STABLE_CANDIDATE" if expected_stable else "PASS_CANDIDATE")
+    )
     print("CERTIFY_FULL=NO")
     print("LANGUAGE_STABLE=NO")
     return 0
