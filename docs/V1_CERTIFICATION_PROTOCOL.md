@@ -1,6 +1,6 @@
 # TEV Script V1 certification protocol
 
-Status: **candidate governance authority**.
+Status: **candidate governance authority with governed stable-admission path**.
 
 This protocol separates states that must never be conflated:
 
@@ -8,9 +8,11 @@ This protocol separates states that must never be conflated:
 2. a host/product-specific admission or certificate may pass for a bounded scope;
 3. global pre-certification evidence passes;
 4. the exact commit is globally technically certified;
-5. a stable release is admitted.
+5. stable-admission tooling itself is technically certified;
+6. a release-shaped exact commit passes stable admission;
+7. only then may that exact commit be tagged/published as V1 stable.
 
-The separation is intentional. Editing metadata to say `stable=true` is not evidence that the edited commit is the one that passed the runtime, distribution or portability campaign.
+Editing metadata to say `stable=true` is a claim, not evidence. The claim becomes authoritative only when `RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py` emits a matching content-addressed stable-admission receipt for that exact Git identity and exact release artifacts.
 
 ## 1. Historical V0.2 oracle
 
@@ -20,101 +22,75 @@ V1 certification is anchored to the certified V0.2 language-completeness oracle:
 6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5
 ```
 
-A V1 candidate must contain that commit in its ancestry and must preserve the V0.2 portable regression campaign.
+Every V1 candidate/stable commit must contain that oracle in its ancestry and preserve the V0.2 portable regression campaign. The historical root `descriptor.json` remains V0.2 authority; V1 release introspection is versioned separately through `TEV_SCRIPT_DESCRIPTOR_V3`.
 
 ## 2. Stage A — implementation candidate
 
-An implementation candidate may contain complete source/runtime functionality and conformance gates, but it must still report:
+An implementation candidate may contain complete source/runtime functionality and conformance gates, but it reports:
 
 ```text
 CERTIFY_FULL=NO
 LANGUAGE_STABLE=NO
 ```
 
-Code presence, test files, documentation, prior branch evidence or a passing ancestor do not promote the current commit.
+Code presence, documentation, a passing ancestor, a version string or `stable=true` metadata are not certification.
 
-## 3. Host-specific certification profiles
+## 3. Host-specific Python certification
 
-A host may require product/distribution evidence that is meaningful for that host but is not part of the language's cross-runtime semantic matrix. Such a profile may be certified independently only when all of the following hold:
-
-- the scope is explicit and narrower than global V1 certification;
-- the gate binds itself to an exact clean commit/tree;
-- the evidence is canonical and content-addressed;
-- the host-specific certificate does not emit global `CERTIFY_FULL=PASS`;
-- the host-specific certificate does not emit `LANGUAGE_STABLE=YES`;
-- no certificate is inherited across a changed commit or artifact.
-
-### 3.1 Python production admission
-
-Authority:
+Authorities:
 
 ```text
 RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py
+RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py
 ```
 
-This gate verifies the Python distribution/embedding boundary on one exact clean commit. Its mandatory scope includes the current Python/frontend/IR V3 closure, V0.2 Python regression, governance, zero runtime dependencies, two independent offline wheel builds, byte-identical reproducible `py3-none-any` wheel output, isolated wheel installation, installed-module origin, explicit deployed IR V3 compilation, IR-only runtime execution, least-authority capability preflight, serialized/non-reentrant host access with fail-closed `TEVS_PYTHON_V1_HOST_BUSY`, typed capability execution, Runtime Checkpoint V2 continuation and a deterministic 10,000-event soak.
-
-External schema-validation libraries such as `jsonschema` are not runtime dependencies of the Python wheel and are not part of the least-authority host ABI. A host/product certificate therefore does not by itself claim the stronger global zero-skip/schema-validation property defined in Stage B.
-
-The canonical Python product contract requires:
+Both gates accept:
 
 ```text
-python_production_surface.serialized_host_access=true
+--profile candidate   # default
+--profile stable
 ```
 
-A capability-driven attempt to reenter the same active host must be rejected and must not mutate TEV state. The host does not turn Python thread scheduling into an implicit TEV ordering rule.
+The profile changes release/governance expectations only. Runtime semantics, least-authority checks, serialized/non-reentrant host access, checkpoint continuation, typed capability execution, isolated wheel installation, reproducible wheel bytes and 10,000-event soak remain mandatory.
 
-It emits:
+The production receipt schema is:
 
 ```text
-TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V1
+TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V2
+```
+
+and binds `admission_profile` plus exact commit/tree, build-tool identities, package version and wheel SHA-256.
+
+Candidate production emits:
+
+```text
 TEV_SCRIPT_V1_PYTHON_PRODUCTION=PASS_CANDIDATE
 CERTIFY_FULL=NO
 LANGUAGE_STABLE=NO
 ```
 
-Production admission is evidence generation, not yet a Python certificate.
-
-### 3.2 Python host `PYTHON_CERTIFY_FULL`
-
-Authority:
+Stable-profile production emits:
 
 ```text
-RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py
+TEV_SCRIPT_V1_PYTHON_PRODUCTION=PASS_STABLE_CANDIDATE
+CERTIFY_FULL=NO
+LANGUAGE_STABLE=NO
 ```
 
-This gate is read-only with respect to tracked repository content. It captures its own exact HEAD/tree, verifies `serialized_host_access=true`, re-runs Python production admission, parses the canonical production receipt rather than trusting terminal prose, independently recomputes the receipt hash, requires the embedded hash and external hash to agree, validates every mandatory Python product witness including `reentrant_access_rejected=PASS`, rechecks repository/canonical/state immutability and emits a certificate bound to the exact production receipt and wheel SHA-256.
-
-The Python certificate schema is:
+`RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py` emits:
 
 ```text
-TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V1
-```
-
-Its certified scope explicitly includes:
-
-```text
-V1_PYTHON_SERIALIZED_HOST_ACCESS_GUARD
-```
-
-A successful Python-host admission emits:
-
-```text
+TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V2
 PYTHON_CERTIFY_FULL=PASS
 CERTIFY_FULL=NO
 LANGUAGE_STABLE=NO
 ```
 
-The certificate itself records:
+Even under `--profile stable`, Python certification does **not** authorize language stability. It certifies the exact Python distribution/host profile. The stable-admission gate is the only authority allowed to promote the release.
 
-```text
-python_certify_full=true
-global_certify_full=false
-language_stable=false
-stable_release_authorized=false
-```
+When `--artifact-out-dir` is supplied, Python production/certification copies the already-verified wheel bytes outside the repository. The exported wheel hash must equal the hash bound into the Python certificate; later stable publication must use those exact bytes rather than a new rebuild.
 
-This permits the Python host/product profile to reach technical certification without waiting for Unity or the full multi-runtime V1 campaign. It does **not** redefine `CERTIFY_FULL` and cannot authorize a stable V1 release by itself.
+`jsonschema` remains a certification-tool dependency for global certification. It is not a Python runtime dependency and must not be added to the wheel merely to satisfy global gates.
 
 ## 4. Stage B — global `V1_PRECERTIFY`
 
@@ -124,47 +100,51 @@ Authority:
 RUN_TEV_SCRIPT_V1_PRECERTIFY.py
 ```
 
-The gate runs from one exact clean checkout and requires all of the following without V1/V3/V0.2-regression unittest skips:
-
-- reference V1 frontend/static/lowering closure executed with `--require-zero-skips`;
-- explicit zero-skip counters for the V1, IR V3 and V0.2 Python regression suites;
-- V0.2 Python regression inside the closure gate;
-- C# V0.2/V3 assembly-isolation and reflection/AOT surface guard;
-- regex-free closed ASCII lexical admission in the portable C# V3 assembly;
-- Python/JavaScript/C# IR V3 canonical receipt byte lock;
-- Python/JavaScript/C# Runtime Checkpoint V2 byte lock and restart continuation;
-- Browser-WASM AOT IR V3 receipt/checkpoint parity;
-- explicit managed-to-JavaScript Browser-WASM witness authority (console output is diagnostic only);
-- WASI IR V3 fresh-process/checkpoint/restore-process parity;
-- signed-update V3 host campaign;
-- signed-update V3 Browser-WASM campaign;
-- signed-update V3 WASI fresh/restore campaign;
-- complete portable V0.2 Python/JavaScript regression;
-- independent V0.2 Browser-WASM AOT and WASI/Wasmtime dynamic witnesses from `tools/validate_v0_2_portable_hosts.py`;
-- `jsonschema` installed in the **certification environment** and `JSON_SCHEMA_VALIDATION=PASS` for the V0.2 portable campaign;
-- clean worktree before and after;
-- identical commit and tree before and after validation.
-
-`jsonschema` is a certification-tool dependency only. It MUST NOT be added to the TEV Script Python runtime dependency set merely to satisfy this gate. The production wheel remains governed by its independent zero-runtime-dependency contract.
-
-The global gate may not reinterpret `jsonschema` absence as a successful partial result. `OPTIONAL_DEPENDENCY_UNAVAILABLE` remains useful for ordinary development/diagnostic runs of the portable conformance tool, but it is a failed admission environment for global `V1_PRECERTIFY`/`CERTIFY_FULL`.
-
-A successful run emits one canonical JSON receipt:
+Profiles:
 
 ```text
-TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V6
+--profile candidate   # default
+--profile stable
 ```
 
-The receipt binds the certification `jsonschema` version, explicit zero-skip frontend evidence, the exact Git branch/commit/tree and the remaining mandatory cross-host witnesses, and is itself bound by a SHA-256.
+The dynamic campaign is intentionally the same under both profiles. Only governance/release metadata expectations differ.
 
-`V1_PRECERTIFY=PASS` still means:
+Mandatory scope includes:
+
+- V1 frontend/static/lowering closure with `--require-zero-skips`;
+- explicit zero-skip counters for V1, IR V3 and selected V0.2 Python regression suites;
+- certification-time `jsonschema` and exact `JSON_SCHEMA_VALIDATION=PASS`;
+- C# V0.2/V3 assembly isolation and reflection/AOT surface guard;
+- Python/JavaScript/C# IR V3 canonical receipt byte lock;
+- Python/JavaScript/C# Runtime Checkpoint V2 byte lock and restart continuation;
+- Browser-WASM AOT receipt/checkpoint parity through explicit managed→JSImport→authenticated HTTP witness authority;
+- WASI fresh/restore process parity;
+- signed-update host, Browser-WASM and WASI campaigns;
+- independent V0.2 Browser-WASM and WASI/Wasmtime dynamic witnesses;
+- full portable V0.2 Python/JavaScript regression;
+- clean immutable HEAD/tree throughout.
+
+Receipt:
 
 ```text
+TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V7
+```
+
+The receipt includes:
+
+```text
+admission_profile = candidate | stable
+certify_full = false
+language_stable = false
+```
+
+A successful precertify always ends:
+
+```text
+V1_PRECERTIFY=PASS
 CERTIFY_FULL=NO
 LANGUAGE_STABLE=NO
 ```
-
-because pre-certification is an evidence-producing test campaign, not the final global admission step.
 
 ## 5. Stage C — global technical `CERTIFY_FULL`
 
@@ -174,109 +154,250 @@ Authority:
 RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py
 ```
 
-`CERTIFY_FULL` is deliberately read-only. It does not edit version metadata, create tags, merge branches or publish releases.
-
-The gate:
-
-1. requires a clean worktree;
-2. records exact `HEAD`, tree and branch;
-3. runs `RUN_TEV_SCRIPT_V1_PRECERTIFY.py` as a child process;
-4. requires exactly one successful pre-certify receipt and receipt SHA-256;
-5. parses that receipt rather than trusting terminal prose;
-6. verifies that the embedded commit/tree/branch equal the current checkout;
-7. requires a non-empty certification `jsonschema` version and exact `v0_2_jsonschema_validation=PASS`;
-8. verifies the explicit `v1_frontend_zero_skips=PASS` evidence and every remaining mandatory V1/V3 field;
-9. verifies `certify_full=false` and `language_stable=false` in the pre-certify evidence, proving the child did not self-promote;
-10. re-checks the repository remains clean and the exact commit/tree are unchanged after all validation;
-11. emits a new technical certificate bound to that exact commit/tree and the exact pre-certify receipt hash.
-
-The global technical certificate schema is:
+Profiles:
 
 ```text
-TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V1
+--profile candidate   # default
+--profile stable
 ```
 
-A successful global technical admission emits:
+Candidate profile validates candidate metadata. Stable profile validates the release-shaped stable claim, but neither profile may self-promote the language.
+
+`CERTIFY_FULL`:
+
+1. requires a clean exact checkout;
+2. binds branch/HEAD/tree;
+3. validates profile-specific authority metadata;
+4. runs PRECERTIFY V7 with the same profile;
+5. recomputes and verifies the pre-certify receipt hash;
+6. requires exact branch/commit/tree/profile equality;
+7. requires every mandatory witness and zero-skip/schema evidence;
+8. rechecks repository identity/authority-file hashes;
+9. emits a new technical certificate.
+
+Technical certificate schema:
+
+```text
+TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V2
+```
+
+It contains:
+
+```text
+admission_profile = candidate | stable
+certify_full = true
+language_stable = false
+```
+
+and terminates:
 
 ```text
 CERTIFY_FULL=PASS
 LANGUAGE_STABLE=NO
 ```
 
-This is not contradictory: `CERTIFY_FULL` certifies the language/runtime candidate at one immutable Git identity; stable release admission is a separate publication/governance decision.
+`--receipt-out <external-path>` may write the exact canonical technical receipt outside the repository. This is used to bind the stable release to its certified technical parent.
 
 ## 6. Stage D — stable-release admission
 
-Stable admission is intentionally not performed by either Python `PYTHON_CERTIFY_FULL` or global `CERTIFY_FULL`.
-
-A release/promotion commit may change repository-facing version metadata such as package version, `descriptor.json`, `CANONICAL_INDEX.json` or release documentation. Because that produces a **different tree/commit**, it cannot inherit the parent's technical certificate blindly.
-
-For a Python-only product release, the minimum safe host-specific promotion sequence is:
+Authority:
 
 ```text
-candidate commit C
-  -> PYTHON_PRODUCTION(C)=PASS_CANDIDATE
-  -> PYTHON_CERTIFY_FULL(C)=PASS
-  -> create narrowly scoped Python stable-admission/version commit S
-  -> PYTHON_PRODUCTION(S)=PASS_CANDIDATE
-  -> PYTHON_CERTIFY_FULL(S)=PASS
-  -> only then perform the separately authorized Python release/tag/publication step
+RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py
 ```
 
-For a globally certified V1 release, the global sequence remains:
+Stable admission is a separate authority from PRECERTIFY, global `CERTIFY_FULL`, Python `PYTHON_CERTIFY_FULL`, tags and publication.
+
+The stable-admission receipt schema is:
 
 ```text
-candidate commit C
-  -> PRECERTIFY(C)=PASS
-  -> CERTIFY_FULL(C)=PASS
-  -> create narrowly scoped stable-admission commit S
-  -> PRECERTIFY(S)=PASS
-  -> CERTIFY_FULL(S)=PASS
-  -> only then tag/publish S as globally stable
+TEV_SCRIPT_V1_STABLE_ADMISSION_RECEIPT_V1
 ```
 
-If the globally stable release also publishes the Python distribution, its Python product certificate should be re-run on S as well rather than inferred from the global semantic certificate.
+### 6.1 Required two-identity sequence
 
-If promotion metadata would alter a semantically hashed artifact, the resulting semantic identities must be recomputed through their normal canonical pipelines rather than patched manually.
+Let:
+
+```text
+C = previously certified global candidate
+P = stable-admission tooling commit/branch
+S = release-shaped V1.0.0 commit
+```
+
+Required sequence:
+
+```text
+C
+  -> create Stage-D tooling P (still release_profile=candidate)
+  -> CERTIFY_FULL(P --profile candidate)=PASS
+  -> persist P technical receipt outside repository
+  -> create release-shaped S from P
+  -> S changes only governed release/distribution metadata
+  -> STABLE_ADMISSION(S)=PASS
+  -> only then tag/publish exactly S
+```
+
+P is important: the mechanism capable of admitting a stable release must itself be technically certified before it is used as authority.
+
+### 6.2 Exact parent certificate binding
+
+S release metadata records:
+
+```text
+TECHNICAL_PARENT_COMMIT=<P>
+TECHNICAL_PARENT_CERTIFICATE_SHA256=<sha256 of P CERTIFY_FULL V2 receipt>
+```
+
+Stable admission additionally requires:
+
+```text
+--technical-parent-certificate <exact P receipt file>
+```
+
+The gate recomputes that file's canonical receipt SHA-256 and verifies:
+
+- schema `TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V2`;
+- `admission_profile=candidate`;
+- receipt commit equals P;
+- receipt tree equals Git's tree for P;
+- `certify_full=true`;
+- `language_stable=false`;
+- recomputed receipt SHA equals S's embedded technical-parent certificate SHA.
+
+A hash string in metadata without the corresponding verified receipt is insufficient.
+
+### 6.3 Release-diff confinement
+
+`STABLE_ADMISSION` compares P..S and rejects any changed path outside the explicit release whitelist.
+
+Allowed release paths are intentionally limited to:
+
+```text
+CANONICAL_INDEX.json
+CHANGELOG.md
+PROJECT_STATE.md
+README.md
+javascript/package.json
+pyproject.toml
+spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json
+tev_script/release_metadata_v1.py
+```
+
+Any compiler, parser, linker, runtime, IR, C#, Browser-WASM, WASI or certification-gate change means S is no longer a release-only commit. Such a change requires a new technical candidate P and fresh Stage-C certification before another stable attempt.
+
+### 6.4 Stable-shaped S metadata
+
+S must satisfy stable governance:
+
+```text
+language_version = 1.0.0
+release_profile = stable
+release_status = STABLE_1_0_0
+stable claim = true
+Python package version = 1.0.0
+JavaScript package version = 1.0.0
+```
+
+The root V0.2 `descriptor.json` remains historical and is not overwritten. V1 introspection uses `TEV_SCRIPT_DESCRIPTOR_V3`, whose schema explicitly governs both candidate and stable profiles.
+
+A stable claim in S remains unauthoritative until stable admission passes.
+
+### 6.5 Mandatory recertification of S
+
+Stable admission does not inherit P's semantic result. It runs on S itself:
+
+```text
+RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py --profile stable
+RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py --profile stable
+npm test
+npm pack
+```
+
+Therefore S repeats the full cross-runtime campaign and Python distribution certification under the stable metadata profile.
+
+Both technical child certificates must still report:
+
+```text
+LANGUAGE_STABLE=NO
+```
+
+If either attempts to emit `LANGUAGE_STABLE=YES`, stable admission fails. This preserves one unique promotion authority.
+
+### 6.6 Exact artifact identity
+
+Stable admission requires an external empty artifact directory and exports:
+
+```text
+python/<certified 1.0.0 wheel>
+javascript/<certified 1.0.0 npm tarball>
+tev-script-v1-stable-admission.receipt.json
+```
+
+The stable receipt binds the exact wheel/tarball filenames and SHA-256 values. Publication must use these exact bytes. Rebuilding after certification and publishing the rebuild is not equivalent, even if reproducibility is expected.
+
+### 6.7 Stable success witness
+
+Only `RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py` may terminate with:
+
+```text
+CERTIFY_FULL=PASS
+STABLE_ADMISSION=PASS
+LANGUAGE_STABLE=YES
+```
+
+Every other V1 gate must continue to emit `LANGUAGE_STABLE=NO`.
 
 ## 7. No transitive certification
 
-These do **not** imply certification of another commit:
+These do **not** certify another commit/artifact:
 
-- a parent commit passed;
-- a sibling branch passed;
-- the diff is documentation-only;
-- the diff is a version-string-only change;
-- the generated IR is visually identical;
-- all tests passed before the final commit was created;
-- the wheel filename is unchanged;
-- global `CERTIFY_FULL` passed on another tree;
-- Python `PYTHON_CERTIFY_FULL` passed on another tree.
+- parent/sibling branch passed;
+- diff is documentation-only;
+- diff is version-only;
+- output looks identical;
+- wheel filename is unchanged;
+- artifact was rebuilt from the same source;
+- `CERTIFY_FULL` passed on another tree;
+- `PYTHON_CERTIFY_FULL` passed on another tree;
+- a stable metadata claim exists without stable-admission receipt.
 
-Every certified Git commit/tree and host artifact must be the identity observed by the relevant gate itself.
+Every certificate/admission is bound to the exact Git identity and artifacts observed by its own authority.
 
-## 8. No skipped mandatory target
+## 8. Merge/tag/publication identity
 
-For global V1 full certification, a missing Node, .NET, Chromium, Wasmtime, .NET WASI pack, required wasi-sdk **or certification-time `jsonschema`** is a failed admission environment, not a successful partial certification.
+After `STABLE_ADMISSION(S)=PASS`, the release identity is S.
 
-All unittest suites included by the global frontend closure must report explicit skip count zero. Relying on a test runner's stdout/stderr formatting is not sufficient evidence; the closure emits machine-readable skip counters and `V1_PRECERTIFY` requires their zero values.
+Preferred publication path:
 
-For Python full certification, a missing/incompatible local Python 3.11+, pip or setuptools build environment, a non-reproducible wheel, a failed isolated install or any mandatory runtime/authority/serialization/checkpoint/soak witness is likewise a failed host admission. External schema validation remains outside that host/product runtime dependency contract unless a later Python certificate version explicitly promotes it into scope.
+```text
+fast-forward main -> S
+tag v1.0.0 -> exactly S
+publish exact certified artifacts from stable-admission output
+```
 
-Individual development gates may report `SKIPPED_*` when a tool is unavailable. Global `PRECERTIFY`/`CERTIFY_FULL` must reject all skips in their mandatory scope.
+A squash/rebase/merge commit M produces a new identity. If main must point to M instead of S, M requires a fresh stable admission before it may be tagged/published as the certified release.
 
-## 9. Production-security boundary
+No merge, tag or publication is performed by the certification gates themselves.
 
-Neither Python `PYTHON_CERTIFY_FULL` nor global language/runtime `CERTIFY_FULL` certifies:
+## 9. No skipped mandatory target
 
-- arbitrary Python host callbacks as safe or resource-bounded;
-- deterministic scheduling between multiple independent Python host instances unless the application makes that ordering explicit;
+For global/stable V1 certification, missing Node, .NET, Chromium, Wasmtime, .NET WASI pack, required wasi-sdk or certification-time `jsonschema` is a failed admission environment, not a partial success.
+
+All unittest suites included by the global frontend closure must report explicit skip count zero. Stable Python profile likewise requires the zero-skip frontend witness.
+
+Individual development gates may report `SKIPPED_*` when tooling is unavailable. Global candidate/stable PRECERTIFY, CERTIFY_FULL and STABLE_ADMISSION reject skips in mandatory scope.
+
+## 10. Production-security boundary
+
+Even `STABLE_ADMISSION=PASS` does not certify unrelated deployment/security surfaces such as:
+
+- arbitrary host callbacks as safe/resource-bounded;
 - production signing-key custody/rotation;
 - hostile rollback-resistant monotonic storage;
 - public WAN/TLS/DNS/CDN deployment;
-- external package registries;
+- external registry operational security;
 - physical Unity input/animation providers;
 - decentralized consensus/trust;
-- unrestricted self-modifying or evolutionary code.
+- unrestricted self-modifying/evolutionary code.
 
-Those are distinct system/deployment assurance surfaces. Untrusted Python capability implementations require isolation/resource controls outside the TEV runtime.
+Those remain separate system/deployment assurance domains.
