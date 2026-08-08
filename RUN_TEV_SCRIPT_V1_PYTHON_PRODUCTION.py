@@ -390,6 +390,7 @@ def main() -> int:
 
         smoke_code = r'''
 from pathlib import Path
+from threading import Event, Thread
 import sys
 import tev_script
 from tev_script import PythonProgramArtifactV1, PythonRuntimeHostV1, TevScriptError
@@ -451,6 +452,44 @@ else:
 if reentrant_host.state("E")["value"] != 0:
     raise SystemExit("reentrant_failure_mutated_state")
 
+entered = Event()
+release = Event()
+worker_errors = []
+def blocking_read():
+    entered.set()
+    if not release.wait(timeout=30.0):
+        raise RuntimeError("concurrent capability release timeout")
+    return 9
+
+concurrent_host = PythonRuntimeHostV1(sensor, {"world.read": blocking_read})
+def worker():
+    try:
+        concurrent_host.invoke("E", "update")
+    except BaseException as exc:
+        worker_errors.append(exc)
+
+thread = Thread(target=worker, daemon=True)
+thread.start()
+if not entered.wait(timeout=30.0):
+    raise SystemExit("concurrent_capability_did_not_enter")
+try:
+    try:
+        concurrent_host.state("E")
+    except TevScriptError as exc:
+        if exc.diagnostic.code != "TEVS_PYTHON_V1_HOST_BUSY":
+            raise
+    else:
+        raise SystemExit("concurrent_host_access_not_rejected")
+finally:
+    release.set()
+    thread.join(timeout=30.0)
+if thread.is_alive():
+    raise SystemExit("concurrent_worker_did_not_terminate")
+if worker_errors:
+    raise worker_errors[0]
+if concurrent_host.state("E")["value"] != 9:
+    raise SystemExit("concurrent_host_final_state_mismatch")
+
 sensor_host = PythonRuntimeHostV1(sensor, {"world.read": lambda: 7})
 sensor_host.invoke("E", "update")
 if sensor_host.state("E")["value"] != 7:
@@ -468,6 +507,7 @@ print("TEV_SCRIPT_V1_PYTHON_INSTALLED_RUNTIME_HOST=PASS")
 print("TEV_SCRIPT_V1_PYTHON_INSTALLED_CHECKPOINT_RESTART=PASS")
 print("TEV_SCRIPT_V1_PYTHON_INSTALLED_LEAST_AUTHORITY=PASS")
 print("TEV_SCRIPT_V1_PYTHON_INSTALLED_REENTRANT_ACCESS_REJECTED=PASS")
+print("TEV_SCRIPT_V1_PYTHON_INSTALLED_CONCURRENT_ACCESS_REJECTED=PASS")
 print("TEV_SCRIPT_V1_PYTHON_INSTALLED_TYPED_CAPABILITY=PASS")
 print(f"TEV_SCRIPT_V1_PYTHON_SOAK_EVENTS={soak_events}")
 '''
@@ -493,6 +533,7 @@ print(f"TEV_SCRIPT_V1_PYTHON_SOAK_EVENTS={soak_events}")
             "TEV_SCRIPT_V1_PYTHON_INSTALLED_CHECKPOINT_RESTART=PASS",
             "TEV_SCRIPT_V1_PYTHON_INSTALLED_LEAST_AUTHORITY=PASS",
             "TEV_SCRIPT_V1_PYTHON_INSTALLED_REENTRANT_ACCESS_REJECTED=PASS",
+            "TEV_SCRIPT_V1_PYTHON_INSTALLED_CONCURRENT_ACCESS_REJECTED=PASS",
             "TEV_SCRIPT_V1_PYTHON_INSTALLED_TYPED_CAPABILITY=PASS",
             f"TEV_SCRIPT_V1_PYTHON_SOAK_EVENTS={SOAK_EVENTS}",
         ):
@@ -505,6 +546,7 @@ print(f"TEV_SCRIPT_V1_PYTHON_SOAK_EVENTS={soak_events}")
         print("TEV_SCRIPT_V1_PYTHON_CHECKPOINT_RESTART=PASS")
         print("TEV_SCRIPT_V1_PYTHON_LEAST_AUTHORITY=PASS")
         print("TEV_SCRIPT_V1_PYTHON_REENTRANT_ACCESS_REJECTED=PASS")
+        print("TEV_SCRIPT_V1_PYTHON_CONCURRENT_ACCESS_REJECTED=PASS")
         print("TEV_SCRIPT_V1_PYTHON_TYPED_CAPABILITY=PASS")
         print("TEV_SCRIPT_V1_PYTHON_SOAK=PASS events=" + str(SOAK_EVENTS))
 
@@ -540,6 +582,7 @@ print(f"TEV_SCRIPT_V1_PYTHON_SOAK_EVENTS={soak_events}")
             "installed_runtime_host": "PASS",
             "least_authority": "PASS",
             "reentrant_access_rejected": "PASS",
+            "concurrent_access_rejected": "PASS",
             "typed_capability": "PASS",
             "checkpoint_restart_continuation": "PASS",
             "soak_events": SOAK_EVENTS,
