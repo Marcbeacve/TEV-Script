@@ -65,6 +65,13 @@ from .ir_v3_conformance import (
 )
 from .runtime_v3 import EmittedEventV3, ScriptRuntimeV3
 from .runtime_checkpoint_v2 import RuntimeCheckpointV2
+from .python_host_v1 import (
+    PythonCapabilityContractV1,
+    PythonProgramArtifactV1,
+    PythonRuntimeHostV1,
+    build_python_program_v1,
+    build_python_program_v1_paths,
+)
 
 __all__ = [
     # Certified V0.2 surface.
@@ -127,4 +134,11 @@ __all__ = [
     "EmittedEventV3",
     "RuntimeCheckpointV2",
     "ScriptRuntimeV3",
+    # Python production host surface. Source build and runtime execution stay
+    # distinct: PythonRuntimeHostV1 accepts only precompiled validated IR V3.
+    "PythonCapabilityContractV1",
+    "PythonProgramArtifactV1",
+    "PythonRuntimeHostV1",
+    "build_python_program_v1",
+    "build_python_program_v1_paths",
 ]
