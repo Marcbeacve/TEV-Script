@@ -171,7 +171,7 @@ This is exact restoration, not schema migration. Runtime update/migration remain
 
 ## 7. Distribution gate
 
-Run from a clean exact commit:
+Run from a clean exact commit with Python 3.11+:
 
 ```text
 python RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py
@@ -179,23 +179,28 @@ python RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py
 
 The gate is intentionally stronger than an in-repository unit-test pass. It performs:
 
-1. clean-worktree and exact Git identity capture;
-2. certified V0.2 oracle ancestry check;
-3. the complete current V1 Python/frontend/IR V3/V0.2 Python closure;
-4. two independent `git archive HEAD` source extractions;
-5. two offline, no-build-isolation wheel builds with fixed `SOURCE_DATE_EPOCH` and `PYTHONHASHSEED=0`;
-6. exact wheel filename and SHA-256 byte equality;
-7. creation of a fresh venv;
-8. offline installation of the wheel with no dependencies;
-9. installed package-version verification;
-10. installed console-script presence verification;
-11. installed V1 descriptor execution and rejection of any unauthorized stable claim;
-12. installed `tev-script-v1` compilation to explicit IR V3 outside the repository checkout;
-13. loading that persisted IR through `PythonProgramArtifactV1`;
-14. installed `PythonRuntimeHostV1` execution;
-15. checkpoint capture, continued execution, exact restore and continuation after restore;
-16. clean-worktree and identical HEAD/tree verification after the campaign;
-17. emission of `TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V1` bound to commit, tree and wheel SHA-256.
+1. Python-version, Git and pip preflight;
+2. clean-worktree and exact Git identity capture;
+3. certified V0.2 oracle ancestry check;
+4. V1 governance validation, including the Python production surface/gate bindings;
+5. the complete current V1 Python/frontend/IR V3/V0.2 Python closure;
+6. two independent `git archive HEAD` source extractions;
+7. two offline, no-build-isolation wheel builds with fixed `SOURCE_DATE_EPOCH` and `PYTHONHASHSEED=0`;
+8. exact wheel filename and SHA-256 byte equality;
+9. creation of a fresh venv;
+10. offline installation of the wheel with no dependencies;
+11. installed package-version verification;
+12. installed console-script presence verification;
+13. installed V1 descriptor execution and rejection of any unauthorized stable claim;
+14. installed `tev-script-v1` compilation to explicit IR V3 outside the repository checkout;
+15. loading that persisted IR through `PythonProgramArtifactV1`;
+16. installed `PythonRuntimeHostV1` execution;
+17. checkpoint capture, continued execution, exact restore and continuation after restore;
+18. a 10,000-event installed-wheel soak with exact final-state witness;
+19. clean-worktree and identical HEAD/tree verification after the campaign;
+20. emission of `TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V1` bound to commit, tree, wheel SHA-256 and soak cardinality.
+
+The soak is a deterministic semantic endurance witness, not a hardware-independent latency benchmark. It deliberately has no wall-clock threshold because a fixed timing threshold would make certification depend on machine load/hardware rather than TEV semantics.
 
 The wheel build is explicitly offline (`PIP_NO_INDEX=1`, `--no-deps`, `--no-build-isolation`). If the local build backend needed by `pyproject.toml` is absent or incompatible, the gate fails rather than downloading a different toolchain silently.
 
