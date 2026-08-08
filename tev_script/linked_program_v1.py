@@ -213,7 +213,7 @@ def emit_linked_program_v1(
 def _normalize_modules(semantics: StaticSemanticsV1) -> list[dict[str, object]]:
     result: list[dict[str, object]] = []
     for unit in semantics.plan.units:
-        if unit.unit_kind != "module":
+        if unit.kind != "module":
             continue
         exports = [
             {
