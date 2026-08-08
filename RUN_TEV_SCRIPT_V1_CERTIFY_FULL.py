@@ -68,6 +68,13 @@ def require_equal(label: str, observed: object, expected: object) -> None:
     print(label + "=PASS")
 
 
+def require_nonempty_string(label: str, observed: object) -> str:
+    if not isinstance(observed, str) or not observed.strip():
+        abort(label, "EXPECTED_NONEMPTY_STRING OBSERVED=" + repr(observed))
+    print(label + "=PASS value=" + observed)
+    return observed
+
+
 def validate_authority_metadata() -> tuple[str, str, str]:
     canonical_path = ROOT / "CANONICAL_INDEX.json"
     matrix_path = ROOT / "spec" / "TEV_SCRIPT_V1_FEATURE_MATRIX.json"
@@ -152,10 +159,15 @@ def main() -> int:
     require_equal("V1_CERTIFY_FULL_PRECERTIFY_COMMIT", receipt.get("commit"), head)
     require_equal("V1_CERTIFY_FULL_PRECERTIFY_TREE", receipt.get("tree"), tree)
     require_equal("V1_CERTIFY_FULL_PRECERTIFY_ORACLE", receipt.get("v0_2_oracle"), V0_2_ORACLE)
+    jsonschema_version = require_nonempty_string(
+        "V1_CERTIFY_FULL_EVIDENCE_JSONSCHEMA_VERSION",
+        receipt.get("certification_jsonschema_version"),
+    )
 
     mandatory = {
         "v1_governance": "PASS",
-        "v1_python_gate": "PASS",
+        "v1_frontend_closure": "PASS",
+        "v1_frontend_zero_skips": "PASS",
         "ir_v3_csharp_v0_2_assembly_isolation": "PASS",
         "ir_v3_csharp_runtime_assembly": "PASS_NET8_DEPENDENCY_FREE",
         "ir_v3_csharp_aot_json": "PASS_REFLECTION_FREE",
@@ -169,21 +181,12 @@ def main() -> int:
         "v0_2_portable_regression": "PASS",
         "v0_2_browser_wasm": "PASS_AOT_HTTP_WITNESS",
         "v0_2_wasi": "PASS_WASMTIME",
+        "v0_2_jsonschema_validation": "PASS",
         "certify_full": False,
         "language_stable": False,
     }
     for key, expected in mandatory.items():
         require_equal("V1_CERTIFY_FULL_EVIDENCE_" + key.upper(), receipt.get(key), expected)
-    schema_status = receipt.get("v0_2_jsonschema_validation")
-    if schema_status not in {"PASS", "OPTIONAL_DEPENDENCY_UNAVAILABLE"}:
-        abort(
-            "V1_CERTIFY_FULL_EVIDENCE_V0_2_JSONSCHEMA_VALIDATION",
-            "INVALID_STATUS=" + repr(schema_status),
-        )
-    print(
-        "V1_CERTIFY_FULL_EVIDENCE_V0_2_JSONSCHEMA_VALIDATION=PASS status="
-        + str(schema_status)
-    )
 
     require_clean("CERTIFY_AFTER_PRECERTIFY")
     head_after = git_text("rev-parse", "HEAD")
@@ -210,9 +213,11 @@ def main() -> int:
         "canonical_index_sha256": canonical_sha,
         "feature_matrix_sha256": matrix_sha,
         "project_state_sha256": project_state_sha,
+        "certification_jsonschema_version": jsonschema_version,
         "certified_scope": [
             "V1_GOVERNANCE_AND_AUTHORITY_BINDINGS",
             "V1_REFERENCE_FRONTEND_AND_STATIC_SEMANTICS",
+            "V1_FRONTEND_ZERO_SKIPS",
             "V1_LINKED_CANONICAL_PROGRAM",
             "V1_TO_IR_V2_ERASABLE_PROFILE",
             "V1_TO_IR_V3_FULL_ALGEBRAIC_PROFILE",
@@ -226,6 +231,7 @@ def main() -> int:
             "V0_2_PORTABLE_NON_REGRESSION",
             "V0_2_BROWSER_WASM_AOT",
             "V0_2_WASI_WASMTIME",
+            "V0_2_JSONSCHEMA_VALIDATION",
         ],
         "certify_full": True,
         "language_stable": False,
