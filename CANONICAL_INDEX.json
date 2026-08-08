@@ -1,4 +1,7 @@
 {
+  "schema": "TEV_SCRIPT_CANONICAL_INDEX_V1",
+  "language_version": "0.2.0",
+  "stable": false,
   "authority_files": [
     "DESIGN_DECISION.json",
     "descriptor.json",
@@ -29,12 +32,25 @@
     "conformance/language-negative-v1.json",
     "docs/VALIDATION.md"
   ],
-  "language_version": "0.2.0",
+  "candidate_language_targets": [
+    {
+      "language_version": "1.0.0",
+      "status": "SPEC_CLOSED_IMPLEMENTATION_PENDING",
+      "stable": false,
+      "authority_files": [
+        "spec/TEV_SCRIPT_V1.ebnf",
+        "spec/TEV_SCRIPT_V1_SEMANTIC_CONTRACT.md",
+        "spec/TEV_SCRIPT_V1_LINK_MODEL.md",
+        "spec/TEV_SCRIPT_V1_BUDGETS.md",
+        "spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json",
+        "schemas/tev_script_linked_program_v1.schema.json"
+      ],
+      "implementation_plan": "docs/V1_IMPLEMENTATION_PLAN.md"
+    }
+  ],
   "reference_implementations": [
     "tev_script/**",
     "javascript/src/**",
     "runtimes/csharp/TevScript.Core/**"
-  ],
-  "schema": "TEV_SCRIPT_CANONICAL_INDEX_V1",
-  "stable": false
+  ]
 }
