@@ -59,6 +59,7 @@ REQUIRED_LSP = {
 
 REQUIRED_GATE_MAP = {
     "implementation": "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py",
+    "python_production": "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py",
     "csharp_surface": "tools/validate_ir_v3_csharp_portable_surface.py",
     "cross_runtime": "tools/validate_ir_v3_cross_runtime_parity.py",
     "checkpoint_cross_runtime": "tools/validate_ir_v3_checkpoint_cross_runtime.py",
@@ -76,6 +77,8 @@ REQUIRED_PRODUCT_FILES = {
     "docs/TEV_SCRIPT_V1_LANGUAGE_REFERENCE.md",
     "docs/TEV_SCRIPT_V1_PROGRAMMING_MODEL.md",
     "docs/V1_PROJECT_MANIFEST.md",
+    "docs/V1_PYTHON_PRODUCTION.md",
+    "tev_script/python_host_v1.py",
     "examples/v1/README.md",
     "examples/v1/Calculator.tevs",
     "examples/v1/ErasableToIrV2.tevs",
@@ -89,6 +92,8 @@ REQUIRED_PRODUCT_FILES = {
     "tests/test_v1_cli_full.py",
     "tests/test_v1_project.py",
     "tests/test_v1_public_api.py",
+    "tests/test_v1_python_host.py",
+    "tests/test_v1_linked_program_unit_kind_regression.py",
     "tests/test_v1_artifact_write.py",
     "tests/test_v1_editor_assets.py",
 }
@@ -149,10 +154,12 @@ def main() -> int:
     matrix = load_json("spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json")
     pre_text = (ROOT / "RUN_TEV_SCRIPT_V1_PRECERTIFY.py").read_text(encoding="utf-8")
     certify_text = (ROOT / "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py").read_text(encoding="utf-8")
+    python_gate_text = (ROOT / "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py").read_text(encoding="utf-8")
     protocol_text = (ROOT / "docs/V1_CERTIFICATION_PROTOCOL.md").read_text(encoding="utf-8")
     state_text = (ROOT / "PROJECT_STATE.md").read_text(encoding="utf-8")
     pyproject_text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     package_text = (ROOT / "tev_script" / "__init__.py").read_text(encoding="utf-8")
+    python_host_text = (ROOT / "tev_script" / "python_host_v1.py").read_text(encoding="utf-8")
     cli_text = (ROOT / "tev_script" / "cli_v1.py").read_text(encoding="utf-8")
     project_text = (ROOT / "tev_script" / "project_v1.py").read_text(encoding="utf-8")
     artifact_text = (ROOT / "tev_script" / "artifact_write_v1.py").read_text(encoding="utf-8")
@@ -206,6 +213,28 @@ def main() -> int:
     }.items():
         require(lsp.get(key) == expected, "V1_GOVERNANCE_LSP", f"{key}:{lsp.get(key)!r}")
 
+    python_surface = target.get("python_production_surface")
+    require(isinstance(python_surface, dict), "V1_GOVERNANCE_PYTHON_PRODUCTION", "missing")
+    for key, expected in {
+        "implementation": "tev_script/python_host_v1.py",
+        "artifact": "tev_script.PythonProgramArtifactV1",
+        "runtime_host": "tev_script.PythonRuntimeHostV1",
+        "source_build_api": "tev_script.build_python_program_v1",
+        "runtime_accepts_source": False,
+        "runtime_ir_schema": "TEV_SCRIPT_PROGRAM_IR_V3",
+        "least_authority_default": True,
+        "checkpoint_schema": "TEV_SCRIPT_RUNTIME_CHECKPOINT_V2",
+        "documentation": "docs/V1_PYTHON_PRODUCTION.md",
+        "test": "tests/test_v1_python_host.py",
+        "production_gate": "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py",
+        "stable_claim": False,
+    }.items():
+        require(
+            python_surface.get(key) == expected,
+            "V1_GOVERNANCE_PYTHON_PRODUCTION",
+            f"{key}:{python_surface.get(key)!r}",
+        )
+
     gates = target.get("gates")
     require(isinstance(gates, dict), "V1_GOVERNANCE_GATE_MAP", "missing")
     for key, path in REQUIRED_GATE_MAP.items():
@@ -225,6 +254,8 @@ def main() -> int:
         "v1_python_pipeline": "tev_script.pipeline_v1",
         "v1_project_manifest": "tev_script.project_v1",
         "v1_runtime": "tev_script.ScriptRuntimeV3",
+        "v1_python_program_artifact": "tev_script.PythonProgramArtifactV1",
+        "v1_python_production_host": "tev_script.PythonRuntimeHostV1",
     }.items():
         require(interfaces.get(key) == expected, "V1_GOVERNANCE_PUBLIC_INTERFACE", f"{key}:{interfaces.get(key)!r}")
 
@@ -239,7 +270,25 @@ def main() -> int:
         "compile_v1_paths_auto", "compile_v1_paths_to_ir_v2", "compile_v1_paths_to_ir_v3",
         "ProjectManifestV1", "load_v1_project", "verify_v1_project_inputs",
         "ScriptRuntimeV3", "RuntimeCheckpointV2",
+        "PythonCapabilityContractV1", "PythonProgramArtifactV1", "PythonRuntimeHostV1",
+        "build_python_program_v1", "build_python_program_v1_paths",
     ), "V1_GOVERNANCE_PUBLIC_API")
+    require_tokens(python_host_text, (
+        "class PythonProgramArtifactV1", "class PythonRuntimeHostV1",
+        "build_python_program_v1", "compile_v1_mapping_to_ir_v3",
+        "validate_program_ir_v3", "RuntimeCheckpointV2.capture",
+        "restore_exact", "TEVS_PYTHON_V1_CAPABILITY_MISSING",
+        "TEVS_PYTHON_V1_CAPABILITY_UNUSED", "reject_unused_capabilities: bool = True",
+    ), "V1_GOVERNANCE_PYTHON_PRODUCTION_HOST")
+    require_tokens(python_gate_text, (
+        'RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V1"',
+        "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py", "git", "archive",
+        '"--no-deps"', '"--no-build-isolation"', '"PIP_NO_INDEX": "1"',
+        "TEV_SCRIPT_V1_PYTHON_WHEEL_REPRODUCIBLE=PASS",
+        "TEV_SCRIPT_V1_PYTHON_INSTALLED_CHECKPOINT_RESTART=PASS",
+        "TEV_SCRIPT_V1_PYTHON_PRODUCTION=PASS_CANDIDATE",
+        "CERTIFY_FULL=NO", "LANGUAGE_STABLE=NO",
+    ), "V1_GOVERNANCE_PYTHON_PRODUCTION_GATE")
     require_tokens(cli_text, (
         'choices=("auto", "irv2", "irv3")', '"project-check"', '"build"', '"lower-irv3"',
         '"--receipt"', "write_compilation_artifacts_v1", "write_text_artifact_v1",
@@ -320,6 +369,7 @@ def main() -> int:
     print("TEV_SCRIPT_V1_GOVERNANCE_PUBLIC_SURFACE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_INTROSPECTION_SURFACE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_LSP_SURFACE=PASS")
+    print("TEV_SCRIPT_V1_GOVERNANCE_PYTHON_PRODUCTION_SURFACE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_ARTIFACT_COMMIT_POLICY=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PRECERTIFY_CERTIFY_PROTOCOL=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_NO_TRANSITIVE_CERTIFICATION=PASS")
