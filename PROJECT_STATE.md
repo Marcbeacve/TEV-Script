@@ -40,9 +40,22 @@ IR V3 signed update host campaign:                     GATE IMPLEMENTED
 IR V3 signed update Browser-WASM campaign:             GATE IMPLEMENTED
 IR V3 signed update WASI fresh/restore campaign:       GATE IMPLEMENTED
 V0.2 Browser-WASM/WASI global regression witnesses:    GATE IMPLEMENTED
-V1 full precertify orchestration:                       IMPLEMENTED CANDIDATE V6
-V1 global zero-skip frontend admission:                IMPLEMENTED CANDIDATE
-V1 global JSON Schema certification admission:         IMPLEMENTED CANDIDATE
+V1 global PRECERTIFY V6 historical campaign:           PASS ON 49826a24... ONLY
+V1 global CERTIFY_FULL V1 historical campaign:         PASS ON 49826a24... ONLY
+V1 global technical candidate:                         CERTIFIED
+
+Stage-D release metadata boundary:                     IMPLEMENTED CANDIDATE
+Stage-D candidate/stable descriptor profiles:          IMPLEMENTED CANDIDATE
+Stage-D PRECERTIFY V7 profiled:                         IMPLEMENTED CANDIDATE
+Stage-D CERTIFY_FULL V2 profiled:                       IMPLEMENTED CANDIDATE
+Stage-D Python production V2 profiled:                  IMPLEMENTED CANDIDATE
+Stage-D Python certify V2 profiled:                     IMPLEMENTED CANDIDATE
+Stage-D stable governance:                              IMPLEMENTED CANDIDATE
+Stage-D exact parent-certificate binding:               IMPLEMENTED CANDIDATE
+Stage-D release-diff confinement:                       IMPLEMENTED CANDIDATE
+Stage-D exact artifact byte identity:                   IMPLEMENTED CANDIDATE
+Stage-D stable-admission authority:                     IMPLEMENTED CANDIDATE
+Stage-D authority regression campaign:                 IMPLEMENTED CANDIDATE
 
 Python certified reference commit:                     5d2bd345b2bd0c852d95fbf2795566722186a67f
 Python certified reference tree:                       059a6de31e977c3866ab7baa8e0ae39aa4c63842
@@ -50,15 +63,19 @@ Python certified wheel SHA256:                         1fa49b926e68d203e3528cc42
 Python certificate receipt SHA256:                     e59738a5d5631723449e3a4e8ff94a99df73081be0fd005d5191bbfd2186a0eb
 PYTHON_CERTIFY_FULL(reference 5d2bd345...):             PASS
 
-Current exact-HEAD Python production gate:              NOT EXECUTED IN THIS CHAT RUNTIME
-Current exact-HEAD Python host full certification:      NOT EXECUTED IN THIS CHAT RUNTIME
-CURRENT_HEAD_FULL_PRECERTIFY=NOT_EXECUTED_HERE
+GLOBAL_TECHNICAL_CERTIFIED_COMMIT=49826a24c178c19f8868d968c51ddd89f02f0d93
+GLOBAL_TECHNICAL_CERTIFIED_TREE=2255746adc3250fcdb1a0f41967911777fe990f2
+GLOBAL_TECHNICAL_CERTIFICATE_SHA256=00e6325ad00abaea6a58112f7aa7130d1ba8e3b7feab61d120a81bb4ed887b1c
+CERTIFY_FULL(reference 49826a24...)=PASS
+LANGUAGE_STABLE(reference 49826a24...)=NO
+
+CURRENT_STAGE=P_STABLE_ADMISSION_TOOLING
 CURRENT_HEAD_CERTIFY_FULL=NO
-V1 CERTIFY_FULL:                                       NO
+STABLE_ADMISSION=NOT_REQUESTED
 LANGUAGE_STABLE=NO
 ```
 
-The Python certificate above is identity-bound to `5d2bd345...` and is not inherited by the current global-certification branch. It proves the bounded Python product/host profile for that exact commit. It does not prove the current HEAD, global `CERTIFY_FULL`, or stable release admission.
+The global technical certificate above is identity-bound to `49826a24c178c19f8868d968c51ddd89f02f0d93`. That commit/tree is frozen Stage-C authority and is not modified by Stage D. The current branch adds the mechanism needed to admit a future stable release; it does **not** inherit the Stage-C certificate and it does not yet authorize `LANGUAGE_STABLE=YES`.
 
 ## Autoridad V0.2 preservada
 
@@ -71,20 +88,24 @@ PARENT=6a33404eb9712b5fae30367d1beb189d8e42f170
 TEV_SCRIPT_LANGUAGE_COMPLETE=PASS_CERTIFIED_LOCAL
 ```
 
-V1 does not reinterpret those receipts. The C# V0.2 assembly remains `TevScript.Core` targeting `netstandard2.1`; V3 is compiled as the additive `TevScript.Core.V3` assembly. Normal V3 runtime consumers reference only `TevScript.Core.V3`. Signed-update gates additionally reference the already existing `TevScript.Update` assembly solely to reuse the managed ES256 verifier authority; the V3 runtime itself does not depend on that cryptographic provider.
+V1 does not reinterpret those receipts. The root `descriptor.json` remains the historical V0.2 descriptor. The C# V0.2 assembly remains `TevScript.Core` targeting `netstandard2.1`; V3 is compiled as the additive `TevScript.Core.V3` assembly. Normal V3 runtime consumers reference only `TevScript.Core.V3`. Signed-update gates additionally reference the already existing `TevScript.Update` assembly solely to reuse the managed ES256 verifier authority; the V3 runtime itself does not depend on that cryptographic provider.
 
 ## Rama de trabajo actual
 
 ```text
-BRANCH=agent/tev-script-v1-global-certification-fix-v2
+BRANCH=agent/tev-script-v1-stable-admission-v1
 BASE_CERTIFIED_V0_2=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5
+GLOBAL_CERTIFIED_REFERENCE=49826a24c178c19f8868d968c51ddd89f02f0d93
+GLOBAL_CERTIFIED_REFERENCE_RECEIPT_SHA256=00e6325ad00abaea6a58112f7aa7130d1ba8e3b7feab61d120a81bb4ed887b1c
 PYTHON_CERTIFIED_REFERENCE=5d2bd345b2bd0c852d95fbf2795566722186a67f
+RELEASE_PROFILE=candidate
 STABLE_RELEASE=NO
 CURRENT_HEAD_CERTIFY_FULL=NO
+STABLE_ADMISSION=NOT_REQUESTED
 LANGUAGE_STABLE=NO
 ```
 
-The branch is an implementation/global-certification candidate. No merge, PR, tag or stable promotion follows merely from code presence or from the Python certificate on another Git identity.
+This branch is P: stable-admission tooling. It was created from the exact globally certified C commit but is a new Git identity. P must itself pass candidate-profile `CERTIFY_FULL V2` before it can become technical parent authority for a release-shaped S commit. No merge, PR, tag or stable publication follows merely from implementation presence.
 
 ## Cierre del lenguaje fuente V1
 
@@ -153,7 +174,7 @@ Implemented candidate:
 
 ## Canonical source/runtime boundary
 
-V1 compilation is deliberately split into semantic and runtime layers:
+V1 compilation remains split into semantic and runtime layers:
 
 ```text
 V1 source set
@@ -253,11 +274,11 @@ The Python product surface additionally contains:
 
 The runtime host accepts only precompiled validated IR V3. Source compilation stays a build/tooling concern and cannot be requested through the runtime host.
 
-`RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` implements a clean-commit Python product admission gate. It validates governance and the Python/frontend closure, requires zero runtime dependencies, builds two wheels from independent `git archive HEAD` trees under an offline fixed build environment, requires identical `py3-none-any` wheel bytes, installs the wheel in a fresh venv, proves the imported module comes from that venv, compiles explicit IR V3 outside the checkout, checks least-authority negative cases and typed-capability execution, performs checkpoint/restore continuation and a deterministic 10,000-event soak. The receipt binds commit, tree, Python/build-tool identity and wheel SHA-256 while still declaring `CERTIFY_FULL=NO` and `LANGUAGE_STABLE=NO`.
+`RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` now has candidate/stable profiles while preserving the same runtime evidence. V2 receipts bind `admission_profile`, exact commit/tree, package version, reproducible wheel and full runtime witnesses. Stable profile additionally requires zero-skip frontend evidence and can export the already-certified wheel bytes to an external empty directory.
 
-`RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py` is the read-only Python-host certificate admission. It re-runs the complete production admission on the same exact commit, independently verifies the production receipt's embedded and external hashes, rebinds all mandatory evidence to its own HEAD/tree, requires repository/canonical/state immutability, and emits `TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V1`. A successful host certificate may emit `PYTHON_CERTIFY_FULL=PASS` while deliberately retaining global `CERTIFY_FULL=NO`, `LANGUAGE_STABLE=NO` and `stable_release_authorized=false`.
+`RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py` V2 re-runs the matching production profile, independently verifies its receipt/hash, requires both reentrant and concurrent `TEVS_PYTHON_V1_HOST_BUSY` authority guards, and may export the same verified wheel. It always retains `global_certify_full=false` and `language_stable=false`; Python certification cannot self-promote the language.
 
-The exact Python host/product profile was dynamically certified on commit `5d2bd345b2bd0c852d95fbf2795566722186a67f`. That certificate is preserved as reference evidence but is not transitive to the current global branch.
+The exact historical Python host/product profile remains dynamically certified on commit `5d2bd345b2bd0c852d95fbf2795566722186a67f`. That certificate is preserved as reference evidence but is not transitive to P or S.
 
 Capability callback implementations remain trusted embedding code. TEV instruction/event budgets constrain TEV execution, not arbitrary Python code supplied by the embedding application. Untrusted callbacks require process/container isolation at the application boundary.
 
@@ -274,7 +295,7 @@ Implemented additive ES2022 V3 modules for:
 - Runtime Checkpoint V2 capture/parse/restore;
 - package exports and TypeScript declarations.
 
-The certified V0.2 JS runtime remains separate.
+The certified V0.2 JS runtime remains separate. Stage D does not change JS runtime semantics; a future S may change only `javascript/package.json` to version `1.0.0`, after which stable admission runs `npm test` and hashes the exact `npm pack` bytes.
 
 ### C#
 
@@ -330,16 +351,16 @@ The browser must return through an authenticated loopback HTTP witness:
 - the exact conformance `receipt_hash` computed by the host oracle;
 - the exact Runtime Checkpoint V2 hash computed by the host oracle.
 
-A browser startup smoke is not sufficient for V3 parity.
+A browser startup smoke is not sufficient for V3 parity. Managed code reports through explicit `JSImport`; console output remains diagnostic only and cannot authorize PASS.
 
 ## WASI V3
 
-The WASI gate is designed as two separate Wasmtime processes:
+The WASI gate uses two separate Wasmtime processes:
 
 1. `fresh`: execute/validate and write Runtime Checkpoint V2;
 2. `restore`: start a fresh process, parse/restore the checkpoint and continue.
 
-The gate compares receipt/checkpoint identity against the Python host oracle and verifies the checkpoint produced by WASI through the Python parser as a cross-implementation counterfactual.
+The gate compares receipt/checkpoint identity against the Python host oracle and verifies the checkpoint produced by WASI through the Python parser as a cross-implementation counterfactual. Host `-S http` remains linkage-only; governed regressions prohibit TEV Core V3/WASI gates from acquiring network authority through `System.Net`, `HttpClient` or sockets.
 
 ## Transactional hot swap V3
 
@@ -395,60 +416,61 @@ Implemented campaigns exist for:
 - Browser-WASM signed update AOT witness;
 - WASI signed update fresh process -> durable installed record/checkpoint -> separate restore process.
 
-## Full precertify V6
+## Global certification profiles and Stage D
 
-`RUN_TEV_SCRIPT_V1_PRECERTIFY.py` requires, from one clean immutable checkout:
+`RUN_TEV_SCRIPT_V1_PRECERTIFY.py` V7 accepts `--profile candidate|stable`, candidate by default. The dynamic campaign remains identical across profiles: zero-skip frontend, C# surface, Python/JS/C# byte locks, checkpoint restart, Browser-WASM, WASI, signed updates, independent V0.2 Browser/WASI witnesses, V0.2 portable regression, certification-time `jsonschema`, and immutable HEAD/tree. Only governance/release metadata expectations differ. Its receipt binds `admission_profile`, `certify_full=false`, `language_stable=false`.
 
-1. V1 governance consistency;
-2. V1 frontend/static/IR closure in `--require-zero-skips` mode;
-3. explicit zero unittest skips across V1, IR V3 and selected V0.2 Python regression suites;
-4. certification-time `jsonschema` availability and `JSON_SCHEMA_VALIDATION=PASS`;
-5. C# assembly/surface isolation guard;
-6. Python/JavaScript/C# IR V3 receipt byte lock;
-7. Python/JavaScript/C# Runtime Checkpoint V2 byte lock + restart;
-8. Browser-WASM V3 AOT receipt/checkpoint parity;
-9. WASI V3 receipt/checkpoint parity + fresh/restore continuation;
-10. signed-update V3 host campaign;
-11. signed-update V3 Browser-WASM campaign;
-12. signed-update V3 WASI fresh/restore campaign;
-13. complete V0.2 portable regression;
-14. independent V0.2 Browser-WASM AOT and WASI/Wasmtime dynamic witnesses;
-15. clean worktree before and after;
-16. identical HEAD/tree throughout validation.
+`RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py` V2 accepts the same profiles. It validates profile-specific authority metadata, re-runs PRECERTIFY V7 with the same profile and emits a technical certificate with `certify_full=true`, `language_stable=false`. `--receipt-out` can persist the exact canonical certificate outside the repository; this is how P becomes verifiable parent authority for S.
 
-`jsonschema` is a certification-tool dependency, not a runtime dependency of the Python wheel. Ordinary development runs may report its absence, but global PRECERTIFY/CERTIFY_FULL does not admit that absence.
+`RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py` is the only authority permitted to emit `LANGUAGE_STABLE=YES`. It requires:
 
-Python product certification remains intentionally separate from the global campaign. `PYTHON_CERTIFY_FULL` certifies the Python distribution/host profile; it does not replace the cross-host language/runtime certificate.
+1. a stable-shaped S with governed release metadata;
+2. exact external candidate-profile `CERTIFY_FULL V2` receipt for technical parent P;
+3. recomputed parent receipt SHA equal to S's embedded parent-certificate SHA;
+4. parent commit/tree equality and ancestry;
+5. P..S changed paths confined to the explicit release whitelist;
+6. stable governance;
+7. full global `CERTIFY_FULL --profile stable` on S;
+8. full Python `PYTHON_CERTIFY_FULL --profile stable` on S;
+9. exact exported Python wheel bytes;
+10. `npm test` and exact `npm pack` bytes;
+11. immutable S HEAD/tree throughout;
+12. canonical `TEV_SCRIPT_V1_STABLE_ADMISSION_RECEIPT_V1` binding all identities/hashes.
 
-Any mandatory `SKIPPED_*`, any frontend unittest skip count above zero, or any non-PASS JSON Schema result is a global pre-certification failure.
-
-A successful global pre-certify deliberately still emits:
+Only a complete stable admission terminates:
 
 ```text
-V1_PRECERTIFY=PASS
-CERTIFY_FULL=NO
-LANGUAGE_STABLE=NO
+CERTIFY_FULL=PASS
+STABLE_ADMISSION=PASS
+LANGUAGE_STABLE=YES
 ```
 
-because technical validation and release/stable admission are separate governance operations.
+Every subordinate technical gate continues to emit `LANGUAGE_STABLE=NO`.
 
 ## Verificación actual de esta sesión
 
-The global-certification branch contains additional hardening beyond the already Python-certified reference commit. This ChatGPT execution environment cannot materialize the exact GitHub checkout over the network or execute the full Windows/Chromium/WASI certification toolchain. Static repository audit and governed branch edits therefore do not count as a dynamic certificate.
-
-Current exact-HEAD status remains deliberately:
+Stage C is no longer pending. The exact global candidate C was dynamically certified by one clean campaign supplied by the operator:
 
 ```text
-CODE_AND_GATES=PUBLISHED_CANDIDATE
-PYTHON_CERTIFIED_REFERENCE=5d2bd345b2bd0c852d95fbf2795566722186a67f
-CURRENT_HEAD_PYTHON_PRODUCTION_GATE=NOT_EXECUTED_HERE
-CURRENT_HEAD_PYTHON_CERTIFY_FULL=NOT_EXECUTED_HERE
-CURRENT_HEAD_FULL_PRECERTIFY=NOT_EXECUTED_HERE
-CURRENT_HEAD_CERTIFY_FULL=NO
+COMMIT=49826a24c178c19f8868d968c51ddd89f02f0d93
+TREE=2255746adc3250fcdb1a0f41967911777fe990f2
+V1_PRECERTIFY=PASS
+CERTIFY_FULL=PASS
+V1_CERTIFY_FULL_RECEIPT_SHA256=00e6325ad00abaea6a58112f7aa7130d1ba8e3b7feab61d120a81bb4ed887b1c
 LANGUAGE_STABLE=NO
 ```
 
-Do not reinterpret implementation presence, static inspection, the Python certificate on `5d2bd345...`, or a previously passing ancestor as a fresh dynamic PASS for the current HEAD.
+The current branch is a descendant P containing Stage-D tooling. It has changed certification/governance code and therefore **cannot inherit** C's certificate. Current exact-HEAD status remains deliberately:
+
+```text
+CODE_AND_GATES=STAGE_D_TOOLING_CANDIDATE
+RELEASE_PROFILE=candidate
+CURRENT_HEAD_CERTIFY_FULL=NO
+STABLE_ADMISSION=NOT_REQUESTED
+LANGUAGE_STABLE=NO
+```
+
+P must pass one candidate-profile global `CERTIFY_FULL V2` and persist that exact receipt externally before S is created.
 
 ## Active falsifiable hypotheses
 
@@ -506,7 +528,7 @@ A Python full certificate is valid only if the independently recomputed producti
 
 ### H14 — global zero-skip evidence
 
-Global PRECERTIFY must fail if any V1, IR V3 or selected V0.2 Python regression unittest is skipped, regardless of whether the test runner writes its summary to stdout or stderr.
+Global PRECERTIFY must fail if any V1, IR V3 or selected V0.2 Python regression unittest is skipped, regardless of test-runner stdout/stderr formatting.
 
 ### H15 — global schema evidence
 
@@ -516,18 +538,47 @@ Global PRECERTIFY must fail when certification-time `jsonschema` is unavailable 
 
 The shared IR V3 negative corpus must force Python, JavaScript and C# to reject `-0` as a non-canonical semantic integer.
 
+### H17 — unique stable authority
+
+No PRECERTIFY, global CERTIFY_FULL or Python certificate may emit `LANGUAGE_STABLE=YES`. Only a successful exact `RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py` may do so.
+
+### H18 — parent-certificate binding
+
+Stable admission must reject S if the supplied P receipt bytes, receipt hash, candidate profile, parent commit or parent tree differ from S's declared technical parent authority.
+
+### H19 — release-diff confinement
+
+Any P..S modification outside release metadata/documentation/distribution paths must make stable admission fail, even when the changed runtime happens to pass tests.
+
+### H20 — exact publication bytes
+
+The Python wheel and JavaScript tarball bound in the stable receipt must be the exact externally materialized bytes intended for publication; a later rebuild is not automatically equivalent.
+
 ## Tareas siguientes
 
-1. Materialize one isolated clean checkout/worktree of the exact current global-certification HEAD; do not use or alter the WIP checkout at `C:\mio\TEV-Script`.
-2. Verify the certification environment provides Python 3.11+, `jsonschema`, Node, .NET, Chromium, Wasmtime and the required .NET WASI/wasi-sdk surfaces.
-3. Execute `RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py` once on that exact clean checkout. The certifier runs PRECERTIFY V6 internally, so a separate preliminary PRECERTIFY run would duplicate the full campaign.
-4. Fix every real failure without weakening or skipping the corresponding gate; any fix creates a new Git identity and therefore requires restarting the one-shot certificate campaign from that new exact clean commit/tree.
-5. Preserve `CERTIFY_FULL=NO` and `LANGUAGE_STABLE=NO` until the exact current commit dynamically earns the global certificate.
-6. Only after global `CERTIFY_FULL=PASS` should a stable-admission/version commit be considered. That new commit must be re-certified rather than inheriting the candidate certificate. If the release includes the Python distribution, rerun Python production + Python full certification on that promoted commit as well.
-7. Do not merge, tag, publish or mark stable without explicit authorization.
+1. Finish static audit of P and confirm governance/frontend tests contain no stable-profile skip or accidental self-promotion path.
+2. Synchronize the exact final P branch to one clean isolated Windows checkout; do not alter the WIP checkout merely for certification.
+3. Run **one** candidate-profile P campaign with receipt export:
+
+```text
+python RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py --profile candidate --receipt-out <external/P.certify-full-v2.json>
+```
+
+4. Require `CERTIFY_FULL=PASS`, `LANGUAGE_STABLE=NO`, exact P HEAD/tree and externally recomputed P receipt SHA.
+5. Only after P passes, create S from that exact P identity. S may change only the release whitelist: `CANONICAL_INDEX.json`, `CHANGELOG.md`, `PROJECT_STATE.md`, `README.md`, `javascript/package.json`, `pyproject.toml`, `spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json`, `tev_script/release_metadata_v1.py`.
+6. S sets release profile/status/parent certificate, Python/JS `1.0.0`, stable target/matrix claims and release documentation. No parser/linker/runtime/gate change is permitted in S.
+7. Execute once on exact S:
+
+```text
+python RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py --technical-parent-certificate <P receipt> --artifact-out-dir <external empty release dir>
+```
+
+8. Require exact stable receipt, global stable-profile recertification, Python stable-profile recertification, JS test/pack and artifact SHA equality.
+9. Only after `STABLE_ADMISSION=PASS` and explicit operator authorization may main be fast-forwarded/tagged/published. Prefer `v1.0.0` pointing exactly at S and publish only the certified artifact bytes.
+10. Do not merge, tag, publish or mark stable before that explicit authorization.
 
 ## Production boundaries unchanged
 
-Even a V1 language/runtime `CERTIFY_FULL` would not by itself close production signing-key provisioning/rotation, hostile rollback-resistant monotonic storage, public WAN/TLS/DNS/CDN deployment, physical Unity Input System/Animator providers, evolutionary self-assembly or decentralized peer-to-peer consensus/trust. Those are deployment/system-security surfaces, not missing language semantics.
+Even a successful stable admission would not by itself close production signing-key provisioning/rotation, hostile rollback-resistant monotonic storage, public WAN/TLS/DNS/CDN deployment, physical Unity Input System/Animator providers, evolutionary self-assembly or decentralized peer-to-peer consensus/trust. Those are deployment/system-security surfaces, not missing language semantics.
 
 For Python specifically, TEV execution budgets do not sandbox arbitrary embedding callbacks. If capability implementations are untrusted, failure-prone or tenant supplied, the embedding application must enforce process/container, OS-resource and external I/O controls outside the TEV runtime.
