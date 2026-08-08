@@ -227,6 +227,7 @@ def main() -> int:
         "runtime_accepts_source": False,
         "runtime_ir_schema": "TEV_SCRIPT_PROGRAM_IR_V3",
         "least_authority_default": True,
+        "serialized_host_access": True,
         "checkpoint_schema": "TEV_SCRIPT_RUNTIME_CHECKPOINT_V2",
         "documentation": "docs/V1_PYTHON_PRODUCTION.md",
         "test": "tests/test_v1_python_host.py",
@@ -284,6 +285,7 @@ def main() -> int:
         "validate_program_ir_v3", "RuntimeCheckpointV2.capture",
         "restore_exact", "TEVS_PYTHON_V1_CAPABILITY_MISSING",
         "TEVS_PYTHON_V1_CAPABILITY_UNUSED", "reject_unused_capabilities: bool = True",
+        "TEVS_PYTHON_V1_HOST_BUSY", "_access_lock = Lock()", "acquire(blocking=False)",
     ), "V1_GOVERNANCE_PYTHON_PRODUCTION_HOST")
     require_tokens(python_gate_text, (
         'RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V1"',
@@ -292,6 +294,8 @@ def main() -> int:
         "TEV_SCRIPT_V1_PYTHON_WHEEL_REPRODUCIBLE=PASS",
         "TEV_SCRIPT_V1_PYTHON_INSTALLED_CHECKPOINT_RESTART=PASS",
         "TEV_SCRIPT_V1_PYTHON_INSTALLED_LEAST_AUTHORITY=PASS",
+        "TEV_SCRIPT_V1_PYTHON_INSTALLED_REENTRANT_ACCESS_REJECTED=PASS",
+        '"reentrant_access_rejected": "PASS"',
         "TEV_SCRIPT_V1_PYTHON_INSTALLED_TYPED_CAPABILITY=PASS",
         "TEV_SCRIPT_V1_PYTHON_PRODUCTION=PASS_CANDIDATE",
         "CERTIFY_FULL=NO", "LANGUAGE_STABLE=NO",
@@ -301,6 +305,8 @@ def main() -> int:
         "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py",
         "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_JSON=",
         "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_SHA256=",
+        '"reentrant_access_rejected": "PASS"',
+        "V1_PYTHON_SERIALIZED_HOST_ACCESS_GUARD",
         '"python_certify_full": True',
         '"global_certify_full": False',
         '"language_stable": False',
