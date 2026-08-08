@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import subprocess
@@ -8,8 +9,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 V0_2_ORACLE = "6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5"
-PRECERTIFY_RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V6"
-CERTIFY_RECEIPT_SCHEMA = "TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V1"
+PRECERTIFY_RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V7"
+CERTIFY_RECEIPT_SCHEMA = "TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V2"
+CANDIDATE_STATUS = "FULL_IMPLEMENTATION_CANDIDATE_PRECERTIFY_REQUIRED"
+STABLE_STATUS = "STABLE_ADMISSION_REQUESTED"
 
 
 def run(arguments: list[str]) -> subprocess.CompletedProcess[str]:
@@ -75,7 +78,7 @@ def require_nonempty_string(label: str, observed: object) -> str:
     return observed
 
 
-def validate_authority_metadata() -> tuple[str, str, str]:
+def validate_authority_metadata(profile: str) -> tuple[str, str, str]:
     canonical_path = ROOT / "CANONICAL_INDEX.json"
     matrix_path = ROOT / "spec" / "TEV_SCRIPT_V1_FEATURE_MATRIX.json"
     state_path = ROOT / "PROJECT_STATE.md"
@@ -84,36 +87,43 @@ def validate_authority_metadata() -> tuple[str, str, str]:
     matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
 
     require_equal("V1_CERTIFY_FULL_CANONICAL_INDEX_SCHEMA", canonical.get("schema"), "TEV_SCRIPT_CANONICAL_INDEX_V1")
-    require_equal("V1_CERTIFY_FULL_REPOSITORY_STABLE_FALSE", canonical.get("stable"), False)
+    # This top-level field belongs to the preserved V0.2 historical descriptor.
+    require_equal("V1_CERTIFY_FULL_REPOSITORY_V0_2_STABLE_FALSE", canonical.get("stable"), False)
 
     targets = [
         item
         for item in canonical.get("candidate_language_targets", [])
-        if item.get("language_version") == "1.0.0"
+        if isinstance(item, dict) and item.get("language_version") == "1.0.0"
     ]
     if len(targets) != 1:
         abort("V1_CERTIFY_FULL_CANONICAL_TARGET", f"EXPECTED_ONE_V1_TARGET OBSERVED={len(targets)}")
     target = targets[0]
-    require_equal(
-        "V1_CERTIFY_FULL_CANONICAL_TARGET_STATUS",
-        target.get("status"),
-        "FULL_IMPLEMENTATION_CANDIDATE_PRECERTIFY_REQUIRED",
-    )
-    require_equal("V1_CERTIFY_FULL_CANONICAL_TARGET_STABLE_FALSE", target.get("stable"), False)
+    expected_status = CANDIDATE_STATUS if profile == "candidate" else STABLE_STATUS
+    expected_stable = profile == "stable"
+    require_equal("V1_CERTIFY_FULL_CANONICAL_TARGET_STATUS", target.get("status"), expected_status)
+    require_equal("V1_CERTIFY_FULL_CANONICAL_TARGET_STABLE", target.get("stable"), expected_stable)
     require_equal(
         "V1_CERTIFY_FULL_CANONICAL_CERTIFY_GATE",
         target.get("gates", {}).get("certify_full"),
         "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py",
     )
+    if profile == "stable":
+        require_equal(
+            "V1_CERTIFY_FULL_CANONICAL_STABLE_ADMISSION_GATE",
+            target.get("gates", {}).get("stable_admission"),
+            "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py",
+        )
 
     require_equal("V1_CERTIFY_FULL_MATRIX_SCHEMA", matrix.get("schema"), "TEV_SCRIPT_V1_FEATURE_MATRIX_V5")
     require_equal("V1_CERTIFY_FULL_MATRIX_TARGET", matrix.get("target_language_version"), "1.0.0")
-    require_equal("V1_CERTIFY_FULL_MATRIX_STABLE_AUTH_FALSE", matrix.get("stable_release_authorized"), False)
-    require_equal(
-        "V1_CERTIFY_FULL_MATRIX_STATUS",
-        matrix.get("certification_status"),
-        "FULL_IMPLEMENTATION_CANDIDATE_PRECERTIFY_REQUIRED",
-    )
+    require_equal("V1_CERTIFY_FULL_MATRIX_STABLE_AUTH", matrix.get("stable_release_authorized"), expected_stable)
+    require_equal("V1_CERTIFY_FULL_MATRIX_STATUS", matrix.get("certification_status"), expected_status)
+    if profile == "stable":
+        require_equal(
+            "V1_CERTIFY_FULL_MATRIX_REPOSITORY_VERSION",
+            matrix.get("repository_language_version_remains"),
+            "1.0.0",
+        )
 
     return (
         file_sha256("CANONICAL_INDEX.json"),
@@ -122,7 +132,13 @@ def validate_authority_metadata() -> tuple[str, str, str]:
     )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="TEV Script V1 global technical certification")
+    parser.add_argument("--profile", choices=("candidate", "stable"), default="candidate")
+    args = parser.parse_args(argv)
+    profile = args.profile
+    print("V1_CERTIFY_FULL_PROFILE=" + profile)
+
     require_clean("CERTIFY_BEFORE")
     head = git_text("rev-parse", "HEAD")
     tree = git_text("rev-parse", "HEAD^{tree}")
@@ -133,9 +149,16 @@ def main() -> int:
         abort("V1_CERTIFY_FULL_V0_2_ANCESTRY", "FAIL", ancestry)
     print("V1_CERTIFY_FULL_V0_2_ANCESTRY=PASS")
 
-    canonical_sha, matrix_sha, project_state_sha = validate_authority_metadata()
+    canonical_sha, matrix_sha, project_state_sha = validate_authority_metadata(profile)
 
-    precertify = run([sys.executable, str(ROOT / "RUN_TEV_SCRIPT_V1_PRECERTIFY.py")])
+    precertify = run(
+        [
+            sys.executable,
+            str(ROOT / "RUN_TEV_SCRIPT_V1_PRECERTIFY.py"),
+            "--profile",
+            profile,
+        ]
+    )
     if precertify.returncode != 0:
         abort("V1_CERTIFY_FULL_PRECERTIFY", "COMMAND_FAILED", precertify)
     if "V1_PRECERTIFY=PASS" not in precertify.stdout.splitlines():
@@ -155,12 +178,13 @@ def main() -> int:
         abort("V1_CERTIFY_FULL_PRECERTIFY_RECEIPT_JSON", type(error).__name__ + ":" + str(error))
 
     require_equal("V1_CERTIFY_FULL_PRECERTIFY_SCHEMA", receipt.get("schema"), PRECERTIFY_RECEIPT_SCHEMA)
+    require_equal("V1_CERTIFY_FULL_PRECERTIFY_PROFILE", receipt.get("admission_profile"), profile)
     require_equal("V1_CERTIFY_FULL_PRECERTIFY_BRANCH", receipt.get("branch"), branch)
     require_equal("V1_CERTIFY_FULL_PRECERTIFY_COMMIT", receipt.get("commit"), head)
     require_equal("V1_CERTIFY_FULL_PRECERTIFY_TREE", receipt.get("tree"), tree)
     require_equal("V1_CERTIFY_FULL_PRECERTIFY_ORACLE", receipt.get("v0_2_oracle"), V0_2_ORACLE)
-    jsonschema_version = require_nonempty_string(
-        "V1_CERTIFY_FULL_EVIDENCE_JSONSCHEMA_VERSION",
+    require_nonempty_string(
+        "V1_CERTIFY_FULL_PRECERTIFY_JSONSCHEMA_VERSION",
         receipt.get("certification_jsonschema_version"),
     )
 
@@ -204,6 +228,7 @@ def main() -> int:
 
     certificate = {
         "schema": CERTIFY_RECEIPT_SCHEMA,
+        "admission_profile": profile,
         "branch": branch,
         "commit": head,
         "tree": tree,
@@ -213,11 +238,9 @@ def main() -> int:
         "canonical_index_sha256": canonical_sha,
         "feature_matrix_sha256": matrix_sha,
         "project_state_sha256": project_state_sha,
-        "certification_jsonschema_version": jsonschema_version,
         "certified_scope": [
             "V1_GOVERNANCE_AND_AUTHORITY_BINDINGS",
             "V1_REFERENCE_FRONTEND_AND_STATIC_SEMANTICS",
-            "V1_FRONTEND_ZERO_SKIPS",
             "V1_LINKED_CANONICAL_PROGRAM",
             "V1_TO_IR_V2_ERASABLE_PROFILE",
             "V1_TO_IR_V3_FULL_ALGEBRAIC_PROFILE",
@@ -231,6 +254,7 @@ def main() -> int:
             "V0_2_PORTABLE_NON_REGRESSION",
             "V0_2_BROWSER_WASM_AOT",
             "V0_2_WASI_WASMTIME",
+            "V1_FRONTEND_ZERO_SKIPS",
             "V0_2_JSONSCHEMA_VALIDATION",
         ],
         "certify_full": True,
