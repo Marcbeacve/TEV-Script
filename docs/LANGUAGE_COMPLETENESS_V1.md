@@ -1,5 +1,14 @@
 # TEV Script Language Completeness V1
 
+> **Historical V0.2 closure record.** The `V1` in this filename refers to the first completeness document/revision, not to TEV Script language version `1.0.0`. This file remains authority for the certified V0.2 closure and must not be reinterpreted as the current V1 language reference.
+>
+> For TEV Script language V1 use:
+>
+> - `docs/TEV_SCRIPT_V1_LANGUAGE_REFERENCE.md` — programmer-facing V1 reference;
+> - `docs/TEV_SCRIPT_V1_PROGRAMMING_MODEL.md` — V1 architecture/patterns/data model;
+> - `spec/TEV_SCRIPT_V1_SEMANTIC_CONTRACT.md` — normative V1 source semantics;
+> - `docs/V1_CERTIFICATION_PROTOCOL.md` — V1 admission/certification boundary.
+
 Language version `0.2.0` remains intentionally bounded. Completeness means that the accepted source/IR domain and runtime behavior are closed and portable; it does not mean adopting general-purpose features outside the V0.2 boundary.
 
 Closure criteria:
