@@ -15,16 +15,22 @@ V1_JSON_INPUTS = (
     "conformance/v1-constant-cases.json",
     "conformance/v1-linked-program-cases.json",
     "conformance/v1-irv2-lowering-cases.json",
+    "conformance/ir-v3-validator-cases.json",
     "spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json",
     "schemas/tev_script_linked_program_v1.schema.json",
     "schemas/tev_script_lowering_receipt_v1.schema.json",
+    "schemas/tev_script_program_ir_v3.schema.json",
     "CANONICAL_INDEX.json",
 )
 V0_2_TESTS = ("test_canonical.py", "test_compiler.py", "test_conformance.py")
+IR_V3_TEST_PATTERNS = (
+    "test_ir_v3_*.py",
+    "test_ir_v2_to_v3_lift.py",
+)
 
 
 def main() -> int:
-    print("TEV_SCRIPT_V1_FRONTEND_CLOSURE_SCHEMA=V3")
+    print("TEV_SCRIPT_V1_FRONTEND_CLOSURE_SCHEMA=V4")
     print("V0_2_CERTIFIED_BASE=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5")
 
     compiled = compileall.compile_dir(str(ROOT / "tev_script"), quiet=1) and compileall.compile_dir(
@@ -63,6 +69,19 @@ def main() -> int:
     if not v1_result.wasSuccessful():
         return 1
 
+    ir_v3_suite = unittest.TestSuite()
+    for pattern in IR_V3_TEST_PATTERNS:
+        ir_v3_suite.addTests(
+            unittest.defaultTestLoader.discover(
+                str(ROOT / "tests"), pattern=pattern, top_level_dir=str(ROOT)
+            )
+        )
+    ir_v3_result = unittest.TextTestRunner(verbosity=2).run(ir_v3_suite)
+    print(f"TEV_SCRIPT_IR_V3_TESTS_RUN={ir_v3_result.testsRun}")
+    print("TEV_SCRIPT_IR_V3_TESTS=" + ("PASS" if ir_v3_result.wasSuccessful() else "FAIL"))
+    if not ir_v3_result.wasSuccessful():
+        return 1
+
     v02_suite = unittest.TestSuite()
     for filename in V0_2_TESTS:
         v02_suite.addTests(
@@ -83,10 +102,14 @@ def main() -> int:
     print("TEV_SCRIPT_V1_LINKED_PROGRAM_SCHEMA=PASS_CANDIDATE")
     print("TEV_SCRIPT_V1_IRV2_ERASABLE_LOWERING=PASS_CANDIDATE")
     print("TEV_SCRIPT_V1_LOWERING_RECEIPT=PASS_CANDIDATE")
-    print("V1_RUNTIME_IR3=NOT_IMPLEMENTED")
+    print("TEV_SCRIPT_IR_V3_TYPE_VALUE_MODEL=PASS_CANDIDATE")
+    print("TEV_SCRIPT_IR_V3_TYPED_CFG=PASS_CANDIDATE")
+    print("TEV_SCRIPT_IR_V3_PYTHON_RUNTIME=PASS_CANDIDATE")
+    print("TEV_SCRIPT_V1_TO_IR_V3_LOWERING=PASS_CANDIDATE")
+    print("TEV_SCRIPT_IR_V2_TO_V3_LIFT=PASS_CANDIDATE")
     print("V1_CROSS_RUNTIME_PARITY=NOT_CLAIMED")
     print("V1_STABLE_RELEASE=NO")
-    print("TEV_SCRIPT_V1_FRONTEND_STATIC_CLOSURE=PASS_CANDIDATE")
+    print("TEV_SCRIPT_V1_PYTHON_CLOSURE=PASS_CANDIDATE")
     return 0
 
 
