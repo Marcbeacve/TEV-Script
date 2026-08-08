@@ -21,6 +21,7 @@
     <Compile Include="../TevScript.Core/TevScriptRuntimeV3.cs" Link="TevScriptRuntimeV3.cs" />
     <Compile Include="../TevScript.Core/TevScriptRuntimeCheckpointV2.cs" Link="TevScriptRuntimeCheckpointV2.cs" />
     <Compile Include="../TevScript.Core/TevScriptRuntimeHotSwapV3.cs" Link="TevScriptRuntimeHotSwapV3.cs" />
+    <Compile Include="../TevScript.Core/TevScriptUpdateV3.cs" Link="TevScriptUpdateV3.cs" />
     <Compile Include="../TevScript.Core/TevScriptV3Conformance.cs" Link="TevScriptV3Conformance.cs" />
   </ItemGroup>
 </Project>
