@@ -68,7 +68,8 @@ class V1DescriptorTests(unittest.TestCase):
         self.assertEqual(budgets["static_loop_iterations"], MAX_STATIC_LOOP_ITERATIONS)
 
     def test_descriptor_reports_linked_and_runtime_profiles(self) -> None:
-        semantics = v1_descriptor()["canonical_semantics"]
+        descriptor = v1_descriptor()
+        semantics = descriptor["canonical_semantics"]
         self.assertEqual(semantics["linked_program_schema"], "TEV_SCRIPT_LINKED_PROGRAM_V1")
         self.assertEqual(
             semantics["runtime_targets"],
@@ -78,6 +79,8 @@ class V1DescriptorTests(unittest.TestCase):
             semantics["automatic_target_selection"],
             "IR_V2_IF_LOSSLESSLY_ERASABLE_ELSE_IR_V3",
         )
+        self.assertIn("algebraic_runtime_ir_v3", descriptor["features"])
+        self.assertGreaterEqual(len(descriptor["features"]), 18)
 
     def test_descriptor_reports_project_and_receipt_tooling(self) -> None:
         tooling = v1_descriptor()["build_tooling"]
@@ -90,6 +93,19 @@ class V1DescriptorTests(unittest.TestCase):
         self.assertIs(tooling["project_globs"], False)
         self.assertIs(tooling["project_network_resolution"], False)
 
+    def test_descriptor_reports_editor_tooling_without_second_semantics(self) -> None:
+        tooling = v1_descriptor()["editor_tooling"]
+        self.assertEqual(tooling["vscode_static_language_package"], "editors/vscode")
+        self.assertEqual(tooling["language_server_cli"], "tev-script-v1-lsp")
+        self.assertEqual(tooling["language_server_transport"], "LSP_JSON_RPC_STDIO")
+        self.assertEqual(tooling["language_server_position_encoding"], "utf-16")
+        self.assertEqual(
+            tooling["language_server_project_mode"],
+            "EXPLICIT_TEV_SCRIPT_PROJECT_V1",
+        )
+        self.assertIs(tooling["formatter"], False)
+        self.assertIs(tooling["independent_semantic_authority"], False)
+
     def test_descriptor_schema_asset_matches_descriptor_version(self) -> None:
         schema = json.loads(
             (ROOT / "schemas" / "tev_script_descriptor_v3.schema.json").read_text(
@@ -99,6 +115,8 @@ class V1DescriptorTests(unittest.TestCase):
         self.assertEqual(schema["properties"]["schema"]["const"], "TEV_SCRIPT_DESCRIPTOR_V3")
         self.assertEqual(schema["properties"]["language_version"]["const"], V1_LANGUAGE_VERSION)
         self.assertEqual(schema["properties"]["stable"]["const"], False)
+        self.assertIn("editor_tooling", schema["required"])
+        self.assertFalse(schema["properties"]["editor_tooling"]["additionalProperties"])
 
     def test_descriptor_module_cli_prints_one_canonical_json_document(self) -> None:
         output = StringIO()
