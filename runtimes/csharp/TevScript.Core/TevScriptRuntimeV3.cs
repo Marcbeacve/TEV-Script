@@ -1,7 +1,6 @@
 using System.Numerics;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace TevScript.Core.V3;
 
@@ -15,9 +14,6 @@ public sealed record TevScriptEmittedEventV3(
 
 public sealed partial class TevScriptRuntimeV3
 {
-    private static readonly Regex Local = new("^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-    private static readonly Regex Stable = new("^[A-Za-z_][A-Za-z0-9_.:/-]*$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-
     private sealed class Entity
     {
         public required string Id { get; init; }
@@ -44,7 +40,7 @@ public sealed partial class TevScriptRuntimeV3
         {
             foreach (var pair in capabilities)
             {
-                if (!Stable.IsMatch(pair.Key))
+                if (!TevScriptLexicalV3.IsStableIdentifier(pair.Key))
                     throw new TevScriptV3Exception("TEVS_IR_V3_CAPABILITY_BINDING_ID", $"non-canonical capability binding id {pair.Key}");
                 _capabilities.Add(pair.Key, pair.Value);
             }
@@ -503,6 +499,6 @@ public sealed partial class TevScriptRuntimeV3
 
     private static void RequireLocal(string value, string kind)
     {
-        if (!Local.IsMatch(value)) throw new TevScriptV3Exception("TEVS_IR_V3_INVOCATION_ID", $"non-canonical {kind} id {value}");
+        if (!TevScriptLexicalV3.IsLocalIdentifier(value)) throw new TevScriptV3Exception("TEVS_IR_V3_INVOCATION_ID", $"non-canonical {kind} id {value}");
     }
 }

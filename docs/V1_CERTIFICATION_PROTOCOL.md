@@ -127,9 +127,11 @@ The gate runs from one exact clean checkout and requires all of the following wi
 - reference V1 frontend/static/lowering closure;
 - V0.2 Python regression inside the closure gate;
 - C# V0.2/V3 assembly-isolation and reflection/AOT surface guard;
+- regex-free closed ASCII lexical admission in the portable C# V3 assembly;
 - Python/JavaScript/C# IR V3 canonical receipt byte lock;
 - Python/JavaScript/C# Runtime Checkpoint V2 byte lock and restart continuation;
 - Browser-WASM AOT IR V3 receipt/checkpoint parity;
+- explicit managed-to-JavaScript Browser-WASM witness authority (console output is diagnostic only);
 - WASI IR V3 fresh-process/checkpoint/restore-process parity;
 - signed-update V3 host campaign;
 - signed-update V3 Browser-WASM campaign;

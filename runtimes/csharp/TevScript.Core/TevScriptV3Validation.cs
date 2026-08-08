@@ -1,14 +1,10 @@
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace TevScript.Core.V3;
 
 public static class TevScriptProgramValidatorV3
 {
-    private static readonly Regex Hash = new("^[0-9a-f]{64}$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-    private static readonly Regex Local = new("^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-    private static readonly Regex Stable = new("^[A-Za-z_][A-Za-z0-9_.:/-]*$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
     private static readonly string[] RootKeys =
     {
         "schema", "language_version", "lowering_profile", "source_schema",
@@ -441,28 +437,28 @@ public static class TevScriptProgramValidatorV3
     private static string RequireLocal(JsonElement parent, string property, string path)
     {
         var result = RequireString(parent, property, path);
-        if (!Local.IsMatch(result)) Contract(path, $"expected local identifier, got {result}");
+        if (!TevScriptLexicalV3.IsLocalIdentifier(result)) Contract(path, $"expected local identifier, got {result}");
         return result;
     }
 
     private static string RequireLocal(JsonElement value, string path)
     {
         var result = RequireString(value, path);
-        if (!Local.IsMatch(result)) Contract(path, $"expected local identifier, got {result}");
+        if (!TevScriptLexicalV3.IsLocalIdentifier(result)) Contract(path, $"expected local identifier, got {result}");
         return result;
     }
 
     private static string RequireStable(JsonElement parent, string property, string path)
     {
         var result = RequireString(parent, property, path);
-        if (!Stable.IsMatch(result)) Contract(path, $"expected stable identifier, got {result}");
+        if (!TevScriptLexicalV3.IsStableIdentifier(result)) Contract(path, $"expected stable identifier, got {result}");
         return result;
     }
 
     private static string RequireHash(JsonElement parent, string property, string path)
     {
         var result = RequireString(parent, property, path);
-        if (!Hash.IsMatch(result)) Contract(path, "expected lowercase SHA-256");
+        if (!TevScriptLexicalV3.IsLowercaseSha256(result)) Contract(path, "expected lowercase SHA-256");
         return result;
     }
 

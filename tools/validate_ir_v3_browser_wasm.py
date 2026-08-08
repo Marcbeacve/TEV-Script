@@ -194,6 +194,10 @@ def _stop_process(process: subprocess.Popen[str] | None) -> None:
             capture_output=True,
             check=False,
         )
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
         return
     process.terminate()
     try:
@@ -308,6 +312,7 @@ def main() -> int:
                     "--disable-background-timer-throttling",
                     "--disable-backgrounding-occluded-windows",
                     "--disable-renderer-backgrounding",
+                    "--disable-extensions",
                     "--window-size=1280,720",
                     "--user-data-dir=" + str(profile),
                     url,

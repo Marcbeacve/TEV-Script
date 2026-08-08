@@ -80,7 +80,9 @@ def main() -> int:
         ], env=env)
         if fixture_build.returncode != 0:
             return fail_process("TEV_SCRIPT_IR_V3_BROWSER_SIGNED_UPDATE_FIXTURE_BUILD", fixture_build)
-        signer = run([dotnet, str(FIXTURE_DLL), "--dir", str(fixture_dir)], env=env)
+        signer_env = dict(env)
+        signer_env.setdefault("DOTNET_ROLL_FORWARD", "Major")
+        signer = run([dotnet, str(FIXTURE_DLL), "--dir", str(fixture_dir)], env=signer_env)
         if signer.returncode != 0:
             return fail_process("TEV_SCRIPT_IR_V3_BROWSER_SIGNED_UPDATE_FIXTURE_SIGN", signer)
         if "TEV_SCRIPT_IR_V3_UPDATE_FIXTURE_SIGNER=PASS" not in signer.stdout:
@@ -149,6 +151,7 @@ def main() -> int:
                         "--disable-background-timer-throttling",
                         "--disable-backgrounding-occluded-windows",
                         "--disable-renderer-backgrounding",
+                        "--disable-extensions",
                         "--window-size=1280,720",
                         "--user-data-dir=" + str(profile),
                         url,

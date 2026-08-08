@@ -1,15 +1,11 @@
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace TevScript.Core.V3;
 
 public sealed class TevScriptRuntimeCheckpointV2
 {
     public const string Schema = "TEV_SCRIPT_RUNTIME_CHECKPOINT_V2";
-    private static readonly Regex Local = new("^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-    private static readonly Regex Sha = new("^[0-9a-f]{64}$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-
     private sealed record StateEntry(string Name, string TypeId, JsonElement Value);
     private sealed record EntityEntry(string EntityId, IReadOnlyList<StateEntry> State);
     private readonly IReadOnlyList<EntityEntry> _entities;
@@ -118,7 +114,7 @@ public sealed class TevScriptRuntimeCheckpointV2
             var state = new List<StateEntry>();
             foreach (var property in rawState.EnumerateObject().OrderBy(item => item.Name, StringComparer.Ordinal))
             {
-                if (!Local.IsMatch(property.Name))
+                if (!TevScriptLexicalV3.IsLocalIdentifier(property.Name))
                     Fail("TEVS_CHECKPOINT_V2_IDENTIFIER", path + ".state key", $"expected identifier, got {property.Name}");
                 RequireObject(property.Value, path + ".state." + property.Name);
                 RequireExactKeys(property.Value, path + ".state." + property.Name, new[] { "type", "value" });
@@ -261,7 +257,7 @@ public sealed class TevScriptRuntimeCheckpointV2
     private static string RequireLocal(JsonElement value, string path)
     {
         var result = RequireString(value, path);
-        if (!Local.IsMatch(result))
+        if (!TevScriptLexicalV3.IsLocalIdentifier(result))
             Fail("TEVS_CHECKPOINT_V2_IDENTIFIER", path, $"expected identifier, got {result}");
         return result;
     }
@@ -269,7 +265,7 @@ public sealed class TevScriptRuntimeCheckpointV2
     private static string RequireSha(JsonElement value, string path)
     {
         var result = RequireString(value, path);
-        if (!Sha.IsMatch(result))
+        if (!TevScriptLexicalV3.IsLowercaseSha256(result))
             Fail("TEVS_CHECKPOINT_V2_SHA256", path, "expected lowercase SHA-256");
         return result;
     }

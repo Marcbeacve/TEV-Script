@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Compile Include="../TevScript.Core/GlobalUsings.V3.cs" Link="GlobalUsings.V3.cs" />
+    <Compile Include="../TevScript.Core/TevScriptV3Lexical.cs" Link="TevScriptV3Lexical.cs" />
     <Compile Include="../TevScript.Core/TevScriptV3Values.cs" Link="TevScriptV3Values.cs" />
     <Compile Include="../TevScript.Core/TevScriptV3Canonical.cs" Link="TevScriptV3Canonical.cs" />
     <Compile Include="../TevScript.Core/TevScriptV3ObjectTreeJson.cs" Link="TevScriptV3ObjectTreeJson.cs" />

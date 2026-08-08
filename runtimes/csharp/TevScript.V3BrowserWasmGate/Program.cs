@@ -1,6 +1,17 @@
 using System.Reflection;
+using System.Runtime.InteropServices.JavaScript;
 using System.Text.Json;
 using TevScript.Core.V3;
+
+internal static partial class BrowserWitness
+{
+    [JSImport("globalThis.tevIrV3BrowserReport")]
+    internal static partial void Report(
+        string status,
+        string receiptHash,
+        string checkpointHash,
+        string detail);
+}
 
 internal static class Program
 {
@@ -42,12 +53,14 @@ internal static class Program
             Console.WriteLine("TEV_SCRIPT_IR_V3_BROWSER_CHECKPOINT_RESTORE=PASS");
             Console.WriteLine("TEV_SCRIPT_IR_V3_BROWSER_WASM_AOT_REQUESTED=PASS");
             Console.WriteLine("TEV_SCRIPT_IR_V3_BROWSER_WASM_GATE=PASS");
+            BrowserWitness.Report("PASS", receipt.ReceiptHash, checkpoint.CheckpointHash, "");
             return 0;
         }
         catch (Exception error)
         {
             Console.Error.WriteLine(error);
             Console.WriteLine("TEV_SCRIPT_IR_V3_BROWSER_WASM_GATE=FAIL");
+            BrowserWitness.Report("FAIL", "", "", error.GetType().Name);
             return 91;
         }
     }

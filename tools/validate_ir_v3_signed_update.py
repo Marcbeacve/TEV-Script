@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -7,7 +8,6 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-PROGRAM_GENERATOR = ROOT / "tools" / "generate_ir_v3_update_programs.py"
 FIXTURE_PROJECT = (
     ROOT
     / "runtimes"
@@ -44,7 +44,15 @@ GATE_DLL = (
 )
 
 
-def run(arguments: list[str]) -> subprocess.CompletedProcess[str]:
+def run(
+    arguments: list[str],
+    *,
+    dotnet_roll_forward: bool = False,
+) -> subprocess.CompletedProcess[str]:
+    environment = None
+    if dotnet_roll_forward:
+        environment = os.environ.copy()
+        environment.setdefault("DOTNET_ROLL_FORWARD", "Major")
     return subprocess.run(
         arguments,
         cwd=ROOT,
@@ -52,6 +60,7 @@ def run(arguments: list[str]) -> subprocess.CompletedProcess[str]:
         text=True,
         encoding="utf-8",
         check=False,
+        env=environment,
     )
 
 
@@ -88,7 +97,8 @@ def main() -> int:
         generate = run(
             [
                 sys.executable,
-                str(PROGRAM_GENERATOR),
+                "-m",
+                "tools.generate_ir_v3_update_programs",
                 "--out",
                 str(fixture_dir),
             ]
@@ -97,7 +107,7 @@ def main() -> int:
             return fail_process("TEV_SCRIPT_IR_V3_SIGNED_UPDATE_PROGRAM_GENERATION", generate)
         try:
             require(generate.stdout, "TEV_SCRIPT_IR_V3_UPDATE_SOURCE_DERIVATION=PASS")
-            require(generate.stdout, "TEV_SCRIPT_IR_V3_UPDATE_PROGRAMS=7")
+            require(generate.stdout, "TEV_SCRIPT_IR_V3_UPDATE_PROGRAMS=8")
         except RuntimeError as error:
             print("TEV_SCRIPT_IR_V3_SIGNED_UPDATE_PROGRAM_GENERATION=FAIL_WITNESS")
             print("TEV_SCRIPT_IR_V3_SIGNED_UPDATE_ERROR=" + str(error))
@@ -123,7 +133,10 @@ def main() -> int:
             return 1
         print("TEV_SCRIPT_IR_V3_SIGNED_UPDATE_FIXTURE_BUILD=PASS")
 
-        sign = run([dotnet, str(FIXTURE_DLL), "--dir", str(fixture_dir)])
+        sign = run(
+            [dotnet, str(FIXTURE_DLL), "--dir", str(fixture_dir)],
+            dotnet_roll_forward=True,
+        )
         if sign.returncode != 0:
             return fail_process("TEV_SCRIPT_IR_V3_SIGNED_UPDATE_FIXTURE_SIGN", sign)
         try:
@@ -155,7 +168,10 @@ def main() -> int:
             return 1
         print("TEV_SCRIPT_IR_V3_SIGNED_UPDATE_BUILD=PASS")
 
-        gate = run([dotnet, str(GATE_DLL), "--dir", str(fixture_dir)])
+        gate = run(
+            [dotnet, str(GATE_DLL), "--dir", str(fixture_dir)],
+            dotnet_roll_forward=True,
+        )
         if gate.returncode != 0:
             return fail_process("TEV_SCRIPT_IR_V3_SIGNED_UPDATE_DYNAMIC", gate)
         witnesses = (

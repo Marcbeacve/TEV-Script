@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -34,7 +35,15 @@ CSHARP_DLL = (
 )
 
 
-def _run(arguments: list[str]) -> subprocess.CompletedProcess[str]:
+def _run(
+    arguments: list[str],
+    *,
+    dotnet_roll_forward: bool = False,
+) -> subprocess.CompletedProcess[str]:
+    environment = None
+    if dotnet_roll_forward:
+        environment = os.environ.copy()
+        environment.setdefault("DOTNET_ROLL_FORWARD", "Major")
     return subprocess.run(
         arguments,
         cwd=ROOT,
@@ -42,6 +51,7 @@ def _run(arguments: list[str]) -> subprocess.CompletedProcess[str]:
         capture_output=True,
         text=True,
         encoding="utf-8",
+        env=environment,
     )
 
 
@@ -125,7 +135,10 @@ def main() -> int:
         return 1
     print("TEV_SCRIPT_IR_V3_CHECKPOINT_CSHARP_BUILD=PASS")
 
-    csharp_test = _run([dotnet, str(CSHARP_DLL), "--self-test", str(CASES_PATH)])
+    csharp_test = _run(
+        [dotnet, str(CSHARP_DLL), "--self-test", str(CASES_PATH)],
+        dotnet_roll_forward=True,
+    )
     if csharp_test.returncode != 0:
         return _fail_process("TEV_SCRIPT_IR_V3_CHECKPOINT_CSHARP_SELF_TEST", csharp_test)
     required_witnesses = (
@@ -139,7 +152,10 @@ def main() -> int:
         return 1
     print("TEV_SCRIPT_IR_V3_CHECKPOINT_CSHARP_SELF_TEST=PASS")
 
-    csharp_capture = _run([dotnet, str(CSHARP_DLL), "--capture", str(CASES_PATH)])
+    csharp_capture = _run(
+        [dotnet, str(CSHARP_DLL), "--capture", str(CASES_PATH)],
+        dotnet_roll_forward=True,
+    )
     if csharp_capture.returncode != 0:
         return _fail_process("TEV_SCRIPT_IR_V3_CHECKPOINT_CSHARP_CAPTURE", csharp_capture)
     csharp_bytes = csharp_capture.stdout

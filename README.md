@@ -432,11 +432,16 @@ Signed-update gates additionally bind the existing managed ES256 verifier throug
 
 The V3 Browser-WASM gate AOT-compiles the C# V3 runtime and must reproduce host-oracle conformance-receipt and checkpoint hashes through an authenticated loopback witness.
 
-A page-load smoke is not treated as runtime parity.
+A page-load smoke is not treated as runtime parity. The managed gate reports its
+result through an explicit `JSImport` witness; console interception remains
+diagnostic only and is not certification authority. The portable V3 assembly
+uses closed ASCII lexical predicates instead of a regular-expression runtime,
+so identifier, hash and canonical-number admission is identical under native,
+Browser-WASM AOT and WASI execution.
 
 ## WASI
 
-The V3 WASI gate uses separate `fresh` and `restore` Wasmtime processes. The first writes a canonical checkpoint; the second starts from a new process, restores it and continues execution.
+The V3 WASI gate uses separate `fresh` and `restore` Wasmtime processes. The first writes a canonical checkpoint; the second starts from a new process, restores it and continues execution. Wasmtime is invoked with `-S http` solely to satisfy .NET WASI host linkage; this does not grant a TEV capability or semantic authority.
 
 ---
 

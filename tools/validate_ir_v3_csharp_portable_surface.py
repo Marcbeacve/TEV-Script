@@ -8,6 +8,7 @@ CORE = CSHARP / "TevScript.Core"
 V3_PROJECT = CSHARP / "TevScript.Core.V3" / "TevScript.Core.V3.csproj"
 
 V3_SOURCES = (
+    "TevScriptV3Lexical.cs",
     "TevScriptV3Values.cs",
     "TevScriptV3Canonical.cs",
     "TevScriptV3ObjectTreeJson.cs",
@@ -103,6 +104,9 @@ def main() -> int:
         "ArgumentNullException.ThrowIfNull",
         "Marcbeacve.TevScript.Core.TevJson",
         "System.Text.Json.JsonSerializer",
+        "System.Text.RegularExpressions",
+        "RegexOptions.",
+        "Regex.",
     ):
         forbid(joined, forbidden, "IR_V3_CSHARP_V3_RUNTIME_SURFACE")
 

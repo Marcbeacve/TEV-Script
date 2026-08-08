@@ -258,6 +258,8 @@ def main() -> int:
         base_command = [
             wasmtime,
             "run",
+            "-S",
+            "http",
             "--dir",
             ".",
             "dotnet.wasm",

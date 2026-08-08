@@ -1,6 +1,17 @@
 using System.Reflection;
+using System.Runtime.InteropServices.JavaScript;
 using TevScript.Core.V3;
 using ManagedVerifier = Marcbeacve.TevScript.Update.TevManagedEcdsaP256Sha256Verifier;
+
+internal static partial class BrowserWitness
+{
+    [JSImport("globalThis.tevIrV3SignedBrowserReport")]
+    internal static partial void Report(
+        string status,
+        string packageSha,
+        string targetHash,
+        string detail);
+}
 
 internal static class Program
 {
@@ -10,7 +21,7 @@ internal static class Program
 
     private sealed class VerifierAdapter : ITevUpdateSignatureVerifierV3
     {
-        private readonly ManagedVerifier _inner = new(KeyId, PublicX, PublicY);
+        private readonly ManagedVerifier _inner = new(Program.KeyId, PublicX, PublicY);
         public string KeyId => _inner.KeyId;
         public string AlgorithmId => _inner.AlgorithmId;
         public bool Verify(byte[] data, byte[] signature) => _inner.Verify(data, signature);
@@ -82,12 +93,14 @@ internal static class Program
             Console.WriteLine("TEV_SCRIPT_IR_V3_BROWSER_SIGNED_UPDATE_PACKAGE_SHA256=" + package.PackageSha256);
             Console.WriteLine("TEV_SCRIPT_IR_V3_BROWSER_SIGNED_UPDATE_TARGET_HASH=" + package.TargetIrSemanticHash);
             Console.WriteLine("TEV_SCRIPT_IR_V3_BROWSER_SIGNED_UPDATE_GATE=PASS");
+            BrowserWitness.Report("PASS", package.PackageSha256, package.TargetIrSemanticHash, "");
             return 0;
         }
         catch (Exception error)
         {
             Console.Error.WriteLine(error);
             Console.WriteLine("TEV_SCRIPT_IR_V3_BROWSER_SIGNED_UPDATE_GATE=FAIL");
+            BrowserWitness.Report("FAIL", "", "", error.GetType().Name);
             return 91;
         }
     }

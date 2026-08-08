@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Numerics;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace TevScript.Core.V3;
 
@@ -115,8 +114,6 @@ public sealed record TevScriptTypeDescriptorV3(
 public sealed class TevScriptTypeTableV3
 {
     private static readonly string[] BaseTypeIds = { "Bool", "Int", "Rat", "Text", "Unit", "Vec2", "Vec3" };
-    private static readonly Regex LocalName = new("^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-    private static readonly Regex NominalName = new("^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)+$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
     private readonly Dictionary<string, TevScriptTypeDescriptorV3> _byId;
 
     private TevScriptTypeTableV3(IReadOnlyList<TevScriptTypeDescriptorV3> descriptors, int maximumValueNesting)
@@ -213,7 +210,7 @@ public sealed class TevScriptTypeTableV3
         if (kind == "record")
         {
             RequireExactKeys(raw, path, "type_id", "kind", "fields");
-            if (!NominalName.IsMatch(typeId)) Contract(path + ".type_id", "record type id must be nominal and qualified");
+            if (!TevScriptLexicalV3.IsQualifiedNominalIdentifier(typeId)) Contract(path + ".type_id", "record type id must be nominal and qualified");
             var fieldsRaw = raw.GetProperty("fields");
             if (fieldsRaw.ValueKind != JsonValueKind.Array || fieldsRaw.GetArrayLength() is < 1 or > 256) Contract(path + ".fields", "record requires 1..256 fields");
             var fields = new List<TevScriptFieldV3>();
@@ -225,7 +222,7 @@ public sealed class TevScriptTypeTableV3
                 var fieldPath = $"{path}.fields[{fieldIndex++}]";
                 RequireExactKeys(fieldRaw, fieldPath, "name", "type");
                 var name = RequireString(fieldRaw, "name", fieldPath + ".name");
-                if (!LocalName.IsMatch(name)) Contract(fieldPath + ".name", "invalid field identifier");
+                if (!TevScriptLexicalV3.IsLocalIdentifier(name)) Contract(fieldPath + ".name", "invalid field identifier");
                 if (!names.Add(name)) Contract(fieldPath + ".name", $"duplicate field {name}");
                 if (previousField is not null && StringComparer.Ordinal.Compare(name, previousField) <= 0) Contract(path + ".fields", "record fields must be strictly sorted");
                 previousField = name;
@@ -236,7 +233,7 @@ public sealed class TevScriptTypeTableV3
         if (kind == "enum")
         {
             RequireExactKeys(raw, path, "type_id", "kind", "variants");
-            if (!NominalName.IsMatch(typeId)) Contract(path + ".type_id", "enum type id must be nominal and qualified");
+            if (!TevScriptLexicalV3.IsQualifiedNominalIdentifier(typeId)) Contract(path + ".type_id", "enum type id must be nominal and qualified");
             var variantsRaw = raw.GetProperty("variants");
             if (variantsRaw.ValueKind != JsonValueKind.Array || variantsRaw.GetArrayLength() is < 1 or > 256) Contract(path + ".variants", "enum requires 1..256 variants");
             var variants = new List<string>();
@@ -246,7 +243,7 @@ public sealed class TevScriptTypeTableV3
             {
                 if (value.ValueKind != JsonValueKind.String) Contract(path + ".variants", "variant must be text");
                 var variant = value.GetString()!;
-                if (!LocalName.IsMatch(variant) || !seenVariants.Add(variant)) Contract(path + ".variants", $"invalid or duplicate variant {variant}");
+                if (!TevScriptLexicalV3.IsLocalIdentifier(variant) || !seenVariants.Add(variant)) Contract(path + ".variants", $"invalid or duplicate variant {variant}");
                 if (previousVariant is not null && StringComparer.Ordinal.Compare(variant, previousVariant) <= 0) Contract(path + ".variants", "enum variants must be strictly sorted");
                 previousVariant = variant;
                 variants.Add(variant);
@@ -417,8 +414,6 @@ public sealed class TevScriptTypeTableV3
 
 public static class TevScriptValueCodecV3
 {
-    private static readonly Regex CanonicalInteger = new("^-?(0|[1-9][0-9]*)$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-
     public static TevScriptValueV3 Decode(string typeId, JsonElement raw, TevScriptTypeTableV3 table, string context = "value", int depth = 1)
     {
         if (depth > table.MaximumValueNesting)
@@ -590,7 +585,7 @@ public static class TevScriptValueCodecV3
             if (pair.ValueKind != JsonValueKind.Array || pair.GetArrayLength() != 2 || pair[0].ValueKind != JsonValueKind.String || pair[1].ValueKind != JsonValueKind.String) ValueFail(context, typeId, "invalid rational pair");
             var numerator = ParseCanonicalInteger(pair[0].GetString()!, context);
             var denominatorText = pair[1].GetString()!;
-            if (!Regex.IsMatch(denominatorText, "^[1-9][0-9]*$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking)) ValueFail(context, typeId, "invalid denominator");
+            if (!TevScriptLexicalV3.IsPositiveCanonicalInteger(denominatorText)) ValueFail(context, typeId, "invalid denominator");
             var denominator = BigInteger.Parse(denominatorText, CultureInfo.InvariantCulture);
             var result = new TevRationalV3(numerator, denominator);
             if (result.Numerator.ToString(CultureInfo.InvariantCulture) != pair[0].GetString() || result.Denominator.ToString(CultureInfo.InvariantCulture) != denominatorText) ValueFail(context, typeId, "rational must be normalized");
@@ -642,7 +637,7 @@ public static class TevScriptValueCodecV3
 
     private static BigInteger ParseCanonicalInteger(string text, string context)
     {
-        if (!CanonicalInteger.IsMatch(text) || text == "-0") ValueFail(context, "Int", "integer text is not canonical");
+        if (!TevScriptLexicalV3.IsCanonicalInteger(text) || text == "-0") ValueFail(context, "Int", "integer text is not canonical");
         return BigInteger.Parse(text, CultureInfo.InvariantCulture);
     }
 

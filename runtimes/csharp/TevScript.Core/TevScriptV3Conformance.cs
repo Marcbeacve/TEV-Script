@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace TevScript.Core.V3;
 
@@ -10,10 +9,6 @@ public sealed record TevScriptV3ConformanceReceipt(
 
 public static class TevScriptV3Conformance
 {
-    private static readonly Regex Stable = new("^[A-Za-z_][A-Za-z0-9_.:/-]*$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-    private static readonly Regex Local = new("^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-    private static readonly Regex Hash = new("^[0-9a-f]{64}$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-
     private sealed record CapabilityContract(string[] Parameters, string ReturnType, string Kind);
 
     private sealed class ScriptedCapability
@@ -408,21 +403,21 @@ public static class TevScriptV3Conformance
 
     private static string RequireStable(JsonElement value, string path)
     {
-        if (value.ValueKind != JsonValueKind.String || !Stable.IsMatch(value.GetString()!))
+        if (value.ValueKind != JsonValueKind.String || !TevScriptLexicalV3.IsStableIdentifier(value.GetString()!))
             Fail("TEVS_IR_V3_CONFORMANCE_IDENTIFIER", path, "invalid stable id");
         return value.GetString()!;
     }
 
     private static string RequireLocal(JsonElement value, string path)
     {
-        if (value.ValueKind != JsonValueKind.String || !Local.IsMatch(value.GetString()!))
+        if (value.ValueKind != JsonValueKind.String || !TevScriptLexicalV3.IsLocalIdentifier(value.GetString()!))
             Fail("TEVS_IR_V3_CONFORMANCE_IDENTIFIER", path, "invalid local id");
         return value.GetString()!;
     }
 
     private static string RequireHash(JsonElement value, string path)
     {
-        if (value.ValueKind != JsonValueKind.String || !Hash.IsMatch(value.GetString()!))
+        if (value.ValueKind != JsonValueKind.String || !TevScriptLexicalV3.IsLowercaseSha256(value.GetString()!))
             Fail("TEVS_IR_V3_CONFORMANCE_HASH", path, "expected lowercase SHA-256");
         return value.GetString()!;
     }

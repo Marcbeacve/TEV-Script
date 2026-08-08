@@ -9,6 +9,7 @@ let packageSha = '';
 let targetHash = '';
 let witnessSent = false;
 let gatePassed = false;
+const runtimeMessages = [];
 
 function emitWitness(status, detail) {
   if (witnessSent) return;
@@ -31,6 +32,23 @@ function fail(detail) {
   document.title = 'TEV_IR_V3_SIGNED_BROWSER_FAIL';
   emitWitness('FAIL', detail);
 }
+
+function describeError(error) {
+  if (error === null || typeof error !== 'object') return String(error);
+  const detail = {};
+  for (const name of Object.getOwnPropertyNames(error)) detail[name] = error[name];
+  return `${error.constructor?.name || 'Object'}:${JSON.stringify(detail)}`;
+}
+
+globalThis.tevIrV3SignedBrowserReport = (status, reportedPackageSha, reportedTargetHash, detail) => {
+  if (status !== 'PASS') {
+    fail('DOTNET_GATE_FAIL:' + String(detail));
+    return;
+  }
+  append('TEV_SCRIPT_IR_V3_BROWSER_SIGNED_UPDATE_PACKAGE_SHA256=' + String(reportedPackageSha));
+  append('TEV_SCRIPT_IR_V3_BROWSER_SIGNED_UPDATE_TARGET_HASH=' + String(reportedTargetHash));
+  append('TEV_SCRIPT_IR_V3_BROWSER_SIGNED_UPDATE_GATE=PASS');
+};
 
 function append(value) {
   const line = String(value);
@@ -57,10 +75,15 @@ console.log = (...args) => { append(args.join(' ')); originalLog(...args); };
 console.error = (...args) => { append(args.join(' ')); originalError(...args); };
 
 try {
-  await dotnet.run();
-  if (!gatePassed && !witnessSent) fail('DOTNET_EXITED_WITHOUT_GATE_WITNESS');
+  dotnet.withModuleConfig({
+    out: (message) => { runtimeMessages.push(String(message)); append(message); originalLog(message); },
+    err: (message) => { runtimeMessages.push(String(message)); append(message); originalError(message); },
+  });
+  const runtime = await dotnet.create();
+  const exitCode = await runtime.runMain('TevScript.V3BrowserSignedUpdateGate');
+  if (!gatePassed && !witnessSent) fail('DOTNET_EXITED_WITHOUT_GATE_WITNESS:' + String(exitCode));
 } catch (error) {
   append('TEV_SCRIPT_IR_V3_BROWSER_SIGNED_UPDATE_JS_EXCEPTION=' + error);
-  fail('JS_EXCEPTION');
+  fail('JS_EXCEPTION:' + describeError(error) + ':RUNTIME=' + runtimeMessages.slice(-20).join('|'));
   throw error;
 }

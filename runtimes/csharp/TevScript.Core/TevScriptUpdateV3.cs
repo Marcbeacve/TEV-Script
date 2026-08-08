@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace TevScript.Core.V3;
 
@@ -22,13 +21,6 @@ public sealed class TevScriptSignedUpdatePackageV3
     public const string PackageSchema = "TEV_SCRIPT_SIGNED_UPDATE_PACKAGE_V2";
     public const string BodySchema = "TEV_SCRIPT_UPDATE_BODY_V2";
     private const long MaximumStructuralInteger = 9007199254740991L;
-    private static readonly Regex Stable = new(
-        "^[A-Za-z_][A-Za-z0-9_.:/-]*$",
-        RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-    private static readonly Regex Hash = new(
-        "^[0-9a-f]{64}$",
-        RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
-
     private readonly byte[] _signature;
     private readonly byte[] _signedBodyBytes;
 
@@ -249,7 +241,7 @@ public sealed class TevScriptSignedUpdatePackageV3
     private static string RequireStable(JsonElement value, string path)
     {
         var result = RequireString(value, path);
-        if (!Stable.IsMatch(result))
+        if (!TevScriptLexicalV3.IsStableIdentifier(result))
             Fail("TEVS_UPDATE_V3_ID", path, "expected stable identifier");
         return result;
     }
@@ -257,7 +249,7 @@ public sealed class TevScriptSignedUpdatePackageV3
     private static string RequireHash(JsonElement value, string path)
     {
         var result = RequireString(value, path);
-        if (!Hash.IsMatch(result))
+        if (!TevScriptLexicalV3.IsLowercaseSha256(result))
             Fail("TEVS_UPDATE_V3_SHA256", path, "expected lowercase SHA-256");
         return result;
     }

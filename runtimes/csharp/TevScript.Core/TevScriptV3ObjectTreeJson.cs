@@ -125,7 +125,7 @@ internal static class TevScriptObjectTreeJsonV3
     }
 }
 
-// Namespace-local facade deliberately shadows System.Text.Json.JsonSerializer
+// Namespace-local facade deliberately shadows the framework serializer
 // inside TevScript.Core.V3. It exposes only the one operation conformance needs
 // and routes it through the closed writer above, so AOT execution never falls
 // back to reflection-based arbitrary-type serialization.

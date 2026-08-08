@@ -10,7 +10,7 @@ internal static class Program
 
     private sealed class VerifierAdapter : ITevUpdateSignatureVerifierV3
     {
-        private readonly ManagedVerifier _inner = new(KeyId, PublicX, PublicY);
+        private readonly ManagedVerifier _inner = new(Program.KeyId, PublicX, PublicY);
         public string KeyId => _inner.KeyId;
         public string AlgorithmId => _inner.AlgorithmId;
         public bool Verify(byte[] data, byte[] signature) => _inner.Verify(data, signature);

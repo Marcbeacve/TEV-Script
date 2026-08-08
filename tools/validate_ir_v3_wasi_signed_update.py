@@ -113,7 +113,9 @@ def main() -> int:
         ], env=env)
         if fixture_build.returncode != 0:
             return fail_process("TEV_SCRIPT_IR_V3_WASI_SIGNED_UPDATE_FIXTURE_BUILD", fixture_build)
-        signer = run([dotnet, str(FIXTURE_DLL), "--dir", str(fixture_dir)], env=env)
+        signer_env = dict(env)
+        signer_env.setdefault("DOTNET_ROLL_FORWARD", "Major")
+        signer = run([dotnet, str(FIXTURE_DLL), "--dir", str(fixture_dir)], env=signer_env)
         if signer.returncode != 0:
             return fail_process("TEV_SCRIPT_IR_V3_WASI_SIGNED_UPDATE_FIXTURE_SIGN", signer)
         if "TEV_SCRIPT_IR_V3_UPDATE_FIXTURE_SIGNER=PASS" not in signer.stdout:
@@ -149,7 +151,7 @@ def main() -> int:
         print("TEV_SCRIPT_IR_V3_WASI_SIGNED_UPDATE_BUILD=PASS")
         print("TEV_SCRIPT_IR_V3_WASI_SIGNED_UPDATE_WASM_MAGIC=PASS")
 
-        base_command = [wasmtime, "run", "--dir", ".", "dotnet.wasm", ASSEMBLY_NAME]
+        base_command = [wasmtime, "run", "-S", "http", "--dir", ".", "dotnet.wasm", ASSEMBLY_NAME]
         fresh = run([
             *base_command,
             "fresh",
