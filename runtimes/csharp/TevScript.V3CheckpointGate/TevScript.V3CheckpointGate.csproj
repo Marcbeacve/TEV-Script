@@ -7,6 +7,6 @@
     <Deterministic>true</Deterministic>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../TevScript.Core/TevScript.Core.csproj" />
+    <ProjectReference Include="../TevScript.Core.V3/TevScript.Core.V3.csproj" />
   </ItemGroup>
 </Project>
