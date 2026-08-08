@@ -53,6 +53,8 @@
         "schemas/tev_script_lowering_receipt_v1.schema.json",
         "schemas/tev_script_lowering_receipt_v2.schema.json",
         "schemas/tev_script_program_ir_v3.schema.json",
+        "schemas/tev_script_ir_v3_scenario_v1.schema.json",
+        "schemas/tev_script_ir_v3_conformance_receipt_v1.schema.json",
         "schemas/tev_script_runtime_checkpoint_v2.schema.json"
       ],
       "portable_conformance_assets": [
@@ -63,9 +65,13 @@
         "conformance/v1-constant-cases.json",
         "conformance/v1-linked-program-cases.json",
         "conformance/v1-irv2-lowering-cases.json",
-        "conformance/ir-v3-validator-cases.json"
+        "conformance/ir-v3-validator-cases.json",
+        "conformance/ir-v3-portable.scenario.json"
       ],
       "implementation_gate": "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py",
+      "precertify_gate": "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
+      "cross_runtime_gate": "tools/validate_ir_v3_cross_runtime_parity.py",
+      "checkpoint_cross_runtime_gate": "tools/validate_ir_v3_checkpoint_cross_runtime.py",
       "implementation_plan": "docs/V1_IMPLEMENTATION_PLAN.md"
     }
   ],
