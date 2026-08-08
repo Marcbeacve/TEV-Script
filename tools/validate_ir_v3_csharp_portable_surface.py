@@ -10,6 +10,7 @@ V3_PROJECT = CSHARP / "TevScript.Core.V3" / "TevScript.Core.V3.csproj"
 V3_SOURCES = (
     "TevScriptV3Values.cs",
     "TevScriptV3Canonical.cs",
+    "TevScriptV3ObjectTreeJson.cs",
     "TevScriptV3StrictJson.cs",
     "TevScriptV3Flow.cs",
     "TevScriptV3Validation.cs",
@@ -81,6 +82,7 @@ def main() -> int:
         "Convert.ToHexString",
         "ArgumentNullException.ThrowIfNull",
         "Marcbeacve.TevScript.Core.TevJson",
+        "System.Text.Json.JsonSerializer",
     ):
         forbid(joined, forbidden, "IR_V3_CSHARP_V3_RUNTIME_SURFACE")
 
@@ -93,8 +95,20 @@ def main() -> int:
     ):
         require(canonical, witness, "IR_V3_CSHARP_PORTABLE_SHA256")
 
+    object_tree = sources["TevScriptV3ObjectTreeJson.cs"]
+    for witness in (
+        "TevScriptObjectTreeJsonV3",
+        "IDictionary<string, object?>",
+        "case IDictionary dictionary",
+        "case IEnumerable sequence",
+        "internal static class JsonSerializer",
+        "TevScriptObjectTreeJsonV3.Element(value)",
+    ):
+        require(object_tree, witness, "IR_V3_CSHARP_AOT_JSON")
+
     conformance = sources["TevScriptV3Conformance.cs"]
     require(conformance, "runtimeProgram.IrForCheckpoint", "IR_V3_CSHARP_NO_REFLECTION")
+    require(conformance, "JsonSerializer.SerializeToElement(value)", "IR_V3_CSHARP_AOT_JSON_BINDING")
     runtime = sources["TevScriptRuntimeV3.cs"]
     require(runtime, "internal JsonElement IrForCheckpoint", "IR_V3_CSHARP_INFRASTRUCTURE_BOUNDARY")
     require(runtime, "internal void RestoreStateForCheckpoint", "IR_V3_CSHARP_INFRASTRUCTURE_BOUNDARY")
@@ -123,6 +137,7 @@ def main() -> int:
     print("TEV_SCRIPT_IR_V3_CSHARP_V0_2_ASSEMBLY_ISOLATION=PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_V3_ASSEMBLY=NET8_DEPENDENCY_FREE_PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_REFLECTION_FREE=PASS")
+    print("TEV_SCRIPT_IR_V3_CSHARP_AOT_JSON=REFLECTION_FREE_PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_PORTABLE_SHA256=PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_MODERN_API_GUARD=PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_CHECKPOINT_BOUNDARY=PASS")
