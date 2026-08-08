@@ -9,6 +9,7 @@ EXPECTED_STATUS = "FULL_IMPLEMENTATION_CANDIDATE_PRECERTIFY_REQUIRED"
 EXPECTED_MATRIX = "TEV_SCRIPT_V1_FEATURE_MATRIX_V5"
 EXPECTED_PRECERTIFY = "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V5"
 EXPECTED_CERTIFY = "TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V1"
+EXPECTED_PYTHON_CERTIFY = "TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V1"
 ARTIFACT_POLICY = "EVIDENCE_SAFE_RECEIPT_LAST_V1"
 
 REQUIRED_AUTHORITY = {
@@ -60,6 +61,7 @@ REQUIRED_LSP = {
 REQUIRED_GATE_MAP = {
     "implementation": "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py",
     "python_production": "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py",
+    "python_certify_full": "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py",
     "csharp_surface": "tools/validate_ir_v3_csharp_portable_surface.py",
     "cross_runtime": "tools/validate_ir_v3_cross_runtime_parity.py",
     "checkpoint_cross_runtime": "tools/validate_ir_v3_checkpoint_cross_runtime.py",
@@ -78,6 +80,7 @@ REQUIRED_PRODUCT_FILES = {
     "docs/TEV_SCRIPT_V1_PROGRAMMING_MODEL.md",
     "docs/V1_PROJECT_MANIFEST.md",
     "docs/V1_PYTHON_PRODUCTION.md",
+    "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py",
     "tev_script/python_host_v1.py",
     "examples/v1/README.md",
     "examples/v1/Calculator.tevs",
@@ -155,6 +158,7 @@ def main() -> int:
     pre_text = (ROOT / "RUN_TEV_SCRIPT_V1_PRECERTIFY.py").read_text(encoding="utf-8")
     certify_text = (ROOT / "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py").read_text(encoding="utf-8")
     python_gate_text = (ROOT / "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py").read_text(encoding="utf-8")
+    python_certify_text = (ROOT / "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py").read_text(encoding="utf-8")
     protocol_text = (ROOT / "docs/V1_CERTIFICATION_PROTOCOL.md").read_text(encoding="utf-8")
     state_text = (ROOT / "PROJECT_STATE.md").read_text(encoding="utf-8")
     pyproject_text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
@@ -227,6 +231,7 @@ def main() -> int:
         "documentation": "docs/V1_PYTHON_PRODUCTION.md",
         "test": "tests/test_v1_python_host.py",
         "production_gate": "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py",
+        "certify_full_gate": "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py",
         "stable_claim": False,
     }.items():
         require(
@@ -286,9 +291,24 @@ def main() -> int:
         '"--no-deps"', '"--no-build-isolation"', '"PIP_NO_INDEX": "1"',
         "TEV_SCRIPT_V1_PYTHON_WHEEL_REPRODUCIBLE=PASS",
         "TEV_SCRIPT_V1_PYTHON_INSTALLED_CHECKPOINT_RESTART=PASS",
+        "TEV_SCRIPT_V1_PYTHON_INSTALLED_LEAST_AUTHORITY=PASS",
+        "TEV_SCRIPT_V1_PYTHON_INSTALLED_TYPED_CAPABILITY=PASS",
         "TEV_SCRIPT_V1_PYTHON_PRODUCTION=PASS_CANDIDATE",
         "CERTIFY_FULL=NO", "LANGUAGE_STABLE=NO",
     ), "V1_GOVERNANCE_PYTHON_PRODUCTION_GATE")
+    require_tokens(python_certify_text, (
+        EXPECTED_PYTHON_CERTIFY,
+        "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py",
+        "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_JSON=",
+        "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_SHA256=",
+        '"python_certify_full": True',
+        '"global_certify_full": False',
+        '"language_stable": False',
+        '"stable_release_authorized": False',
+        "PYTHON_CERTIFY_FULL=PASS",
+        "CERTIFY_FULL=NO",
+        "LANGUAGE_STABLE=NO",
+    ), "V1_GOVERNANCE_PYTHON_CERTIFY_FULL_GATE")
     require_tokens(cli_text, (
         'choices=("auto", "irv2", "irv3")', '"project-check"', '"build"', '"lower-irv3"',
         '"--receipt"', "write_compilation_artifacts_v1", "write_text_artifact_v1",
@@ -370,6 +390,7 @@ def main() -> int:
     print("TEV_SCRIPT_V1_GOVERNANCE_INTROSPECTION_SURFACE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_LSP_SURFACE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PYTHON_PRODUCTION_SURFACE=PASS")
+    print("TEV_SCRIPT_V1_GOVERNANCE_PYTHON_CERTIFY_FULL_GATE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_ARTIFACT_COMMIT_POLICY=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PRECERTIFY_CERTIFY_PROTOCOL=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_NO_TRANSITIVE_CERTIFICATION=PASS")
