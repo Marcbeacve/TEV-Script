@@ -137,6 +137,11 @@ def validate_authority_metadata() -> tuple[str, str]:
         True,
     )
     require_equal(
+        "V1_PYTHON_CERTIFY_FULL_SERIALIZED_HOST_ACCESS",
+        surface.get("serialized_host_access"),
+        True,
+    )
+    require_equal(
         "V1_PYTHON_CERTIFY_FULL_SURFACE_STABLE_FALSE",
         surface.get("stable_claim"),
         False,
@@ -228,6 +233,7 @@ def main() -> int:
         "installed_ir_v3_compile": "PASS",
         "installed_runtime_host": "PASS",
         "least_authority": "PASS",
+        "reentrant_access_rejected": "PASS",
         "typed_capability": "PASS",
         "checkpoint_restart_continuation": "PASS",
         "soak_events": EXPECTED_SOAK_EVENTS,
@@ -303,6 +309,7 @@ def main() -> int:
             "V1_PYTHON_IR_V3_VALIDATION_AND_RUNTIME",
             "V1_PYTHON_IR_ONLY_PRODUCTION_HOST",
             "V1_PYTHON_LEAST_AUTHORITY_CAPABILITY_PREFLIGHT",
+            "V1_PYTHON_SERIALIZED_HOST_ACCESS_GUARD",
             "V1_PYTHON_TYPED_CAPABILITY_EXECUTION",
             "V1_PYTHON_RUNTIME_CHECKPOINT_V2_RESTART",
             "V1_PYTHON_ZERO_RUNTIME_DEPENDENCIES",
