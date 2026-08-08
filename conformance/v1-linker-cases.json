@@ -1,0 +1,151 @@
+{
+  "schema": "TEV_SCRIPT_V1_LINKER_CASES_V1",
+  "language_version": "1.0.0",
+  "positive": [
+    {
+      "id": "minimal-root",
+      "sources": [
+        {"path": "root.tevs", "source": "script Root version \"1.0.0\"; entity E { on start { return; } }"}
+      ],
+      "expected_topological_modules": [],
+      "expected_index_hash": "6d91036cf200b4e77c76528ad2e2ead35c4d4a8c1049be5226b42a7c8ff4ba54",
+      "resolutions": [
+        {"unit": "Root", "namespace": "entity", "reference": "E", "semantic_id": "Root.E"},
+        {"unit": "Root", "namespace": "type", "reference": "Int", "semantic_id": "Int"}
+      ]
+    },
+    {
+      "id": "dependency-chain",
+      "sources": [
+        {"path": "root.tevs", "source": "script Root version \"1.0.0\"; import app; entity E { on start { return; } }"},
+        {"path": "app.tevs", "source": "module app version \"1.0.0\"; import types; export behavior Move { state p: Point = Point(x = 0); }"},
+        {"path": "types.tevs", "source": "module types version \"1.0.0\"; export record Point { x: Int; }"}
+      ],
+      "expected_topological_modules": ["types", "app"],
+      "expected_index_hash": "b4bd974fe413307d0d1e73ad4d3cb8899d1bd5cd955a1408650ad97e06ec8b23",
+      "resolutions": [
+        {"unit": "app", "namespace": "type", "reference": "Point", "semantic_id": "types.Point"},
+        {"unit": "Root", "namespace": "behavior", "reference": "Move", "semantic_id": "app.Move"}
+      ]
+    },
+    {
+      "id": "capability-and-visibility",
+      "sources": [
+        {"path": "root.tevs", "source": "script Root version \"1.0.0\"; import api; import model; entity E { use Behavior; on start { call world.ping(); } }"},
+        {"path": "api.tevs", "source": "module api version \"1.0.0\"; export capability world.ping() -> Unit effect;"},
+        {"path": "model.tevs", "source": "module model version \"1.0.0\"; record Hidden { x: Int; } export enum State { Idle; Run; } export behavior Behavior { state s: State = State::Idle; }"}
+      ],
+      "expected_topological_modules": ["api", "model"],
+      "expected_index_hash": "dd22f92d9e0cc82373485ce696ad9e7119a74abd16ffd97bf1f78522a2f149b0",
+      "resolutions": [
+        {"unit": "Root", "namespace": "capability", "reference": "world.ping", "semantic_id": "world.ping"},
+        {"unit": "Root", "namespace": "type", "reference": "State", "semantic_id": "model.State"},
+        {"unit": "Root", "namespace": "behavior", "reference": "Behavior", "semantic_id": "model.Behavior"}
+      ]
+    }
+  ],
+  "negative": [
+    {
+      "id": "no-root",
+      "phase": "link",
+      "code": "TEVS_V1_LINK_ROOT_MISSING",
+      "sources": [
+        {"path": "m.tevs", "source": "module m version \"1.0.0\";"}
+      ]
+    },
+    {
+      "id": "multiple-roots",
+      "phase": "link",
+      "code": "TEVS_V1_LINK_ROOT_MULTIPLE",
+      "sources": [
+        {"path": "a.tevs", "source": "script A version \"1.0.0\"; entity E { on start { return; } }"},
+        {"path": "b.tevs", "source": "script B version \"1.0.0\"; entity E { on start { return; } }"}
+      ]
+    },
+    {
+      "id": "duplicate-module",
+      "phase": "link",
+      "code": "TEVS_V1_LINK_MODULE_DUPLICATE",
+      "sources": [
+        {"path": "root.tevs", "source": "script Root version \"1.0.0\"; entity E { on start { return; } }"},
+        {"path": "m1.tevs", "source": "module m version \"1.0.0\";"},
+        {"path": "m2.tevs", "source": "module m version \"1.0.0\";"}
+      ]
+    },
+    {
+      "id": "root-module-id-collision",
+      "phase": "link",
+      "code": "TEVS_V1_LINK_ROOT_MODULE_ID_COLLISION",
+      "sources": [
+        {"path": "root.tevs", "source": "script same version \"1.0.0\"; import same; entity E { on start { return; } }"},
+        {"path": "m.tevs", "source": "module same version \"1.0.0\";"}
+      ]
+    },
+    {
+      "id": "missing-import",
+      "phase": "link",
+      "code": "TEVS_V1_LINK_IMPORT_MISSING",
+      "sources": [
+        {"path": "root.tevs", "source": "script Root version \"1.0.0\"; import absent; entity E { on start { return; } }"}
+      ]
+    },
+    {
+      "id": "import-cycle",
+      "phase": "link",
+      "code": "TEVS_V1_LINK_IMPORT_CYCLE",
+      "sources": [
+        {"path": "root.tevs", "source": "script Root version \"1.0.0\"; import a; entity E { on start { return; } }"},
+        {"path": "a.tevs", "source": "module a version \"1.0.0\"; import b;"},
+        {"path": "b.tevs", "source": "module b version \"1.0.0\"; import a;"}
+      ]
+    },
+    {
+      "id": "predeclared-type-collision",
+      "phase": "link",
+      "code": "TEVS_V1_LINK_PREDECLARED_COLLISION",
+      "sources": [
+        {"path": "root.tevs", "source": "script Root version \"1.0.0\"; record Int { x: Int; } entity E { on start { return; } }"}
+      ]
+    },
+    {
+      "id": "unknown-behavior-use",
+      "phase": "link",
+      "code": "TEVS_V1_LINK_NAME_UNKNOWN",
+      "sources": [
+        {"path": "root.tevs", "source": "script Root version \"1.0.0\"; entity E { use Missing; on start { return; } }"}
+      ]
+    },
+    {
+      "id": "private-qualified-type",
+      "phase": "resolve",
+      "code": "TEVS_V1_LINK_PRIVATE_SYMBOL",
+      "resolve": {"unit": "Root", "namespace": "type", "reference": "m.Hidden"},
+      "sources": [
+        {"path": "root.tevs", "source": "script Root version \"1.0.0\"; import m; entity E { on start { return; } }"},
+        {"path": "m.tevs", "source": "module m version \"1.0.0\"; record Hidden { x: Int; }"}
+      ]
+    },
+    {
+      "id": "ambiguous-imported-leaf",
+      "phase": "resolve",
+      "code": "TEVS_V1_LINK_NAME_AMBIGUOUS",
+      "resolve": {"unit": "Root", "namespace": "type", "reference": "Point"},
+      "sources": [
+        {"path": "root.tevs", "source": "script Root version \"1.0.0\"; import a; import b; entity E { on start { return; } }"},
+        {"path": "a.tevs", "source": "module a version \"1.0.0\"; export record Point { x: Int; }"},
+        {"path": "b.tevs", "source": "module b version \"1.0.0\"; export record Point { y: Int; }"}
+      ]
+    },
+    {
+      "id": "transitive-type-not-visible",
+      "phase": "link",
+      "code": "TEVS_V1_LINK_NAME_UNKNOWN",
+      "sources": [
+        {"path": "root.tevs", "source": "script Root version \"1.0.0\"; import c; entity E { on start { return; } }"},
+        {"path": "a.tevs", "source": "module a version \"1.0.0\"; export record A { x: Int; }"},
+        {"path": "b.tevs", "source": "module b version \"1.0.0\"; import a; export record B { x: Int; }"},
+        {"path": "c.tevs", "source": "module c version \"1.0.0\"; import b; export record C { child: A; }"}
+      ]
+    }
+  ]
+}
