@@ -1,0 +1,126 @@
+{
+  "schema": "TEV_SCRIPT_IR_V3_VALIDATOR_CASES_V1",
+  "valid_program": {
+    "schema": "TEV_SCRIPT_PROGRAM_IR_V3",
+    "language_version": "1.0.0",
+    "lowering_profile": "TEV_SCRIPT_V1_IR_V3_PROFILE_V1",
+    "source_schema": "TEV_SCRIPT_LINKED_PROGRAM_V1",
+    "source_semantic_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+    "program_id": "Root",
+    "types": [
+      {"type_id":"Bool","kind":"primitive"},
+      {"type_id":"Int","kind":"primitive"},
+      {"type_id":"Option<Int>","kind":"option","argument":"Int"},
+      {"type_id":"Rat","kind":"primitive"},
+      {"type_id":"Result<Int,Text>","kind":"result","ok_type":"Int","err_type":"Text"},
+      {"type_id":"Root.Kind","kind":"enum","variants":["A","B"]},
+      {"type_id":"Root.Pair","kind":"record","fields":[{"name":"a","type":"Int"},{"name":"b","type":"Rat"}]},
+      {"type_id":"Text","kind":"primitive"},
+      {"type_id":"Unit","kind":"unit"},
+      {"type_id":"Vec2","kind":"primitive"},
+      {"type_id":"Vec3","kind":"primitive"}
+    ],
+    "entities": [
+      {
+        "entity_id": "E",
+        "states": [
+          {"name":"count","type":"Int","initial":{"$int":"0"}},
+          {"name":"kind","type":"Root.Kind","initial":{"$enum":{"type":"Root.Kind","variant":"A"}}},
+          {"name":"opt","type":"Option<Int>","initial":{"$option":{"type":"Option<Int>","variant":"None"}}},
+          {"name":"pair","type":"Root.Pair","initial":{"$record":{"type":"Root.Pair","fields":[{"name":"a","value":{"$int":"1"}},{"name":"b","value":{"$rat":["2","1"]}}]}}},
+          {"name":"result","type":"Result<Int,Text>","initial":{"$result":{"type":"Result<Int,Text>","variant":"Ok","value":{"$int":"0"}}}}
+        ],
+        "handlers": [
+          {
+            "event_id":"pulse",
+            "parameters":[],
+            "locals":[],
+            "instructions":[
+              {"op":"CALL_CAPABILITY","capability_id":"world.read","argc":0,"return_type":"Root.Pair","kind":"observation"},
+              {"op":"STORE_STATE","name":"pair","type":"Root.Pair"},
+              {"op":"LOAD_STATE","name":"pair","type":"Root.Pair"},
+              {"op":"CALL_CAPABILITY","capability_id":"sink.write","argc":1,"return_type":"Unit","kind":"effect"},
+              {"op":"RETURN"}
+            ],
+            "instruction_budget":5
+          },
+          {
+            "event_id":"start",
+            "parameters":[],
+            "locals":[{"name":"_flag","type":"Bool"}],
+            "instructions":[
+              {"op":"CONST","type":"Int","value":{"$int":"2"}},
+              {"op":"CONST","type":"Rat","value":{"$rat":["3","1"]}},
+              {"op":"MAKE_RECORD","type":"Root.Pair","fields":["a","b"]},
+              {"op":"STORE_STATE","name":"pair","type":"Root.Pair"},
+              {"op":"LOAD_STATE","name":"pair","type":"Root.Pair"},
+              {"op":"LOAD_FIELD","record_type":"Root.Pair","field":"a","result_type":"Int"},
+              {"op":"STORE_STATE","name":"count","type":"Int"},
+              {"op":"CONST","type":"Int","value":{"$int":"7"}},
+              {"op":"MAKE_VARIANT","type":"Option<Int>","variant":"Some","argc":1},
+              {"op":"STORE_STATE","name":"opt","type":"Option<Int>"},
+              {"op":"LOAD_STATE","name":"opt","type":"Option<Int>"},
+              {"op":"TEST_VARIANT","type":"Option<Int>","variant":"Some"},
+              {"op":"STORE_LOCAL","name":"_flag","type":"Bool"},
+              {"op":"LOAD_STATE","name":"opt","type":"Option<Int>"},
+              {"op":"LOAD_VARIANT_PAYLOAD","type":"Option<Int>","variant":"Some","payload_type":"Int"},
+              {"op":"STORE_STATE","name":"count","type":"Int"},
+              {"op":"MAKE_VARIANT","type":"Root.Kind","variant":"B","argc":0},
+              {"op":"STORE_STATE","name":"kind","type":"Root.Kind"},
+              {"op":"CONST","type":"Text","value":"bad"},
+              {"op":"MAKE_VARIANT","type":"Result<Int,Text>","variant":"Err","argc":1},
+              {"op":"STORE_STATE","name":"result","type":"Result<Int,Text>"},
+              {"op":"RETURN"}
+            ],
+            "instruction_budget":22
+          },
+          {
+            "event_id":"update",
+            "parameters":[],
+            "locals":[],
+            "instructions":[
+              {"op":"LOAD_STATE","name":"pair","type":"Root.Pair"},
+              {"op":"LOAD_STATE","name":"opt","type":"Option<Int>"},
+              {"op":"EMIT_EVENT","event_id":"changed","argument_types":["Root.Pair","Option<Int>"],"argc":2},
+              {"op":"RETURN"}
+            ],
+            "instruction_budget":4
+          }
+        ],
+        "capabilities": [
+          {"capability_id":"sink.write","parameters":["Root.Pair"],"return_type":"Unit","kind":"effect"},
+          {"capability_id":"world.read","parameters":[],"return_type":"Root.Pair","kind":"observation"}
+        ],
+        "emitted_events":[{"event_id":"changed","parameters":["Root.Pair","Option<Int>"]}]
+      }
+    ],
+    "boundary": {
+      "dynamic_code":false,
+      "reflection":false,
+      "unbounded_loops":false,
+      "implicit_physical_effects":false,
+      "runtime_source_compilation":false,
+      "automatic_authority_escalation":false,
+      "host_object_references":false,
+      "maximum_event_chain":128,
+      "maximum_value_nesting":128
+    },
+    "semantic_hash":"c119a700ccaca88e929812c854c250aa15d78f4bd1fe0d7841deb599161d45da",
+    "debug":{},
+    "debug_hash":"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  "negative_mutations": [
+    {"id":"record-type-tamper","operation":"set","path":["entities",0,"states",3,"initial","$record","type"],"value":"Other.Pair","code":"TEVS_IR_V3_VALUE_INVALID"},
+    {"id":"record-field-order-tamper","operation":"swap","path":["entities",0,"states",3,"initial","$record","fields"],"left":0,"right":1,"code":"TEVS_IR_V3_VALUE_INVALID"},
+    {"id":"option-none-payload","operation":"set","path":["entities",0,"states",2,"initial","$option","value"],"value":{"$int":"1"},"code":"TEVS_IR_V3_VALUE_INVALID"},
+    {"id":"duplicate-type-id","operation":"set","path":["types",6,"type_id"],"value":"Root.Kind","code":"TEVS_IR_V3_CONTRACT"},
+    {"id":"type-table-order","operation":"swap","path":["types"],"left":0,"right":1,"code":"TEVS_IR_V3_CONTRACT"},
+    {"id":"make-record-field-set","operation":"set","path":["entities",0,"handlers",1,"instructions",2,"fields"],"value":["a"],"code":"TEVS_IR_V3_CONTRACT"},
+    {"id":"make-record-stack-order","operation":"set","path":["entities",0,"handlers",1,"instructions",2,"fields"],"value":["b","a"],"code":"TEVS_IR_V3_FLOW_INVALID"},
+    {"id":"unwrap-payload-free","operation":"set","path":["entities",0,"handlers",1,"instructions",14,"variant"],"value":"None","code":"TEVS_IR_V3_CONTRACT"},
+    {"id":"capability-contract","operation":"set","path":["entities",0,"handlers",0,"instructions",0,"return_type"],"value":"Root.Kind","code":"TEVS_IR_V3_CONTRACT"},
+    {"id":"source-profile-mismatch","operation":"set","path":["source_schema"],"value":"TEV_SCRIPT_PROGRAM_IR_V2","code":"TEVS_IR_V3_LOWERING_PROFILE"},
+    {"id":"semantic-hash-tamper","operation":"set","path":["semantic_hash"],"value":"0000000000000000000000000000000000000000000000000000000000000000","code":"TEVS_IR_V3_SEMANTIC_HASH"},
+    {"id":"debug-hash-tamper","operation":"set","path":["debug","x"],"value":1,"code":"TEVS_IR_V3_DEBUG_HASH"}
+  ]
+}
