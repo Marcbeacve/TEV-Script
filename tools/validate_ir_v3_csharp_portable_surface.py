@@ -22,6 +22,7 @@ CONSUMERS = (
     CSHARP / "TevScript.V3ConformanceGate" / "TevScript.V3ConformanceGate.csproj",
     CSHARP / "TevScript.V3CheckpointGate" / "TevScript.V3CheckpointGate.csproj",
     CSHARP / "TevScript.V3BrowserWasmGate" / "TevScript.V3BrowserWasmGate.csproj",
+    CSHARP / "TevScript.V3WasiGate" / "TevScript.V3WasiGate.csproj",
 )
 
 
