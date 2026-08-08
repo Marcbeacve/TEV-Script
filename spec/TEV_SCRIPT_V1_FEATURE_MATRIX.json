@@ -70,8 +70,16 @@
     "signed_update_host": "GATE_IMPLEMENTED",
     "signed_update_browser_wasm": "GATE_IMPLEMENTED",
     "signed_update_wasi_fresh_restore": "GATE_IMPLEMENTED",
-    "full_precertify_v5": "IMPLEMENTED_CANDIDATE",
+    "full_precertify_v5": "IMPLEMENTED_CANDIDATE_HISTORICAL",
+    "full_precertify_v7_profiled": "IMPLEMENTED_CANDIDATE",
     "certify_full_read_only_admission": "IMPLEMENTED_CANDIDATE",
+    "certify_full_v2_profiled": "IMPLEMENTED_CANDIDATE",
+    "python_production_v2_profiled": "IMPLEMENTED_CANDIDATE",
+    "python_certify_full_v2_profiled": "IMPLEMENTED_CANDIDATE",
+    "stable_admission_v1": "IMPLEMENTED_CANDIDATE",
+    "stable_release_diff_confinement": "IMPLEMENTED_CANDIDATE",
+    "stable_parent_certificate_binding": "IMPLEMENTED_CANDIDATE",
+    "stable_artifact_byte_identity": "IMPLEMENTED_CANDIDATE",
     "javascript_source_frontend": "NOT_REQUIRED_FOR_V1_RUNTIME_CONFORMANCE",
     "csharp_source_frontend": "NOT_REQUIRED_FOR_V1_RUNTIME_CONFORMANCE"
   },
@@ -172,6 +180,13 @@
     "V1_NEGATIVE_BOUNDARY_CAMPAIGN_PASS",
     "V0_2_FULL_PORTABLE_REGRESSION_PASS",
     "EXACT_CLEAN_COMMIT_PRECERTIFY_PASS",
-    "EXACT_CLEAN_COMMIT_CERTIFY_FULL_PASS"
+    "EXACT_CLEAN_COMMIT_CERTIFY_FULL_PASS",
+    "STABLE_ADMISSION_TOOLING_TECHNICALLY_CERTIFIED_PASS",
+    "STABLE_PARENT_CERTIFICATE_BINDING_PASS",
+    "STABLE_RELEASE_DIFF_CONFINEMENT_PASS",
+    "STABLE_GLOBAL_PROFILE_RECERTIFICATION_PASS",
+    "STABLE_PYTHON_PROFILE_RECERTIFICATION_PASS",
+    "STABLE_ARTIFACT_BYTE_IDENTITY_PASS",
+    "EXACT_STABLE_ADMISSION_PASS"
   ]
 }
