@@ -3,16 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from .ast_v1 import (
-    CapabilityDecl,
-    EnumDecl,
-    FunctionDecl,
-    RecordDecl,
-    TypeRef,
-)
+from .ast_v1 import CapabilityDecl, EnumDecl, FunctionDecl, RecordDecl, TypeRef
 from .diagnostics import SourceSpan, TevScriptError
 from .linker_v1 import LinkPlanV1, NAMESPACE_TYPE, resolve_symbol
-from .types import CAPABILITIES, PURE_FUNCTIONS, Signature, SUPPORTED_TYPES
+from .types import CAPABILITIES, PURE_FUNCTIONS, SUPPORTED_TYPES, Signature
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,9 +29,7 @@ class ResolvedTypeV1:
 
     @property
     def is_storable(self) -> bool:
-        if self.is_unit:
-            return False
-        return all(item.is_storable for item in self.arguments)
+        return not self.is_unit and all(item.is_storable for item in self.arguments)
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,11 +138,7 @@ def require_assignable(
     code: str = "TEVS_V1_TYPE_MISMATCH",
 ) -> None:
     if not can_assign(actual, expected):
-        raise TevScriptError(
-            code,
-            f"expected {expected.type_id}, got {actual.type_id}",
-            span,
-        )
+        raise TevScriptError(code, f"expected {expected.type_id}, got {actual.type_id}", span)
 
 
 def build_type_environment(plan: LinkPlanV1) -> TypeEnvironmentV1:
@@ -204,7 +192,10 @@ def build_type_environment(plan: LinkPlanV1) -> TypeEnvironmentV1:
                     )
                 )
             elif isinstance(declaration, FunctionDecl):
-                parameters = tuple(resolve_type(plan, owner_id, p.type_ref) for p in declaration.parameters)
+                parameters = tuple(
+                    resolve_type(plan, owner_id, parameter.type_ref)
+                    for parameter in declaration.parameters
+                )
                 return_type = resolve_type(plan, owner_id, declaration.return_type)
                 for parameter, resolved in zip(declaration.parameters, parameters, strict=True):
                     _require_storable(resolved, parameter.span, "function parameter")
@@ -220,7 +211,10 @@ def build_type_environment(plan: LinkPlanV1) -> TypeEnvironmentV1:
                     )
                 )
             elif isinstance(declaration, CapabilityDecl):
-                parameters = tuple(resolve_type(plan, owner_id, p) for p in declaration.parameter_types)
+                parameters = tuple(
+                    resolve_type(plan, owner_id, parameter)
+                    for parameter in declaration.parameter_types
+                )
                 return_type = resolve_type(plan, owner_id, declaration.return_type)
                 for parameter, resolved in zip(declaration.parameter_types, parameters, strict=True):
                     _require_storable(resolved, parameter.span, "capability parameter")
@@ -239,13 +233,18 @@ def build_type_environment(plan: LinkPlanV1) -> TypeEnvironmentV1:
 
     functions.extend(_builtin_functions())
     capabilities.extend(_builtin_capabilities())
-
     records.sort(key=lambda item: item.type_id)
     enums.sort(key=lambda item: item.type_id)
-    functions.sort(key=lambda item: (item.callable_id, tuple(x.type_id for x in item.parameters)))
+    functions.sort(
+        key=lambda item: (
+            item.callable_id,
+            tuple(parameter.type_id for parameter in item.parameters),
+        )
+    )
     capabilities = _dedupe_capability_signatures(capabilities)
-
-    environment = TypeEnvironmentV1(tuple(records), tuple(enums), tuple(functions), tuple(capabilities))
+    environment = TypeEnvironmentV1(
+        tuple(records), tuple(enums), tuple(functions), tuple(capabilities)
+    )
     _validate_record_acyclic(environment)
     return environment
 
@@ -261,7 +260,8 @@ def select_callable(
     exact = [
         item
         for item in candidates
-        if tuple(x.type_id for x in item.parameters) == tuple(x.type_id for x in actual)
+        if tuple(parameter.type_id for parameter in item.parameters)
+        == tuple(parameter.type_id for parameter in actual)
     ]
     if len(exact) == 1:
         return exact[0]
@@ -269,13 +269,16 @@ def select_callable(
         item
         for item in candidates
         if len(item.parameters) == len(actual)
-        and all(can_assign(a, e) for a, e in zip(actual, item.parameters, strict=True))
+        and all(
+            can_assign(actual_type, expected_type)
+            for actual_type, expected_type in zip(actual, item.parameters, strict=True)
+        )
     ]
     if len(widened) == 1:
         return widened[0]
     raise TevScriptError(
         "TEVS_V1_TYPE_CALL_SIGNATURE",
-        f"{callable_id} does not accept ({', '.join(x.type_id for x in actual)})",
+        f"{callable_id} does not accept ({', '.join(item.type_id for item in actual)})",
         span,
     )
 
@@ -284,8 +287,13 @@ def record_dependencies(type_ref: ResolvedTypeV1) -> tuple[str, ...]:
     if type_ref.kind == "record":
         return (type_ref.type_id,)
     result: list[str] = []
-    for argument in type_ref.arguments:
-        result.extend(record_dependencies(argument))
+    stack = list(type_ref.arguments)
+    while stack:
+        current = stack.pop()
+        if current.kind == "record":
+            result.append(current.type_id)
+        else:
+            stack.extend(current.arguments)
     return tuple(result)
 
 
@@ -312,31 +320,42 @@ def _validate_record_acyclic(environment: TypeEnvironmentV1) -> None:
         for record in environment.records
     }
     state: dict[str, int] = {}
-    stack: list[str] = []
 
-    def visit(type_id: str) -> None:
-        mark = state.get(type_id, 0)
-        if mark == 2:
-            return
-        if mark == 1:
-            start = stack.index(type_id) if type_id in stack else 0
-            cycle = [*stack[start:], type_id]
-            declaration = environment.record(type_id)
-            raise TevScriptError(
-                "TEVS_V1_TYPE_RECORD_RECURSION",
-                "recursive record dependency: " + " -> ".join(cycle),
-                declaration.declaration.span if declaration is not None else None,
-            )
-        state[type_id] = 1
-        stack.append(type_id)
-        for dependency in graph.get(type_id, ()):
-            if dependency in graph:
-                visit(dependency)
-        stack.pop()
-        state[type_id] = 2
-
-    for type_id in sorted(graph):
-        visit(type_id)
+    for start_id in sorted(graph):
+        if state.get(start_id, 0) == 2:
+            continue
+        frames: list[list[object]] = [[start_id, 0]]
+        path: list[str] = []
+        while frames:
+            type_id = str(frames[-1][0])
+            next_index = int(frames[-1][1])
+            if state.get(type_id, 0) == 0:
+                state[type_id] = 1
+                path.append(type_id)
+            dependencies = graph[type_id]
+            if next_index < len(dependencies):
+                dependency = dependencies[next_index]
+                frames[-1][1] = next_index + 1
+                if dependency not in graph:
+                    continue
+                mark = state.get(dependency, 0)
+                if mark == 0:
+                    frames.append([dependency, 0])
+                    continue
+                if mark == 1:
+                    cycle_start = path.index(dependency) if dependency in path else 0
+                    cycle = [*path[cycle_start:], dependency]
+                    declaration = environment.record(dependency)
+                    raise TevScriptError(
+                        "TEVS_V1_TYPE_RECORD_RECURSION",
+                        "recursive record dependency: " + " -> ".join(cycle),
+                        declaration.declaration.span if declaration is not None else None,
+                    )
+                continue
+            frames.pop()
+            popped = path.pop()
+            assert popped == type_id
+            state[type_id] = 2
 
 
 def _dedupe_capability_signatures(
@@ -357,7 +376,7 @@ def _dedupe_capability_signatures(
         by_contract.values(),
         key=lambda item: (
             item.callable_id,
-            tuple(x.type_id for x in item.parameters),
+            tuple(parameter.type_id for parameter in item.parameters),
             item.return_type.type_id,
             item.kind,
         ),
@@ -365,22 +384,25 @@ def _dedupe_capability_signatures(
 
 
 def _builtin_functions() -> list[CallableSignatureV1]:
-    result: list[CallableSignatureV1] = []
-    for callable_id, signatures in PURE_FUNCTIONS.items():
-        for signature in signatures:
-            result.append(_from_builtin_signature(callable_id, signature))
-    return result
+    return [
+        _from_builtin_signature(callable_id, signature)
+        for callable_id, signatures in PURE_FUNCTIONS.items()
+        for signature in signatures
+    ]
 
 
 def _builtin_capabilities() -> list[CallableSignatureV1]:
-    result: list[CallableSignatureV1] = []
-    for callable_id, signatures in CAPABILITIES.items():
-        for signature in signatures:
-            result.append(_from_builtin_signature(callable_id, signature))
-    return result
+    return [
+        _from_builtin_signature(callable_id, signature)
+        for callable_id, signatures in CAPABILITIES.items()
+        for signature in signatures
+    ]
 
 
-def _from_builtin_signature(callable_id: str, signature: Signature) -> CallableSignatureV1:
+def _from_builtin_signature(
+    callable_id: str,
+    signature: Signature,
+) -> CallableSignatureV1:
     return CallableSignatureV1(
         callable_id,
         tuple(primitive_type(item) for item in signature.parameters),
