@@ -35,7 +35,7 @@
   "candidate_language_targets": [
     {
       "language_version": "1.0.0",
-      "status": "IMPLEMENTED_CANDIDATE_UNCERTIFIED",
+      "status": "FULL_IMPLEMENTATION_CANDIDATE_PRECERTIFY_REQUIRED",
       "stable": false,
       "authority_files": [
         "spec/TEV_SCRIPT_V1_LEXICAL_PROFILE.md",
@@ -49,13 +49,16 @@
         "spec/TEV_SCRIPT_IR_V3_VALUE_MODEL.md",
         "spec/TEV_SCRIPT_IR_V3_OPERATIONAL_SEMANTICS.md",
         "spec/TEV_SCRIPT_RUNTIME_CHECKPOINT_V2.md",
+        "spec/TEV_SCRIPT_SIGNED_UPDATE_V2.md",
         "schemas/tev_script_linked_program_v1.schema.json",
         "schemas/tev_script_lowering_receipt_v1.schema.json",
         "schemas/tev_script_lowering_receipt_v2.schema.json",
         "schemas/tev_script_program_ir_v3.schema.json",
         "schemas/tev_script_ir_v3_scenario_v1.schema.json",
         "schemas/tev_script_ir_v3_conformance_receipt_v1.schema.json",
-        "schemas/tev_script_runtime_checkpoint_v2.schema.json"
+        "schemas/tev_script_runtime_checkpoint_v2.schema.json",
+        "schemas/tev_script_signed_update_package_v2.schema.json",
+        "schemas/tev_script_installed_update_v2.schema.json"
       ],
       "portable_conformance_assets": [
         "conformance/v1-source-syntax-cases.json",
@@ -68,16 +71,33 @@
         "conformance/ir-v3-validator-cases.json",
         "conformance/ir-v3-portable.scenario.json"
       ],
-      "implementation_gate": "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py",
-      "precertify_gate": "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
-      "cross_runtime_gate": "tools/validate_ir_v3_cross_runtime_parity.py",
-      "checkpoint_cross_runtime_gate": "tools/validate_ir_v3_checkpoint_cross_runtime.py",
-      "implementation_plan": "docs/V1_IMPLEMENTATION_PLAN.md"
+      "gates": {
+        "implementation": "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py",
+        "csharp_surface": "tools/validate_ir_v3_csharp_portable_surface.py",
+        "cross_runtime": "tools/validate_ir_v3_cross_runtime_parity.py",
+        "checkpoint_cross_runtime": "tools/validate_ir_v3_checkpoint_cross_runtime.py",
+        "browser_wasm": "tools/validate_ir_v3_browser_wasm.py",
+        "wasi": "tools/validate_ir_v3_wasi.py",
+        "signed_update_host": "tools/validate_ir_v3_signed_update.py",
+        "signed_update_browser_wasm": "tools/validate_ir_v3_browser_signed_update.py",
+        "signed_update_wasi": "tools/validate_ir_v3_wasi_signed_update.py",
+        "precertify": "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
+        "certify_full": "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py"
+      },
+      "implementation_plan": "docs/V1_IMPLEMENTATION_PLAN.md",
+      "certification_protocol": "docs/V1_CERTIFICATION_PROTOCOL.md"
     }
   ],
   "reference_implementations": [
     "tev_script/**",
     "javascript/src/**",
+    "runtimes/csharp/TevScript.Core.V3/**",
+    "runtimes/csharp/TevScript.Core/*V3*.cs",
+    "runtimes/csharp/TevScript.Core/TevScriptRuntimeCheckpointV2.cs",
+    "runtimes/csharp/TevScript.Core/TevScriptRuntimeHotSwapV3.cs",
+    "runtimes/csharp/TevScript.Core/TevScriptUpdateV3.cs"
+  ],
+  "historical_reference_implementations": [
     "runtimes/csharp/TevScript.Core/**"
   ]
 }
