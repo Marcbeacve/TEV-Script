@@ -15,6 +15,16 @@ REQUIRED_STABLE_PROMOTION_GATES = {
     "STABLE_ARTIFACT_BYTE_IDENTITY_PASS",
     "EXACT_STABLE_ADMISSION_PASS",
 }
+REQUIRED_RELEASE_PATHS = {
+    "CANONICAL_INDEX.json",
+    "CHANGELOG.md",
+    "PROJECT_STATE.md",
+    "README.md",
+    "javascript/package.json",
+    "pyproject.toml",
+    "spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json",
+    "tev_script/release_metadata_v1.py",
+}
 STAGE_D_PYTHON_AUTHORITIES = (
     "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
     "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py",
@@ -59,9 +69,18 @@ class V1StableAdmissionAuthorityTests(unittest.TestCase):
         ):
             self.assertIn(token, stable)
 
-    def test_release_diff_whitelist_excludes_runtime_compiler_and_gates(self) -> None:
+    def test_release_diff_requires_exact_release_path_set(self) -> None:
         stable = (ROOT / "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py").read_text(encoding="utf-8")
-        allowed_block = stable.split("ALLOWED_RELEASE_PATHS = {", 1)[1].split("}\n", 1)[0]
+        required_block = stable.split("REQUIRED_RELEASE_PATHS = {", 1)[1].split("}\n", 1)[0]
+        observed = {
+            line.strip().strip(",").strip('"')
+            for line in required_block.splitlines()
+            if line.strip().startswith('"')
+        }
+        self.assertEqual(observed, REQUIRED_RELEASE_PATHS)
+        self.assertIn("ALLOWED_RELEASE_PATHS = frozenset(REQUIRED_RELEASE_PATHS)", stable)
+        self.assertIn("MISSING_REQUIRED_PATHS=", stable)
+        self.assertIn("STABLE_RELEASE_DIFF_PATH_SET", stable)
         for forbidden in (
             "tev_script/runtime_v3.py",
             "tev_script/parser_v1.py",
@@ -74,18 +93,7 @@ class V1StableAdmissionAuthorityTests(unittest.TestCase):
             "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py",
             "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py",
         ):
-            self.assertNotIn(forbidden, allowed_block)
-        for required in (
-            "CANONICAL_INDEX.json",
-            "CHANGELOG.md",
-            "PROJECT_STATE.md",
-            "README.md",
-            "pyproject.toml",
-            "javascript/package.json",
-            "spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json",
-            "tev_script/release_metadata_v1.py",
-        ):
-            self.assertIn(required, allowed_block)
+            self.assertNotIn(forbidden, required_block)
 
     def test_stable_recertifies_global_and_python_profiles(self) -> None:
         stable = (ROOT / "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py").read_text(encoding="utf-8")
