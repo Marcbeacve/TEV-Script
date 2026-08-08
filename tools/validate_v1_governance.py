@@ -34,6 +34,11 @@ REQUIRED_AUTHORITY = {
     "schemas/tev_script_installed_update_v2.schema.json",
 }
 
+REQUIRED_BUILD_TOOLING = {
+    "schemas/tev_script_project_v1.schema.json",
+    "docs/V1_PROJECT_MANIFEST.md",
+}
+
 REQUIRED_GATE_MAP = {
     "implementation": "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py",
     "csharp_surface": "tools/validate_ir_v3_csharp_portable_surface.py",
@@ -52,6 +57,7 @@ REQUIRED_PROGRAMMER_DOCS = {
     "README.md",
     "docs/TEV_SCRIPT_V1_LANGUAGE_REFERENCE.md",
     "docs/TEV_SCRIPT_V1_PROGRAMMING_MODEL.md",
+    "docs/V1_PROJECT_MANIFEST.md",
     "examples/v1/README.md",
 }
 
@@ -63,11 +69,13 @@ REQUIRED_EXAMPLES = {
     "examples/v1/ecosystem/model.tevs",
     "examples/v1/ecosystem/rules.tevs",
     "examples/v1/ecosystem/storage.tevs",
+    "examples/v1/ecosystem/tevscript.project.json",
 }
 
 REQUIRED_PRODUCT_TESTS = {
     "tests/test_v1_examples.py",
     "tests/test_v1_cli_full.py",
+    "tests/test_v1_project.py",
     "tests/test_v1_public_api.py",
 }
 
@@ -77,6 +85,7 @@ REQUIRED_PUBLIC_INTERFACES = {
     "v1_cli": "tev-script-v1",
     "v1_module_cli": "python -m tev_script.cli_v1",
     "v1_python_pipeline": "tev_script.pipeline_v1",
+    "v1_project_manifest": "tev_script.project_v1",
     "v1_runtime": "tev_script.ScriptRuntimeV3",
 }
 
@@ -101,6 +110,7 @@ REQUIRED_PROMOTION_GATES = {
     "IR_V3_SCHEMA_VALUE_CODEC_AND_TYPED_CFG_DYNAMIC_PASS",
     "V1_TO_IR_V3_END_TO_END_DYNAMIC_PASS",
     "IR_V2_TO_IR_V3_LIFT_DYNAMIC_PASS",
+    "PROJECT_MANIFEST_AND_PUBLIC_CLI_DYNAMIC_PASS",
     "PYTHON_JS_CSHARP_IR_V3_RECEIPT_BYTE_LOCK_PASS",
     "RUNTIME_CHECKPOINT_V2_PYTHON_JS_CSHARP_BYTE_LOCK_PASS",
     "BROWSER_WASM_IR_V3_RECEIPT_CHECKPOINT_PARITY_PASS",
@@ -158,6 +168,7 @@ def main() -> int:
     pyproject_text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     package_init_text = (ROOT / "tev_script" / "__init__.py").read_text(encoding="utf-8")
     cli_v1_text = (ROOT / "tev_script" / "cli_v1.py").read_text(encoding="utf-8")
+    project_text = (ROOT / "tev_script" / "project_v1.py").read_text(encoding="utf-8")
 
     require(canonical.get("schema") == "TEV_SCRIPT_CANONICAL_INDEX_V1", "V1_GOVERNANCE_CANONICAL_SCHEMA", str(canonical.get("schema")))
     require(canonical.get("stable") is False, "V1_GOVERNANCE_CANONICAL_STABLE", repr(canonical.get("stable")))
@@ -176,6 +187,7 @@ def main() -> int:
     require(not missing_authority, "V1_GOVERNANCE_AUTHORITY_MISSING", ",".join(missing_authority))
     for relative in sorted(REQUIRED_AUTHORITY):
         require_file(relative)
+    require_exact_set(target, "build_tooling_authority", REQUIRED_BUILD_TOOLING)
 
     gates = target.get("gates")
     require(isinstance(gates, dict), "V1_GOVERNANCE_GATE_MAP", "missing or non-object")
@@ -198,20 +210,39 @@ def main() -> int:
         "compile_v1_paths_auto",
         "compile_v1_paths_to_ir_v2",
         "compile_v1_paths_to_ir_v3",
+        "ProjectManifestV1",
+        "load_v1_project",
+        "verify_v1_project_inputs",
         "ScriptRuntimeV3",
         "RuntimeCheckpointV2",
     ):
         require(token in package_init_text, "V1_GOVERNANCE_PUBLIC_API", token)
     for token in (
         'choices=("auto", "irv2", "irv3")',
+        '"project-check"',
+        '"build"',
         '"lower-irv3"',
         '"--receipt"',
+        "load_v1_project",
+        "verify_v1_project_inputs",
         "build_ir_v2_lowering_receipt",
         "build_ir_v3_lowering_receipt",
         '"default_target_ir"',
         '"TEV_SCRIPT_V1_COMPILE_RESULT_V2"',
+        '"TEV_SCRIPT_V1_PROJECT_CHECK_RESULT_V1"',
+        '"TEV_SCRIPT_V1_PROJECT_BUILD_RESULT_V1"',
     ):
         require(token in cli_v1_text, "V1_GOVERNANCE_V1_CLI_SURFACE", token)
+    for token in (
+        'PROJECT_SCHEMA_V1 = "TEV_SCRIPT_PROJECT_V1"',
+        'PROJECT_INPUT_SCHEMA_V1 = "TEV_SCRIPT_PROJECT_INPUT_V1"',
+        "manifest_hash",
+        "project_input_hash",
+        "resolve(strict=True)",
+        "relative_to(base)",
+        "verify_v1_project_inputs",
+    ):
+        require(token in project_text, "V1_GOVERNANCE_PROJECT_TOOLING", token)
 
     require(target.get("certification_protocol") == "docs/V1_CERTIFICATION_PROTOCOL.md", "V1_GOVERNANCE_PROTOCOL_BINDING", repr(target.get("certification_protocol")))
     require_file("docs/V1_CERTIFICATION_PROTOCOL.md")
@@ -274,6 +305,7 @@ def main() -> int:
 
     print("TEV_SCRIPT_V1_GOVERNANCE_CANON_MATRIX=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_AUTHORITY_FILES=PASS")
+    print("TEV_SCRIPT_V1_GOVERNANCE_BUILD_TOOLING=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_GATE_BINDINGS=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PUBLIC_SURFACE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_EXECUTABLE_EXAMPLES=PASS")
