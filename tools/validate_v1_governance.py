@@ -2,14 +2,31 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import sys
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from tev_script.descriptor_v1 import v1_descriptor  # noqa: E402
+from tev_script.release_metadata_v1 import (  # noqa: E402
+    CURRENT_V1_CERTIFY_FULL_CLAIM,
+    CURRENT_V1_LANGUAGE_STABLE_CLAIM,
+    RELEASE_PROFILE,
+    RELEASE_STATUS,
+    STABLE,
+    TECHNICAL_PARENT_CERTIFICATE_SHA256,
+    TECHNICAL_PARENT_COMMIT,
+    validate_release_metadata,
+)
 
 EXPECTED_STATUS = "FULL_IMPLEMENTATION_CANDIDATE_PRECERTIFY_REQUIRED"
 EXPECTED_MATRIX = "TEV_SCRIPT_V1_FEATURE_MATRIX_V5"
-EXPECTED_PRECERTIFY = "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V6"
-EXPECTED_CERTIFY = "TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V1"
-EXPECTED_PYTHON_CERTIFY = "TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V1"
+EXPECTED_PRECERTIFY = "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V7"
+EXPECTED_CERTIFY = "TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V2"
+EXPECTED_PYTHON_PRODUCTION = "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V2"
+EXPECTED_PYTHON_CERTIFY = "TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V2"
+EXPECTED_STABLE_RECEIPT = "TEV_SCRIPT_V1_STABLE_ADMISSION_RECEIPT_V1"
 ARTIFACT_POLICY = "EVIDENCE_SAFE_RECEIPT_LAST_V1"
 
 REQUIRED_AUTHORITY = {
@@ -73,11 +90,13 @@ REQUIRED_GATE_MAP = {
     "v0_2_portable_hosts": "tools/validate_v0_2_portable_hosts.py",
     "precertify": "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
     "certify_full": "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py",
+    "stable_admission": "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py",
 }
 
 REQUIRED_GOVERNED_TESTS = {
     "tests/test_v1_browser_witness_authority.py",
     "tests/test_v1_wasi_authority_boundary.py",
+    "tests/test_v1_stable_admission_authority.py",
 }
 
 REQUIRED_PRODUCT_FILES = {
@@ -87,7 +106,10 @@ REQUIRED_PRODUCT_FILES = {
     "docs/V1_PROJECT_MANIFEST.md",
     "docs/V1_PYTHON_PRODUCTION.md",
     "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py",
+    "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py",
+    "tools/validate_v1_stable_governance.py",
     "tev_script/python_host_v1.py",
+    "tev_script/release_metadata_v1.py",
     "examples/v1/README.md",
     "examples/v1/Calculator.tevs",
     "examples/v1/ErasableToIrV2.tevs",
@@ -160,13 +182,25 @@ def require_tokens(text: str, tokens: tuple[str, ...], code: str) -> None:
 
 
 def main() -> int:
+    validate_release_metadata()
+    require(RELEASE_PROFILE == "candidate", "V1_GOVERNANCE_RELEASE_PROFILE", RELEASE_PROFILE)
+    require(RELEASE_STATUS == "IMPLEMENTATION_CANDIDATE_UNCERTIFIED", "V1_GOVERNANCE_RELEASE_STATUS", RELEASE_STATUS)
+    require(STABLE is False, "V1_GOVERNANCE_RELEASE_STABLE", repr(STABLE))
+    require(CURRENT_V1_CERTIFY_FULL_CLAIM is False, "V1_GOVERNANCE_RELEASE_CERTIFY_CLAIM", repr(CURRENT_V1_CERTIFY_FULL_CLAIM))
+    require(CURRENT_V1_LANGUAGE_STABLE_CLAIM is False, "V1_GOVERNANCE_RELEASE_LANGUAGE_CLAIM", repr(CURRENT_V1_LANGUAGE_STABLE_CLAIM))
+    require(TECHNICAL_PARENT_COMMIT == "", "V1_GOVERNANCE_RELEASE_PARENT", TECHNICAL_PARENT_COMMIT)
+    require(TECHNICAL_PARENT_CERTIFICATE_SHA256 == "", "V1_GOVERNANCE_RELEASE_PARENT_CERTIFICATE", TECHNICAL_PARENT_CERTIFICATE_SHA256)
+
     canonical = load_json("CANONICAL_INDEX.json")
     matrix = load_json("spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json")
+    descriptor_schema = load_json("schemas/tev_script_descriptor_v3.schema.json")
     frontend_text = (ROOT / "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py").read_text(encoding="utf-8")
     pre_text = (ROOT / "RUN_TEV_SCRIPT_V1_PRECERTIFY.py").read_text(encoding="utf-8")
     certify_text = (ROOT / "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py").read_text(encoding="utf-8")
     python_gate_text = (ROOT / "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py").read_text(encoding="utf-8")
     python_certify_text = (ROOT / "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py").read_text(encoding="utf-8")
+    stable_admission_text = (ROOT / "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py").read_text(encoding="utf-8")
+    stable_governance_text = (ROOT / "tools" / "validate_v1_stable_governance.py").read_text(encoding="utf-8")
     protocol_text = (ROOT / "docs/V1_CERTIFICATION_PROTOCOL.md").read_text(encoding="utf-8")
     state_text = (ROOT / "PROJECT_STATE.md").read_text(encoding="utf-8")
     pyproject_text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
@@ -192,11 +226,7 @@ def main() -> int:
     require(target.get("stable") is False, "V1_GOVERNANCE_TARGET_STABLE", repr(target.get("stable")))
     require_contains(target.get("authority_files"), REQUIRED_AUTHORITY, "V1_GOVERNANCE_AUTHORITY")
     require_contains(target.get("build_tooling_authority"), REQUIRED_BUILD_TOOLING, "V1_GOVERNANCE_BUILD_TOOLING")
-    require_contains(
-        target.get("example_and_public_api_tests"),
-        REQUIRED_GOVERNED_TESTS,
-        "V1_GOVERNANCE_AUTHORITY_REGRESSION_TESTS",
-    )
+    require_contains(target.get("example_and_public_api_tests"), REQUIRED_GOVERNED_TESTS, "V1_GOVERNANCE_AUTHORITY_REGRESSION_TESTS")
     for relative in REQUIRED_AUTHORITY | REQUIRED_BUILD_TOOLING | REQUIRED_PRODUCT_FILES | REQUIRED_INTROSPECTION | REQUIRED_LSP:
         require_file(relative)
 
@@ -211,6 +241,20 @@ def main() -> int:
         "stable_claim": False,
     }.items():
         require(introspection.get(key) == expected, "V1_GOVERNANCE_INTROSPECTION", f"{key}:{introspection.get(key)!r}")
+
+    stable_surface = target.get("stable_release_surface")
+    require(isinstance(stable_surface, dict), "V1_GOVERNANCE_STABLE_SURFACE", "missing")
+    for key, expected in {
+        "release_metadata": "tev_script/release_metadata_v1.py",
+        "governance": "tools/validate_v1_stable_governance.py",
+        "admission_gate": "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py",
+        "receipt_schema": EXPECTED_STABLE_RECEIPT,
+        "exact_parent_certificate_required": True,
+        "release_diff_whitelist_required": True,
+        "published_artifact_byte_identity_required": True,
+        "stable_claim": False,
+    }.items():
+        require(stable_surface.get(key) == expected, "V1_GOVERNANCE_STABLE_SURFACE", f"{key}:{stable_surface.get(key)!r}")
 
     lsp = target.get("language_server_surface")
     require(isinstance(lsp, dict), "V1_GOVERNANCE_LSP", "missing")
@@ -248,11 +292,7 @@ def main() -> int:
         "certify_full_gate": "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py",
         "stable_claim": False,
     }.items():
-        require(
-            python_surface.get(key) == expected,
-            "V1_GOVERNANCE_PYTHON_PRODUCTION",
-            f"{key}:{python_surface.get(key)!r}",
-        )
+        require(python_surface.get(key) == expected, "V1_GOVERNANCE_PYTHON_PRODUCTION", f"{key}:{python_surface.get(key)!r}")
 
     gates = target.get("gates")
     require(isinstance(gates, dict), "V1_GOVERNANCE_GATE_MAP", "missing")
@@ -278,6 +318,15 @@ def main() -> int:
     }.items():
         require(interfaces.get(key) == expected, "V1_GOVERNANCE_PUBLIC_INTERFACE", f"{key}:{interfaces.get(key)!r}")
 
+    descriptor = v1_descriptor()
+    require(descriptor.get("release_profile") == "candidate", "V1_GOVERNANCE_DESCRIPTOR_PROFILE", repr(descriptor.get("release_profile")))
+    require(descriptor.get("stable") is False, "V1_GOVERNANCE_DESCRIPTOR_STABLE", repr(descriptor.get("stable")))
+    require(descriptor_schema.get("properties", {}).get("release_profile", {}).get("enum") == ["candidate", "stable"], "V1_GOVERNANCE_DESCRIPTOR_SCHEMA_PROFILES", repr(descriptor_schema.get("properties", {}).get("release_profile")))
+
+    project_metadata = tomllib.loads(pyproject_text)["project"]
+    require(str(project_metadata.get("version")) == "0.2.0", "V1_GOVERNANCE_CANDIDATE_PYTHON_VERSION", repr(project_metadata.get("version")))
+    require(project_metadata.get("dependencies", []) == [], "V1_GOVERNANCE_PYTHON_DEPENDENCIES", repr(project_metadata.get("dependencies")))
+
     require_tokens(pyproject_text, (
         'tev-script = "tev_script.cli:main"',
         'tev-script-v1 = "tev_script.cli_v1:main"',
@@ -300,34 +349,6 @@ def main() -> int:
         "TEVS_PYTHON_V1_CAPABILITY_UNUSED", "reject_unused_capabilities: bool = True",
         "TEVS_PYTHON_V1_HOST_BUSY", "_access_lock = Lock()", "acquire(blocking=False)",
     ), "V1_GOVERNANCE_PYTHON_PRODUCTION_HOST")
-    require_tokens(python_gate_text, (
-        'RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V1"',
-        "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py", "git", "archive",
-        '"--no-deps"', '"--no-build-isolation"', '"PIP_NO_INDEX": "1"',
-        "TEV_SCRIPT_V1_PYTHON_WHEEL_REPRODUCIBLE=PASS",
-        "TEV_SCRIPT_V1_PYTHON_INSTALLED_CHECKPOINT_RESTART=PASS",
-        "TEV_SCRIPT_V1_PYTHON_INSTALLED_LEAST_AUTHORITY=PASS",
-        "TEV_SCRIPT_V1_PYTHON_INSTALLED_REENTRANT_ACCESS_REJECTED=PASS",
-        '"reentrant_access_rejected": "PASS"',
-        "TEV_SCRIPT_V1_PYTHON_INSTALLED_TYPED_CAPABILITY=PASS",
-        "TEV_SCRIPT_V1_PYTHON_PRODUCTION=PASS_CANDIDATE",
-        "CERTIFY_FULL=NO", "LANGUAGE_STABLE=NO",
-    ), "V1_GOVERNANCE_PYTHON_PRODUCTION_GATE")
-    require_tokens(python_certify_text, (
-        EXPECTED_PYTHON_CERTIFY,
-        "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py",
-        "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_JSON=",
-        "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_SHA256=",
-        '"reentrant_access_rejected": "PASS"',
-        "V1_PYTHON_SERIALIZED_HOST_ACCESS_GUARD",
-        '"python_certify_full": True',
-        '"global_certify_full": False',
-        '"language_stable": False',
-        '"stable_release_authorized": False',
-        "PYTHON_CERTIFY_FULL=PASS",
-        "CERTIFY_FULL=NO",
-        "LANGUAGE_STABLE=NO",
-    ), "V1_GOVERNANCE_PYTHON_CERTIFY_FULL_GATE")
     require_tokens(cli_text, (
         'choices=("auto", "irv2", "irv3")', '"project-check"', '"build"', '"lower-irv3"',
         '"--receipt"', "write_compilation_artifacts_v1", "write_text_artifact_v1",
@@ -348,14 +369,14 @@ def main() -> int:
     require_tokens(descriptor_text, (
         'DESCRIPTOR_SCHEMA_V1 = "TEV_SCRIPT_DESCRIPTOR_V3"',
         '"language_version": V1_LANGUAGE_VERSION',
+        '"release_profile": RELEASE_PROFILE',
+        '"stable": STABLE',
         '"artifact_commit_policy": "EVIDENCE_SAFE_RECEIPT_LAST_V1"',
-        '"current_v1_certify_full_claim": False',
-        '"current_v1_language_stable_claim": False',
+        '"current_v1_certify_full_claim": CURRENT_V1_CERTIFY_FULL_CLAIM',
+        '"current_v1_language_stable_claim": CURRENT_V1_LANGUAGE_STABLE_CLAIM',
         "canonical_hash(descriptor)",
     ), "V1_GOVERNANCE_DESCRIPTOR")
-    require_tokens(describe_text, (
-        "v1_descriptor_json", "print(v1_descriptor_json())",
-    ), "V1_GOVERNANCE_DESCRIPTOR_CLI")
+    require_tokens(describe_text, ("v1_descriptor_json", "print(v1_descriptor_json())"), "V1_GOVERNANCE_DESCRIPTOR_CLI")
     require_tokens(runtime_tool_text, (
         "Read-only TEV Script IR V3 validation/conformance tooling",
         "does not act as a generic production execution host",
@@ -363,23 +384,15 @@ def main() -> int:
         "run_ir_v3_conformance", "validate_program_ir_v3", "write_text_artifact_v1",
     ), "V1_GOVERNANCE_IR_TOOL")
     require_tokens(lsp_text, (
-        'LSP_POSITION_ENCODING = "utf-16"',
-        '"change": 1',
-        '"textDocument/publishDiagnostics"',
-        "parse_v1_bytes", "analyze_v1_mapping", "load_v1_project",
-        "codepoint_offset_to_lsp_position", "Content-Length",
-        "optional explicit TEV_SCRIPT_PROJECT_V1",
-        "No independent language semantics are embedded",
+        'LSP_POSITION_ENCODING = "utf-16"', '"change": 1', '"textDocument/publishDiagnostics"',
+        "parse_v1_bytes", "analyze_v1_mapping", "load_v1_project", "codepoint_offset_to_lsp_position",
+        "Content-Length", "optional explicit TEV_SCRIPT_PROJECT_V1", "No independent language semantics are embedded",
     ), "V1_GOVERNANCE_LSP_IMPLEMENTATION")
     require_tokens(frontend_text, (
-        '"--require-zero-skips"',
-        "def skip_summary(",
-        'print(f"{label}_SKIP_COUNT={count}")',
-        'skip_summary("TEV_SCRIPT_V1_TESTS", v1_result)',
-        'skip_summary("TEV_SCRIPT_IR_V3_TESTS", ir_v3_result)',
+        '"--require-zero-skips"', "def skip_summary(", 'print(f"{label}_SKIP_COUNT={count}")',
+        'skip_summary("TEV_SCRIPT_V1_TESTS", v1_result)', 'skip_summary("TEV_SCRIPT_IR_V3_TESTS", ir_v3_result)',
         'skip_summary("TEV_SCRIPT_V0_2_REGRESSION_TESTS", v02_result)',
-        'print(f"TEV_SCRIPT_V1_FRONTEND_TOTAL_SKIP_COUNT={total_skips}")',
-        "TEV_SCRIPT_V1_FRONTEND_ZERO_SKIPS=",
+        'print(f"TEV_SCRIPT_V1_FRONTEND_TOTAL_SKIP_COUNT={total_skips}")', "TEV_SCRIPT_V1_FRONTEND_ZERO_SKIPS=",
     ), "V1_GOVERNANCE_FRONTEND_SKIP_ACCOUNTING")
 
     require(matrix.get("schema") == EXPECTED_MATRIX, "V1_GOVERNANCE_MATRIX_SCHEMA", repr(matrix.get("schema")))
@@ -391,45 +404,45 @@ def main() -> int:
     require(not missing, "V1_GOVERNANCE_PROMOTION_GATES", ",".join(missing))
 
     require_tokens(pre_text, (
-        EXPECTED_PRECERTIFY,
-        "validate_v1_governance.py",
-        'require_python_distribution("jsonschema")',
-        '"--require-zero-skips"',
-        "def has_witness(",
-        'line == witness or line.startswith(witness + " ")',
-        '"v1_governance": "PASS"',
-        '"v1_frontend_closure": "PASS"',
-        '"v1_frontend_zero_skips": "PASS"',
-        "GLOBAL_CERTIFICATION_REQUIRES_PASS",
-        '"certify_full": False',
-        '"language_stable": False',
-        '"signed_update_v3_host": "PASS"',
-        '"signed_update_v3_browser_wasm": "PASS"',
-        '"signed_update_v3_wasi": "PASS_FRESH_RESTORE"',
+        EXPECTED_PRECERTIFY, "validate_v1_governance.py", "validate_v1_stable_governance.py",
+        'parser.add_argument("--profile", choices=("candidate", "stable"), default="candidate")',
+        '"admission_profile": profile', '"v1_frontend_zero_skips": "PASS"', "GLOBAL_CERTIFICATION_REQUIRES_PASS",
+        '"certify_full": False', '"language_stable": False',
     ), "V1_GOVERNANCE_PRECERTIFY")
     require_tokens(certify_text, (
-        EXPECTED_PRECERTIFY,
-        EXPECTED_CERTIFY,
-        "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
-        '"v1_governance": "PASS"',
-        '"v1_frontend_closure": "PASS"',
-        '"v1_frontend_zero_skips": "PASS"',
-        '"v0_2_jsonschema_validation": "PASS"',
-        "V1_FRONTEND_ZERO_SKIPS",
-        "V0_2_JSONSCHEMA_VALIDATION",
-        '"certify_full": True',
-        '"language_stable": False',
-        "V1_PRECERTIFY_RECEIPT_SHA256=",
-        "CERTIFY_FULL=PASS",
-        "LANGUAGE_STABLE=NO",
+        EXPECTED_PRECERTIFY, EXPECTED_CERTIFY, "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
+        'parser.add_argument("--profile", choices=("candidate", "stable"), default="candidate")',
+        'parser.add_argument("--receipt-out")', '"admission_profile": profile',
+        '"certify_full": True', '"language_stable": False', "CERTIFY_FULL=PASS", "LANGUAGE_STABLE=NO",
     ), "V1_GOVERNANCE_CERTIFY")
+    require_tokens(python_gate_text, (
+        EXPECTED_PYTHON_PRODUCTION, 'parser.add_argument("--profile", choices=("candidate", "stable"), default="candidate")',
+        'parser.add_argument("--artifact-out-dir")', "TEV_SCRIPT_V1_PYTHON_WHEEL_REPRODUCIBLE=PASS",
+        "TEV_SCRIPT_V1_PYTHON_INSTALLED_CONCURRENT_ACCESS_REJECTED=PASS", '"admission_profile": profile',
+        "PASS_STABLE_CANDIDATE", "CERTIFY_FULL=NO", "LANGUAGE_STABLE=NO",
+    ), "V1_GOVERNANCE_PYTHON_PRODUCTION_GATE")
+    require_tokens(python_certify_text, (
+        EXPECTED_PYTHON_CERTIFY, "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py",
+        'parser.add_argument("--profile", choices=("candidate", "stable"), default="candidate")',
+        'parser.add_argument("--artifact-out-dir")', '"concurrent_access_rejected": "PASS"',
+        '"admission_profile": profile', '"python_certify_full": True', '"global_certify_full": False',
+        '"language_stable": False', '"stable_release_authorized": False', "PYTHON_CERTIFY_FULL=PASS",
+    ), "V1_GOVERNANCE_PYTHON_CERTIFY_FULL_GATE")
+    require_tokens(stable_admission_text, (
+        EXPECTED_STABLE_RECEIPT, 'parser.add_argument("--technical-parent-certificate", required=True)',
+        "ALLOWED_RELEASE_PATHS", "STABLE_PARENT_CERTIFICATE_HASH", "validate_release_diff",
+        'str(ROOT / "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py")', 'str(ROOT / "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py")',
+        "STABLE_JAVASCRIPT_PACK=PASS", "STABLE_ADMISSION=PASS", "LANGUAGE_STABLE=YES",
+    ), "V1_GOVERNANCE_STABLE_ADMISSION_GATE")
+    require_tokens(stable_governance_text, (
+        "STABLE_ADMISSION_REQUESTED", "STABLE_1_0_0", "TEV_SCRIPT_V1_STABLE_GOVERNANCE=PASS",
+    ), "V1_GOVERNANCE_STABLE_GOVERNANCE_GATE")
     require_tokens(protocol_text, (
-        "PRECERTIFY(C)=PASS", "CERTIFY_FULL(C)=PASS", "PRECERTIFY(S)=PASS",
-        "CERTIFY_FULL(S)=PASS", "No transitive certification", "No skipped mandatory target",
+        "No transitive certification", "No skipped mandatory target", "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py",
+        EXPECTED_STABLE_RECEIPT, "STABLE_ADMISSION=PASS", "LANGUAGE_STABLE=YES",
     ), "V1_GOVERNANCE_PROTOCOL")
     require_tokens(state_text, (
         "BASE_CERTIFIED_V0_2=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5",
-        "CURRENT_HEAD_FULL_PRECERTIFY=NOT_EXECUTED_HERE",
         "CURRENT_HEAD_CERTIFY_FULL=NO", "LANGUAGE_STABLE=NO",
     ), "V1_GOVERNANCE_PROJECT_STATE")
 
@@ -444,6 +457,7 @@ def main() -> int:
     print("TEV_SCRIPT_V1_GOVERNANCE_PYTHON_CERTIFY_FULL_GATE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_FRONTEND_SKIP_ACCOUNTING=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_AUTHORITY_REGRESSION_TESTS=PASS")
+    print("TEV_SCRIPT_V1_GOVERNANCE_STABLE_ADMISSION_SURFACE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_ARTIFACT_COMMIT_POLICY=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PRECERTIFY_CERTIFY_PROTOCOL=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_NO_TRANSITIVE_CERTIFICATION=PASS")
