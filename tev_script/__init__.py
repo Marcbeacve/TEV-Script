@@ -33,6 +33,12 @@ from .pipeline_v1 import (
     compile_v1_sources_to_ir_v2,
     compile_v1_sources_to_ir_v3,
 )
+from .project_v1 import (
+    ProjectManifestV1,
+    ProjectSourceV1,
+    load_v1_project,
+    verify_v1_project_inputs,
+)
 from .lowering_receipt_v1 import (
     LoweringReceiptBundleV1,
     build_ir_v2_lowering_receipt,
@@ -95,6 +101,11 @@ __all__ = [
     "compile_v1_sources_auto",
     "compile_v1_sources_to_ir_v2",
     "compile_v1_sources_to_ir_v3",
+    # Explicit project-build metadata surface.
+    "ProjectManifestV1",
+    "ProjectSourceV1",
+    "load_v1_project",
+    "verify_v1_project_inputs",
     # Lowering evidence.
     "LoweringReceiptBundleV1",
     "LoweringReceiptBundleV2",
