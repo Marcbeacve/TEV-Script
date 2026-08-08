@@ -8,6 +8,7 @@ import tev_script
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE = ROOT / "examples" / "v1" / "ErasableToIrV2.tevs"
 ALGEBRAIC = ROOT / "examples" / "v1" / "Calculator.tevs"
+PROJECT = ROOT / "examples" / "v1" / "ecosystem" / "tevscript.project.json"
 
 
 class V1PublicApiTests(unittest.TestCase):
@@ -34,6 +35,10 @@ class V1PublicApiTests(unittest.TestCase):
             "compile_v1_paths_auto",
             "compile_v1_paths_to_ir_v2",
             "compile_v1_paths_to_ir_v3",
+            "ProjectManifestV1",
+            "ProjectSourceV1",
+            "load_v1_project",
+            "verify_v1_project_inputs",
             "LoweringReceiptBundleV1",
             "LoweringReceiptBundleV2",
             "build_ir_v2_lowering_receipt",
@@ -63,6 +68,14 @@ class V1PublicApiTests(unittest.TestCase):
             result.target.linked_semantic_hash,
             result.analysis.linked_program.semantic_hash,
         )
+
+    def test_public_project_manifest_loads_explicit_source_set(self) -> None:
+        project = tev_script.load_v1_project(PROJECT)
+        self.assertEqual(project.default_target, "auto")
+        self.assertEqual(len(project.sources), 4)
+        self.assertRegex(project.manifest_hash, r"^[0-9a-f]{64}$")
+        self.assertRegex(project.project_input_hash, r"^[0-9a-f]{64}$")
+        tev_script.verify_v1_project_inputs(project, project.input_witness())
 
     def test_public_api_builds_and_verifies_ir_v2_lowering_receipt(self) -> None:
         compiled = tev_script.compile_v1_paths_to_ir_v2([EXAMPLE])
