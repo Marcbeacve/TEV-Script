@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 from dataclasses import dataclass
 import hashlib
 import json
@@ -10,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 V0_2_ORACLE = "6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5"
-RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V6"
+RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V7"
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,9 +120,9 @@ def require_gate(gate: Gate) -> str:
     return stdout
 
 
-def mandatory_gates() -> tuple[Gate, ...]:
-    return (
-        Gate(
+def governance_gate(profile: str) -> Gate:
+    if profile == "candidate":
+        return Gate(
             "TEV_SCRIPT_V1_GOVERNANCE_GATE",
             python_command("tools/validate_v1_governance.py"),
             (
@@ -132,7 +133,24 @@ def mandatory_gates() -> tuple[Gate, ...]:
                 "TEV_SCRIPT_V1_GOVERNANCE_NO_TRANSITIVE_CERTIFICATION=PASS",
                 "TEV_SCRIPT_V1_GOVERNANCE=PASS",
             ),
+        )
+    return Gate(
+        "TEV_SCRIPT_V1_STABLE_GOVERNANCE_GATE",
+        python_command("tools/validate_v1_stable_governance.py"),
+        (
+            "TEV_SCRIPT_V1_STABLE_GOVERNANCE_RELEASE_METADATA=PASS",
+            "TEV_SCRIPT_V1_STABLE_GOVERNANCE_CANONICAL_INDEX=PASS",
+            "TEV_SCRIPT_V1_STABLE_GOVERNANCE_FEATURE_MATRIX=PASS",
+            "TEV_SCRIPT_V1_STABLE_GOVERNANCE_DESCRIPTOR=PASS",
+            "TEV_SCRIPT_V1_STABLE_GOVERNANCE_DISTRIBUTION_VERSIONS=PASS",
+            "TEV_SCRIPT_V1_STABLE_GOVERNANCE=PASS",
         ),
+    )
+
+
+def mandatory_gates(profile: str) -> tuple[Gate, ...]:
+    return (
+        governance_gate(profile),
         Gate(
             "TEV_SCRIPT_V1_FRONTEND_CLOSURE_GATE",
             python_command("RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py", "--require-zero-skips"),
@@ -299,7 +317,13 @@ def mandatory_gates() -> tuple[Gate, ...]:
     )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="TEV Script V1 global precertification")
+    parser.add_argument("--profile", choices=("candidate", "stable"), default="candidate")
+    args = parser.parse_args(argv)
+    profile = args.profile
+    print("V1_PRECERTIFY_PROFILE=" + profile)
+
     for tool in ("git", "node", "dotnet", "wasmtime"):
         require_tool(tool)
     jsonschema_version = require_python_distribution("jsonschema")
@@ -314,7 +338,7 @@ def main() -> int:
         fail("V0_2_ORACLE_ANCESTRY", "FAIL", ancestry)
     print("V0_2_ORACLE_ANCESTRY=PASS")
 
-    for gate in mandatory_gates():
+    for gate in mandatory_gates(profile):
         require_gate(gate)
 
     portable = require_gate(
@@ -341,6 +365,7 @@ def main() -> int:
 
     evidence = {
         "schema": RECEIPT_SCHEMA,
+        "admission_profile": profile,
         "branch": branch,
         "commit": head,
         "tree": tree,
