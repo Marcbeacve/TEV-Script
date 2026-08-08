@@ -64,6 +64,13 @@
         "schemas/tev_script_project_v1.schema.json",
         "docs/V1_PROJECT_MANIFEST.md"
       ],
+      "artifact_commit_policy": {
+        "policy": "EVIDENCE_SAFE_RECEIPT_LAST_V1",
+        "implementation": "tev_script/artifact_write_v1.py",
+        "rollback_test": "tests/test_v1_artifact_write.py",
+        "scope": "IR_PLUS_OPTIONAL_LOWERING_RECEIPT",
+        "hardware_atomicity_across_independent_paths": false
+      },
       "portable_conformance_assets": [
         "conformance/v1-source-syntax-cases.json",
         "conformance/v1-linker-cases.json",
@@ -115,6 +122,7 @@
         "examples/v1/ecosystem/tevscript.project.json"
       ],
       "example_and_public_api_tests": [
+        "tests/test_v1_artifact_write.py",
         "tests/test_v1_examples.py",
         "tests/test_v1_cli_full.py",
         "tests/test_v1_project.py",
