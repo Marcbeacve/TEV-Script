@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev-script.local/schemas/tev_script_installed_update_v2.schema.json",
+  "title": "TEV Script installed update V2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "channel_id",
+    "epoch",
+    "sequence",
+    "package_sha256",
+    "package_json"
+  ],
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_INSTALLED_UPDATE_V2"},
+    "channel_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.:/-]*$"
+    },
+    "epoch": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "package_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "package_json": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
