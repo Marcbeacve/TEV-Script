@@ -1,0 +1,66 @@
+{
+  "schema": "TEV_SCRIPT_V1_FEATURE_MATRIX_V2",
+  "target_language_version": "1.0.0",
+  "repository_language_version_remains": "0.2.0-preview",
+  "stable_release_authorized": false,
+  "specification": {
+    "grammar": "CLOSED_CANDIDATE_V2",
+    "source_semantics": "CLOSED_CANDIDATE_V2",
+    "deterministic_link_model": "CLOSED_CANDIDATE_V1",
+    "resource_budgets": "CLOSED_CANDIDATE_V1",
+    "linked_semantic_schema": "CLOSED_CANDIDATE_V1",
+    "runtime_ir_v3": "PENDING"
+  },
+  "compatibility": {
+    "v0_2_source_compatibility_required": true,
+    "v0_2_certified_runtime_contract_immutable": true,
+    "gate5_gate6_gate7_claims_must_not_be_reinterpreted": true
+  },
+  "required_features": [
+    {"id":"MODULES","source_spec":"CLOSED","link_semantics":"CLOSED","python_frontend":"PENDING","lowering":"IR_V2_ERASABLE"},
+    {"id":"IMPORTS","source_spec":"CLOSED","link_semantics":"CLOSED","python_frontend":"PENDING","lowering":"IR_V2_ERASABLE"},
+    {"id":"VISIBILITY_EXPORT","source_spec":"CLOSED","link_semantics":"CLOSED","python_frontend":"PENDING","lowering":"IR_V2_ERASABLE"},
+    {"id":"PURE_USER_FUNCTIONS","source_spec":"CLOSED","link_semantics":"CLOSED","python_frontend":"PENDING","lowering":"IR_V2_ERASABLE_BY_VALIDATED_INLINING"},
+    {"id":"CUSTOM_CAPABILITY_DECLARATIONS","source_spec":"CLOSED","link_semantics":"CLOSED","python_frontend":"PENDING","lowering":"IR_V2_ONLY_FOR_V2_TYPES"},
+    {"id":"RECORDS","source_spec":"CLOSED","link_semantics":"CLOSED","python_frontend":"PENDING","lowering":"IR_V3_REQUIRED_FOR_RUNTIME_VALUES"},
+    {"id":"ENUMS","source_spec":"CLOSED","link_semantics":"CLOSED","python_frontend":"PENDING","lowering":"IR_V3_REQUIRED_FOR_RUNTIME_VALUES"},
+    {"id":"OPTION_RESULT","source_spec":"CLOSED","link_semantics":"CLOSED","python_frontend":"PENDING","lowering":"IR_V3_REQUIRED_FOR_RUNTIME_VALUES"},
+    {"id":"EXHAUSTIVE_MATCH","source_spec":"CLOSED","link_semantics":"CLOSED","python_frontend":"PENDING","lowering":"IR_V3_REQUIRED_UNLESS_COMPILE_TIME_ERASED"},
+    {"id":"STATIC_BOUNDED_FOR","source_spec":"CLOSED","link_semantics":"CLOSED","python_frontend":"PENDING","lowering":"IR_V2_ERASABLE_BY_VALIDATED_UNROLLING"},
+    {"id":"BEHAVIOR_COMPOSITION","source_spec":"CLOSED","link_semantics":"CLOSED","python_frontend":"PENDING","lowering":"IR_V2_ERASABLE_BY_DETERMINISTIC_EXPANSION"},
+    {"id":"CAPABILITY_EFFECT_INFERENCE","source_spec":"CLOSED","link_semantics":"CLOSED","python_frontend":"PARTIAL_V0_2","lowering":"REQUIRED"},
+    {"id":"DETERMINISTIC_MULTI_FILE_LINKING","source_spec":"CLOSED","link_semantics":"CLOSED","python_frontend":"PENDING","lowering":"PRE_IR"}
+  ],
+  "explicitly_deferred": [
+    "ASYNC_AWAIT",
+    "UNBOUNDED_LOOPS",
+    "DATA_DEPENDENT_UNBOUNDED_ITERATION",
+    "RECURSION",
+    "CLASSES_INHERITANCE",
+    "REFLECTION",
+    "RUNTIME_CODEGEN",
+    "USER_DEFINED_GENERICS",
+    "GENERAL_MAP",
+    "PAYLOAD_USER_ENUMS",
+    "THREADS_IMPLICIT_CONCURRENCY",
+    "EXCEPTIONS_AS_CONTROL_FLOW",
+    "HOST_NATIVE_OBJECT_REFERENCES",
+    "PACKAGE_REGISTRY_NETWORK_RESOLUTION",
+    "IMPORT_ALIASES",
+    "WILDCARD_IMPORTS",
+    "IMPLICIT_REEXPORT",
+    "SEMVER_RANGE_MODULE_RESOLUTION"
+  ],
+  "promotion_gates": [
+    "SPEC_INTERNAL_CONSISTENCY_PASS",
+    "REFERENCE_FRONTEND_PASS",
+    "DETERMINISTIC_LINKER_PASS",
+    "LINKED_CANONICALIZATION_BYTE_LOCK_PASS",
+    "IR_V3_PROFILE_FROZEN_FOR_NONERASABLE_VALUES",
+    "PYTHON_JS_CSHARP_V1_RECEIPT_PARITY_PASS",
+    "BROWSER_WASM_WASI_NO_REGRESSION_PASS",
+    "V1_NEGATIVE_BOUNDARY_CAMPAIGN_PASS",
+    "V0_2_REGRESSION_PASS",
+    "EXACT_CLEAN_COMMIT_CERTIFICATION_PASS"
+  ]
+}
