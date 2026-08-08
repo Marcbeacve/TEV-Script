@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 import unittest
@@ -14,9 +15,27 @@ REQUIRED_STABLE_PROMOTION_GATES = {
     "STABLE_ARTIFACT_BYTE_IDENTITY_PASS",
     "EXACT_STABLE_ADMISSION_PASS",
 }
+STAGE_D_PYTHON_AUTHORITIES = (
+    "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
+    "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py",
+    "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py",
+    "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py",
+    "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py",
+    "tools/validate_v1_governance.py",
+    "tools/validate_v1_stable_governance.py",
+    "tev_script/descriptor_v1.py",
+    "tev_script/release_metadata_v1.py",
+)
 
 
 class V1StableAdmissionAuthorityTests(unittest.TestCase):
+    def test_stage_d_authority_python_is_syntactically_closed(self) -> None:
+        for relative in STAGE_D_PYTHON_AUTHORITIES:
+            path = ROOT / relative
+            source = path.read_text(encoding="utf-8")
+            with self.subTest(path=relative):
+                ast.parse(source, filename=relative, mode="exec")
+
     def test_only_stable_admission_may_emit_language_stable_yes(self) -> None:
         stable = (ROOT / "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py").read_text(encoding="utf-8")
         global_cert = (ROOT / "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py").read_text(encoding="utf-8")
