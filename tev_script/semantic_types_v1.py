@@ -11,15 +11,7 @@ from .ast_v1 import (
     TypeRef,
 )
 from .diagnostics import SourceSpan, TevScriptError
-from .linker_v1 import (
-    LinkPlanV1,
-    NAMESPACE_CAPABILITY,
-    NAMESPACE_FUNCTION,
-    NAMESPACE_TYPE,
-    SymbolV1,
-    canonical_type_id,
-    resolve_symbol,
-)
+from .linker_v1 import LinkPlanV1, NAMESPACE_TYPE, resolve_symbol
 from .types import CAPABILITIES, PURE_FUNCTIONS, Signature, SUPPORTED_TYPES
 
 
@@ -232,6 +224,8 @@ def build_type_environment(plan: LinkPlanV1) -> TypeEnvironmentV1:
                 return_type = resolve_type(plan, owner_id, declaration.return_type)
                 for parameter, resolved in zip(declaration.parameter_types, parameters, strict=True):
                     _require_storable(resolved, parameter.span, "capability parameter")
+                if not return_type.is_unit:
+                    _require_storable(return_type, declaration.return_type.span, "capability return")
                 capabilities.append(
                     CallableSignatureV1(
                         symbol.semantic_id,
@@ -249,7 +243,7 @@ def build_type_environment(plan: LinkPlanV1) -> TypeEnvironmentV1:
     records.sort(key=lambda item: item.type_id)
     enums.sort(key=lambda item: item.type_id)
     functions.sort(key=lambda item: (item.callable_id, tuple(x.type_id for x in item.parameters)))
-    capabilities.sort(key=lambda item: (item.callable_id, tuple(x.type_id for x in item.parameters)))
+    capabilities = _dedupe_capability_signatures(capabilities)
 
     environment = TypeEnvironmentV1(tuple(records), tuple(enums), tuple(functions), tuple(capabilities))
     _validate_record_acyclic(environment)
@@ -343,6 +337,31 @@ def _validate_record_acyclic(environment: TypeEnvironmentV1) -> None:
 
     for type_id in sorted(graph):
         visit(type_id)
+
+
+def _dedupe_capability_signatures(
+    capabilities: list[CallableSignatureV1],
+) -> list[CallableSignatureV1]:
+    by_contract: dict[tuple[object, ...], CallableSignatureV1] = {}
+    for item in capabilities:
+        key = (
+            item.callable_id,
+            tuple(parameter.type_id for parameter in item.parameters),
+            item.return_type.type_id,
+            item.kind,
+        )
+        current = by_contract.get(key)
+        if current is None or item.owner_id < current.owner_id:
+            by_contract[key] = item
+    return sorted(
+        by_contract.values(),
+        key=lambda item: (
+            item.callable_id,
+            tuple(x.type_id for x in item.parameters),
+            item.return_type.type_id,
+            item.kind,
+        ),
+    )
 
 
 def _builtin_functions() -> list[CallableSignatureV1]:
