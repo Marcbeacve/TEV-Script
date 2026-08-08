@@ -154,6 +154,7 @@ def main() -> int:
     require_equal("V1_CERTIFY_FULL_PRECERTIFY_ORACLE", receipt.get("v0_2_oracle"), V0_2_ORACLE)
 
     mandatory = {
+        "v1_governance": "PASS",
         "v1_python_gate": "PASS",
         "ir_v3_csharp_v0_2_assembly_isolation": "PASS",
         "ir_v3_csharp_runtime_assembly": "PASS_NET8_DEPENDENCY_FREE",
@@ -178,8 +179,6 @@ def main() -> int:
     require_equal("V1_CERTIFY_FULL_HEAD_STABLE", head_after, head)
     require_equal("V1_CERTIFY_FULL_TREE_STABLE", tree_after, tree)
 
-    # Authority files themselves must still be the exact bytes inspected before
-    # the expensive child campaign.
     require_equal("V1_CERTIFY_FULL_CANONICAL_INDEX_STABLE", file_sha256("CANONICAL_INDEX.json"), canonical_sha)
     require_equal(
         "V1_CERTIFY_FULL_FEATURE_MATRIX_STABLE",
@@ -200,6 +199,7 @@ def main() -> int:
         "feature_matrix_sha256": matrix_sha,
         "project_state_sha256": project_state_sha,
         "certified_scope": [
+            "V1_GOVERNANCE_AND_AUTHORITY_BINDINGS",
             "V1_REFERENCE_FRONTEND_AND_STATIC_SEMANTICS",
             "V1_LINKED_CANONICAL_PROGRAM",
             "V1_TO_IR_V2_ERASABLE_PROFILE",
