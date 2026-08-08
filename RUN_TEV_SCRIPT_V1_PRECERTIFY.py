@@ -51,6 +51,24 @@ def require_tool(name: str) -> None:
     print("V1_PRECERTIFY_TOOL_" + name.upper() + "=PASS")
 
 
+def require_python_distribution(name: str) -> str:
+    completed = run(
+        (
+            sys.executable,
+            "-c",
+            "import importlib.metadata; print(importlib.metadata.version(" + repr(name) + "))",
+        )
+    )
+    label = "V1_PRECERTIFY_PYTHON_DISTRIBUTION_" + name.upper().replace("-", "_")
+    if completed.returncode != 0:
+        fail(label, "MISSING_OR_UNREADABLE", completed)
+    version = completed.stdout.strip()
+    if not version:
+        fail(label, "EMPTY_VERSION", completed)
+    print(label + "=PASS version=" + version)
+    return version
+
+
 def git_text(*arguments: str) -> str:
     completed = run(("git", *arguments))
     if completed.returncode != 0:
@@ -76,8 +94,15 @@ def tree_manifest_sha() -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def python_command(relative: str) -> tuple[str, ...]:
-    return (sys.executable, str(ROOT / relative))
+def python_command(relative: str, *arguments: str) -> tuple[str, ...]:
+    return (sys.executable, str(ROOT / relative), *arguments)
+
+
+def has_witness(stdout: str, witness: str) -> bool:
+    return any(
+        line == witness or line.startswith(witness + " ")
+        for line in stdout.splitlines()
+    )
 
 
 def require_gate(gate: Gate) -> str:
@@ -88,7 +113,7 @@ def require_gate(gate: Gate) -> str:
     if gate.reject_skip and "SKIPPED_" in stdout:
         fail(gate.label, "UNEXPECTED_SKIP", completed)
     for witness in gate.witnesses:
-        if witness not in stdout:
+        if not has_witness(stdout, witness):
             fail(gate.label, "MISSING_WITNESS=" + witness, completed)
     print(gate.label + "=PASS")
     return stdout
@@ -110,12 +135,17 @@ def mandatory_gates() -> tuple[Gate, ...]:
         ),
         Gate(
             "TEV_SCRIPT_V1_FRONTEND_CLOSURE_GATE",
-            python_command("RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py"),
+            python_command("RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py", "--require-zero-skips"),
             (
                 "TEV_SCRIPT_V1_PYTHON_COMPILE=PASS",
+                "TEV_SCRIPT_V1_TESTS_SKIP_COUNT=0",
                 "TEV_SCRIPT_V1_TESTS=PASS",
+                "TEV_SCRIPT_IR_V3_TESTS_SKIP_COUNT=0",
                 "TEV_SCRIPT_IR_V3_TESTS=PASS",
+                "TEV_SCRIPT_V0_2_REGRESSION_TESTS_SKIP_COUNT=0",
                 "TEV_SCRIPT_V0_2_PYTHON_REGRESSION=PASS",
+                "TEV_SCRIPT_V1_FRONTEND_TOTAL_SKIP_COUNT=0",
+                "TEV_SCRIPT_V1_FRONTEND_ZERO_SKIPS=PASS",
                 "TEV_SCRIPT_V1_PYTHON_CLOSURE=PASS_CANDIDATE",
             ),
         ),
@@ -272,6 +302,7 @@ def mandatory_gates() -> tuple[Gate, ...]:
 def main() -> int:
     for tool in ("git", "node", "dotnet", "wasmtime"):
         require_tool(tool)
+    jsonschema_version = require_python_distribution("jsonschema")
 
     require_clean("BEFORE")
     head = git_text("rev-parse", "HEAD")
@@ -284,9 +315,7 @@ def main() -> int:
     print("V0_2_ORACLE_ANCESTRY=PASS")
 
     for gate in mandatory_gates():
-        stdout = require_gate(gate)
-        if gate.label == "TEV_SCRIPT_V1_FRONTEND_CLOSURE_GATE" and "skipped=" in stdout.lower():
-            fail(gate.label, "TEST_SKIP_DETECTED")
+        require_gate(gate)
 
     portable = require_gate(
         Gate(
@@ -298,12 +327,10 @@ def main() -> int:
     )
     if "=FAIL" in portable or "command_failed:" in portable:
         fail("TEV_SCRIPT_V0_2_PORTABLE_CONFORMANCE", "FAIL_WITNESS")
-    schema_pass = "JSON_SCHEMA_VALIDATION=PASS" in portable.splitlines()
-    schema_optional = "JSON_SCHEMA_VALIDATION=SKIPPED_DEPENDENCY_UNAVAILABLE" in portable.splitlines()
-    if not schema_pass and not schema_optional:
-        fail("TEV_SCRIPT_V0_2_JSON_SCHEMA_POLICY", "MISSING_EXPLICIT_STATUS")
-    schema_status = "PASS" if schema_pass else "OPTIONAL_DEPENDENCY_UNAVAILABLE"
-    print("TEV_SCRIPT_V0_2_JSON_SCHEMA_POLICY=PASS status=" + schema_status)
+    if "JSON_SCHEMA_VALIDATION=PASS" not in portable.splitlines():
+        fail("TEV_SCRIPT_V0_2_JSON_SCHEMA_POLICY", "GLOBAL_CERTIFICATION_REQUIRES_PASS")
+    schema_status = "PASS"
+    print("TEV_SCRIPT_V0_2_JSON_SCHEMA_POLICY=PASS status=PASS")
 
     require_clean("AFTER")
     head_after = git_text("rev-parse", "HEAD")
@@ -319,8 +346,10 @@ def main() -> int:
         "tree": tree,
         "v0_2_oracle": V0_2_ORACLE,
         "tracked_index_manifest_sha256": tree_manifest_sha(),
+        "certification_jsonschema_version": jsonschema_version,
         "v1_governance": "PASS",
-        "v1_python_gate": "PASS",
+        "v1_frontend_closure": "PASS",
+        "v1_frontend_zero_skips": "PASS",
         "ir_v3_csharp_v0_2_assembly_isolation": "PASS",
         "ir_v3_csharp_runtime_assembly": "PASS_NET8_DEPENDENCY_FREE",
         "ir_v3_csharp_aot_json": "PASS_REFLECTION_FREE",
