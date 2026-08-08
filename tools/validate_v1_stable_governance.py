@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import sys
 import tomllib
 
-from tev_script.descriptor_v1 import v1_descriptor
-from tev_script.release_metadata_v1 import (
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from tev_script.descriptor_v1 import v1_descriptor  # noqa: E402
+from tev_script.release_metadata_v1 import (  # noqa: E402
     CURRENT_V1_CERTIFY_FULL_CLAIM,
     CURRENT_V1_LANGUAGE_STABLE_CLAIM,
     RELEASE_PROFILE,
@@ -17,7 +21,6 @@ from tev_script.release_metadata_v1 import (
     validate_release_metadata,
 )
 
-ROOT = Path(__file__).resolve().parents[1]
 STABLE_STATUS = "STABLE_ADMISSION_REQUESTED"
 STABLE_ADMISSION_GATE = "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py"
 
