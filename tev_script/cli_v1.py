@@ -4,6 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from .artifact_write_v1 import write_compilation_artifacts_v1, write_text_artifact_v1
 from .canonical import canonical_json
 from .diagnostics import TevScriptError
 from .lowering_receipt_v1 import build_ir_v2_lowering_receipt
@@ -15,6 +16,8 @@ from .pipeline_v1 import (
     compile_v1_paths_to_ir_v3,
 )
 from .project_v1 import load_v1_project, verify_v1_project_inputs
+
+ARTIFACT_COMMIT_POLICY_V1 = "EVIDENCE_SAFE_RECEIPT_LAST_V1"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -123,15 +126,16 @@ def main(argv: list[str] | None = None) -> int:
 
         if arguments.command == "link":
             analysis = analyze_v1_paths(arguments.sources)
-            _write_text(arguments.output, analysis.linked_program.canonical_json)
+            write_text_artifact_v1(arguments.output, analysis.linked_program.canonical_json)
             print(
                 canonical_json(
                     {
-                        "schema": "TEV_SCRIPT_V1_LINK_RESULT_V1",
+                        "schema": "TEV_SCRIPT_V1_LINK_RESULT_V2",
                         "status": "PASS_CANDIDATE",
                         "program_id": analysis.plan.program_id,
                         "linked_semantic_hash": analysis.linked_program.semantic_hash,
                         "output": Path(arguments.output).as_posix(),
+                        "artifact_commit": "ATOMIC_SINGLE_PATH_REPLACE_V1",
                     }
                 )
             )
@@ -162,21 +166,25 @@ def main(argv: list[str] | None = None) -> int:
             project = load_v1_project(arguments.project)
             target = arguments.target or project.default_target
             compilation = _select_compilation(list(project.source_paths), target)
-            # Detect source/manifest changes during analysis before emitting any
-            # artifact. Build metadata is not semantic, but it must be stable
-            # across one governed build operation.
+            # Build metadata is not semantic authority, but the exact finite
+            # input set must remain stable across one governed build operation.
             verify_v1_project_inputs(project)
             selected = compilation.target
-            receipt = _emit_receipt(
+            receipt_summary, receipt_content = _build_receipt(
                 compilation.analysis.linked_program,
                 selected,
                 arguments.receipt,
             )
-            _write_text(arguments.output, selected.canonical_json)
+            write_compilation_artifacts_v1(
+                arguments.output,
+                selected.canonical_json,
+                receipt_path=arguments.receipt,
+                receipt_content=receipt_content,
+            )
             print(
                 canonical_json(
                     {
-                        "schema": "TEV_SCRIPT_V1_PROJECT_BUILD_RESULT_V1",
+                        "schema": "TEV_SCRIPT_V1_PROJECT_BUILD_RESULT_V2",
                         "status": "PASS_CANDIDATE",
                         "program_id": compilation.analysis.plan.program_id,
                         "project_manifest_hash": project.manifest_hash,
@@ -189,7 +197,8 @@ def main(argv: list[str] | None = None) -> int:
                         "target_ir_semantic_hash": selected.ir["semantic_hash"],
                         "source_count": len(project.sources),
                         "output": Path(arguments.output).as_posix(),
-                        "lowering_receipt": receipt,
+                        "lowering_receipt": receipt_summary,
+                        "artifact_commit": ARTIFACT_COMMIT_POLICY_V1,
                         "stable_release": False,
                     }
                 )
@@ -198,36 +207,20 @@ def main(argv: list[str] | None = None) -> int:
 
         if arguments.command == "lower-irv2":
             compilation = compile_v1_paths_to_ir_v2(arguments.sources)
-            receipt = _emit_receipt(
-                compilation.analysis.linked_program,
-                compilation.target,
-                arguments.receipt,
-            )
             return _write_compilation_result(
-                compilation.analysis.plan.program_id,
-                compilation.analysis.linked_program.semantic_hash,
-                compilation.target.ir,
-                compilation.target.canonical_json,
+                compilation,
                 arguments.output,
-                "TEV_SCRIPT_V1_IRV2_LOWER_RESULT_V2",
-                receipt,
+                arguments.receipt,
+                "TEV_SCRIPT_V1_IRV2_LOWER_RESULT_V3",
             )
 
         if arguments.command == "lower-irv3":
             compilation = compile_v1_paths_to_ir_v3(arguments.sources)
-            receipt = _emit_receipt(
-                compilation.analysis.linked_program,
-                compilation.target,
-                arguments.receipt,
-            )
             return _write_compilation_result(
-                compilation.analysis.plan.program_id,
-                compilation.analysis.linked_program.semantic_hash,
-                compilation.target.ir,
-                compilation.target.canonical_json,
+                compilation,
                 arguments.output,
-                "TEV_SCRIPT_V1_IRV3_LOWER_RESULT_V2",
-                receipt,
+                arguments.receipt,
+                "TEV_SCRIPT_V1_IRV3_LOWER_RESULT_V3",
             )
 
         raise AssertionError(arguments.command)
@@ -298,13 +291,18 @@ def _compile_command(
     compilation = _select_compilation(sources, target)
     selected = compilation.target
     linked = compilation.analysis.linked_program
-    receipt = _emit_receipt(linked, selected, receipt_path)
-    _write_text(output, selected.canonical_json)
+    receipt_summary, receipt_content = _build_receipt(linked, selected, receipt_path)
+    write_compilation_artifacts_v1(
+        output,
+        selected.canonical_json,
+        receipt_path=receipt_path,
+        receipt_content=receipt_content,
+    )
 
     print(
         canonical_json(
             {
-                "schema": "TEV_SCRIPT_V1_COMPILE_RESULT_V2",
+                "schema": "TEV_SCRIPT_V1_COMPILE_RESULT_V3",
                 "status": "PASS_CANDIDATE",
                 "program_id": compilation.analysis.plan.program_id,
                 "requested_target": target,
@@ -312,7 +310,8 @@ def _compile_command(
                 "linked_semantic_hash": linked.semantic_hash,
                 "target_ir_semantic_hash": selected.ir["semantic_hash"],
                 "output": Path(output).as_posix(),
-                "lowering_receipt": receipt,
+                "lowering_receipt": receipt_summary,
+                "artifact_commit": ARTIFACT_COMMIT_POLICY_V1,
                 "stable_release": False,
             }
         )
@@ -320,9 +319,9 @@ def _compile_command(
     return 0
 
 
-def _emit_receipt(linked, target, receipt_path: str | None) -> dict[str, object] | None:
+def _build_receipt(linked, target, receipt_path: str | None):
     if receipt_path is None:
-        return None
+        return None, None
     schema = str(target.ir["schema"])
     if schema == "TEV_SCRIPT_PROGRAM_IR_V2":
         bundle = build_ir_v2_lowering_receipt(linked, target)
@@ -333,36 +332,44 @@ def _emit_receipt(linked, target, receipt_path: str | None) -> dict[str, object]
             "TEVS_V1_CLI_RECEIPT_TARGET",
             f"unsupported lowering receipt target schema {schema!r}",
         )
-    _write_text(receipt_path, bundle.canonical_json)
-    return {
-        "schema": bundle.receipt["schema"],
-        "profile": bundle.receipt["profile"],
-        "receipt_hash": bundle.receipt_hash,
-        "output": Path(receipt_path).as_posix(),
-    }
+    return (
+        {
+            "schema": bundle.receipt["schema"],
+            "profile": bundle.receipt["profile"],
+            "receipt_hash": bundle.receipt_hash,
+            "output": Path(receipt_path).as_posix(),
+        },
+        bundle.canonical_json,
+    )
 
 
 def _write_compilation_result(
-    program_id: str,
-    linked_hash: str,
-    ir: dict[str, object],
-    ir_json: str,
+    compilation,
     output: str,
+    receipt_path: str | None,
     result_schema: str,
-    receipt: dict[str, object] | None,
 ) -> int:
-    _write_text(output, ir_json)
+    selected = compilation.target
+    linked = compilation.analysis.linked_program
+    receipt_summary, receipt_content = _build_receipt(linked, selected, receipt_path)
+    write_compilation_artifacts_v1(
+        output,
+        selected.canonical_json,
+        receipt_path=receipt_path,
+        receipt_content=receipt_content,
+    )
     print(
         canonical_json(
             {
                 "schema": result_schema,
                 "status": "PASS_CANDIDATE",
-                "program_id": program_id,
-                "linked_semantic_hash": linked_hash,
-                "target_ir_schema": ir["schema"],
-                "target_ir_semantic_hash": ir["semantic_hash"],
+                "program_id": compilation.analysis.plan.program_id,
+                "linked_semantic_hash": linked.semantic_hash,
+                "target_ir_schema": selected.ir["schema"],
+                "target_ir_semantic_hash": selected.ir["semantic_hash"],
                 "output": Path(output).as_posix(),
-                "lowering_receipt": receipt,
+                "lowering_receipt": receipt_summary,
+                "artifact_commit": ARTIFACT_COMMIT_POLICY_V1,
             }
         )
     )
@@ -387,11 +394,6 @@ def _add_target(parser: argparse.ArgumentParser, *, default: str | None) -> None
             "erasable to that profile; otherwise it selects IR V3"
         ),
     )
-
-
-def _write_text(path: str, content: str) -> None:
-    selected = Path(path)
-    selected.write_text(content + "\n", encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":
