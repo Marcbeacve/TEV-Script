@@ -302,7 +302,7 @@ program_id
 ir_schema
 IR semantic_hash
 source_schema
-source semantic_hash
+source_semantic_hash
 exact entity set
 exact state set
 each state type
