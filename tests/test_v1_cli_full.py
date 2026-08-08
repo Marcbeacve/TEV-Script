@@ -11,6 +11,7 @@ from tev_script.cli_v1 import main
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT / "examples" / "v1"
+ECOSYSTEM_PROJECT = EXAMPLES / "ecosystem" / "tevscript.project.json"
 
 
 class V1CliTargetTests(unittest.TestCase):
@@ -170,6 +171,66 @@ class V1CliTargetTests(unittest.TestCase):
         self.assertEqual(result["program_id"], "Ecosystem")
         self.assertEqual(result["default_target_ir"], "TEV_SCRIPT_PROGRAM_IR_V3")
         self.assertFalse(result["ir_v2_lowerable"])
+
+    def test_project_check_uses_manifest_source_set(self) -> None:
+        code, stdout, stderr = self.invoke(["project-check", str(ECOSYSTEM_PROJECT)])
+        self.assertEqual(code, 0, stderr)
+        result = json.loads(stdout)
+        self.assertEqual(result["schema"], "TEV_SCRIPT_V1_PROJECT_CHECK_RESULT_V1")
+        self.assertEqual(result["program_id"], "Ecosystem")
+        self.assertEqual(result["source_count"], 4)
+        self.assertEqual(result["manifest_default_target"], "auto")
+        self.assertEqual(result["default_target_ir"], "TEV_SCRIPT_PROGRAM_IR_V3")
+        self.assertRegex(result["project_manifest_hash"], r"^[0-9a-f]{64}$")
+        self.assertRegex(result["project_input_hash"], r"^[0-9a-f]{64}$")
+
+    def test_project_build_auto_emits_ir_v3_and_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "ecosystem.ir.json"
+            receipt = Path(directory) / "ecosystem.receipt.json"
+            code, stdout, stderr = self.invoke(
+                [
+                    "build",
+                    str(ECOSYSTEM_PROJECT),
+                    "--output",
+                    str(output),
+                    "--receipt",
+                    str(receipt),
+                ]
+            )
+            self.assertEqual(code, 0, stderr)
+            result = json.loads(stdout)
+            self.assertEqual(result["schema"], "TEV_SCRIPT_V1_PROJECT_BUILD_RESULT_V1")
+            self.assertEqual(result["effective_target"], "auto")
+            self.assertEqual(result["target_ir_schema"], "TEV_SCRIPT_PROGRAM_IR_V3")
+            self.assertEqual(result["lowering_receipt"]["schema"], "TEV_SCRIPT_LOWERING_RECEIPT_V2")
+            self.assertEqual(json.loads(output.read_text())["schema"], "TEV_SCRIPT_PROGRAM_IR_V3")
+            self.assertEqual(
+                json.loads(receipt.read_text())["receipt_hash"],
+                result["lowering_receipt"]["receipt_hash"],
+            )
+
+    def test_project_build_forced_ir_v2_fails_without_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "ecosystem.ir.json"
+            receipt = Path(directory) / "ecosystem.receipt.json"
+            code, stdout, stderr = self.invoke(
+                [
+                    "build",
+                    str(ECOSYSTEM_PROJECT),
+                    "--target",
+                    "irv2",
+                    "--output",
+                    str(output),
+                    "--receipt",
+                    str(receipt),
+                ]
+            )
+            self.assertEqual(code, 2)
+            self.assertEqual(stdout, "")
+            self.assertEqual(json.loads(stderr)["status"], "FAIL")
+            self.assertFalse(output.exists())
+            self.assertFalse(receipt.exists())
 
 
 if __name__ == "__main__":
