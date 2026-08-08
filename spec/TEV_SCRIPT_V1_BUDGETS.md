@@ -23,6 +23,7 @@ Status: **normative V1 candidate**. These budgets make parsing, linking, static 
 | call arguments | 64 |
 | lexical block nesting | 64 |
 | expression nesting | 128 |
+| type nesting | 128 |
 | match arms | 256 |
 | static loop iterations per `for` | 1,024 |
 | nested static loops | 8 |
