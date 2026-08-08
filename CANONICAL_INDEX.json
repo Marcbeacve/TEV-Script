@@ -60,6 +60,10 @@
         "schemas/tev_script_signed_update_package_v2.schema.json",
         "schemas/tev_script_installed_update_v2.schema.json"
       ],
+      "build_tooling_authority": [
+        "schemas/tev_script_project_v1.schema.json",
+        "docs/V1_PROJECT_MANIFEST.md"
+      ],
       "portable_conformance_assets": [
         "conformance/v1-source-syntax-cases.json",
         "conformance/v1-linker-cases.json",
@@ -90,12 +94,14 @@
         "v1_cli": "tev-script-v1",
         "v1_module_cli": "python -m tev_script.cli_v1",
         "v1_python_pipeline": "tev_script.pipeline_v1",
+        "v1_project_manifest": "tev_script.project_v1",
         "v1_runtime": "tev_script.ScriptRuntimeV3"
       },
       "non_normative_programmer_documentation": [
         "README.md",
         "docs/TEV_SCRIPT_V1_LANGUAGE_REFERENCE.md",
         "docs/TEV_SCRIPT_V1_PROGRAMMING_MODEL.md",
+        "docs/V1_PROJECT_MANIFEST.md",
         "examples/v1/README.md"
       ],
       "executable_examples": [
@@ -105,11 +111,13 @@
         "examples/v1/ecosystem/main.tevs",
         "examples/v1/ecosystem/model.tevs",
         "examples/v1/ecosystem/rules.tevs",
-        "examples/v1/ecosystem/storage.tevs"
+        "examples/v1/ecosystem/storage.tevs",
+        "examples/v1/ecosystem/tevscript.project.json"
       ],
       "example_and_public_api_tests": [
         "tests/test_v1_examples.py",
         "tests/test_v1_cli_full.py",
+        "tests/test_v1_project.py",
         "tests/test_v1_public_api.py"
       ],
       "implementation_plan": "docs/V1_IMPLEMENTATION_PLAN.md",
