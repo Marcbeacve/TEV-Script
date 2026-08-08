@@ -12,6 +12,10 @@
       "types": "./src/runtime-v3.d.ts",
       "import": "./src/runtime-v3.mjs"
     },
+    "./runtime-checkpoint-v2": {
+      "types": "./src/runtime-checkpoint-v2.d.ts",
+      "import": "./src/runtime-checkpoint-v2.mjs"
+    },
     "./ir-v3-values": {
       "types": "./src/ir-v3-values.d.ts",
       "import": "./src/ir-v3-values.mjs"
@@ -71,18 +75,21 @@
     "src/ir-v3-validation.d.ts",
     "src/runtime-v3.mjs",
     "src/runtime-v3.d.ts",
+    "src/runtime-checkpoint-v2.mjs",
+    "src/runtime-checkpoint-v2.d.ts",
     "src/conformance.mjs",
     "src/conformance.d.ts",
     "src/run-conformance.mjs",
     "test/runtime.test.mjs",
     "test/runtime-v3.test.mjs",
+    "test/runtime-checkpoint-v2.test.mjs",
     "fixtures",
     "README.md"
   ],
   "scripts": {
-    "test": "node --test test/runtime.test.mjs test/runtime-v3.test.mjs",
+    "test": "node --test test/runtime.test.mjs test/runtime-v3.test.mjs test/runtime-checkpoint-v2.test.mjs",
     "test:v2": "node --test test/runtime.test.mjs",
-    "test:v3": "node --test test/runtime-v3.test.mjs",
+    "test:v3": "node --test test/runtime-v3.test.mjs test/runtime-checkpoint-v2.test.mjs",
     "conformance": "node src/run-conformance.mjs fixtures/conformance/player.scenario.json"
   },
   "engines": {
