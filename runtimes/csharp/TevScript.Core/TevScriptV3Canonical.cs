@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -40,19 +39,8 @@ public static class TevScriptCanonicalV3
 
     public static string Sha256(JsonElement value) => Sha256Text(Json(value));
 
-    public static string Sha256Text(string text)
-    {
-        var bytes = Encoding.UTF8.GetBytes(text);
-        byte[] hash;
-        using (var sha = SHA256.Create())
-        {
-            hash = sha.ComputeHash(bytes);
-        }
-        var builder = new StringBuilder(hash.Length * 2);
-        foreach (var item in hash)
-            builder.Append(item.ToString("x2", CultureInfo.InvariantCulture));
-        return builder.ToString();
-    }
+    public static string Sha256Text(string text) =>
+        Marcbeacve.TevScript.Core.TevJson.Sha256(text);
 
     public static JsonElement ParseClone(string json)
     {
