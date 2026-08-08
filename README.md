@@ -104,7 +104,7 @@ V1 adds:
 
 ```text
 record
- enum
+enum
 Option<T>
 Result<T,E>
 ```
@@ -374,6 +374,24 @@ checkpoint V2
 conformance receipt runner
 ```
 
+For deployment, V1 now has a separate Python production surface:
+
+```text
+PythonProgramArtifactV1
+    validated canonical TEV_SCRIPT_PROGRAM_IR_V3 artifact
+
+PythonRuntimeHostV1
+    IR-only execution host
+    exact capability preflight
+    least-authority binding by default
+    RuntimeCheckpointV2 capture/restore
+
+build_python_program_v1 / build_python_program_v1_paths
+    explicit build-time source -> IR V3 helpers
+```
+
+The production host does not accept source and does not compile at runtime. Physical authority enters only through explicit capability bindings; surplus authority is rejected by default. See `docs/V1_PYTHON_PRODUCTION.md`.
+
 ## JavaScript
 
 The ES2022 V3 runtime provides exact `BigInt`/rational semantics, V3 type/value validation, typed CFG, runtime execution, conformance receipt and checkpoint V2 support.
@@ -509,6 +527,9 @@ docs/TEV_SCRIPT_V1_LANGUAGE_REFERENCE.md
 docs/TEV_SCRIPT_V1_PROGRAMMING_MODEL.md
     TEV-native architecture, design patterns and data structures
 
+docs/V1_PYTHON_PRODUCTION.md
+    Python IR-only deployment boundary, least-authority host and production admission
+
 examples/v1/README.md
     executable learning path and CLI usage
 ```
@@ -544,6 +565,24 @@ python .\RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py
 ```
 
 This covers the Python V1 source-semantic/lowering suite, V3 Python tests, V1 CLI/examples and selected V0.2 Python regressions.
+
+## Python production admission
+
+```powershell
+python .\RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py
+```
+
+This gate is bound to one exact clean commit. It validates governance and the Python closure, builds two wheels from independent `git archive HEAD` trees with an offline fixed build environment, requires identical wheel bytes and the portable `py3-none-any` tag, installs the wheel into a fresh venv, proves imports come from that venv, compiles deployed IR V3 outside the checkout, exercises the IR-only host, least-authority negative cases, a typed capability, checkpoint/restart continuation and a deterministic 10,000-event soak. Its receipt binds the exact commit/tree, Python/build-tool versions and wheel SHA-256.
+
+A successful Python production admission deliberately means:
+
+```text
+TEV_SCRIPT_V1_PYTHON_PRODUCTION=PASS_CANDIDATE
+CERTIFY_FULL=NO
+LANGUAGE_STABLE=NO
+```
+
+It is a Python product/distribution admission, not a substitute for V1 cross-runtime certification.
 
 ## Full pre-certification
 
@@ -591,13 +630,14 @@ See `docs/V1_CERTIFICATION_PROTOCOL.md`.
 
 # Current repository status
 
-The current V1 branch contains the complete implementation/gate candidate described above, but this README does **not** claim that the exact current HEAD has completed full pre-certification.
+The current V1 branch contains the complete implementation/gate candidate described above, but this README does **not** claim that the exact current HEAD has completed either the Python production admission or full pre-certification in this ChatGPT runtime.
 
 The authoritative current status is `PROJECT_STATE.md`.
 
 Until the exact clean commit passes the required admission sequence:
 
 ```text
+CURRENT_HEAD_PYTHON_PRODUCTION_GATE=NOT_EXECUTED_HERE
 V1_CERTIFY_FULL=NO
 V1_LANGUAGE_STABLE=NO
 ```
