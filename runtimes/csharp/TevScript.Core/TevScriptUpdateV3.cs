@@ -217,7 +217,10 @@ public sealed class TevScriptSignedUpdatePackageV3
     {
         if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt64(out var result)
             || result < 1 || result > MaximumStructuralInteger)
+        {
             Fail("TEVS_UPDATE_V3_MONOTONIC_INTEGER", path, "expected positive portable structural integer");
+            return 0;
+        }
         return result;
     }
 

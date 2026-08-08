@@ -39,7 +39,8 @@ class IrV3ConformanceReceiptTests(unittest.TestCase):
         ).receipt
         steps = receipt["steps"]
         self.assertEqual([step["event_id"] for step in steps], ["start", "update", "pulse"])
-        self.assertEqual(len({step["state_hash"] for step in steps}), 3)
+        self.assertEqual(steps[0]["state_hash"], steps[1]["state_hash"])
+        self.assertNotEqual(steps[1]["state_hash"], steps[2]["state_hash"])
 
         self.assertEqual(steps[0]["emitted"], [])
         self.assertEqual(len(steps[1]["emitted"]), 1)

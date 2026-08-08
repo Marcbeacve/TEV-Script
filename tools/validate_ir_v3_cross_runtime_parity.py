@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -20,7 +21,16 @@ CSHARP_PROJECT = ROOT / "runtimes" / "csharp" / "TevScript.V3ConformanceGate" / 
 CSHARP_DLL = ROOT / "runtimes" / "csharp" / "TevScript.V3ConformanceGate" / "bin" / "Release" / "net8.0" / "TevScript.V3ConformanceGate.dll"
 
 
-def _run(arguments: list[str], *, cwd: Path = ROOT) -> subprocess.CompletedProcess[str]:
+def _run(
+    arguments: list[str],
+    *,
+    cwd: Path = ROOT,
+    dotnet_roll_forward: bool = False,
+) -> subprocess.CompletedProcess[str]:
+    environment = None
+    if dotnet_roll_forward:
+        environment = os.environ.copy()
+        environment.setdefault("DOTNET_ROLL_FORWARD", "Major")
     return subprocess.run(
         arguments,
         cwd=cwd,
@@ -28,16 +38,22 @@ def _run(arguments: list[str], *, cwd: Path = ROOT) -> subprocess.CompletedProce
         capture_output=True,
         text=True,
         encoding="utf-8",
+        env=environment,
     )
 
 
 def _fail_process(label: str, completed: subprocess.CompletedProcess[str]) -> int:
     print(label + "=FAIL")
     if completed.stdout:
-        print(label + "_STDOUT=" + completed.stdout[-6000:].replace("\n", "\\n"))
+        print(label + "_STDOUT=" + _console_safe(completed.stdout[-6000:].replace("\n", "\\n")))
     if completed.stderr:
-        print(label + "_STDERR=" + completed.stderr[-6000:].replace("\n", "\\n"))
+        print(label + "_STDERR=" + _console_safe(completed.stderr[-6000:].replace("\n", "\\n")))
     return 1
+
+
+def _console_safe(value: str) -> str:
+    encoding = sys.stdout.encoding or "utf-8"
+    return value.encode(encoding, errors="backslashreplace").decode(encoding)
 
 
 def main() -> int:
@@ -87,7 +103,8 @@ def main() -> int:
     print("TEV_SCRIPT_IR_V3_CSHARP_BUILD=PASS")
 
     csharp_self_test = _run(
-        [dotnet, str(CSHARP_DLL), "--self-test", str(CASES_PATH), str(SCENARIO_PATH)]
+        [dotnet, str(CSHARP_DLL), "--self-test", str(CASES_PATH), str(SCENARIO_PATH)],
+        dotnet_roll_forward=True,
     )
     if csharp_self_test.returncode != 0:
         return _fail_process("TEV_SCRIPT_IR_V3_CSHARP_SELF_TEST", csharp_self_test)
@@ -115,7 +132,8 @@ def main() -> int:
             return _fail_process("TEV_SCRIPT_IR_V3_NODE_RECEIPT", node_receipt_process)
 
         csharp_receipt_process = _run(
-            [dotnet, str(CSHARP_DLL), str(program_path), str(scenario_path)]
+            [dotnet, str(CSHARP_DLL), str(program_path), str(scenario_path)],
+            dotnet_roll_forward=True,
         )
         if csharp_receipt_process.returncode != 0:
             return _fail_process("TEV_SCRIPT_IR_V3_CSHARP_RECEIPT", csharp_receipt_process)

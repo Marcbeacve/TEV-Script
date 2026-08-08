@@ -1,12 +1,14 @@
 using System.Globalization;
 using System.Text;
-using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace TevScript.Core.V3;
 
 public static class TevScriptCanonicalV3
 {
+    private static readonly IComparer<string> CanonicalKeyComparer =
+        new UnicodeScalarStringComparer();
+
     private static readonly uint[] Sha256RoundConstants =
     {
         0x428a2f98U, 0x71374491U, 0xb5c0fbcfU, 0xe9b5dba5U,
@@ -29,19 +31,9 @@ public static class TevScriptCanonicalV3
 
     public static string Json(JsonElement value)
     {
-        using var stream = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(
-            stream,
-            new JsonWriterOptions
-            {
-                Indented = false,
-                SkipValidation = false,
-                Encoder = JavaScriptEncoder.Default,
-            }))
-        {
-            Write(writer, value);
-        }
-        return Encoding.UTF8.GetString(stream.ToArray());
+        var builder = new StringBuilder();
+        Write(builder, value);
+        return builder.ToString();
     }
 
     public static string Json(string rawJson)
@@ -186,35 +178,45 @@ public static class TevScriptCanonicalV3
         destination[offset + 3] = (byte)value;
     }
 
-    private static void Write(Utf8JsonWriter writer, JsonElement value)
+    private static void Write(StringBuilder builder, JsonElement value)
     {
         switch (value.ValueKind)
         {
             case JsonValueKind.Object:
-                writer.WriteStartObject();
-                foreach (var property in value.EnumerateObject().OrderBy(item => item.Name, StringComparer.Ordinal))
+                builder.Append('{');
+                var firstProperty = true;
+                foreach (var property in value.EnumerateObject().OrderBy(item => item.Name, CanonicalKeyComparer))
                 {
-                    writer.WritePropertyName(property.Name);
-                    Write(writer, property.Value);
+                    if (!firstProperty) builder.Append(',');
+                    firstProperty = false;
+                    WriteString(builder, property.Name);
+                    builder.Append(':');
+                    Write(builder, property.Value);
                 }
-                writer.WriteEndObject();
+                builder.Append('}');
                 return;
             case JsonValueKind.Array:
-                writer.WriteStartArray();
-                foreach (var item in value.EnumerateArray()) Write(writer, item);
-                writer.WriteEndArray();
+                builder.Append('[');
+                var firstItem = true;
+                foreach (var item in value.EnumerateArray())
+                {
+                    if (!firstItem) builder.Append(',');
+                    firstItem = false;
+                    Write(builder, item);
+                }
+                builder.Append(']');
                 return;
             case JsonValueKind.String:
-                writer.WriteStringValue(value.GetString());
+                WriteString(builder, value.GetString()!);
                 return;
             case JsonValueKind.True:
-                writer.WriteBooleanValue(true);
+                builder.Append("true");
                 return;
             case JsonValueKind.False:
-                writer.WriteBooleanValue(false);
+                builder.Append("false");
                 return;
             case JsonValueKind.Null:
-                writer.WriteNullValue();
+                builder.Append("null");
                 return;
             case JsonValueKind.Number:
                 if (!value.TryGetInt64(out var integer))
@@ -225,12 +227,74 @@ public static class TevScriptCanonicalV3
                     throw new TevScriptV3Exception(
                         "TEVS_IR_V3_CANONICAL_NUMBER",
                         $"structural integer exceeds portable safe range: {integer.ToString(CultureInfo.InvariantCulture)}");
-                writer.WriteNumberValue(integer);
+                builder.Append(integer.ToString(CultureInfo.InvariantCulture));
                 return;
             default:
                 throw new TevScriptV3Exception(
                     "TEVS_IR_V3_CANONICAL_KIND",
                     $"unsupported JSON value kind {value.ValueKind}");
+        }
+    }
+
+    private static void WriteString(StringBuilder builder, string value)
+    {
+        builder.Append('"');
+        foreach (var character in value)
+        {
+            switch (character)
+            {
+                case '"': builder.Append("\\\""); break;
+                case '\\': builder.Append("\\\\"); break;
+                case '\b': builder.Append("\\b"); break;
+                case '\f': builder.Append("\\f"); break;
+                case '\n': builder.Append("\\n"); break;
+                case '\r': builder.Append("\\r"); break;
+                case '\t': builder.Append("\\t"); break;
+                default:
+                    if (character < 0x20 || character > 0x7e)
+                    {
+                        builder.Append("\\u");
+                        builder.Append(((int)character).ToString("x4", CultureInfo.InvariantCulture));
+                    }
+                    else
+                    {
+                        builder.Append(character);
+                    }
+                    break;
+            }
+        }
+        builder.Append('"');
+    }
+
+    private sealed class UnicodeScalarStringComparer : IComparer<string>
+    {
+        public int Compare(string? left, string? right)
+        {
+            if (ReferenceEquals(left, right)) return 0;
+            if (left is null) return -1;
+            if (right is null) return 1;
+            var leftIndex = 0;
+            var rightIndex = 0;
+            while (leftIndex < left.Length && rightIndex < right.Length)
+            {
+                var leftScalar = NextScalar(left, ref leftIndex);
+                var rightScalar = NextScalar(right, ref rightIndex);
+                if (leftScalar != rightScalar) return leftScalar < rightScalar ? -1 : 1;
+            }
+            if (leftIndex == left.Length && rightIndex == right.Length) return 0;
+            return leftIndex == left.Length ? -1 : 1;
+        }
+
+        private static int NextScalar(string value, ref int index)
+        {
+            var first = value[index++];
+            if (char.IsHighSurrogate(first)
+                && index < value.Length
+                && char.IsLowSurrogate(value[index]))
+            {
+                return char.ConvertToUtf32(first, value[index++]);
+            }
+            return first;
         }
     }
 }

@@ -47,7 +47,10 @@ static JsonNode ApplyMutation(JsonNode baseProgram, JsonObject mutation)
         var target = Resolve(result, path).AsArray();
         var left = mutation["left"]!.GetValue<int>();
         var right = mutation["right"]!.GetValue<int>();
-        (target[left], target[right]) = (target[right], target[left]);
+        var leftValue = target[left]?.DeepClone();
+        var rightValue = target[right]?.DeepClone();
+        target[left] = rightValue;
+        target[right] = leftValue;
         return result;
     }
     if (operation == "set")

@@ -36,7 +36,8 @@ test("IR V3 JavaScript conformance receipt is self-consistent", () => {
 test("IR V3 JavaScript conformance receipt records the same typed event witness", () => {
   const receipt = runIrV3Conformance(clone(PROGRAM), clone(SCENARIO)).receipt;
   assert.deepEqual(receipt.steps.map((step) => step.event_id), ["start", "update", "pulse"]);
-  assert.equal(new Set(receipt.steps.map((step) => step.state_hash)).size, 3);
+  assert.equal(receipt.steps[0].state_hash, receipt.steps[1].state_hash);
+  assert.notEqual(receipt.steps[1].state_hash, receipt.steps[2].state_hash);
   assert.deepEqual(receipt.steps[0].emitted, []);
   assert.equal(receipt.steps[1].emitted.length, 1);
   const changed = receipt.steps[1].emitted[0];

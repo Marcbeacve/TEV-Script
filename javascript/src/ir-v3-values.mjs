@@ -63,6 +63,14 @@ function exactKeys(value, path, expected) {
   }
 }
 
+function exactValueKeys(value, path, typeId, expected, message) {
+  const observed = Object.keys(value).sort();
+  const target = [...expected].sort();
+  if (observed.length !== target.length || observed.some((key, index) => key !== target[index])) {
+    valueFail(path, typeId, message);
+  }
+}
+
 export class TypeDescriptorV3 {
   constructor({ typeId, kind, fields = [], variants = [], argument = null, okType = null, errType = null }) {
     this.typeId = typeId;
@@ -285,9 +293,9 @@ export function decodeV3Value(typeId, raw, table, { context = "value", depth = 1
   }
   if (descriptor.kind === "record") {
     const outer = objectValue(raw, context);
-    exactKeys(outer, context, ["$record"]);
+    exactValueKeys(outer, context, typeId, ["$record"], "expected $record");
     const payload = objectValue(outer.$record, `${context}.$record`);
-    exactKeys(payload, `${context}.$record`, ["type", "fields"]);
+    exactValueKeys(payload, `${context}.$record`, typeId, ["type", "fields"], "record encoded type mismatch");
     if (payload.type !== typeId) valueFail(context, typeId, "record encoded type mismatch");
     const rawFields = arrayValue(payload.fields, `${context}.$record.fields`);
     if (rawFields.length !== descriptor.fields.length) valueFail(context, typeId, "record field count mismatch");
@@ -295,7 +303,7 @@ export function decodeV3Value(typeId, raw, table, { context = "value", depth = 1
     descriptor.fields.forEach(([expectedName, fieldType], index) => {
       const fieldPath = `${context}.$record.fields[${index}]`;
       const field = objectValue(rawFields[index], fieldPath);
-      exactKeys(field, fieldPath, ["name", "value"]);
+      exactValueKeys(field, fieldPath, fieldType, ["name", "value"], "record field shape mismatch");
       if (field.name !== expectedName) {
         valueFail(fieldPath, fieldType, `expected canonical field ${JSON.stringify(expectedName)}, got ${JSON.stringify(field.name)}`);
       }
@@ -308,9 +316,9 @@ export function decodeV3Value(typeId, raw, table, { context = "value", depth = 1
   }
   if (descriptor.kind === "enum") {
     const outer = objectValue(raw, context);
-    exactKeys(outer, context, ["$enum"]);
+    exactValueKeys(outer, context, typeId, ["$enum"], "expected $enum");
     const payload = objectValue(outer.$enum, `${context}.$enum`);
-    exactKeys(payload, `${context}.$enum`, ["type", "variant"]);
+    exactValueKeys(payload, `${context}.$enum`, typeId, ["type", "variant"], "enum encoded type mismatch");
     if (payload.type !== typeId) valueFail(context, typeId, "enum encoded type mismatch");
     const variant = localName(payload.variant, `${context}.$enum.variant`);
     if (!descriptor.variants.includes(variant)) valueFail(context, typeId, `unknown enum variant ${JSON.stringify(variant)}`);
@@ -318,15 +326,15 @@ export function decodeV3Value(typeId, raw, table, { context = "value", depth = 1
   }
   if (descriptor.kind === "option") {
     const outer = objectValue(raw, context);
-    exactKeys(outer, context, ["$option"]);
+    exactValueKeys(outer, context, typeId, ["$option"], "expected $option");
     const payload = objectValue(outer.$option, `${context}.$option`);
     if (payload.type !== typeId) valueFail(context, typeId, "Option encoded type mismatch");
     if (payload.variant === "None") {
-      exactKeys(payload, `${context}.$option`, ["type", "variant"]);
+      exactValueKeys(payload, `${context}.$option`, typeId, ["type", "variant"], "None must not carry a payload");
       return new VariantValueV3(typeId, "None");
     }
     if (payload.variant === "Some") {
-      exactKeys(payload, `${context}.$option`, ["type", "variant", "value"]);
+      exactValueKeys(payload, `${context}.$option`, typeId, ["type", "variant", "value"], "Some requires exactly one payload");
       return new VariantValueV3(
         typeId,
         "Some",
@@ -339,12 +347,12 @@ export function decodeV3Value(typeId, raw, table, { context = "value", depth = 1
   }
   if (descriptor.kind === "result") {
     const outer = objectValue(raw, context);
-    exactKeys(outer, context, ["$result"]);
+    exactValueKeys(outer, context, typeId, ["$result"], "expected $result");
     const payload = objectValue(outer.$result, `${context}.$result`);
     if (payload.type !== typeId) valueFail(context, typeId, "Result encoded type mismatch");
     const payloadType = payload.variant === "Ok" ? descriptor.okType : payload.variant === "Err" ? descriptor.errType : null;
     if (payloadType === null) valueFail(context, typeId, `unknown Result variant ${JSON.stringify(payload.variant)}`);
-    exactKeys(payload, `${context}.$result`, ["type", "variant", "value"]);
+    exactValueKeys(payload, `${context}.$result`, typeId, ["type", "variant", "value"], `${payload.variant} requires exactly one payload`);
     return new VariantValueV3(
       typeId,
       payload.variant,

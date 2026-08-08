@@ -256,7 +256,11 @@ public static class TevScriptProgramValidatorV3
         {
             RequireExactKeys(instruction, path, "op", "capability_id", "argc", "return_type", "kind");
             var id = RequireStable(instruction, "capability_id", path + ".capability_id");
-            if (!capabilities.TryGetValue(id, out var contract)) Contract(path, $"undeclared capability {id}");
+            if (!capabilities.TryGetValue(id, out var contract))
+            {
+                Contract(path, $"undeclared capability {id}");
+                return;
+            }
             if (RequireInt(instruction, "argc", path + ".argc", 0, 64) != contract.Parameters.Length
                 || RequireString(instruction, "return_type", path + ".return_type") != contract.ReturnType
                 || RequireString(instruction, "kind", path + ".kind") != contract.Kind)
@@ -267,7 +271,11 @@ public static class TevScriptProgramValidatorV3
         {
             RequireExactKeys(instruction, path, "op", "event_id", "argument_types", "argc");
             var id = RequireLocal(instruction, "event_id", path + ".event_id");
-            if (!events.TryGetValue(id, out var contract)) Contract(path, $"undeclared emitted event {id}");
+            if (!events.TryGetValue(id, out var contract))
+            {
+                Contract(path, $"undeclared emitted event {id}");
+                return;
+            }
             var types = RequireArray(instruction, "argument_types", path + ".argument_types", 0, 64).EnumerateArray().Select((item, index) => RequireStorable(table, item, $"{path}.argument_types[{index}]")).ToArray();
             if (RequireInt(instruction, "argc", path + ".argc", 0, 64) != contract.Length || !types.SequenceEqual(contract, StringComparer.Ordinal)) Contract(path, $"event contract mismatch for {id}");
             return;
@@ -411,7 +419,10 @@ public static class TevScriptProgramValidatorV3
     private static int RequireInt(JsonElement parent, string property, string path, int min, int max)
     {
         if (!parent.TryGetProperty(property, out var raw) || raw.ValueKind != JsonValueKind.Number || !raw.TryGetInt32(out var value) || value < min || value > max)
+        {
             Contract(path, $"expected integer in [{min},{max}]");
+            return 0;
+        }
         return value;
     }
 

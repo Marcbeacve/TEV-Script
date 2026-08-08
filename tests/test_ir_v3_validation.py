@@ -25,17 +25,16 @@ CASES = json.loads(
 
 def _mutate(program: dict, mutation: dict) -> dict:
     result = copy.deepcopy(program)
-    target = result
-    for segment in mutation["path"]:
-        target = target[segment]
     operation = mutation["operation"]
     if operation == "set":
-        # For set, the path denotes the field itself. Re-walk to its parent.
         parent = result
         for segment in mutation["path"][:-1]:
             parent = parent[segment]
         parent[mutation["path"][-1]] = copy.deepcopy(mutation["value"])
     elif operation == "swap":
+        target = result
+        for segment in mutation["path"]:
+            target = target[segment]
         target[mutation["left"]], target[mutation["right"]] = (
             target[mutation["right"]],
             target[mutation["left"]],

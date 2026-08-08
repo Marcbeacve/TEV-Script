@@ -126,7 +126,10 @@ public static class TevScriptFlowV3
                 {
                     var capabilityId = instruction.GetProperty("capability_id").GetString()!;
                     if (!capabilities.TryGetValue(capabilityId, out var signature))
+                    {
                         Fail(currentPath, $"undeclared capability {capabilityId}");
+                        break;
+                    }
                     if (instruction.GetProperty("argc").GetInt32() != signature.Parameters.Length
                         || instruction.GetProperty("return_type").GetString() != signature.ReturnType
                         || instruction.GetProperty("kind").GetString() != signature.Kind)
@@ -139,7 +142,10 @@ public static class TevScriptFlowV3
                 {
                     var eventId = instruction.GetProperty("event_id").GetString()!;
                     if (!events.TryGetValue(eventId, out var signature))
+                    {
                         Fail(currentPath, $"undeclared emitted event {eventId}");
+                        break;
+                    }
                     var argumentTypes = instruction.GetProperty("argument_types").EnumerateArray().Select(item => item.GetString()!).ToArray();
                     if (instruction.GetProperty("argc").GetInt32() != signature.Length || !argumentTypes.SequenceEqual(signature, StringComparer.Ordinal))
                         Fail(currentPath, $"event contract mismatch for {eventId}");

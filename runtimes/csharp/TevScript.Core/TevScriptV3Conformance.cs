@@ -48,7 +48,10 @@ public static class TevScriptV3Conformance
                     Fail("TEVS_IR_V3_CONFORMANCE_CAPABILITY_ORDER", path, "capability scripts must be strictly sorted by id");
                 previousId = id;
                 if (!contracts.TryGetValue(id, out var contract))
+                {
                     Fail("TEVS_IR_V3_CONFORMANCE_CAPABILITY_UNKNOWN", path, $"scenario scripts undeclared capability {id}");
+                    continue;
+                }
                 var callsRaw = raw.GetProperty("calls");
                 if (callsRaw.ValueKind != JsonValueKind.Array || callsRaw.GetArrayLength() > 4096)
                     Fail("TEVS_IR_V3_CONFORMANCE_SHAPE", path + ".calls", "expected array length in [0,4096]");

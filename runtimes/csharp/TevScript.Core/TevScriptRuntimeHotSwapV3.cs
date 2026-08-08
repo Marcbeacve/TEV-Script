@@ -79,7 +79,7 @@ public sealed partial class TevScriptRuntimeV3
                     throw new TevScriptV3Exception(
                         "TEVS_IR_V3_SWAP_STATE_REMOVED",
                         $"candidate removed state {entitySnapshot.Key}.{state.Key}");
-                if (!StringComparer.Ordinal.Equals(state.Value.TypeId, expectedType))
+                if (!StringComparer.Ordinal.Equals(ValueTypeId(state.Value), expectedType))
                     throw new TevScriptV3Exception(
                         "TEVS_IR_V3_SWAP_STATE_TYPE",
                         $"candidate changed state type for {entitySnapshot.Key}.{state.Key}");
@@ -100,6 +100,20 @@ public sealed partial class TevScriptRuntimeV3
                 candidate.State[state.Key] = state.Value;
         }
     }
+
+    private static string ValueTypeId(TevScriptValueV3 value) => value switch
+    {
+        TevBoolV3 => "Bool",
+        TevIntV3 => "Int",
+        TevRatV3 => "Rat",
+        TevTextV3 => "Text",
+        TevVectorV3 vector => vector.TypeId,
+        TevRecordV3 record => record.TypeId,
+        TevVariantV3 variant => variant.TypeId,
+        _ => throw new TevScriptV3Exception(
+            "TEVS_IR_V3_SWAP_STATE_TYPE",
+            $"unsupported snapshot value type {value.GetType().Name}"),
+    };
 }
 
 public sealed class TevScriptRuntimeSwapPlanV3
