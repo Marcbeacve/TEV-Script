@@ -105,7 +105,7 @@ class V1EditorAssetTests(unittest.TestCase):
         self.assertIn("Err(", bodies)
         self.assertIn(" .. ", bodies)
 
-    def test_editor_readme_explicitly_rejects_duplicate_semantic_authority(self) -> None:
+    def test_editor_readme_preserves_one_semantic_authority_with_external_lsp(self) -> None:
         readme = (EDITOR / "README.md").read_text(encoding="utf-8")
         for phrase in (
             "zero-runtime, zero-dependency",
@@ -113,7 +113,12 @@ class V1EditorAssetTests(unittest.TestCase):
             "independent parser",
             "second type checker",
             "formatter",
-            "future LSP should call the canonical V1 compiler pipeline",
+            "external thin LSP adapter",
+            "tev-script-v1-lsp",
+            "canonical V1 parser/linker/static-semantic pipeline",
+            "VS Code lexical package -> presentation only",
+            "external V1 LSP         -> protocol adapter only",
+            "V1 compiler pipeline    -> semantic authority",
         ):
             self.assertIn(phrase, readme)
 
