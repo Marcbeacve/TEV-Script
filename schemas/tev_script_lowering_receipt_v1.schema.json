@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev-script.local/schemas/tev_script_lowering_receipt_v1.schema.json",
+  "title": "TEV Script lowering receipt V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "profile",
+    "source",
+    "target",
+    "proof_obligations",
+    "receipt_hash"
+  ],
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_LOWERING_RECEIPT_V1"},
+    "profile": {"const": "TEV_SCRIPT_V1_TO_IR_V2_ERASABLE_PROFILE_V1"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "language_version", "semantic_hash", "artifact_sha256"],
+      "properties": {
+        "schema": {"const": "TEV_SCRIPT_LINKED_PROGRAM_V1"},
+        "language_version": {"const": "1.0.0"},
+        "semantic_hash": {"$ref": "#/$defs/hash"},
+        "artifact_sha256": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "language_version", "semantic_hash", "artifact_sha256"],
+      "properties": {
+        "schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V2"},
+        "language_version": {"const": "0.2.0"},
+        "semantic_hash": {"$ref": "#/$defs/hash"},
+        "artifact_sha256": {"$ref": "#/$defs/hash"}
+      }
+    },
+    "proof_obligations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_semantic_hash_verified",
+        "ir_v2_lowering_boundary_clear",
+        "target_ir_contract_validated",
+        "runtime_v1_value_kinds_erased"
+      ],
+      "properties": {
+        "source_semantic_hash_verified": {"const": true},
+        "ir_v2_lowering_boundary_clear": {"const": true},
+        "target_ir_contract_validated": {"const": true},
+        "runtime_v1_value_kinds_erased": {"const": true}
+      }
+    },
+    "receipt_hash": {"$ref": "#/$defs/hash"}
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
