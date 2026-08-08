@@ -16,6 +16,16 @@
     "runtime_checkpoint_v2": "CLOSED_CANDIDATE_V1",
     "signed_update_v2": "CLOSED_CANDIDATE_V1"
   },
+  "build_tooling": {
+    "project_manifest_schema": "CLOSED_CANDIDATE_V1",
+    "explicit_finite_source_set": true,
+    "filesystem_globs": false,
+    "network_resolution": false,
+    "manifest_source_order_semantic": false,
+    "manifest_hash": "IMPLEMENTED_CANDIDATE",
+    "project_input_hash": "IMPLEMENTED_CANDIDATE",
+    "input_drift_recheck_before_artifact_emission": "IMPLEMENTED_CANDIDATE"
+  },
   "implementation": {
     "python_v1_reference_frontend": "IMPLEMENTED_CANDIDATE",
     "versioned_v0_2_v1_dispatch": "IMPLEMENTED_CANDIDATE",
@@ -40,6 +50,11 @@
     "linked_v1_to_ir_v3_lowering": "IMPLEMENTED_CANDIDATE",
     "lowering_receipt_v2": "IMPLEMENTED_CANDIDATE",
     "ir_v2_to_ir_v3_lift": "IMPLEMENTED_CANDIDATE",
+    "deterministic_project_manifest": "IMPLEMENTED_CANDIDATE",
+    "project_check_and_build_cli": "IMPLEMENTED_CANDIDATE",
+    "public_python_v1_api": "IMPLEMENTED_CANDIDATE_VERSIONED_ADDITIVE",
+    "v1_cli_auto_ir_target": "IMPLEMENTED_CANDIDATE",
+    "v1_cli_lowering_receipts": "IMPLEMENTED_CANDIDATE",
     "ir_v3_cross_runtime_receipt_protocol": "IMPLEMENTED_CANDIDATE",
     "runtime_checkpoint_v2_for_v3_values": "IMPLEMENTED_CANDIDATE",
     "checkpoint_python_javascript_csharp_byte_lock": "GATE_IMPLEMENTED",
@@ -51,6 +66,7 @@
     "signed_update_browser_wasm": "GATE_IMPLEMENTED",
     "signed_update_wasi_fresh_restore": "GATE_IMPLEMENTED",
     "full_precertify_v5": "IMPLEMENTED_CANDIDATE",
+    "certify_full_read_only_admission": "IMPLEMENTED_CANDIDATE",
     "javascript_source_frontend": "NOT_REQUIRED_FOR_V1_RUNTIME_CONFORMANCE",
     "csharp_source_frontend": "NOT_REQUIRED_FOR_V1_RUNTIME_CONFORMANCE"
   },
@@ -72,7 +88,9 @@
     "v0_2_csharp_assembly_remains_netstandard2_1": true,
     "v3_csharp_runtime_is_separate_assembly": true,
     "ir_v2_primitive_encoding_preserved_by_ir_v3": true,
-    "ir_v2_to_ir_v3_verified_lift_implemented_candidate": true
+    "ir_v2_to_ir_v3_verified_lift_implemented_candidate": true,
+    "v0_2_cli_binding_preserved": true,
+    "v1_cli_binding_additive": true
   },
   "required_features": [
     {"id":"MODULES","source_spec":"CLOSED","reference_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"IMPLEMENTED_CANDIDATE_PRE_IR_ERASURE"},
@@ -138,6 +156,7 @@
     "IR_V3_SCHEMA_VALUE_CODEC_AND_TYPED_CFG_DYNAMIC_PASS",
     "V1_TO_IR_V3_END_TO_END_DYNAMIC_PASS",
     "IR_V2_TO_IR_V3_LIFT_DYNAMIC_PASS",
+    "PROJECT_MANIFEST_AND_PUBLIC_CLI_DYNAMIC_PASS",
     "PYTHON_JS_CSHARP_IR_V3_RECEIPT_BYTE_LOCK_PASS",
     "RUNTIME_CHECKPOINT_V2_PYTHON_JS_CSHARP_BYTE_LOCK_PASS",
     "BROWSER_WASM_IR_V3_RECEIPT_CHECKPOINT_PARITY_PASS",
