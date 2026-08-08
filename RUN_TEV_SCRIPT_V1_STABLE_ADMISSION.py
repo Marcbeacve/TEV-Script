@@ -14,10 +14,10 @@ GLOBAL_CERT_SCHEMA = "TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V2"
 PYTHON_CERT_SCHEMA = "TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V2"
 STABLE_VERSION = "1.0.0"
 
-# A stable-shaped commit may change release metadata and distribution-facing
-# documentation only. Runtime/compiler/gate changes require a new technical
-# candidate and must be certified before another stable attempt.
-ALLOWED_RELEASE_PATHS = {
+# S is intentionally a release-only identity. All eight paths are required to
+# change from P, and no other path may change. Runtime/compiler/gate changes
+# require a new technically certified parent P before another stable attempt.
+REQUIRED_RELEASE_PATHS = {
     "CANONICAL_INDEX.json",
     "CHANGELOG.md",
     "PROJECT_STATE.md",
@@ -27,6 +27,7 @@ ALLOWED_RELEASE_PATHS = {
     "spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json",
     "tev_script/release_metadata_v1.py",
 }
+ALLOWED_RELEASE_PATHS = frozenset(REQUIRED_RELEASE_PATHS)
 
 
 def run(
@@ -171,15 +172,23 @@ def validate_release_diff(parent: str, head: str) -> list[str]:
     ancestry = run(["git", "merge-base", "--is-ancestor", parent, head])
     if ancestry.returncode != 0:
         fail("STABLE_TECHNICAL_PARENT_ANCESTRY", "PARENT_NOT_ANCESTOR", ancestry)
-    changed = git_text("diff", "--name-only", parent + ".." + head).splitlines()
-    changed = [item for item in changed if item]
+    changed = sorted(
+        item
+        for item in git_text("diff", "--name-only", parent + ".." + head).splitlines()
+        if item
+    )
     if not changed:
         fail("STABLE_RELEASE_DIFF", "NO_RELEASE_CHANGES")
-    forbidden = sorted(set(changed) - ALLOWED_RELEASE_PATHS)
+    changed_set = set(changed)
+    forbidden = sorted(changed_set - ALLOWED_RELEASE_PATHS)
     if forbidden:
         fail("STABLE_RELEASE_DIFF", "FORBIDDEN_PATHS=" + ",".join(forbidden))
+    missing = sorted(REQUIRED_RELEASE_PATHS - changed_set)
+    if missing:
+        fail("STABLE_RELEASE_DIFF", "MISSING_REQUIRED_PATHS=" + ",".join(missing))
+    require_equal("STABLE_RELEASE_DIFF_PATH_SET", changed_set, set(REQUIRED_RELEASE_PATHS))
     print("STABLE_RELEASE_DIFF=PASS files=" + str(len(changed)))
-    return sorted(changed)
+    return changed
 
 
 def main(argv: list[str] | None = None) -> int:
