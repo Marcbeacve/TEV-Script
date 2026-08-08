@@ -15,6 +15,7 @@ import venv
 ROOT = Path(__file__).resolve().parent
 V0_2_ORACLE = "6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5"
 RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V1"
+SOAK_EVENTS = 10_000
 
 
 def run(
@@ -175,6 +176,13 @@ def canonical_json(value: object) -> str:
 def main() -> int:
     print("TEV_SCRIPT_V1_PYTHON_PRODUCTION_GATE_SCHEMA=V1")
     print("V0_2_CERTIFIED_BASE=" + V0_2_ORACLE)
+    if sys.version_info < (3, 11):
+        fail(
+            "TEV_SCRIPT_V1_PYTHON_VERSION",
+            f"REQUIRES_3_11_OR_NEWER observed={sys.version.split()[0]}",
+        )
+    print("TEV_SCRIPT_V1_PYTHON_VERSION=PASS version=" + sys.version.split()[0])
+
     if shutil.which("git") is None:
         fail("TEV_SCRIPT_V1_PYTHON_TOOL_GIT", "MISSING")
 
@@ -191,6 +199,15 @@ def main() -> int:
     if ancestry.returncode != 0:
         fail("V0_2_ORACLE_ANCESTRY", "FAIL", ancestry)
     print("V0_2_ORACLE_ANCESTRY=PASS")
+
+    governance = run(
+        (sys.executable, str(ROOT / "tools" / "validate_v1_governance.py"))
+    )
+    require_success(
+        "TEV_SCRIPT_V1_PYTHON_GOVERNANCE",
+        governance,
+        "TEV_SCRIPT_V1_GOVERNANCE=PASS",
+    )
 
     frontend = run((sys.executable, str(ROOT / "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py")))
     require_success(
@@ -332,11 +349,20 @@ if host.state("E")["x"] != 1:
 host.invoke("E", "inc")
 if host.state("E")["x"] != 2:
     raise SystemExit("state_after_restart_continuation")
+
+soak_events = int(sys.argv[2])
+soak = PythonRuntimeHostV1(artifact)
+for _ in range(soak_events):
+    soak.invoke("E", "inc")
+if soak.state("E")["x"] != soak_events:
+    raise SystemExit("soak_state_mismatch")
+
 print("TEV_SCRIPT_V1_PYTHON_INSTALLED_RUNTIME_HOST=PASS")
 print("TEV_SCRIPT_V1_PYTHON_INSTALLED_CHECKPOINT_RESTART=PASS")
+print(f"TEV_SCRIPT_V1_PYTHON_SOAK_EVENTS={soak_events}")
 '''
         smoke = run(
-            (str(python), "-c", smoke_code, str(ir_path)),
+            (str(python), "-c", smoke_code, str(ir_path), str(SOAK_EVENTS)),
             cwd=work,
             env=environment,
         )
@@ -351,7 +377,14 @@ print("TEV_SCRIPT_V1_PYTHON_INSTALLED_CHECKPOINT_RESTART=PASS")
                 "MISSING_CHECKPOINT_RESTART_WITNESS",
                 smoke,
             )
+        if f"TEV_SCRIPT_V1_PYTHON_SOAK_EVENTS={SOAK_EVENTS}" not in smoke.stdout:
+            fail(
+                "TEV_SCRIPT_V1_PYTHON_INSTALLED_RUNTIME",
+                "MISSING_SOAK_WITNESS",
+                smoke,
+            )
         print("TEV_SCRIPT_V1_PYTHON_CHECKPOINT_RESTART=PASS")
+        print("TEV_SCRIPT_V1_PYTHON_SOAK=PASS events=" + str(SOAK_EVENTS))
 
         require_clean("AFTER")
         head_after = git_text("rev-parse", "HEAD")
@@ -371,6 +404,7 @@ print("TEV_SCRIPT_V1_PYTHON_INSTALLED_CHECKPOINT_RESTART=PASS")
             "package_version": package_version,
             "wheel_filename": wheel_a.name,
             "wheel_sha256": wheel_a_hash,
+            "v1_governance": "PASS",
             "frontend_closure": "PASS",
             "wheel_reproducible": True,
             "isolated_install": "PASS",
@@ -378,6 +412,8 @@ print("TEV_SCRIPT_V1_PYTHON_INSTALLED_CHECKPOINT_RESTART=PASS")
             "installed_ir_v3_compile": "PASS",
             "installed_runtime_host": "PASS",
             "checkpoint_restart_continuation": "PASS",
+            "soak_events": SOAK_EVENTS,
+            "soak_result": "PASS",
             "certify_full": False,
             "language_stable": False,
         }
