@@ -172,6 +172,7 @@
       ],
       "example_and_public_api_tests": [
         "tests/test_v1_artifact_write.py",
+        "tests/test_v1_browser_witness_authority.py",
         "tests/test_v1_cli_full.py",
         "tests/test_v1_descriptor.py",
         "tests/test_v1_descriptor_schema_cardinality.py",
@@ -182,7 +183,8 @@
         "tests/test_v1_project.py",
         "tests/test_v1_public_api.py",
         "tests/test_v1_python_host.py",
-        "tests/test_v1_runtime_cli_v3.py"
+        "tests/test_v1_runtime_cli_v3.py",
+        "tests/test_v1_wasi_authority_boundary.py"
       ],
       "implementation_plan": "docs/V1_IMPLEMENTATION_PLAN.md",
       "certification_protocol": "docs/V1_CERTIFICATION_PROTOCOL.md"
