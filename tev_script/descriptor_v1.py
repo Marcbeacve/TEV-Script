@@ -78,6 +78,7 @@ def v1_descriptor() -> dict[str, object]:
             "observation_effect_separation",
             "deterministic_local_events",
             "canonical_linked_program",
+            "algebraic_runtime_ir_v3",
             "runtime_checkpoint_v2",
             "governed_signed_update_v2",
         ],
