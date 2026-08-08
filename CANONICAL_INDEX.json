@@ -101,6 +101,7 @@
         "runtime_accepts_source": false,
         "runtime_ir_schema": "TEV_SCRIPT_PROGRAM_IR_V3",
         "least_authority_default": true,
+        "serialized_host_access": true,
         "checkpoint_schema": "TEV_SCRIPT_RUNTIME_CHECKPOINT_V2",
         "documentation": "docs/V1_PYTHON_PRODUCTION.md",
         "test": "tests/test_v1_python_host.py",
