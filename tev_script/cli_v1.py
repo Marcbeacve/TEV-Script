@@ -14,6 +14,7 @@ from .pipeline_v1 import (
     compile_v1_paths_to_ir_v2,
     compile_v1_paths_to_ir_v3,
 )
+from .project_v1 import load_v1_project, verify_v1_project_inputs
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,6 +35,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_sources(check)
 
+    project_check = subcommands.add_parser(
+        "project-check",
+        help="validate an explicit TEV_SCRIPT_PROJECT_V1 and its complete source set",
+    )
+    project_check.add_argument("project")
+
     link = subcommands.add_parser(
         "link",
         help="write TEV_SCRIPT_LINKED_PROGRAM_V1 canonical JSON",
@@ -49,23 +56,24 @@ def build_parser() -> argparse.ArgumentParser:
 
     compile_command = subcommands.add_parser(
         "compile",
-        help="compile V1 source set to auto-selected, IR V2, or IR V3 target",
+        help="compile an explicit V1 source set to auto-selected, IR V2, or IR V3 target",
     )
     _add_sources(compile_command)
-    compile_command.add_argument(
-        "--target",
-        choices=("auto", "irv2", "irv3"),
-        default="auto",
-        help=(
-            "auto selects IR V2 only when the linked program is losslessly "
-            "erasable to that profile; otherwise it selects IR V3"
-        ),
-    )
+    _add_target(compile_command, default="auto")
     compile_command.add_argument("--output", "-o", required=True)
     compile_command.add_argument(
         "--receipt",
         help="optional path for canonical TEV Script lowering receipt",
     )
+
+    build = subcommands.add_parser(
+        "build",
+        help="compile a TEV_SCRIPT_PROJECT_V1 using its finite source manifest",
+    )
+    build.add_argument("project")
+    _add_target(build, default=None)
+    build.add_argument("--output", "-o", required=True)
+    build.add_argument("--receipt")
 
     lower_v2 = subcommands.add_parser(
         "lower-irv2",
@@ -92,25 +100,25 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if arguments.command == "check":
             analysis = analyze_v1_paths(arguments.sources)
-            print(
-                canonical_json(
-                    {
-                        "schema": "TEV_SCRIPT_V1_CHECK_RESULT_V2",
-                        "status": "PASS_CANDIDATE",
-                        "program_id": analysis.plan.program_id,
-                        "linked_semantic_hash": analysis.linked_program.semantic_hash,
-                        "static_semantic_hash": analysis.semantics.semantic_hash,
-                        "ir_v2_lowerable": analysis.ir_v2_boundary.lowerable,
-                        "ir_v2_blocker_count": len(analysis.ir_v2_boundary.blockers),
-                        "default_target_ir": (
-                            "TEV_SCRIPT_PROGRAM_IR_V2"
-                            if analysis.ir_v2_boundary.lowerable
-                            else "TEV_SCRIPT_PROGRAM_IR_V3"
-                        ),
-                        "stable_release": False,
-                    }
-                )
+            print(canonical_json(_check_result(analysis)))
+            return 0
+
+        if arguments.command == "project-check":
+            project = load_v1_project(arguments.project)
+            analysis = analyze_v1_paths(project.source_paths)
+            verify_v1_project_inputs(project)
+            result = _check_result(analysis)
+            result.update(
+                {
+                    "schema": "TEV_SCRIPT_V1_PROJECT_CHECK_RESULT_V1",
+                    "project_manifest_hash": project.manifest_hash,
+                    "project_input_hash": project.project_input_hash,
+                    "manifest_default_target": project.default_target,
+                    "source_count": len(project.sources),
+                    "sources": list(project.relative_sources),
+                }
             )
+            print(canonical_json(result))
             return 0
 
         if arguments.command == "link":
@@ -149,6 +157,44 @@ def main(argv: list[str] | None = None) -> int:
                 arguments.output,
                 arguments.receipt,
             )
+
+        if arguments.command == "build":
+            project = load_v1_project(arguments.project)
+            target = arguments.target or project.default_target
+            compilation = _select_compilation(list(project.source_paths), target)
+            # Detect source/manifest changes during analysis before emitting any
+            # artifact. Build metadata is not semantic, but it must be stable
+            # across one governed build operation.
+            verify_v1_project_inputs(project)
+            selected = compilation.target
+            receipt = _emit_receipt(
+                compilation.analysis.linked_program,
+                selected,
+                arguments.receipt,
+            )
+            _write_text(arguments.output, selected.canonical_json)
+            print(
+                canonical_json(
+                    {
+                        "schema": "TEV_SCRIPT_V1_PROJECT_BUILD_RESULT_V1",
+                        "status": "PASS_CANDIDATE",
+                        "program_id": compilation.analysis.plan.program_id,
+                        "project_manifest_hash": project.manifest_hash,
+                        "project_input_hash": project.project_input_hash,
+                        "manifest_default_target": project.default_target,
+                        "requested_target_override": arguments.target,
+                        "effective_target": target,
+                        "target_ir_schema": selected.ir["schema"],
+                        "linked_semantic_hash": compilation.analysis.linked_program.semantic_hash,
+                        "target_ir_semantic_hash": selected.ir["semantic_hash"],
+                        "source_count": len(project.sources),
+                        "output": Path(arguments.output).as_posix(),
+                        "lowering_receipt": receipt,
+                        "stable_release": False,
+                    }
+                )
+            )
+            return 0
 
         if arguments.command == "lower-irv2":
             compilation = compile_v1_paths_to_ir_v2(arguments.sources)
@@ -212,21 +258,44 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
 
+def _check_result(analysis) -> dict[str, object]:
+    return {
+        "schema": "TEV_SCRIPT_V1_CHECK_RESULT_V2",
+        "status": "PASS_CANDIDATE",
+        "program_id": analysis.plan.program_id,
+        "linked_semantic_hash": analysis.linked_program.semantic_hash,
+        "static_semantic_hash": analysis.semantics.semantic_hash,
+        "ir_v2_lowerable": analysis.ir_v2_boundary.lowerable,
+        "ir_v2_blocker_count": len(analysis.ir_v2_boundary.blockers),
+        "default_target_ir": (
+            "TEV_SCRIPT_PROGRAM_IR_V2"
+            if analysis.ir_v2_boundary.lowerable
+            else "TEV_SCRIPT_PROGRAM_IR_V3"
+        ),
+        "stable_release": False,
+    }
+
+
+def _select_compilation(sources, target: str):
+    if target == "irv2":
+        return compile_v1_paths_to_ir_v2(sources)
+    if target == "irv3":
+        return compile_v1_paths_to_ir_v3(sources)
+    if target == "auto":
+        return compile_v1_paths_auto(sources)
+    raise TevScriptError(
+        "TEVS_V1_CLI_TARGET",
+        f"unsupported V1 compilation target {target!r}",
+    )
+
+
 def _compile_command(
     sources: list[str],
     target: str,
     output: str,
     receipt_path: str | None,
 ) -> int:
-    if target == "irv2":
-        compilation = compile_v1_paths_to_ir_v2(sources)
-    elif target == "irv3":
-        compilation = compile_v1_paths_to_ir_v3(sources)
-    elif target == "auto":
-        compilation = compile_v1_paths_auto(sources)
-    else:
-        raise AssertionError(target)
-
+    compilation = _select_compilation(sources, target)
     selected = compilation.target
     linked = compilation.analysis.linked_program
     receipt = _emit_receipt(linked, selected, receipt_path)
@@ -305,6 +374,18 @@ def _add_sources(parser: argparse.ArgumentParser) -> None:
         "sources",
         nargs="+",
         help="explicit finite V1 source set: one script root plus reachable modules",
+    )
+
+
+def _add_target(parser: argparse.ArgumentParser, *, default: str | None) -> None:
+    parser.add_argument(
+        "--target",
+        choices=("auto", "irv2", "irv3"),
+        default=default,
+        help=(
+            "auto selects IR V2 only when the linked program is losslessly "
+            "erasable to that profile; otherwise it selects IR V3"
+        ),
     )
 
 
