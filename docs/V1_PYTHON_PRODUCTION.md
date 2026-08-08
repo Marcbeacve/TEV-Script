@@ -1,6 +1,6 @@
 # TEV Script V1 — Python production host
 
-Status: **implementation candidate**. This document does not authorize a V1 stable release and does not replace `PRECERTIFY` / `CERTIFY_FULL`.
+Status: **implementation candidate**. This document does not authorize a V1 stable release and does not replace the global V1 `PRECERTIFY` / `CERTIFY_FULL` sequence.
 
 ## 1. Production boundary
 
@@ -169,7 +169,7 @@ host.restore_checkpoint(checkpoint_text)
 
 This is exact restoration, not schema migration. Runtime update/migration remains the separate governed hot-swap/update mechanism.
 
-## 7. Distribution gate
+## 7. Python production admission
 
 Run from a clean exact commit with Python 3.11+:
 
@@ -182,7 +182,7 @@ The gate is intentionally stronger than an in-repository unit-test pass. It perf
 1. Python-version, Git, pip and setuptools preflight;
 2. clean-worktree and exact Git identity capture;
 3. certified V0.2 oracle ancestry check;
-4. V1 governance validation, including the Python production surface/gate bindings;
+4. V1 governance validation, including the Python production/certification bindings;
 5. the complete current V1 Python/frontend/IR V3/V0.2 Python closure;
 6. an explicit zero-runtime-dependency assertion for the reference Python package;
 7. two independent `git archive HEAD` source extractions;
@@ -210,9 +210,7 @@ The soak is a deterministic semantic endurance witness, not a hardware-independe
 
 The wheel build is explicitly offline (`PIP_NO_INDEX=1`, `--no-deps`, `--no-build-isolation`). If the local build backend needed by `pyproject.toml` is absent or incompatible, the gate fails rather than downloading a different toolchain silently.
 
-## 8. Meaning of PASS
-
-A successful gate ends with:
+A successful production admission ends with:
 
 ```text
 TEV_SCRIPT_V1_PYTHON_PRODUCTION=PASS_CANDIDATE
@@ -220,37 +218,87 @@ CERTIFY_FULL=NO
 LANGUAGE_STABLE=NO
 ```
 
-`PASS_CANDIDATE` means the exact commit demonstrated the Python distribution and production-host properties above. It does **not** mean:
+`PASS_CANDIDATE` means the exact commit demonstrated the Python distribution and production-host properties above. It is evidence input to the Python-specific certification gate; it is not itself a certificate.
 
-- V1 has been promoted to stable;
-- cross-runtime V1 certification is complete;
-- the package version may be relabeled `1.0.0` without another exact-commit validation;
-- arbitrary Python capability implementations are sandboxed;
-- a different wheel or commit inherits the receipt.
+## 8. Python-specific full certification
 
-## 9. Stable release sequence
-
-The intended release sequence is:
+Python can be certified as a host/product profile without waiting for Unity, Browser-WASM or the global multi-host V1 certificate:
 
 ```text
-implementation commit
-    -> Python production gate
-    -> V1 PRECERTIFY
-    -> V1 CERTIFY_FULL
-    -> explicit stable-version/promotion commit
-    -> Python production gate again on promoted commit
-    -> PRECERTIFY again
-    -> CERTIFY_FULL again
-    -> release/tag/publication authorization
+python RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py
 ```
 
-No certification is transitive across a source/version change.
+This gate is read-only with respect to tracked repository content. It:
 
-## 10. Operational deployment checklist
+1. requires a clean exact commit and captures HEAD/tree/branch;
+2. verifies certified V0.2 ancestry;
+3. verifies canonical Python production/certification gate bindings and stable=false authority metadata;
+4. runs `RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` on that exact commit;
+5. rejects any skipped result;
+6. parses exactly one production receipt and one external receipt hash;
+7. removes the embedded receipt hash and independently recomputes canonical SHA-256;
+8. requires the embedded hash, external hash and recomputed hash to agree;
+9. requires the production receipt commit/tree/branch/oracle to equal the certifier's own captured identity;
+10. requires zero runtime dependencies, `py3-none-any`, reproducible wheel, isolated install, venv module origin, installed IR V3 compilation/runtime, least-authority rejection cases, typed capability execution, checkpoint/restart and the exact 10,000-event soak;
+11. requires non-empty Python/pip/setuptools/package/wheel identity witnesses and a valid lowercase SHA-256 wheel hash;
+12. verifies the worktree is still clean and HEAD/tree plus canonical governance/state files are unchanged;
+13. emits `TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V1` bound to the exact production receipt and wheel.
+
+A successful Python certificate ends with:
+
+```text
+PYTHON_CERTIFY_FULL=PASS
+CERTIFY_FULL=NO
+LANGUAGE_STABLE=NO
+```
+
+The distinction is intentional:
+
+- `PYTHON_CERTIFY_FULL=PASS` certifies the Python V1 implementation/distribution scope recorded by that certificate;
+- `CERTIFY_FULL=NO` says the global V1 cross-runtime certificate has not been asserted by this gate;
+- `LANGUAGE_STABLE=NO` says no stable release metadata has been authorized.
+
+The certificate also explicitly carries `global_certify_full=false` and `stable_release_authorized=false`.
+
+## 9. What neither Python gate claims
+
+Neither a production admission nor a Python-specific certificate means:
+
+- V1 has been promoted to a stable package release;
+- the global Python/JavaScript/C#/Browser-WASM/WASI certification is complete;
+- the package version may be relabeled `1.0.0` without creating and re-certifying the changed commit;
+- arbitrary Python capability implementations are sandboxed;
+- a different wheel, build toolchain or commit inherits the certificate;
+- a host callback is bounded by TEV instruction budgets.
+
+## 10. Stable release sequence
+
+The intended Python-first sequence is:
+
+```text
+implementation commit C
+    -> PYTHON_PRODUCTION(C)=PASS_CANDIDATE
+    -> PYTHON_CERTIFY_FULL(C)=PASS
+
+optional global language/runtime certification of C
+    -> V1 PRECERTIFY(C)=PASS
+    -> V1 CERTIFY_FULL(C)=PASS
+
+explicit promotion/version commit S
+    -> PYTHON_PRODUCTION(S)=PASS_CANDIDATE
+    -> PYTHON_CERTIFY_FULL(S)=PASS
+    -> if globally promoted: PRECERTIFY(S)=PASS
+    -> if globally promoted: CERTIFY_FULL(S)=PASS
+    -> explicit release/tag/publication authorization
+```
+
+No certification is transitive across a source, metadata, package-version or build-system change. A Python certificate for C cannot certify S merely because S is a descendant.
+
+## 11. Operational deployment checklist
 
 For an actual Python service or desktop application:
 
-- distribute the exact wheel identified by the production receipt;
+- distribute the exact wheel identified by the Python certificate/production receipt;
 - store the canonical IR V3 artifact and its lowering/build evidence with the release;
 - construct capability maps explicitly per application role;
 - keep default unused-capability rejection unless a broader capability table is a deliberate architectural decision;
@@ -258,4 +306,4 @@ For an actual Python service or desktop application:
 - persist Runtime Checkpoint V2 only when exact restart is required;
 - keep application-level timeouts/process isolation around untrusted or failure-prone host capabilities;
 - log commit/tree, wheel SHA-256, IR semantic hash and source semantic hash with deployment metadata;
-- re-run the production gate after any Python package, build-system, runtime or source change.
+- re-run Python production admission and Python full certification after any Python package, build-system, runtime, source or stable-metadata change.
