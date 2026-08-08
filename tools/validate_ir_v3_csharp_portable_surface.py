@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CORE = ROOT / "runtimes" / "csharp" / "TevScript.Core"
+CSHARP = ROOT / "runtimes" / "csharp"
+CORE = CSHARP / "TevScript.Core"
+V3_PROJECT = CSHARP / "TevScript.Core.V3" / "TevScript.Core.V3.csproj"
 
 V3_SOURCES = (
     "TevScriptV3Values.cs",
@@ -14,6 +16,11 @@ V3_SOURCES = (
     "TevScriptRuntimeV3.cs",
     "TevScriptRuntimeCheckpointV2.cs",
     "TevScriptV3Conformance.cs",
+)
+CONSUMERS = (
+    CSHARP / "TevScript.V3ConformanceGate" / "TevScript.V3ConformanceGate.csproj",
+    CSHARP / "TevScript.V3CheckpointGate" / "TevScript.V3CheckpointGate.csproj",
+    CSHARP / "TevScript.V3BrowserWasmGate" / "TevScript.V3BrowserWasmGate.csproj",
 )
 
 
@@ -28,15 +35,35 @@ def forbid(text: str, needle: str, label: str) -> None:
 
 
 def main() -> int:
-    project = (CORE / "TevScript.Core.csproj").read_text(encoding="utf-8")
+    core_project = (CORE / "TevScript.Core.csproj").read_text(encoding="utf-8")
     require(
-        project,
+        core_project,
         "<TargetFramework>netstandard2.1</TargetFramework>",
         "IR_V3_CSHARP_CORE_TFM",
     )
-    forbid(project, "<TargetFramework>net8.0</TargetFramework>", "IR_V3_CSHARP_CORE_TFM")
-    forbid(project, "<TargetFramework>net9.0</TargetFramework>", "IR_V3_CSHARP_CORE_TFM")
-    forbid(project, "<TargetFramework>net10.0</TargetFramework>", "IR_V3_CSHARP_CORE_TFM")
+    require(core_project, '<Compile Remove="*V3*.cs" />', "IR_V3_CSHARP_V0_2_ISOLATION")
+    require(
+        core_project,
+        '<Compile Remove="TevScriptRuntimeCheckpointV2.cs" />',
+        "IR_V3_CSHARP_V0_2_ISOLATION",
+    )
+    for forbidden in (
+        "PackageReference",
+        "TevScript.Core.V3",
+        "<TargetFramework>net8.0</TargetFramework>",
+        "<TargetFramework>net9.0</TargetFramework>",
+        "<TargetFramework>net10.0</TargetFramework>",
+    ):
+        forbid(core_project, forbidden, "IR_V3_CSHARP_V0_2_CORE")
+
+    v3_project = V3_PROJECT.read_text(encoding="utf-8")
+    require(v3_project, "<TargetFramework>net8.0</TargetFramework>", "IR_V3_CSHARP_V3_TFM")
+    require(v3_project, "<EnableDefaultCompileItems>false</EnableDefaultCompileItems>", "IR_V3_CSHARP_V3_SOURCE_SET")
+    forbid(v3_project, "PackageReference", "IR_V3_CSHARP_V3_DEPENDENCY")
+    forbid(v3_project, "TevScript.Core.csproj", "IR_V3_CSHARP_V3_DEPENDENCY")
+    forbid(v3_project, "CompilerCompatibility.V3.cs", "IR_V3_CSHARP_V3_SOURCE_SET")
+    for name in ("GlobalUsings.V3.cs", *V3_SOURCES):
+        require(v3_project, f"../TevScript.Core/{name}", "IR_V3_CSHARP_V3_SOURCE_SET")
 
     sources: dict[str, str] = {}
     for name in V3_SOURCES:
@@ -44,39 +71,27 @@ def main() -> int:
         if not path.is_file():
             raise RuntimeError(f"IR_V3_CSHARP_SOURCE_MISSING:{name}")
         sources[name] = path.read_text(encoding="utf-8")
-
     joined = "\n".join(sources.values())
     for forbidden in (
         "System.Reflection",
         "BindingFlags.",
-        ".GetField(\"_ir\"",
+        '.GetField("_ir"',
         "SHA256.HashData",
+        "SHA256.Create",
         "Convert.ToHexString",
         "ArgumentNullException.ThrowIfNull",
+        "Marcbeacve.TevScript.Core.TevJson",
     ):
-        forbid(joined, forbidden, "IR_V3_CSHARP_PORTABLE_SURFACE")
-
-    compatibility = (CORE / "CompilerCompatibility.V3.cs").read_text(encoding="utf-8")
-    for witness in (
-        "#if NETSTANDARD2_1",
-        "class IsExternalInit",
-        "class RequiredMemberAttribute",
-        "class CompilerFeatureRequiredAttribute",
-        "class SetsRequiredMembersAttribute",
-        "class UnreachableException",
-        "Order<T>",
-        "class RegexOptions",
-        "NonBacktracking =",
-        "System.Text.RegularExpressions.RegexOptions.None",
-        "class JsonSerializer",
-        "SerializeToElement<T>",
-        "class HashCode",
-    ):
-        require(compatibility, witness, "IR_V3_CSHARP_COMPATIBILITY")
+        forbid(joined, forbidden, "IR_V3_CSHARP_V3_RUNTIME_SURFACE")
 
     canonical = sources["TevScriptV3Canonical.cs"]
-    require(canonical, "SHA256.Create()", "IR_V3_CSHARP_SHA256")
-    require(canonical, "sha.ComputeHash(bytes)", "IR_V3_CSHARP_SHA256")
+    for witness in (
+        "Sha256RoundConstants",
+        "ComputeSha256",
+        "RotateRight",
+        "WriteUInt32BigEndian",
+    ):
+        require(canonical, witness, "IR_V3_CSHARP_PORTABLE_SHA256")
 
     conformance = sources["TevScriptV3Conformance.cs"]
     require(conformance, "runtimeProgram.IrForCheckpoint", "IR_V3_CSHARP_NO_REFLECTION")
@@ -98,8 +113,17 @@ def main() -> int:
     ):
         require(checkpoint, witness, "IR_V3_CSHARP_CHECKPOINT")
 
+    for consumer in CONSUMERS:
+        text = consumer.read_text(encoding="utf-8")
+        require(text, "TevScript.Core.V3", "IR_V3_CSHARP_CONSUMER_BINDING")
+        forbid(text, "../TevScript.Core/TevScript.Core.csproj", "IR_V3_CSHARP_CONSUMER_BINDING")
+        forbid(text, "..\\TevScript.Core\\TevScript.Core.csproj", "IR_V3_CSHARP_CONSUMER_BINDING")
+
     print("TEV_SCRIPT_IR_V3_CSHARP_CORE_TFM=NETSTANDARD2_1_PASS")
+    print("TEV_SCRIPT_IR_V3_CSHARP_V0_2_ASSEMBLY_ISOLATION=PASS")
+    print("TEV_SCRIPT_IR_V3_CSHARP_V3_ASSEMBLY=NET8_DEPENDENCY_FREE_PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_REFLECTION_FREE=PASS")
+    print("TEV_SCRIPT_IR_V3_CSHARP_PORTABLE_SHA256=PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_MODERN_API_GUARD=PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_CHECKPOINT_BOUNDARY=PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_PORTABLE_SURFACE=PASS")
