@@ -48,22 +48,42 @@ Evidence:
 evidence/reference-v0.2/csharp-conformance-windows-dotnet10.json
 ```
 
-## JSON Schema continuity
+## JSON Schema continuity and global certification
 
-`RUN_PORTABLE_CONFORMANCE.py` uses the optional external `jsonschema` package
-when available. The observed Windows C# run reported
-`JSON_SCHEMA_VALIDATION=SKIPPED_DEPENDENCY_UNAVAILABLE`; that is not rewritten
-as PASS. Gate C#-2 changed no schema or authoritative scenario/receipt file, and
-the three schema SHA-256 values are identical to the V7 surface that already
-passed Draft 2020-12 validation. The versioned full C# gate checks those hashes
-before accepting this continuity.
+`RUN_PORTABLE_CONFORMANCE.py` uses the external `jsonschema` package when it is
+available. Historical V0.2 evidence that was produced without that optional
+development dependency remains historical evidence and is not rewritten as a
+PASS.
 
-Global V1 precertification records this state explicitly as
-`OPTIONAL_DEPENDENCY_UNAVAILABLE`; it does not turn an optional skip into a
-PASS. V0.2 Browser-WASM and WASI execution are separate mandatory dynamic
+For ordinary development/diagnostic runs, the portable tool may still report:
+
+```text
+JSON_SCHEMA_VALIDATION=SKIPPED_DEPENDENCY_UNAVAILABLE
+```
+
+That status is **not sufficient for global V1 certification**. The global
+`RUN_TEV_SCRIPT_V1_PRECERTIFY.py` treats `jsonschema` as a certification-tool
+dependency and requires:
+
+```text
+JSON_SCHEMA_VALIDATION=PASS
+```
+
+It also runs `RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py --require-zero-skips` and
+requires explicit zero skip counts for the V1, IR V3 and V0.2 Python regression
+suites. This prevents unittest skips written to stderr from being mistaken for
+a complete global PASS.
+
+`jsonschema` is **not** added to the TEV Script Python runtime dependency set.
+The production wheel's zero-runtime-dependency contract and the certification
+environment's stronger validation-tool requirements are separate concerns.
+
+V0.2 Browser-WASM and WASI execution remain separate mandatory dynamic
 witnesses provided by `tools/validate_v0_2_portable_hosts.py`.
 
 ## Commands
+
+Development/diagnostic V0.2 checks:
 
 ```powershell
 python .\RUN_PORTABLE_CONFORMANCE.py
@@ -73,7 +93,28 @@ pwsh -NoProfile -ExecutionPolicy Bypass `
   -File .\RUN_TEV_SCRIPT_CSHARP_CONFORMANCE_V1.ps1
 ```
 
-For an exact committed candidate, rerun with:
+Global V1 certification environment preflight includes `jsonschema` in addition
+to the host toolchain:
+
+```powershell
+python -c "import importlib.metadata; print(importlib.metadata.version('jsonschema'))"
+node --version
+dotnet --version
+wasmtime --version
+```
+
+Then the global campaign is:
+
+```powershell
+python .\RUN_TEV_SCRIPT_V1_PRECERTIFY.py
+python .\RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py
+```
+
+The second command is valid only after the candidate is still an exact clean
+commit/tree. `CERTIFY_FULL` re-runs PRECERTIFY and independently validates its
+receipt.
+
+For an exact committed V0.2/C# candidate, rerun with:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass `
