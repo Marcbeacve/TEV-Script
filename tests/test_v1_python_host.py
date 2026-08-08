@@ -91,6 +91,22 @@ class V1PythonProductionHostTests(unittest.TestCase):
             "TEVS_PYTHON_V1_CAPABILITY_BINDING_CALLABLE",
         )
 
+    def test_capability_cannot_reenter_same_runtime_host(self) -> None:
+        artifact = build_python_program_v1({"sensor.tevs": SENSOR})
+        holder: dict[str, PythonRuntimeHostV1] = {}
+
+        def reentrant_read() -> int:
+            holder["host"].state("E")
+            return 7
+
+        host = PythonRuntimeHostV1(artifact, {"world.read": reentrant_read})
+        holder["host"] = host
+
+        with self.assertRaises(TevScriptError) as busy:
+            host.invoke("E", "update")
+        self.assertEqual(busy.exception.diagnostic.code, "TEVS_PYTHON_V1_HOST_BUSY")
+        self.assertEqual(host.state("E")["value"], 0)
+
     def test_artifact_parser_accepts_only_canonical_document_or_artifact_lf(self) -> None:
         artifact = build_python_program_v1({"counter.tevs": COUNTER})
         bare = PythonProgramArtifactV1.parse(artifact.canonical_ir_json)
