@@ -7,6 +7,7 @@
   "required": [
     "schema",
     "language_version",
+    "release_profile",
     "release_status",
     "stable",
     "source_extension",
@@ -24,8 +25,9 @@
   "properties": {
     "schema": {"const": "TEV_SCRIPT_DESCRIPTOR_V3"},
     "language_version": {"const": "1.0.0"},
-    "release_status": {"const": "IMPLEMENTATION_CANDIDATE_UNCERTIFIED"},
-    "stable": {"const": false},
+    "release_profile": {"enum": ["candidate", "stable"]},
+    "release_status": {"enum": ["IMPLEMENTATION_CANDIDATE_UNCERTIFIED", "STABLE_1_0_0"]},
+    "stable": {"type": "boolean"},
     "source_extension": {"const": ".tevs"},
     "source_model": {
       "type": "object",
@@ -138,6 +140,8 @@
       "additionalProperties": false,
       "required": [
         "v0_2_oracle_commit",
+        "technical_parent_commit",
+        "technical_parent_certificate_sha256",
         "current_v1_certify_full_claim",
         "current_v1_language_stable_claim"
       ],
@@ -145,13 +149,51 @@
         "v0_2_oracle_commit": {
           "const": "6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5"
         },
-        "current_v1_certify_full_claim": {"const": false},
-        "current_v1_language_stable_claim": {"const": false}
+        "technical_parent_commit": {"type": "string", "pattern": "^$|^[0-9a-f]{40}$"},
+        "technical_parent_certificate_sha256": {"type": "string", "pattern": "^$|^[0-9a-f]{64}$"},
+        "current_v1_certify_full_claim": {"type": "boolean"},
+        "current_v1_language_stable_claim": {"type": "boolean"}
       }
     },
     "descriptor_hash": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"release_profile": {"const": "candidate"}}, "required": ["release_profile"]},
+      "then": {
+        "properties": {
+          "release_status": {"const": "IMPLEMENTATION_CANDIDATE_UNCERTIFIED"},
+          "stable": {"const": false},
+          "certification": {
+            "properties": {
+              "technical_parent_commit": {"const": ""},
+              "technical_parent_certificate_sha256": {"const": ""},
+              "current_v1_certify_full_claim": {"const": false},
+              "current_v1_language_stable_claim": {"const": false}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"release_profile": {"const": "stable"}}, "required": ["release_profile"]},
+      "then": {
+        "properties": {
+          "release_status": {"const": "STABLE_1_0_0"},
+          "stable": {"const": true},
+          "certification": {
+            "properties": {
+              "technical_parent_commit": {"pattern": "^[0-9a-f]{40}$"},
+              "technical_parent_certificate_sha256": {"pattern": "^[0-9a-f]{64}$"},
+              "current_v1_certify_full_claim": {"const": true},
+              "current_v1_language_stable_claim": {"const": true}
+            }
+          }
+        }
+      }
+    }
+  ]
 }
