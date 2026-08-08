@@ -24,7 +24,11 @@
     "manifest_source_order_semantic": false,
     "manifest_hash": "IMPLEMENTED_CANDIDATE",
     "project_input_hash": "IMPLEMENTED_CANDIDATE",
-    "input_drift_recheck_before_artifact_emission": "IMPLEMENTED_CANDIDATE"
+    "input_drift_recheck_before_artifact_emission": "IMPLEMENTED_CANDIDATE",
+    "artifact_commit_policy": "EVIDENCE_SAFE_RECEIPT_LAST_V1",
+    "receipt_is_final_commit_witness": true,
+    "normal_exception_rollback": "IMPLEMENTED_CANDIDATE",
+    "hardware_atomicity_across_independent_paths": false
   },
   "implementation": {
     "python_v1_reference_frontend": "IMPLEMENTED_CANDIDATE",
@@ -52,6 +56,7 @@
     "ir_v2_to_ir_v3_lift": "IMPLEMENTED_CANDIDATE",
     "deterministic_project_manifest": "IMPLEMENTED_CANDIDATE",
     "project_check_and_build_cli": "IMPLEMENTED_CANDIDATE",
+    "evidence_safe_artifact_writer": "IMPLEMENTED_CANDIDATE",
     "public_python_v1_api": "IMPLEMENTED_CANDIDATE_VERSIONED_ADDITIVE",
     "v1_cli_auto_ir_target": "IMPLEMENTED_CANDIDATE",
     "v1_cli_lowering_receipts": "IMPLEMENTED_CANDIDATE",
