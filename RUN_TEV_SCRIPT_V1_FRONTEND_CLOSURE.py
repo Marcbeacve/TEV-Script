@@ -18,6 +18,7 @@ V1_JSON_INPUTS = (
     "conformance/ir-v3-validator-cases.json",
     "conformance/ir-v3-portable.scenario.json",
     "spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json",
+    "schemas/tev_script_project_v1.schema.json",
     "schemas/tev_script_linked_program_v1.schema.json",
     "schemas/tev_script_lowering_receipt_v1.schema.json",
     "schemas/tev_script_lowering_receipt_v2.schema.json",
@@ -27,6 +28,7 @@ V1_JSON_INPUTS = (
     "schemas/tev_script_runtime_checkpoint_v2.schema.json",
     "schemas/tev_script_signed_update_package_v2.schema.json",
     "schemas/tev_script_installed_update_v2.schema.json",
+    "examples/v1/ecosystem/tevscript.project.json",
     "CANONICAL_INDEX.json",
 )
 V0_2_TESTS = ("test_canonical.py", "test_compiler.py", "test_conformance.py")
@@ -38,7 +40,7 @@ IR_V3_TEST_PATTERNS = (
 
 
 def main() -> int:
-    print("TEV_SCRIPT_V1_FRONTEND_CLOSURE_SCHEMA=V6")
+    print("TEV_SCRIPT_V1_FRONTEND_CLOSURE_SCHEMA=V7")
     print("V0_2_CERTIFIED_BASE=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5")
 
     compiled = compileall.compile_dir(str(ROOT / "tev_script"), quiet=1) and compileall.compile_dir(
@@ -118,7 +120,8 @@ def main() -> int:
     print("TEV_SCRIPT_IR_V2_TO_V3_LIFT=PASS_CANDIDATE")
     print("TEV_SCRIPT_RUNTIME_CHECKPOINT_V2=PASS_CANDIDATE")
     print("TEV_SCRIPT_SIGNED_UPDATE_V2_AUTHORITY_INPUTS=PASS_CANDIDATE")
-    print("TEV_SCRIPT_V1_EXAMPLES_AND_CLI=PASS_CANDIDATE")
+    print("TEV_SCRIPT_V1_PROJECT_MANIFEST=PASS_CANDIDATE")
+    print("TEV_SCRIPT_V1_EXAMPLES_CLI_PUBLIC_API=PASS_CANDIDATE")
     print("V1_CROSS_RUNTIME_PARITY=NOT_CLAIMED")
     print("V1_STABLE_RELEASE=NO")
     print("TEV_SCRIPT_V1_PYTHON_CLOSURE=PASS_CANDIDATE")
