@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <WasmMainJSPath>main.mjs</WasmMainJSPath>
+    <OverrideHtmlAssetPlaceholders>false</OverrideHtmlAssetPlaceholders>
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TevScript.Core\TevScript.Core.csproj" />
+    <EmbeddedResource Include="..\..\..\conformance\ir-v3-validator-cases.json">
+      <LogicalName>ir-v3-validator-cases.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\..\conformance\ir-v3-portable.scenario.json">
+      <LogicalName>ir-v3-portable.scenario.json</LogicalName>
+    </EmbeddedResource>
+    <Content Include="index.html"
+             TargetPath="wwwroot/index.html"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="Always" />
+    <Content Include="main.mjs"
+             TargetPath="wwwroot/main.mjs"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="Always" />
+  </ItemGroup>
+</Project>
