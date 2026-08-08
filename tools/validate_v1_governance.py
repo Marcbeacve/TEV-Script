@@ -205,8 +205,11 @@ def main() -> int:
     for token in (
         'choices=("auto", "irv2", "irv3")',
         '"lower-irv3"',
+        '"--receipt"',
+        "build_ir_v2_lowering_receipt",
+        "build_ir_v3_lowering_receipt",
         '"default_target_ir"',
-        '"TEV_SCRIPT_V1_COMPILE_RESULT_V1"',
+        '"TEV_SCRIPT_V1_COMPILE_RESULT_V2"',
     ):
         require(token in cli_v1_text, "V1_GOVERNANCE_V1_CLI_SURFACE", token)
 
