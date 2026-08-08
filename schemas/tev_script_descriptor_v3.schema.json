@@ -67,7 +67,7 @@
     },
     "features": {
       "type": "array",
-      "minItems": 17,
+      "minItems": 18,
       "uniqueItems": true,
       "items": {"type": "string", "minLength": 1}
     },
