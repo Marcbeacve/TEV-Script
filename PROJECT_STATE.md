@@ -3,40 +3,47 @@
 ## Progreso
 
 ```text
-V0.2 exact source grammar / static semantics:      PASS CERTIFIED LOCAL
-V0.2 source -> IR V2 closure:                      PASS CERTIFIED LOCAL
-Python / JavaScript / C# conformance:              PASS CERTIFIED LOCAL
-Unity Editor / PlayMode / Mono / IL2CPP:           PASS CERTIFIED LOCAL
-Gate-5A..5E governed update chain:                  PASS CERTIFIED LOCAL / EXPLICIT BOUNDARIES
-Gate-6A..6D Browser-WASM / WASI:                   PASS CERTIFIED LOCAL
-Gate-7A..7E distributed determinism:                PASS CERTIFIED LOCAL
-V0.2 language completeness:                        PASS CERTIFIED LOCAL
+V0.2 exact source grammar / static semantics:          PASS CERTIFIED LOCAL
+V0.2 source -> IR V2 closure:                          PASS CERTIFIED LOCAL
+V0.2 Python / JavaScript / C# conformance:             PASS CERTIFIED LOCAL
+V0.2 Unity Editor / PlayMode / Mono / IL2CPP:          PASS CERTIFIED LOCAL
+V0.2 Gate-5A..5E governed update chain:                PASS CERTIFIED LOCAL / EXPLICIT BOUNDARIES
+V0.2 Gate-6A..6D Browser-WASM / WASI:                  PASS CERTIFIED LOCAL
+V0.2 Gate-7A..7E distributed determinism:              PASS CERTIFIED LOCAL
+V0.2 language completeness:                            PASS CERTIFIED LOCAL
 
-V1 lexical profile / exact grammar:                CLOSED CANDIDATE
-V1 deterministic link model:                       CLOSED CANDIDATE V2
-V1 normative resource budgets:                     CLOSED CANDIDATE
-V1 linked semantic schema:                         CLOSED CANDIDATE
-V1 Python AST / lexer / parser:                     IMPLEMENTED CANDIDATE
-V1 versioned V0.2/V1 dispatcher:                   IMPLEMENTED CANDIDATE
-V1 deterministic multi-file linker:                IMPLEMENTED CANDIDATE
-V1 visibility / namespaces / nominal identity:     IMPLEMENTED CANDIDATE
-V1 records / enums / Option / Result typing:        IMPLEMENTED CANDIDATE
-V1 lexical scopes / immutability / match typing:   IMPLEMENTED CANDIDATE
-V1 pure-function purity / DAG guards:               IMPLEMENTED CANDIDATE
-V1 exact constant evaluator:                       IMPLEMENTED CANDIDATE
-V1 behavior dependency/composition model:           IMPLEMENTED CANDIDATE
-V1 capability/effect/event inference:               IMPLEMENTED CANDIDATE
-V1 erasable features -> certified IR V2:            IMPLEMENTED CANDIDATE
-V1 runtime record/enum/Option/Result values:         IR V3 PENDING
-V1 JavaScript / C# parity:                          PENDING
-V1 Browser-WASM / WASI parity:                     PENDING
-V1 exact clean-commit certification:               PENDING
-V1 stable release:                                  NO
+V1 lexical / grammar / semantic contract:              CLOSED CANDIDATE
+V1 deterministic multi-file linker:                    IMPLEMENTED CANDIDATE
+V1 nominal + constructed type system:                  IMPLEMENTED CANDIDATE
+V1 scopes / purity / effects / events:                 IMPLEMENTED CANDIDATE
+V1 constants / behaviors / bounded control flow:       IMPLEMENTED CANDIDATE
+V1 canonical linked semantic program:                  IMPLEMENTED CANDIDATE
+V1 erasable source semantics -> IR V2:                 IMPLEMENTED CANDIDATE
+V1 full algebraic source semantics -> IR V3:           IMPLEMENTED CANDIDATE
+IR V3 closed type table / codec / validator / CFG:     IMPLEMENTED CANDIDATE
+IR V3 Python runtime:                                  IMPLEMENTED CANDIDATE
+IR V3 JavaScript runtime:                              IMPLEMENTED CANDIDATE
+IR V3 C# runtime assembly:                             IMPLEMENTED CANDIDATE
+IR V3 Python/JS/C# canonical receipt byte lock:        GATE IMPLEMENTED
+IR V3 Runtime Checkpoint V2:                           IMPLEMENTED CANDIDATE
+IR V3 checkpoint Python/JS/C# byte lock + restart:     GATE IMPLEMENTED
+IR V3 Browser-WASM AOT runtime parity:                 GATE IMPLEMENTED
+IR V3 WASI/Wasmtime runtime + process restart:         GATE IMPLEMENTED
+IR V3 transactional hot swap:                          IMPLEMENTED CANDIDATE
+IR V3 signed update package/body V2:                   IMPLEMENTED CANDIDATE
+IR V3 signed update host campaign:                     GATE IMPLEMENTED
+IR V3 signed update Browser-WASM campaign:             GATE IMPLEMENTED
+IR V3 signed update WASI fresh/restore campaign:       GATE IMPLEMENTED
+V1 full precertify orchestration:                       IMPLEMENTED CANDIDATE V5
+
+Current exact-HEAD dynamic full precertify:             NOT EXECUTED IN THIS CHAT RUNTIME
+V1 CERTIFY_FULL:                                       NO
+V1 LANGUAGE_STABLE:                                    NO
 ```
 
 ## Autoridad V0.2 preservada
 
-The exact certified V0.2 language-completeness candidate remains:
+The certified V0.2 language-completeness oracle remains:
 
 ```text
 COMMIT=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5
@@ -45,188 +52,394 @@ PARENT=6a33404eb9712b5fae30367d1beb189d8e42f170
 TEV_SCRIPT_LANGUAGE_COMPLETE=PASS_CERTIFIED_LOCAL
 ```
 
-The V1 implementation is additive. The certified V0.2 parser/compiler/runtime files are not rewritten by the V1 candidate; V1-specific implementation lives in separate `*_v1.py` layers and lowers only into the already validated IR V2 contract when the source program is provably representable there.
+V1 does not reinterpret those receipts. The C# V0.2 assembly remains `TevScript.Core` targeting `netstandard2.1`; V3 is compiled as the additive `TevScript.Core.V3` assembly. Normal V3 runtime consumers reference only `TevScript.Core.V3`. Signed-update gates additionally reference the already existing `TevScript.Update` assembly solely to reuse the managed ES256 verifier authority; the V3 runtime itself does not depend on that cryptographic provider.
 
 ## Rama de trabajo actual
 
 ```text
-BRANCH=agent/tev-script-v1-irv2-lowering-v1
+BRANCH=agent/tev-script-v1-irv3-spec-v1
 BASE_CERTIFIED_V0_2=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5
-PR1_STATE=DRAFT_OPEN_UNMERGED
 STABLE_RELEASE=NO
+CERTIFY_FULL=NO
 ```
 
-No merge, tag, release or stable promotion is authorized by this candidate.
+The branch is an implementation/certification candidate. No merge, tag or stable promotion follows merely from code presence.
 
-## Contenido implementado
+## Cierre del lenguaje fuente V1
 
-### Phase A — frontend exacto
+### Frontend and syntax
 
-Implemented:
+Implemented candidate:
 
-- dedicated V1 AST instead of overloading the V0.2 AST;
-- exact V1 lexer, including multi-character token precedence and exact rational decimals;
-- exact recursive parser for modules, imports, export, declarations, constructed types, records, enums, sum constructors, match, bounded for and behavior composition;
-- source-version dispatcher that reroutes `0.2.0` through the certified V0.2 lexer/parser path;
-- syntax budgets for source bytes, types, expressions, blocks, parameters, calls, match arms, static loops and locals;
-- portable positive/negative syntax corpus.
+- dedicated V1 AST;
+- exact V1 lexical profile and grammar;
+- versioned V0.2/V1 dispatcher preserving the certified V0.2 path;
+- modules and imports;
+- explicit module exports/private declarations;
+- custom capability declarations;
+- records and enums;
+- `Option<T>` and `Result<T,E>`;
+- pure user functions;
+- behavior composition;
+- bounded half-open integer `for`;
+- exhaustive enum/Option/Result `match`;
+- nested immutable lexical bindings;
+- exact expression precedence and short-circuit semantics;
+- explicit source/type/expression/block/loop/arity budgets.
 
-### Phase B — deterministic linker
+### Deterministic linker
 
-Implemented:
+Implemented candidate:
 
-- exactly-one-root rule;
-- declared module identity independent of filesystem paths;
+- exactly one script root;
+- module identity independent of paths;
+- explicit finite source-set resolution;
 - duplicate/missing import rejection;
-- deterministic import-cycle witnesses;
-- reachable-closure computation and unreachable-module exclusion;
-- root-program/module-id collision rejection;
-- direct-import visibility with private/export enforcement;
+- acyclic import graph;
+- direct-import-only visibility;
+- no implicit re-export;
 - separate type/function/behavior/capability/entity namespaces;
-- longest-direct-module-prefix resolution for qualified symbols;
-- global capability ids with identical-contract coalescing and conflicting-contract rejection;
-- deterministic semantic symbol/index identity;
-- portable linker corpus and determinism counterfactuals.
+- ambiguity rejection independent of filesystem/dictionary order;
+- longest resolvable symbol prefix for dotted names;
+- root program/module id collision rejection;
+- nominal semantic ids;
+- identical capability-contract coalescing and conflicting-contract rejection;
+- canonical reachable closure excluding unreachable supplied modules.
 
-### Phase C — static semantics
-
-Implemented candidate:
-
-- nominal record/enum identities;
-- recursive `Option<T>` / `Result<T,E>` type identities;
-- exact `Int -> Rat` widening and no implicit narrowing;
-- `Unit` placement restrictions, including nested constructed types;
-- duplicate record-field / enum-variant rejection;
-- record dependency-cycle rejection without relying on Python recursion;
-- lexical scopes, immutable locals/parameters/loop/match bindings and state-only assignment;
-- record construction/field typing, enum values, Option/Result contextual constructors;
-- exact operator typing;
-- exhaustive enum/Option/Result match;
-- pure-function/effect separation;
-- user-function DAG cycle/depth precheck independent of host recursion limits;
-- handler capability requirements and emitted-event signatures;
-- deterministic static semantic index.
-
-### Phase D — constants and behavior composition
+### Static semantics
 
 Implemented candidate:
 
-- exact `Fraction`-based constant evaluation;
-- constant records/enums/Option/Result/vectors;
-- pure built-in and user-function constant evaluation;
-- constant-evaluation step budget;
-- capability usage rejected structurally in state initializers even under dead short-circuit branches;
-- dependency-first behavior closure preserving explicit `use` order;
-- iterative behavior traversal independent of host recursion limits;
-- cycle, diamond/repeated-use, state-conflict and handler-signature rejection;
-- behavior handlers see their dependency states but never sibling-only states;
-- entity-local handlers see the full composed state closure;
-- composed capability unions and cross-fragment event-signature checks.
+- nominal record and enum identity;
+- closed `Option<T>` / `Result<T,E>` identities;
+- recursive-record rejection;
+- `Unit` placement restrictions;
+- exact `Int -> Rat` widening only;
+- immutable parameters/locals/loop/match bindings;
+- state-only assignment;
+- no lexical shadowing in V1.0;
+- record construction and field typing;
+- enum/Option/Result constructor typing;
+- exhaustive match analysis;
+- capability-free pure functions;
+- acyclic pure-function graph with depth budget independent of host stack limits;
+- effect and event-signature inference;
+- compile-time constant state initializers;
+- exact constant evaluation using rational arithmetic;
+- deterministic behavior dependency expansion and conflict detection.
 
-### Phase F candidate — V1 erasable lowering to IR V2
+## Canonical source/runtime boundary
 
-Implemented on the current branch:
-
-- explicit `analyze_ir_v2_lowering_boundary` classification;
-- fail-closed `IR V3 REQUIRED` for runtime records, enums, Option, Result, field access, match or V1-valued capability/event surfaces;
-- unused V1 type declarations do not block a program whose runtime surface is entirely IR-V2-compatible;
-- V1-only constant intermediates may disappear before IR emission when constant evaluation proves the final runtime value is an IR-V2 value;
-- modules/imports/export erase after deterministic linking;
-- behaviors flatten into handler fragments in semantic execution order;
-- bounded `for` statically unrolls with loop variables lowered as exact constants;
-- nested lexical locals alpha-rename to deterministic IR locals;
-- user pure functions inline with **call-by-value**: each argument is evaluated once into a temporary before substituting the function body;
-- short-circuit `and/or` lowers to explicit jumps and a temporary Bool instead of the eager V0.2 `BINARY` operator;
-- primitive custom capabilities lower to canonical IR V2 capability contracts;
-- emitted-event `Int -> Rat` widening normalizes to the composed handler signature;
-- final output passes through the existing IR V2 validator by construction before a bundle is returned.
-
-## Portable conformance assets added for V1
+V1 compilation is deliberately split into semantic and runtime layers:
 
 ```text
-conformance/v1-source-syntax-cases.json
-conformance/v1-linker-cases.json
-conformance/v1-static-semantics-cases.json
-conformance/v1-behavior-composition-cases.json
-conformance/v1-constant-cases.json
-conformance/v1-irv2-lowering-cases.json
+V1 source set
+   -> parse
+   -> deterministic link
+   -> static semantics
+   -> TEV_SCRIPT_LINKED_PROGRAM_V1
+        |-> erasable profile -> TEV_SCRIPT_PROGRAM_IR_V2
+        |-> full V1 profile  -> TEV_SCRIPT_PROGRAM_IR_V3
 ```
 
-Associated Python tests cover parser boundaries, deterministic linking, type/scope/effect rules, constants, behavior composition, IR-V2 lowering and observable execution on the existing Python `ScriptRuntime`.
+`TEV_SCRIPT_LINKED_PROGRAM_V1` is the source-semantic authority. It canonicalizes nominal identities, alpha-renames non-semantic local names and stores state initializers as normalized semantic values. Runtime targets do not repeat source name resolution.
 
-## Unified local gate
+## IR V2 preservation path
 
-`RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py` now covers:
+The V1 -> IR V2 path remains available where all V1-only abstractions erase safely before runtime representation.
 
-1. Python `compileall` for implementation/tests;
-2. strict JSON loading + content manifest for all V1 portable corpora;
-3. all `test_v1_*.py` suites, including IR-V2 lowering/runtime semantics;
-4. V0.2 Python regression suites `test_canonical.py`, `test_compiler.py`, `test_conformance.py`;
-5. explicit terminal boundaries stating IR V3 and cross-runtime parity are not yet claimed.
+Implemented candidate:
 
-Expected success terminals include:
+- modules/imports/export erased after deterministic link;
+- behaviors expanded in semantic order;
+- pure functions inlined call-by-value;
+- bounded `for` unrolled;
+- nested locals alpha-renamed;
+- short-circuit `and/or` compiled to forward CFG rather than eager V0.2 logical instructions;
+- primitive custom capabilities emitted as typed IR contracts;
+- `Int -> Rat` event coercion normalized explicitly;
+- any non-erasable algebraic value use fails closed instead of tunneling through Text/JSON/host objects;
+- lowering receipt V1 binds linked V1 semantic hash to the resulting IR V2 hash.
+
+## IR V3 algebraic runtime
+
+IR V3 preserves the acyclic finite machine model of IR V2 and adds immutable algebraic values without heap references, reflection or runtime code generation.
+
+### Runtime value surface
+
+Implemented candidate:
+
+- primitive V0.2 value encodings retained;
+- nominal record values;
+- payload-free enums;
+- `Option<T>`;
+- `Result<T,E>`;
+- recursively closed type table;
+- maximum algebraic-value nesting budget;
+- type-directed canonical encode/decode;
+- redundant nominal type witness validation in algebraic JSON values.
+
+### Algebraic ISA
+
+Implemented candidate opcodes:
 
 ```text
-TEV_SCRIPT_V1_PYTHON_COMPILE=PASS
-TEV_SCRIPT_V1_JSON_INPUTS=PASS
-TEV_SCRIPT_V1_TESTS=PASS
-TEV_SCRIPT_V0_2_PYTHON_REGRESSION=PASS
-TEV_SCRIPT_V1_IRV2_ERASABLE_LOWERING=PASS_CANDIDATE
-TEV_SCRIPT_V1_FRONTEND_STATIC_CLOSURE=PASS_CANDIDATE
-V1_RUNTIME_IR3=NOT_IMPLEMENTED
-V1_CROSS_RUNTIME_PARITY=NOT_CLAIMED
-V1_STABLE_RELEASE=NO
+MAKE_RECORD
+LOAD_FIELD
+MAKE_VARIANT
+TEST_VARIANT
+LOAD_VARIANT_PAYLOAD
 ```
+
+They compose with the existing acyclic stack/local/state/capability/event machine. There are still no backward jumps, recursion, reflection, threads or hidden host references.
+
+### Verification
+
+Implemented candidate:
+
+- strict JSON duplicate-key rejection;
+- exact IR envelope/profile/source-hash validation;
+- closed/sorted type table validation;
+- typed state/capability/event validation;
+- typed CFG abstract interpretation;
+- stack merge equality;
+- definite local initialization;
+- algebraic opcode stack effects;
+- canonical `semantic_hash` and `debug_hash` validation;
+- V2 -> V3 verified lift preserving the certified primitive model.
+
+## Multi-runtime implementation
+
+### Python
+
+Implemented candidate runtime, validator, type/value codec, V1->V3 lowerer, V2->V3 lift, conformance runner, checkpoint V2 and lowering receipt V2.
+
+### JavaScript
+
+Implemented additive ES2022 V3 modules for:
+
+- exact BigInt/Rational primitives;
+- V3 type table and algebraic codec;
+- typed CFG validation;
+- V3 program validation;
+- V3 runtime;
+- canonical conformance receipt;
+- Runtime Checkpoint V2 capture/parse/restore;
+- package exports and TypeScript declarations.
+
+The certified V0.2 JS runtime remains separate.
+
+### C#
+
+Implemented `TevScript.Core.V3` as a separate deterministic `net8.0` assembly whose source set is explicit and whose normal runtime surface is dependency-free.
+
+Hardening includes:
+
+- no reflection in V3 runtime/conformance/checkpoint paths;
+- strict duplicate-key JSON reader;
+- closed object-tree JSON writer for AOT receipt generation rather than general serializer metadata;
+- host-independent SHA-256 implementation for canonical identity;
+- explicit separation from the V0.2 `netstandard2.1` assembly;
+- signed-update consumers bind the existing managed ES256 verifier through `TevScript.Update` without coupling the V3 runtime assembly to it.
+
+## Runtime Checkpoint V2
+
+Checkpoint V2 is additive and does not reinterpret `TEV_SCRIPT_RUNTIME_CHECKPOINT_V1`.
+
+It binds:
+
+```text
+program_id
+ir_schema
+IR semantic_hash
+source_schema
+source_semantic_hash
+exact entity set
+exact state set
+each state type
+canonical algebraic value
+```
+
+Restore is allowed only against the exact target IR/source identity. A similar program or compatible-looking schema is insufficient.
+
+Implemented gates cover:
+
+- Python capture/restore;
+- JavaScript capture/restore;
+- C# capture/restore;
+- Python/JS/C# checkpoint byte lock;
+- process restart continuation;
+- tampered program/source/state/type/value rejection;
+- WASI process-to-process checkpoint transport.
+
+## Browser-WASM V3
+
+A dedicated AOT browser gate consumes the same portable IR V3 fixture and conformance scenario used by host runtimes.
+
+The browser must return through an authenticated loopback HTTP witness:
+
+- the exact conformance `receipt_hash` computed by the host oracle;
+- the exact Runtime Checkpoint V2 hash computed by the host oracle.
+
+A browser startup smoke is not sufficient for V3 parity.
+
+## WASI V3
+
+The WASI gate is designed as two separate Wasmtime processes:
+
+1. `fresh`: execute/validate and write Runtime Checkpoint V2;
+2. `restore`: start a fresh process, parse/restore the checkpoint and continue.
+
+The gate compares receipt/checkpoint identity against the Python host oracle and verifies the checkpoint produced by WASI through the Python parser as a cross-implementation counterfactual.
+
+## Transactional hot swap V3
+
+Implemented candidate:
+
+- immutable snapshot before candidate construction;
+- isolated candidate validation/runtime construction;
+- exact program/entity continuity;
+- state type and migrated-value validation under the candidate type table;
+- capability ceiling over full ABI (`id + parameters + return_type + kind`), not only capability names;
+- plans bound to runtime generation and source semantic hash;
+- single authoritative commit;
+- stale/foreign/consumed plan rejection;
+- one-step runtime rollback.
+
+This design rejects nominal descriptor drift even when a textual `type_id` is reused but the old value cannot normalize against the candidate descriptor.
+
+## Signed update V3
+
+V3 does not reinterpret the V0.2 update package. It introduces:
+
+```text
+TEV_SCRIPT_SIGNED_UPDATE_PACKAGE_V2
+TEV_SCRIPT_UPDATE_BODY_V2
+TEV_SCRIPT_INSTALLED_UPDATE_V2
+```
+
+The signed body binds:
+
+- channel id;
+- program id;
+- monotonic epoch/sequence;
+- `from_ir_semantic_hash`;
+- target IR semantic hash;
+- target source semantic hash;
+- target IR canonical SHA-256;
+- complete embedded canonical IR V3.
+
+Security/continuity model:
+
+- signature verification precedes authoritative mutation;
+- transition authorization is exact `from -> target`;
+- replay/epoch rollback/invalid epoch advance fail closed;
+- durable-store failure rolls the runtime commit back;
+- installed-package loading re-verifies package integrity/signature but does not pretend to reapply the historical transition;
+- restart state is recovered separately through an exact target Runtime Checkpoint V2;
+- fixture signing reuses the existing Gate-5C test P-256 key only inside an ephemeral fixture tool;
+- the runtime gate verifies with the independent existing managed ES256 implementation.
+
+Implemented campaigns exist for:
+
+- desktop/host signed update;
+- Browser-WASM signed update AOT witness;
+- WASI signed update fresh process -> durable installed record/checkpoint -> separate restore process.
+
+## Full precertify V5
+
+`RUN_TEV_SCRIPT_V1_PRECERTIFY.py` now requires, from one clean immutable checkout:
+
+1. V1 Python frontend/static/IR gates;
+2. C# assembly/surface isolation guard;
+3. Python/JavaScript/C# IR V3 receipt byte lock;
+4. Python/JavaScript/C# Runtime Checkpoint V2 byte lock + restart;
+5. Browser-WASM V3 AOT receipt/checkpoint parity;
+6. WASI V3 receipt/checkpoint parity + fresh/restore continuation;
+7. signed-update V3 host campaign;
+8. signed-update V3 Browser-WASM campaign;
+9. signed-update V3 WASI fresh/restore campaign;
+10. complete V0.2 portable regression including Browser-WASM and WASI;
+11. clean worktree before and after;
+12. identical HEAD/tree throughout validation.
+
+Any V1/V3 `SKIPPED_*` is a pre-certification failure.
+
+A successful pre-certify deliberately still emits:
+
+```text
+V1_PRECERTIFY=PASS
+CERTIFY_FULL=NO
+LANGUAGE_STABLE=NO
+```
+
+because technical validation and release/stable admission are separate governance operations.
 
 ## Verificación actual de esta sesión
 
-The GitHub candidate and its test/gate content are published on the branch, but this ChatGPT runtime currently has no executable checkout of that branch and cannot obtain the public branch archive bytes through the available connector path. No GitHub Actions workflow is being introduced as a substitute.
+The current branch has moved materially beyond earlier locally executed V3 ancestors. This ChatGPT execution environment has Node but currently lacks `dotnet`/`wasmtime`, and its isolated container cannot resolve `github.com` to clone the exact current branch.
 
-Therefore the current status is deliberately:
+Therefore the current exact-HEAD status is deliberately:
 
 ```text
-CODE_AND_CONFORMANCE_CORPORA=PUBLISHED_CANDIDATE
-CURRENT_RUNTIME_DYNAMIC_GATE=NOT_REEXECUTED_HERE
-V1_PASS_CERTIFIED=NO
+CODE_AND_GATES=PUBLISHED_CANDIDATE
+CURRENT_HEAD_FULL_PRECERTIFY=NOT_EXECUTED_HERE
+CURRENT_HEAD_CERTIFY_FULL=NO
+LANGUAGE_STABLE=NO
 ```
 
-Do not reinterpret `IMPLEMENTED CANDIDATE` as a fresh dynamic PASS.
+Do not reinterpret implementation presence or a previously passing ancestor as a fresh PASS for the current HEAD.
 
-## Hipótesis falsables activas
+## Active falsifiable hypotheses
 
-### H1 — path/order determinism
+### H1 — source/path determinism
 
-Changing only file paths, path separators or source-input enumeration order must preserve V1 linked/static identity and lowered IR bytes for an IR-V2-lowerable program.
+Permuting source input order or relocating source files must not change linked V1 bytes or target IR semantic identity.
 
 ### H2 — call-by-value preservation
 
-Inlining `fn twice(x: Rat) -> Rat = x + x` with `twice(time.delta())` must call `time.delta` exactly once, not twice.
+Inlining a pure function argument containing an observation must invoke that observation exactly once.
 
 ### H3 — short-circuit preservation
 
-`false and probe.read()` and `true or probe.read()` must not invoke `probe.read` after V1 lowering even though V0.2's binary logical instruction is eager.
+An observation in an unselected `and/or` branch must never execute after lowering.
 
-### H4 — behavior-order preservation
+### H4 — composition-order preservation
 
-If behaviors A then B are used and both contribute `update`, observable effects must occur A then B then the entity-local fragment. Reversing explicit `use` order must change semantic identity.
+Behavior fragment order follows explicit dependency/use order and is observable; reversing a semantically relevant `use` order must change linked identity.
 
-### H5 — no lossy V1 runtime values
+### H5 — algebraic cross-host identity
 
-Any program requiring record/enum/Option/Result runtime storage, runtime field access, runtime match or V1-valued capability/event data must fail lowering until IR V3 is frozen.
+Python, JavaScript, C#, Browser-WASM and WASI must produce the same canonical observable result for the same IR/scenario.
 
-### H6 — V0.2 non-regression
+### H6 — checkpoint identity
 
-The V1 additions must leave certified V0.2 source-to-IR/runtime behavior unchanged.
+Checkpoint V2 bytes/hash and restart continuation must agree across Python/JS/C#/WASI and reject target/source/type/value tampering.
+
+### H7 — signed transition authority
+
+A signed package for `from=A -> target=B` must never be applicable from C, even when channel/program/sequence are otherwise valid.
+
+### H8 — capability ABI authority
+
+Keeping a capability id while changing any parameter, return type or kind must be rejected unless the host ceiling explicitly authorizes that exact new ABI.
+
+### H9 — update/store atomicity
+
+A durable-store failure after runtime commit must restore the previous runtime before returning failure.
+
+### H10 — V0.2 non-regression
+
+No V1/V3 addition may alter the certified V0.2 semantic/runtime receipts.
 
 ## Tareas siguientes
 
-1. Execute the unified V1 closure gate on an exact checkout and fix every failing counterfactual before promotion.
-2. Freeze the final `TEV_SCRIPT_LINKED_PROGRAM_V1` emitter/canonical bytes using the now-implemented static semantic model.
-3. Close the IR-V2 erasable profile with exact content-identity evidence.
-4. Only then design and freeze **IR V3** for non-erasable V1 runtime values: records, enums, Option/Result, field access and match.
-5. Implement IR V3 first in Python reference runtime, then JavaScript and C#, followed by Unity Core, Browser-WASM and WASI parity.
-6. Re-run the V0.2 authoritative receipts byte-identically and perform one exact clean-commit certification before any V1 stable claim.
+1. Execute `RUN_TEV_SCRIPT_V1_PRECERTIFY.py` on the exact current clean branch in the Windows development environment with Node, .NET, Chromium, Wasmtime and the .NET-required wasi-sdk available.
+2. Fix every failure without weakening or skipping a gate.
+3. Re-run from one exact clean commit/tree until `V1_PRECERTIFY=PASS` with zero skips.
+4. Freeze the resulting evidence receipt and create a separate read-only `CERTIFY_FULL` admission step bound to that exact commit/tree.
+5. Only after `CERTIFY_FULL` should a stable-admission commit be considered; that promoted commit must itself be revalidated rather than inheriting certification from its parent.
 
 ## Production boundaries unchanged
 
-This V1 work does not close production signing-key provisioning/rotation, hostile rollback-resistant monotonic storage, public WAN/TLS/DNS/CDN update campaigns, physical Unity Input System/Animator providers, evolutionary self-assembly or decentralized peer-to-peer trust.
+Even a V1 language/runtime `CERTIFY_FULL` would not by itself close production signing-key provisioning/rotation, hostile rollback-resistant monotonic storage, public WAN/TLS/DNS/CDN deployment, physical Unity Input System/Animator providers, evolutionary self-assembly or decentralized peer-to-peer consensus/trust. Those are deployment/system-security surfaces, not missing language semantics.
