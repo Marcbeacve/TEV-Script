@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .ast_v1 import BehaviorDecl, EntityDecl, HandlerDecl, StateDecl
+from .ast_v1 import BehaviorDecl, EntityDecl, HandlerDecl, StateDecl, UseDecl
+from .contracts_v1 import MAX_FLATTENED_BEHAVIORS_PER_ENTITY
 from .diagnostics import SourceSpan, TevScriptError
 from .linker_v1 import LinkPlanV1, NAMESPACE_BEHAVIOR, SymbolV1, resolve_symbol
 from .semantic_types_v1 import ResolvedTypeV1, TypeEnvironmentV1, resolve_type
@@ -116,57 +117,32 @@ def build_behavior_model(
 def _flatten_behavior_dependencies(
     plan: LinkPlanV1,
     behavior_id: str,
-    uses,
+    uses: tuple[UseDecl, ...],
     *,
     owner_id: str,
     behaviors: dict[str, SymbolV1],
 ) -> tuple[str, ...]:
-    result: list[str] = []
-    seen: set[str] = set()
-    active: list[str] = [behavior_id]
-
-    def expand(target_id: str, span: SourceSpan) -> None:
-        if target_id in active:
-            start = active.index(target_id)
-            cycle = [*active[start:], target_id]
-            raise TevScriptError(
-                "TEVS_V1_BEHAVIOR_CYCLE",
-                "behavior dependency cycle: " + " -> ".join(cycle),
-                span,
-            )
-        if target_id in seen:
-            raise TevScriptError(
-                "TEVS_V1_BEHAVIOR_DUPLICATE_INCLUSION",
-                f"behavior {target_id!r} appears more than once in one composition closure",
-                span,
-            )
-        symbol = behaviors[target_id]
-        declaration = symbol.declaration
-        assert isinstance(declaration, BehaviorDecl)
-        active.append(target_id)
-        for use in declaration.uses:
-            dependency = resolve_symbol(
+    roots = tuple(
+        (
+            resolve_symbol(
                 plan,
-                symbol.owner_id,
+                owner_id,
                 use.behavior_id,
                 NAMESPACE_BEHAVIOR,
                 span=use.span,
-            )
-            expand(dependency.semantic_id, use.span)
-        active.pop()
-        seen.add(target_id)
-        result.append(target_id)
-
-    for use in uses:
-        dependency = resolve_symbol(
-            plan,
-            owner_id,
-            use.behavior_id,
-            NAMESPACE_BEHAVIOR,
-            span=use.span,
+            ).semantic_id,
+            use.span,
         )
-        expand(dependency.semantic_id, use.span)
-    return tuple(result)
+        for use in uses
+    )
+    return _flatten_dependency_roots(
+        plan,
+        roots,
+        behaviors=behaviors,
+        initial_active=(behavior_id,),
+        maximum=None,
+        owner_label=f"behavior {behavior_id!r}",
+    )
 
 
 def _flatten_entity_behaviors(
@@ -176,52 +152,169 @@ def _flatten_entity_behaviors(
     owner_id: str,
     behaviors: dict[str, SymbolV1],
 ) -> tuple[str, ...]:
+    roots = tuple(
+        (
+            resolve_symbol(
+                plan,
+                owner_id,
+                use.behavior_id,
+                NAMESPACE_BEHAVIOR,
+                span=use.span,
+            ).semantic_id,
+            use.span,
+        )
+        for use in entity.uses
+    )
+    return _flatten_dependency_roots(
+        plan,
+        roots,
+        behaviors=behaviors,
+        initial_active=(),
+        maximum=MAX_FLATTENED_BEHAVIORS_PER_ENTITY,
+        owner_label=f"entity {entity.name!r}",
+    )
+
+
+def _flatten_dependency_roots(
+    plan: LinkPlanV1,
+    roots: tuple[tuple[str, SourceSpan], ...],
+    *,
+    behaviors: dict[str, SymbolV1],
+    initial_active: tuple[str, ...],
+    maximum: int | None,
+    owner_label: str,
+) -> tuple[str, ...]:
+    """Iterative dependency-first DFS preserving explicit `use` order.
+
+    Iteration avoids coupling accepted language depth to the Python recursion
+    limit. `seen` is deliberately global across all roots so diamonds and
+    repeated explicit uses fail closed instead of being silently deduplicated.
+    """
+
     result: list[str] = []
     seen: set[str] = set()
-    active: list[str] = []
+    active: list[str] = list(initial_active)
+    active_set: set[str] = set(initial_active)
 
-    def expand(target_id: str, span: SourceSpan) -> None:
-        if target_id in active:
-            start = active.index(target_id)
-            cycle = [*active[start:], target_id]
+    for root_id, root_span in roots:
+        if root_id in active_set:
+            cycle = _cycle_witness(active, root_id)
             raise TevScriptError(
                 "TEVS_V1_BEHAVIOR_CYCLE",
                 "behavior dependency cycle: " + " -> ".join(cycle),
-                span,
+                root_span,
             )
-        if target_id in seen:
+        if root_id in seen:
             raise TevScriptError(
                 "TEVS_V1_BEHAVIOR_DUPLICATE_INCLUSION",
-                f"behavior {target_id!r} appears more than once in entity {entity.name!r}",
-                span,
+                f"behavior {root_id!r} appears more than once in {owner_label}",
+                root_span,
             )
-        symbol = behaviors[target_id]
-        declaration = symbol.declaration
-        assert isinstance(declaration, BehaviorDecl)
-        active.append(target_id)
-        for use in declaration.uses:
-            dependency = resolve_symbol(
+
+        # Frame: [behavior_id, incoming_span, next_use_index, resolved_uses]
+        stack: list[list[object]] = []
+        _push_behavior_frame(
+            plan,
+            stack,
+            active,
+            active_set,
+            root_id,
+            root_span,
+            behaviors,
+        )
+
+        while stack:
+            frame = stack[-1]
+            behavior_id = str(frame[0])
+            incoming_span = frame[1]
+            next_index = int(frame[2])
+            resolved_uses = frame[3]
+            assert isinstance(incoming_span, SourceSpan)
+            assert isinstance(resolved_uses, tuple)
+
+            if next_index < len(resolved_uses):
+                dependency_id, dependency_span = resolved_uses[next_index]
+                frame[2] = next_index + 1
+                if dependency_id in active_set:
+                    cycle = _cycle_witness(active, dependency_id)
+                    raise TevScriptError(
+                        "TEVS_V1_BEHAVIOR_CYCLE",
+                        "behavior dependency cycle: " + " -> ".join(cycle),
+                        dependency_span,
+                    )
+                if dependency_id in seen:
+                    raise TevScriptError(
+                        "TEVS_V1_BEHAVIOR_DUPLICATE_INCLUSION",
+                        f"behavior {dependency_id!r} appears more than once in {owner_label}",
+                        dependency_span,
+                    )
+                _push_behavior_frame(
+                    plan,
+                    stack,
+                    active,
+                    active_set,
+                    dependency_id,
+                    dependency_span,
+                    behaviors,
+                )
+                continue
+
+            stack.pop()
+            popped = active.pop()
+            active_set.remove(popped)
+            assert popped == behavior_id
+            if behavior_id in seen:
+                raise AssertionError("behavior closure duplicated after DFS completion")
+            seen.add(behavior_id)
+            result.append(behavior_id)
+            if maximum is not None and len(result) > maximum:
+                raise TevScriptError(
+                    "TEVS_V1_BEHAVIOR_FLATTENED_BUDGET",
+                    f"flattened behavior count exceeds {maximum} in {owner_label}",
+                    incoming_span,
+                )
+
+    return tuple(result)
+
+
+def _push_behavior_frame(
+    plan: LinkPlanV1,
+    stack: list[list[object]],
+    active: list[str],
+    active_set: set[str],
+    behavior_id: str,
+    incoming_span: SourceSpan,
+    behaviors: dict[str, SymbolV1],
+) -> None:
+    symbol = behaviors.get(behavior_id)
+    if symbol is None or not isinstance(symbol.declaration, BehaviorDecl):
+        raise TevScriptError(
+            "TEVS_V1_BEHAVIOR_SYMBOL",
+            f"resolved behavior {behavior_id!r} has no behavior declaration",
+            incoming_span,
+        )
+    declaration = symbol.declaration
+    resolved_uses = tuple(
+        (
+            resolve_symbol(
                 plan,
                 symbol.owner_id,
                 use.behavior_id,
                 NAMESPACE_BEHAVIOR,
                 span=use.span,
-            )
-            expand(dependency.semantic_id, use.span)
-        active.pop()
-        seen.add(target_id)
-        result.append(target_id)
-
-    for use in entity.uses:
-        dependency = resolve_symbol(
-            plan,
-            owner_id,
-            use.behavior_id,
-            NAMESPACE_BEHAVIOR,
-            span=use.span,
+            ).semantic_id,
+            use.span,
         )
-        expand(dependency.semantic_id, use.span)
-    return tuple(result)
+        for use in declaration.uses
+    )
+    active.append(behavior_id)
+    active_set.add(behavior_id)
+    stack.append([behavior_id, incoming_span, 0, resolved_uses])
+
+
+def _cycle_witness(active: list[str], target_id: str) -> list[str]:
+    start = active.index(target_id) if target_id in active else 0
+    return [*active[start:], target_id]
 
 
 def _build_composite_model(
@@ -285,6 +378,12 @@ def _add_state(
     name = source.declaration.name
     previous = state_names.get(name)
     if previous is not None:
+        if previous.component_id == source.component_id:
+            raise TevScriptError(
+                "TEVS_V1_TYPE_STATE_DUPLICATE",
+                f"duplicate state {name!r} in {source.component_id}",
+                source.declaration.span,
+            )
         raise TevScriptError(
             "TEVS_V1_BEHAVIOR_STATE_CONFLICT",
             f"state {name!r} conflicts in {composite_id}: {previous.component_id} vs {source.component_id}",
