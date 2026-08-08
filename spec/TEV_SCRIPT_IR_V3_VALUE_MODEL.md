@@ -1,117 +1,67 @@
 # TEV Script IR V3 portable value model
 
-Status: **normative V1 / IR V3 candidate V1**.
+Status: **normative V1 / IR V3 candidate V2**.
 
-This document defines the runtime value domain required to execute non-erasable TEV Script V1 programs. It extends the certified V0.2 portable value model without modifying IR V2 or its historical runtime behavior.
+This document is a focused companion to `spec/TEV_SCRIPT_IR_V3.md`. The master IR V3 document defines the complete runtime representation; this file freezes the value/type boundary used by validators, runtimes, capability adapters, checkpoints and conformance receipts.
 
-## 1. Design constraints
+IR V3 extends the certified V0.2 value model without modifying IR V2 or reinterpreting its historical bytes.
 
-IR V3 runtime values MUST remain:
+## 1. Core invariants
 
-- finite;
-- immutable from the language perspective;
-- structurally serializable;
-- independent of host object identity;
-- independent of pointer/address identity;
-- independent of reflection;
-- independent of hash-map iteration order;
-- deterministic under equality and canonical encoding;
-- recursively bounded by the V1 type/value budgets.
+Every admitted V3 value is finite, immutable from TEV semantics, recursively typed, structurally serializable and independent of host identity. TEV values never expose pointers, references, reflection objects, mutable host dictionaries, tasks/promises or arbitrary native instances.
 
-IR V3 does not introduce a heap language, references, object identity, cyclic values, garbage-collector-visible semantics or host-native object handles.
+Equality and canonical serialization cannot depend on locale, timezone, process architecture, garbage-collector timing, hash-map iteration order or source path.
 
-## 2. Canonical type ids
+`Unit` is never a runtime value. It is allowed only as a capability return type.
 
-Every runtime slot, state, parameter, local, capability argument/result and event argument has one canonical type id.
+## 2. Closed type table
 
-The grammar is:
+Every V3 program carries `types`, a closed canonical table sorted by `type_id`.
+
+The table contains exactly the runtime type descriptors needed by the program plus the seven portable base descriptors:
 
 ```text
-TypeId     := Primitive
-            | Nominal
-            | "Option<" TypeId ">"
-            | "Result<" TypeId "," TypeId ">"
-
-Primitive  := "Bool" | "Int" | "Rat" | "Text" | "Vec2" | "Vec3" | "Unit"
-Nominal    := QualifiedId
-QualifiedId:= IDENT ("." IDENT)+
+Bool Int Rat Text Vec2 Vec3 Unit
 ```
 
-`Unit` is a signature-only return type and is not a storable runtime value. It cannot appear inside `Option` or `Result`.
-
-Type-id nesting is bounded by the V1 normative type-nesting budget.
-
-## 3. Runtime type registry
-
-Every IR V3 program carries a closed nominal type registry containing all runtime-reachable record and enum declarations.
-
-### 3.1 Record descriptor
+Descriptor forms are:
 
 ```json
-{
-  "kind": "record",
-  "type_id": "game.Damage",
-  "fields": [
-    {"name": "amount", "type": "Int"},
-    {"name": "critical", "type": "Bool"}
-  ]
-}
+{"type_id":"Int","kind":"primitive"}
+{"type_id":"Unit","kind":"unit"}
+{"type_id":"game.Damage","kind":"record","fields":[...]}
+{"type_id":"game.Kind","kind":"enum","variants":[...]}
+{"type_id":"Option<Int>","kind":"option","argument":"Int"}
+{"type_id":"Result<Int,Text>","kind":"result","ok_type":"Int","err_type":"Text"}
 ```
 
-Rules:
+The runtime does not re-derive constructed-type structure from source syntax. The descriptor table is authoritative and must agree exactly with every canonical type id.
 
-- `type_id` is nominal identity;
-- fields are unique;
-- fields are stored in lexical field-name order in canonical IR;
-- each field type is a storable canonical type id;
-- record dependency graphs are acyclic;
-- runtime values contain exactly the declared field set.
+### 2.1 Primitive and Unit descriptors
 
-### 3.2 Enum descriptor
+The six storable primitive descriptors are `primitive`; `Unit` is `unit`. They occur exactly once and cannot be shadowed by nominal types.
 
-```json
-{
-  "kind": "enum",
-  "type_id": "game.DamageKind",
-  "variants": ["Fire", "Ice", "Physical"]
-}
-```
+### 2.2 Record descriptors
 
-Rules:
+Record `type_id` is nominal identity. Fields are unique and stored lexically by field name in the canonical table. Field types are storable V3 type ids.
 
-- variants are payload-free in V1.0;
-- variants are unique and lexically sorted in canonical IR;
-- no numeric ordinal is semantic;
-- host enum representations are not part of the language contract.
+Record dependency graphs are acyclic, including dependencies through Option and Result. The validator must prove this iteratively within the V1 nesting/resource budgets rather than relying on the host call stack.
 
-`Option<T>` and `Result<T,E>` are built-in closed variant families and do not require registry entries.
+### 2.3 Enum descriptors
 
-## 4. Abstract runtime values
+V1 nominal enums are payload-free. Variants are unique, nonempty and lexically sorted. There is no semantic ordinal or host enum backing value.
 
-The semantic runtime value domain is:
+### 2.4 Option and Result descriptors
 
-```text
-BoolValue
-IntValue
-RatValue
-TextValue
-Vec2Value
-Vec3Value
-RecordValue(type_id, fields)
-VariantValue(type_id, variant, optional_payload)
-```
+`Option<T>` has exactly `None` and `Some(T)`.
 
-`RecordValue` and `VariantValue` are conceptual immutable values. A host implementation may use a class, struct, tuple or object internally, but host representation is not observable and must not introduce alias-sensitive behavior.
+`Result<T,E>` has exactly `Ok(T)` and `Err(E)`.
 
-## 5. Canonical external encoding
+The descriptor canonical id must equal its recursively canonical arguments. `Unit` cannot appear as an argument.
 
-The following encoding is used whenever an IR V3 value enters canonical JSON: program constants, checkpoints, conformance receipts and other portable evidence.
+## 3. Primitive value encoding
 
-The expected type is always known from the surrounding typed contract. The encoded value therefore does not redundantly carry a type id.
-
-### 5.1 Primitive values
-
-IR V2 encodings remain unchanged:
+IR V3 deliberately preserves the V0.2 canonical primitive encodings.
 
 ```json
 true
@@ -124,131 +74,135 @@ true
 ]
 ```
 
-All integer/rational text remains canonical and normalized. `-0` is forbidden.
+`Vec2` and `Vec3` therefore remain direct arrays of canonical rational values. V3 does **not** introduce `$vec2` or `$vec3` wrappers.
 
-### 5.2 Record value
+Integer text is canonical decimal; `-0` is invalid. Rational numerator/denominator are normalized with positive nonzero denominator.
 
-For expected type `game.Damage`:
+## 4. Composite value encoding
+
+Unlike primitive values, V3 composite encodings intentionally repeat their exact canonical `type`. This redundancy is normative: it allows capability boundaries, checkpoint readers and independent hosts to reject a value whose claimed runtime type conflicts with the typed slot that contains it.
+
+### 4.1 Record
 
 ```json
 {
   "$record": {
-    "amount": {"$int":"12"},
-    "critical": false
+    "type":"game.Damage",
+    "fields":[
+      {"name":"amount","value":{"$int":"12"}},
+      {"name":"critical","value":false}
+    ]
   }
 }
 ```
 
-Rules:
+The encoded type must be the exact record descriptor id. The field list must equal the descriptor field set exactly and use canonical descriptor field order. Every field value is recursively validated using the field's declared type.
 
-- the object contains exactly the declared field set;
-- each field value is recursively encoded using the descriptor field type;
-- JSON canonicalization sorts object keys, so source field order cannot affect bytes;
-- duplicate JSON keys are rejected by the strict JSON boundary before value validation.
+Constructor **evaluation order is not this storage order**. Runtime `MAKE_RECORD.fields` records evaluation order separately; after construction the immutable value is stored canonically.
 
-### 5.3 Variant value
-
-All closed sum values use one representation:
+### 4.2 Enum
 
 ```json
-{"$variant":{"tag":"Fire"}}
-{"$variant":{"tag":"None"}}
-{"$variant":{"tag":"Some","value":{"$int":"3"}}}
-{"$variant":{"tag":"Ok","value":{"$int":"3"}}}
-{"$variant":{"tag":"Err","value":"bad"}}
+{"$enum":{"type":"game.Kind","variant":"Fire"}}
 ```
 
-Interpretation is determined by the expected type:
+The type must resolve to an enum descriptor and the variant must exist. No payload is allowed.
 
-- nominal enum: tag must be one declared variant and no `value` is allowed;
-- `Option<T>`: `None` has no payload; `Some` has exactly one payload of `T`;
-- `Result<T,E>`: `Ok` has one payload of `T`; `Err` has one payload of `E`.
+### 4.3 Option
 
-This is a typed algebraic value, not an exception, nullable host reference or dictionary protocol.
+```json
+{"$option":{"type":"Option<Int>","variant":"None"}}
+{"$option":{"type":"Option<Int>","variant":"Some","value":{"$int":"7"}}}
+```
+
+`None` has no value member. `Some` has exactly one recursively validated value of the descriptor argument type.
+
+### 4.4 Result
+
+```json
+{"$result":{"type":"Result<Int,Text>","variant":"Ok","value":{"$int":"7"}}}
+{"$result":{"type":"Result<Int,Text>","variant":"Err","value":"invalid"}}
+```
+
+`Ok` and `Err` always carry exactly one payload of the corresponding descriptor type.
+
+## 5. Runtime semantic representation
+
+A host may internally represent composite values using frozen classes, structs or tuples, but the following semantic facts are observable and therefore mandatory:
+
+- exact canonical type id;
+- record field names and recursively typed values;
+- enum/Option/Result variant;
+- payload only where defined;
+- immutable value semantics;
+- no reference-identity equality.
+
+A host representation must not expose mutation through aliasing after a value has entered TEV state.
 
 ## 6. Equality
 
-`==` / `!=` are deterministic and type-directed.
+Equality is type-directed.
 
-- primitives retain V0.2 equality;
-- `Int` and `Rat` may compare after exact `Int -> Rat` widening;
-- records require identical nominal type id and then compare all fields recursively;
-- enums require identical nominal type id and identical variant;
-- `Option<T>` requires the same canonical `Option<T>` type and matching tag; `Some` payloads compare recursively;
-- `Result<T,E>` requires the same canonical result type and matching tag; payloads compare recursively.
+- primitive equality remains V0.2-compatible;
+- numeric `Int`/`Rat` comparison may use exact widening;
+- records require identical nominal type id, then recursively equal canonical fields;
+- enums require identical nominal type id and variant;
+- Option/Result require identical constructed type id and variant, then recursively equal payload where present.
 
-No reference identity participates.
+Different nominal or constructed type ids are not structurally coerced.
 
-Ordering operators remain numeric-only in V1.0.
+Ordering remains numeric-only.
 
-## 7. Capability ABI
+## 7. Capability boundary
 
-Capabilities may use any V3 signature type allowed by source semantics.
+A V3 capability signature may contain any storable V3 parameter type and any storable V3 or `Unit` return type.
 
-The host adapter receives/returns the semantic value represented by the declared TEV type. Host-specific objects may be used internally by an adapter, but before a value becomes visible to TEV execution it must be validated/coerced against the complete declared type recursively.
+Before a host-provided return enters TEV execution, the adapter/runtime must recursively coerce and validate it against the exact declared type. A malformed host value fails closed.
 
-A malformed record field set, unknown enum variant, wrong sum tag, wrong payload type, missing payload or unexpected payload fails closed as a capability return coercion error.
+Invalid examples include missing/extra record fields, wrong record nominal type, unknown enum variant, `None` with payload, `Some` without payload, wrong Result arm payload, nested `Unit`, noncanonical integer/rational text or arbitrary host objects.
 
-Capability input/output cannot smuggle arbitrary host object references into TEV state.
+The capability boundary may provide ergonomic host conversion APIs, but those APIs cannot change TEV semantic values.
 
-## 8. Event ABI
+## 8. Event boundary
 
-Event parameters use the same V3 value domain. An emitted event is recorded with its canonical event id, declared parameter type list and recursively typed values.
+Events use the same value domain. Every emitted argument is validated against the exact event signature and then recorded canonically. If a local handler exists, the same semantic values are requeued under the bounded FIFO event model.
 
-Handled local events are requeued under the same bounded FIFO event-chain semantics as IR V2.
+## 9. Checkpoint V2
 
-## 9. Checkpoint representation
+`TEV_SCRIPT_RUNTIME_CHECKPOINT_V2` must encode state using exactly this V3 value model. The checkpoint binds both IR semantic identity and the originating linked V1 semantic identity.
 
-IR V3 requires checkpoint schema `TEV_SCRIPT_RUNTIME_CHECKPOINT_V2`.
+Restore is exact-program only; checkpoints do not migrate state across semantic program versions.
 
-A V2 checkpoint is bound to:
+## 10. Value depth and resource safety
 
-- runtime checkpoint schema;
-- program id;
-- IR schema;
-- program semantic hash;
-- source linked semantic hash;
-- complete entity set;
-- complete typed state set.
+The runtime boundary carries `maximum_value_nesting`, never exceeding the V1 type-nesting budget of 128.
 
-Every state value is encoded recursively using this value model.
+Recursive value validation/encoding may be implemented iteratively; a conforming host must report TEV budget/type diagnostics rather than overflowing a host recursion limit first.
 
-Checkpoint restore remains **exact only**: same IR schema, same program id, same program semantic hash, same source linked semantic hash and exact state type set. Checkpoints are not a migration mechanism.
+Record field count, type count, state count, arguments and other structural budgets remain those frozen by the V1/IR V3 contracts.
 
-## 10. Canonicality rules
+## 11. Fail-closed matrix
 
-Canonical value bytes must not depend on:
+A value is rejected before use when any of these is false:
 
-- host class/struct layout;
-- pointer identity;
-- dictionary insertion order;
-- locale;
-- timezone;
-- process architecture;
-- integer machine width;
-- JavaScript `Number` representation;
-- reflection metadata order.
+```text
+expected type exists in closed type table
+encoded composite type equals expected type
+value form matches descriptor kind
+record field set/order is exact
+every nested value validates recursively
+variant exists
+variant payload arity is exact
+payload type is exact/valid
+Unit is absent from value positions
+numeric text is canonical
+value nesting stays inside boundary
+```
 
-All nested records and variants are recursively canonicalized under the repository canonical JSON profile.
+No invalid value is repaired, truncated, default-filled, JSON-stringified or converted into an opaque host object.
 
-## 11. Fail-closed invalid values
+## 12. Compatibility rule
 
-The runtime rejects at least:
+IR V2 primitive value bytes remain valid primitive representations in IR V3. A V2-to-V3 lift therefore changes the program envelope/type table and semantic hash, but it must not introduce numeric or primitive-value loss.
 
-- unknown nominal type ids;
-- recursive/invalid registry descriptors;
-- `Unit` used as a stored value;
-- record values with missing/extra fields;
-- record field type mismatch;
-- enum value with unknown variant;
-- enum value carrying a payload;
-- `Option` unknown tag;
-- `None` carrying a payload;
-- `Some` without a payload;
-- `Result` unknown tag;
-- `Ok`/`Err` without a payload;
-- payload type mismatch;
-- noncanonical integer/rational encoding;
-- type nesting beyond the normative budget.
-
-No invalid value is repaired, truncated, default-filled or coerced through text/JSON blobs.
+This compatibility rule is a separate conformance gate and does not make V2 and V3 semantic hashes interchangeable.
