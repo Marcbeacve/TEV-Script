@@ -1,0 +1,25 @@
+script ErasableToIrV2 version "1.0.0";
+
+fn clampEnergy(value: Rat) -> Rat = min(max(value, 0), 1);
+
+behavior HasEnergy {
+    state energy: Rat = 1;
+}
+
+behavior Metabolism {
+    use HasEnergy;
+
+    on update {
+        for i in 0 .. 4 {
+            energy = clampEnergy(energy - 0.01);
+        }
+    }
+}
+
+entity Organism {
+    use Metabolism;
+
+    on start {
+        log "organism ready";
+    }
+}
