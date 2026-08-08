@@ -434,6 +434,23 @@ except TevScriptError as exc:
 else:
     raise SystemExit("missing_authority_not_rejected")
 
+holder = {}
+def reentrant_read():
+    holder["host"].state("E")
+    return 7
+
+reentrant_host = PythonRuntimeHostV1(sensor, {"world.read": reentrant_read})
+holder["host"] = reentrant_host
+try:
+    reentrant_host.invoke("E", "update")
+except TevScriptError as exc:
+    if exc.diagnostic.code != "TEVS_PYTHON_V1_HOST_BUSY":
+        raise
+else:
+    raise SystemExit("reentrant_host_access_not_rejected")
+if reentrant_host.state("E")["value"] != 0:
+    raise SystemExit("reentrant_failure_mutated_state")
+
 sensor_host = PythonRuntimeHostV1(sensor, {"world.read": lambda: 7})
 sensor_host.invoke("E", "update")
 if sensor_host.state("E")["value"] != 7:
@@ -450,6 +467,7 @@ print("TEV_SCRIPT_V1_PYTHON_INSTALLED_MODULE_ORIGIN=PASS")
 print("TEV_SCRIPT_V1_PYTHON_INSTALLED_RUNTIME_HOST=PASS")
 print("TEV_SCRIPT_V1_PYTHON_INSTALLED_CHECKPOINT_RESTART=PASS")
 print("TEV_SCRIPT_V1_PYTHON_INSTALLED_LEAST_AUTHORITY=PASS")
+print("TEV_SCRIPT_V1_PYTHON_INSTALLED_REENTRANT_ACCESS_REJECTED=PASS")
 print("TEV_SCRIPT_V1_PYTHON_INSTALLED_TYPED_CAPABILITY=PASS")
 print(f"TEV_SCRIPT_V1_PYTHON_SOAK_EVENTS={soak_events}")
 '''
@@ -474,6 +492,7 @@ print(f"TEV_SCRIPT_V1_PYTHON_SOAK_EVENTS={soak_events}")
             "TEV_SCRIPT_V1_PYTHON_INSTALLED_MODULE_ORIGIN=PASS",
             "TEV_SCRIPT_V1_PYTHON_INSTALLED_CHECKPOINT_RESTART=PASS",
             "TEV_SCRIPT_V1_PYTHON_INSTALLED_LEAST_AUTHORITY=PASS",
+            "TEV_SCRIPT_V1_PYTHON_INSTALLED_REENTRANT_ACCESS_REJECTED=PASS",
             "TEV_SCRIPT_V1_PYTHON_INSTALLED_TYPED_CAPABILITY=PASS",
             f"TEV_SCRIPT_V1_PYTHON_SOAK_EVENTS={SOAK_EVENTS}",
         ):
@@ -485,6 +504,7 @@ print(f"TEV_SCRIPT_V1_PYTHON_SOAK_EVENTS={soak_events}")
                 )
         print("TEV_SCRIPT_V1_PYTHON_CHECKPOINT_RESTART=PASS")
         print("TEV_SCRIPT_V1_PYTHON_LEAST_AUTHORITY=PASS")
+        print("TEV_SCRIPT_V1_PYTHON_REENTRANT_ACCESS_REJECTED=PASS")
         print("TEV_SCRIPT_V1_PYTHON_TYPED_CAPABILITY=PASS")
         print("TEV_SCRIPT_V1_PYTHON_SOAK=PASS events=" + str(SOAK_EVENTS))
 
@@ -519,6 +539,7 @@ print(f"TEV_SCRIPT_V1_PYTHON_SOAK_EVENTS={soak_events}")
             "installed_ir_v3_compile": "PASS",
             "installed_runtime_host": "PASS",
             "least_authority": "PASS",
+            "reentrant_access_rejected": "PASS",
             "typed_capability": "PASS",
             "checkpoint_restart_continuation": "PASS",
             "soak_events": SOAK_EVENTS,
