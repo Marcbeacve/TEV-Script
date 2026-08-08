@@ -1,5 +1,5 @@
 {
-  "schema": "TEV_SCRIPT_V1_FEATURE_MATRIX_V3",
+  "schema": "TEV_SCRIPT_V1_FEATURE_MATRIX_V4",
   "target_language_version": "1.0.0",
   "repository_language_version_remains": "0.2.0-preview",
   "stable_release_authorized": false,
@@ -10,8 +10,8 @@
     "source_semantics": "CLOSED_CANDIDATE_V2",
     "deterministic_link_model": "CLOSED_CANDIDATE_V2",
     "resource_budgets": "CLOSED_CANDIDATE_V1",
-    "linked_semantic_schema": "CLOSED_CANDIDATE_V1",
-    "runtime_ir_v3": "PENDING"
+    "linked_semantic_schema": "CLOSED_CANDIDATE_V2",
+    "runtime_ir_v3": "CLOSED_CANDIDATE_V2"
   },
   "implementation": {
     "python_v1_lexer_parser_ast": "IMPLEMENTED_CANDIDATE",
@@ -25,33 +25,47 @@
     "constant_evaluator": "IMPLEMENTED_CANDIDATE",
     "behavior_composition_model": "IMPLEMENTED_CANDIDATE",
     "effect_and_event_inference": "IMPLEMENTED_CANDIDATE",
+    "linked_program_canonicalization": "IMPLEMENTED_CANDIDATE",
     "ir_v2_erasable_lowering": "IMPLEMENTED_CANDIDATE",
-    "ir_v3_runtime_values": "PENDING",
+    "lowering_receipt_v1": "IMPLEMENTED_CANDIDATE",
+    "ir_v3_type_table_and_value_codec": "IMPLEMENTED_CANDIDATE",
+    "ir_v3_typed_cfg_verifier": "IMPLEMENTED_CANDIDATE",
+    "ir_v3_program_validator": "IMPLEMENTED_CANDIDATE",
+    "ir_v3_python_runtime": "IMPLEMENTED_CANDIDATE",
+    "linked_v1_to_ir_v3_lowering": "IMPLEMENTED_CANDIDATE",
+    "ir_v2_to_ir_v3_lift": "IMPLEMENTED_CANDIDATE",
     "javascript_v1_frontend_runtime": "PENDING",
     "csharp_v1_frontend_runtime": "PENDING",
     "browser_wasm_v1_runtime": "PENDING",
-    "wasi_v1_runtime": "PENDING"
+    "wasi_v1_runtime": "PENDING",
+    "runtime_checkpoint_v2_for_v3_values": "PENDING"
   },
   "compatibility": {
     "v0_2_source_compatibility_required": true,
     "v0_2_certified_runtime_contract_immutable": true,
     "gate5_gate6_gate7_claims_must_not_be_reinterpreted": true,
-    "v0_2_compiler_runtime_files_modified_by_v1_candidate": false
+    "v0_2_compiler_runtime_files_modified_by_v1_candidate": false,
+    "ir_v2_primitive_encoding_preserved_by_ir_v3": true,
+    "ir_v2_to_ir_v3_verified_lift_implemented_candidate": true
   },
   "required_features": [
-    {"id":"MODULES","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"IMPLEMENTED_CANDIDATE_IR_V2_ERASURE"},
-    {"id":"IMPORTS","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"IMPLEMENTED_CANDIDATE_IR_V2_ERASURE"},
-    {"id":"VISIBILITY_EXPORT","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"IMPLEMENTED_CANDIDATE_IR_V2_ERASURE"},
-    {"id":"PURE_USER_FUNCTIONS","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"IMPLEMENTED_CANDIDATE_CALL_BY_VALUE_INLINING_FOR_IR_V2_PROFILE"},
-    {"id":"CUSTOM_CAPABILITY_DECLARATIONS","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"IMPLEMENTED_CANDIDATE_FOR_IR_V2_SIGNATURE_TYPES"},
-    {"id":"RECORDS","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","constant_semantics":"IMPLEMENTED_CANDIDATE","runtime_lowering":"IR_V3_REQUIRED_UNLESS_FULLY_ERASED_AS_CONSTANT"},
-    {"id":"ENUMS","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","constant_semantics":"IMPLEMENTED_CANDIDATE","runtime_lowering":"IR_V3_REQUIRED_UNLESS_FULLY_ERASED_AS_CONSTANT"},
-    {"id":"OPTION_RESULT","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","constant_semantics":"IMPLEMENTED_CANDIDATE","runtime_lowering":"IR_V3_REQUIRED_UNLESS_FULLY_ERASED_AS_CONSTANT"},
-    {"id":"EXHAUSTIVE_MATCH","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","runtime_lowering":"IR_V3_REQUIRED"},
+    {"id":"MODULES","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"IMPLEMENTED_CANDIDATE_PRE_IR_ERASURE"},
+    {"id":"IMPORTS","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"IMPLEMENTED_CANDIDATE_PRE_IR_ERASURE"},
+    {"id":"VISIBILITY_EXPORT","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"IMPLEMENTED_CANDIDATE_PRE_IR_ERASURE"},
+    {"id":"PURE_USER_FUNCTIONS","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"IMPLEMENTED_CANDIDATE_CALL_BY_VALUE_INLINING"},
+    {"id":"CUSTOM_CAPABILITY_DECLARATIONS","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","ir_v2_lowering":"IMPLEMENTED_CANDIDATE_FOR_V2_TYPES","ir_v3_lowering":"IMPLEMENTED_CANDIDATE_FOR_ALL_STORABLE_V1_TYPES"},
+    {"id":"RECORDS","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","constant_semantics":"IMPLEMENTED_CANDIDATE","ir_v3_runtime":"IMPLEMENTED_CANDIDATE"},
+    {"id":"ENUMS","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","constant_semantics":"IMPLEMENTED_CANDIDATE","ir_v3_runtime":"IMPLEMENTED_CANDIDATE"},
+    {"id":"OPTION_RESULT","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","constant_semantics":"IMPLEMENTED_CANDIDATE","ir_v3_runtime":"IMPLEMENTED_CANDIDATE"},
+    {"id":"EXHAUSTIVE_MATCH","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","ir_v3_lowering":"IMPLEMENTED_CANDIDATE_FINITE_FORWARD_CFG"},
     {"id":"STATIC_BOUNDED_FOR","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"IMPLEMENTED_CANDIDATE_VALIDATED_UNROLLING"},
     {"id":"BEHAVIOR_COMPOSITION","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"IMPLEMENTED_CANDIDATE_DETERMINISTIC_FRAGMENT_EXPANSION"},
     {"id":"CAPABILITY_EFFECT_INFERENCE","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"IMPLEMENTED_CANDIDATE"},
-    {"id":"DETERMINISTIC_MULTI_FILE_LINKING","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"PRE_IR_IMPLEMENTED_CANDIDATE"}
+    {"id":"DETERMINISTIC_MULTI_FILE_LINKING","source_spec":"CLOSED","python_frontend":"IMPLEMENTED_CANDIDATE","static_semantics":"IMPLEMENTED_CANDIDATE","lowering":"PRE_IR_IMPLEMENTED_CANDIDATE"},
+    {"id":"CANONICAL_LINKED_PROGRAM","source_spec":"CLOSED","python_reference":"IMPLEMENTED_CANDIDATE","semantic_hash":"IMPLEMENTED_CANDIDATE"},
+    {"id":"IR_V3_CLOSED_TYPE_TABLE","source_spec":"CLOSED_CANDIDATE_V2","python_validator":"IMPLEMENTED_CANDIDATE","python_runtime":"IMPLEMENTED_CANDIDATE"},
+    {"id":"IR_V3_ALGEBRAIC_VALUES","source_spec":"CLOSED_CANDIDATE_V2","python_validator":"IMPLEMENTED_CANDIDATE","python_runtime":"IMPLEMENTED_CANDIDATE"},
+    {"id":"IR_V2_TO_IR_V3_LIFT","source_spec":"CLOSED_CANDIDATE_V2","python_reference":"IMPLEMENTED_CANDIDATE"}
   ],
   "portable_conformance_assets": [
     "conformance/v1-source-syntax-cases.json",
@@ -59,7 +73,9 @@
     "conformance/v1-static-semantics-cases.json",
     "conformance/v1-behavior-composition-cases.json",
     "conformance/v1-constant-cases.json",
-    "conformance/v1-irv2-lowering-cases.json"
+    "conformance/v1-linked-program-cases.json",
+    "conformance/v1-irv2-lowering-cases.json",
+    "conformance/ir-v3-validator-cases.json"
   ],
   "explicitly_deferred": [
     "ASYNC_AWAIT",
@@ -86,9 +102,13 @@
     "REFERENCE_FRONTEND_DYNAMIC_PASS",
     "DETERMINISTIC_LINKER_DYNAMIC_PASS",
     "STATIC_SEMANTICS_DYNAMIC_PASS",
-    "IR_V2_ERASABLE_LOWERING_DYNAMIC_PASS",
     "LINKED_CANONICALIZATION_BYTE_LOCK_PASS",
-    "IR_V3_PROFILE_FROZEN_FOR_NONERASABLE_VALUES",
+    "IR_V2_ERASABLE_LOWERING_DYNAMIC_PASS",
+    "IR_V3_SCHEMA_AND_VALUE_MODEL_DYNAMIC_PASS",
+    "IR_V3_TYPED_CFG_DYNAMIC_PASS",
+    "IR_V3_PYTHON_RUNTIME_DYNAMIC_PASS",
+    "V1_TO_IR_V3_END_TO_END_DYNAMIC_PASS",
+    "IR_V2_TO_IR_V3_LIFT_DYNAMIC_PASS",
     "PYTHON_JS_CSHARP_V1_RECEIPT_PARITY_PASS",
     "BROWSER_WASM_WASI_NO_REGRESSION_PASS",
     "V1_NEGATIVE_BOUNDARY_CAMPAIGN_PASS",
