@@ -1,0 +1,53 @@
+{
+  "schema": "TEV_SCRIPT_V1_LINKED_PROGRAM_CASES_V1",
+  "language_version": "1.0.0",
+  "equivalent_pairs": [
+    {
+      "id": "constant-initializer-normalization",
+      "left": [{"path":"left.tevs","source":"script Root version \"1.0.0\"; entity E { state x: Int = 1 + 1; on start { return; } }"}],
+      "right": [{"path":"right.tevs","source":"script Root version \"1.0.0\"; entity E { state x: Int = 2; on start { return; } }"}]
+    },
+    {
+      "id": "function-parameter-alpha-renaming",
+      "left": [{"path":"left.tevs","source":"script Root version \"1.0.0\"; fn twice(x: Int) -> Int = x + x; entity E { state out: Int = 0; on update { out = twice(2); } }"}],
+      "right": [{"path":"right.tevs","source":"script Root version \"1.0.0\"; fn twice(value: Int) -> Int = value + value; entity E { state out: Int = 0; on update { out = twice(2); } }"}]
+    },
+    {
+      "id": "handler-parameter-and-local-alpha-renaming",
+      "left": [{"path":"left.tevs","source":"script Root version \"1.0.0\"; entity E { state out: Int = 0; on pulse(x: Int) { let temp = x + 1; out = temp; } }"}],
+      "right": [{"path":"right.tevs","source":"script Root version \"1.0.0\"; entity E { state out: Int = 0; on pulse(value: Int) { let calculated = value + 1; out = calculated; } }"}]
+    },
+    {
+      "id": "loop-and-match-binding-alpha-renaming",
+      "left": [{"path":"left.tevs","source":"script Root version \"1.0.0\"; entity E { state sum: Int = 0; state value: Option<Int> = Some(2); on start { for i in 0 .. 2 { sum = sum + i; } match value { Some(x) => { sum = sum + x; } None => { return; } } } }"}],
+      "right": [{"path":"right.tevs","source":"script Root version \"1.0.0\"; entity E { state sum: Int = 0; state value: Option<Int> = Some(2); on start { for index in 0 .. 2 { sum = sum + index; } match value { Some(payload) => { sum = sum + payload; } None => { return; } } } }"}]
+    },
+    {
+      "id": "state-and-record-declaration-order-normalization",
+      "left": [{"path":"left.tevs","source":"script Root version \"1.0.0\"; record R { z: Int; a: Rat; } entity E { state z: Int = 1; state a: Rat = 2; on start { return; } }"}],
+      "right": [{"path":"right.tevs","source":"script Root version \"1.0.0\"; record R { a: Rat; z: Int; } entity E { state a: Rat = 2; state z: Int = 1; on start { return; } }"}]
+    }
+  ],
+  "different_pairs": [
+    {
+      "id": "behavior-use-order-is-semantic",
+      "left": [{"path":"left.tevs","source":"script Root version \"1.0.0\"; behavior A { on update { log \"A\"; } } behavior B { on update { log \"B\"; } } entity E { use A; use B; on start { return; } }"}],
+      "right": [{"path":"right.tevs","source":"script Root version \"1.0.0\"; behavior A { on update { log \"A\"; } } behavior B { on update { log \"B\"; } } entity E { use B; use A; on start { return; } }"}]
+    },
+    {
+      "id": "statement-order-is-semantic",
+      "left": [{"path":"left.tevs","source":"script Root version \"1.0.0\"; entity E { on update { log \"A\"; log \"B\"; } }"}],
+      "right": [{"path":"right.tevs","source":"script Root version \"1.0.0\"; entity E { on update { log \"B\"; log \"A\"; } }"}]
+    },
+    {
+      "id": "function-operation-is-semantic",
+      "left": [{"path":"left.tevs","source":"script Root version \"1.0.0\"; fn f(x: Int) -> Int = x + 1; entity E { state out: Int = 0; on update { out = f(2); } }"}],
+      "right": [{"path":"right.tevs","source":"script Root version \"1.0.0\"; fn f(x: Int) -> Int = x * 1; entity E { state out: Int = 0; on update { out = f(2); } }"}]
+    },
+    {
+      "id": "capability-signature-is-semantic",
+      "left": [{"path":"left.tevs","source":"script Root version \"1.0.0\"; capability sensor.read() -> Int observation; entity E { state out: Int = 0; on update { out = sensor.read(); } }"}],
+      "right": [{"path":"right.tevs","source":"script Root version \"1.0.0\"; capability sensor.read() -> Rat observation; entity E { state out: Rat = 0; on update { out = sensor.read(); } }"}]
+    }
+  ]
+}
