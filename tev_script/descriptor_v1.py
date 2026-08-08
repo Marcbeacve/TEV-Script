@@ -33,16 +33,28 @@ from .contracts_v1 import (
     MAX_TYPE_NESTING,
     V1_LANGUAGE_VERSION,
 )
+from .release_metadata_v1 import (
+    CURRENT_V1_CERTIFY_FULL_CLAIM,
+    CURRENT_V1_LANGUAGE_STABLE_CLAIM,
+    RELEASE_PROFILE,
+    RELEASE_STATUS,
+    STABLE,
+    TECHNICAL_PARENT_CERTIFICATE_SHA256,
+    TECHNICAL_PARENT_COMMIT,
+    validate_release_metadata,
+)
 
 DESCRIPTOR_SCHEMA_V1 = "TEV_SCRIPT_DESCRIPTOR_V3"
 
 
 def v1_descriptor() -> dict[str, object]:
+    validate_release_metadata()
     descriptor: dict[str, object] = {
         "schema": DESCRIPTOR_SCHEMA_V1,
         "language_version": V1_LANGUAGE_VERSION,
-        "release_status": "IMPLEMENTATION_CANDIDATE_UNCERTIFIED",
-        "stable": False,
+        "release_profile": RELEASE_PROFILE,
+        "release_status": RELEASE_STATUS,
+        "stable": STABLE,
         "source_extension": ".tevs",
         "source_model": {
             "root_units": ["script", "module"],
@@ -162,8 +174,10 @@ def v1_descriptor() -> dict[str, object]:
         },
         "certification": {
             "v0_2_oracle_commit": "6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5",
-            "current_v1_certify_full_claim": False,
-            "current_v1_language_stable_claim": False,
+            "technical_parent_commit": TECHNICAL_PARENT_COMMIT,
+            "technical_parent_certificate_sha256": TECHNICAL_PARENT_CERTIFICATE_SHA256,
+            "current_v1_certify_full_claim": CURRENT_V1_CERTIFY_FULL_CLAIM,
+            "current_v1_language_stable_claim": CURRENT_V1_LANGUAGE_STABLE_CLAIM,
         },
     }
     descriptor["descriptor_hash"] = canonical_hash(descriptor)
