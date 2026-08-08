@@ -11,6 +11,7 @@ dependencies = []
 
 [project.scripts]
 tev-script = "tev_script.cli:main"
+tev-script-v1 = "tev_script.cli_v1:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
