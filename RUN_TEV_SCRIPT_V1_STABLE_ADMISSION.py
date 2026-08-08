@@ -104,6 +104,13 @@ def require_equal(label: str, observed: object, expected: object) -> None:
     print(label + "=PASS")
 
 
+def require_nonempty_string(label: str, observed: object) -> str:
+    if not isinstance(observed, str) or not observed:
+        fail(label, "EXPECTED_NONEMPTY_STRING OBSERVED=" + repr(observed))
+    print(label + "=PASS")
+    return observed
+
+
 def prepare_artifact_root(raw: str) -> Path:
     destination = Path(raw).expanduser().resolve()
     try:
@@ -311,16 +318,16 @@ def main(argv: list[str] | None = None) -> int:
     if not isinstance(pack_result, list) or len(pack_result) != 1 or not isinstance(pack_result[0], dict):
         fail("STABLE_JAVASCRIPT_PACK", "EXPECTED_ONE_PACK_RESULT")
     package_info = pack_result[0]
-    package_name = package_info.get("filename")
-    if not isinstance(package_name, str) or not package_name:
-        fail("STABLE_JAVASCRIPT_PACK", "FILENAME_MISSING")
+    package_json = json.loads((ROOT / "javascript" / "package.json").read_text(encoding="utf-8"))
+    require_equal("STABLE_JAVASCRIPT_PACK_NAME", package_info.get("name"), package_json.get("name"))
+    require_equal("STABLE_JAVASCRIPT_PACK_VERSION", package_info.get("version"), STABLE_VERSION)
+    require_equal("STABLE_JAVASCRIPT_VERSION", package_json.get("version"), STABLE_VERSION)
+    package_name = require_nonempty_string("STABLE_JAVASCRIPT_PACK_FILENAME", package_info.get("filename"))
+    declared_integrity = require_nonempty_string("STABLE_JAVASCRIPT_PACK_INTEGRITY", package_info.get("integrity"))
     package_path = javascript_artifacts / package_name
     if not package_path.is_file():
         fail("STABLE_JAVASCRIPT_PACK", "ARTIFACT_MISSING=" + package_name)
     package_hash = sha256_file(package_path)
-    declared_integrity = package_info.get("integrity")
-    package_json = json.loads((ROOT / "javascript" / "package.json").read_text(encoding="utf-8"))
-    require_equal("STABLE_JAVASCRIPT_VERSION", package_json.get("version"), STABLE_VERSION)
     print("STABLE_JAVASCRIPT_PACK=PASS")
 
     descriptor = v1_descriptor()
