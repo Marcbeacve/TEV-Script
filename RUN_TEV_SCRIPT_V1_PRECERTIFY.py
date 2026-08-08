@@ -119,6 +119,7 @@ def main() -> int:
             "TEV_SCRIPT_IR_V3_CSHARP_V0_2_ASSEMBLY_ISOLATION=PASS",
             "TEV_SCRIPT_IR_V3_CSHARP_V3_ASSEMBLY=NET8_DEPENDENCY_FREE_PASS",
             "TEV_SCRIPT_IR_V3_CSHARP_REFLECTION_FREE=PASS",
+            "TEV_SCRIPT_IR_V3_CSHARP_AOT_JSON=REFLECTION_FREE_PASS",
             "TEV_SCRIPT_IR_V3_CSHARP_PORTABLE_SHA256=PASS",
             "TEV_SCRIPT_IR_V3_CSHARP_MODERN_API_GUARD=PASS",
             "TEV_SCRIPT_IR_V3_CSHARP_CHECKPOINT_BOUNDARY=PASS",
@@ -192,6 +193,33 @@ def main() -> int:
         ),
     )
 
+    wasi_v3 = run(
+        [sys.executable, str(ROOT / "tools" / "validate_ir_v3_wasi.py")]
+    )
+    wasi_v3_stdout = require_success(
+        "TEV_SCRIPT_IR_V3_WASI_DYNAMIC_GATE",
+        wasi_v3,
+    )
+    require_witnesses(
+        "TEV_SCRIPT_IR_V3_WASI_WITNESSES",
+        wasi_v3_stdout,
+        (
+            "TEV_SCRIPT_IR_V3_WASI_SDK_RESOLVED=PASS",
+            "TEV_SCRIPT_IR_V3_WASI_HOST_ORACLES=PASS",
+            "TEV_SCRIPT_IR_V3_WASI_CSHARP_PORTABLE_SURFACE=PASS",
+            "TEV_SCRIPT_IR_V3_WASI_BUILD=PASS",
+            "TEV_SCRIPT_IR_V3_WASI_WASM_MAGIC=PASS",
+            "TEV_SCRIPT_IR_V3_WASI_FRESH=PASS",
+            "TEV_SCRIPT_IR_V3_WASI_CHECKPOINT_CANONICAL_BYTES=PASS",
+            "TEV_SCRIPT_IR_V3_WASI_RESTORE=PASS",
+            "TEV_SCRIPT_IR_V3_WASI_RECEIPT_PARITY=PASS",
+            "TEV_SCRIPT_IR_V3_WASI_CHECKPOINT_PARITY=PASS",
+            "TEV_SCRIPT_IR_V3_WASI_FRESH_RESTORE_IDENTITY=PASS",
+            "TEV_SCRIPT_IR_V3_WASI_RESTART_CONTINUATION=PASS",
+            "TEV_SCRIPT_IR_V3_WASI_GATE=PASS",
+        ),
+    )
+
     portable = run([sys.executable, str(ROOT / "RUN_PORTABLE_CONFORMANCE.py")])
     portable_stdout = require_success("TEV_SCRIPT_V0_2_PORTABLE_CONFORMANCE", portable)
     if "=FAIL" in portable_stdout or "command_failed:" in portable_stdout:
@@ -215,7 +243,7 @@ def main() -> int:
     print("GIT_IDENTITY_STABLE_DURING_VALIDATION=PASS")
 
     evidence = {
-        "schema": "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V3",
+        "schema": "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V4",
         "branch": branch,
         "commit": head,
         "tree": tree,
@@ -224,11 +252,13 @@ def main() -> int:
         "v1_python_gate": "PASS",
         "ir_v3_csharp_v0_2_assembly_isolation": "PASS",
         "ir_v3_csharp_runtime_assembly": "PASS_NET8_DEPENDENCY_FREE",
+        "ir_v3_csharp_aot_json": "PASS_REFLECTION_FREE",
         "ir_v3_python_js_csharp_parity": "PASS",
         "checkpoint_v2_cross_host": "PASS",
         "browser_wasm_v3": "PASS",
+        "wasi_v3": "PASS_FRESH_RESTORE",
         "v0_2_portable_regression": "PASS",
-        "wasi_v3": "PENDING",
+        "signed_update_v3": "PENDING",
         "certify_full": False,
         "language_stable": False,
     }
