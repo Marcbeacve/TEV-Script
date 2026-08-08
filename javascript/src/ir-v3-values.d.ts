@@ -1,4 +1,4 @@
-import { Rational, TevScriptError } from "./runtime.js";
+import { Rational, TevScriptError } from "./runtime.mjs";
 
 export type IrV3TypeKind = "primitive" | "unit" | "record" | "enum" | "option" | "result";
 
