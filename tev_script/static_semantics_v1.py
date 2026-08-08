@@ -6,16 +6,13 @@ from typing import Iterable
 from .ast_v1 import (
     AnimateStmt,
     AssignStmt,
-    BehaviorDecl,
     CallStmt,
     EmitStmt,
-    EntityDecl,
     EnumPattern,
     ErrPattern,
     Expr,
     ForStmt,
     FunctionDecl,
-    HandlerDecl,
     IfStmt,
     LetStmt,
     LogStmt,
@@ -25,7 +22,11 @@ from .ast_v1 import (
     OkPattern,
     ReturnStmt,
     SomePattern,
-    StateDecl,
+)
+from .behavior_model_v1 import (
+    BehaviorModelIndexV1,
+    CompositeModelV1,
+    build_behavior_model,
 )
 from .canonical import canonical_hash, canonical_json
 from .diagnostics import SourceSpan, TevScriptError
@@ -42,7 +43,6 @@ from .semantic_types_v1 import (
     ResolvedTypeV1,
     TypeEnvironmentV1,
     build_type_environment,
-    can_assign,
     primitive_type,
     require_assignable,
     resolve_type,
@@ -69,7 +69,7 @@ class HandlerSummaryV1:
     def semantic_surface(self) -> dict[str, object]:
         return {
             "event_id": self.event_id,
-            "parameters": [{"name": n, "type": t} for n, t in self.parameters],
+            "parameters": [{"name": name, "type": type_id} for name, type_id in self.parameters],
             "capabilities": list(self.capabilities),
             "emitted_events": [
                 {"event_id": event_id, "parameters": list(parameters)}
@@ -89,7 +89,7 @@ class CompositeSummaryV1:
         return {
             "composite_id": self.composite_id,
             "kind": self.kind,
-            "states": [{"name": n, "type": t} for n, t in self.states],
+            "states": [{"name": name, "type": type_id} for name, type_id in self.states],
             "handlers": [item.semantic_surface() for item in self.handlers],
         }
 
@@ -98,15 +98,18 @@ class CompositeSummaryV1:
 class StaticSemanticsV1:
     plan: LinkPlanV1
     types: TypeEnvironmentV1
+    behavior_model: BehaviorModelIndexV1
     functions: tuple[FunctionSummaryV1, ...]
     composites: tuple[CompositeSummaryV1, ...]
 
     def semantic_index(self) -> dict[str, object]:
         return {
-            "schema": "TEV_SCRIPT_STATIC_SEMANTICS_INDEX_V1",
+            "schema": "TEV_SCRIPT_STATIC_SEMANTICS_INDEX_V2",
             "language_version": "1.0.0",
             "program_id": self.plan.program_id,
             "link_index_hash": self.plan.index_hash,
+            "types": _type_environment_surface(self.types),
+            "behavior_closures": _behavior_model_surface(self.behavior_model),
             "functions": [item.semantic_surface() for item in self.functions],
             "composites": [item.semantic_surface() for item in self.composites],
         }
@@ -118,6 +121,18 @@ class StaticSemanticsV1:
     @property
     def semantic_hash(self) -> str:
         return canonical_hash(self.semantic_index())
+
+
+@dataclass(frozen=True, slots=True)
+class _LocalCompositeCheckV1:
+    composite_id: str
+    handlers: tuple[HandlerSummaryV1, ...]
+
+    def handler(self, event_id: str) -> HandlerSummaryV1 | None:
+        for item in self.handlers:
+            if item.event_id == event_id:
+                return item
+        return None
 
 
 @dataclass(slots=True)
@@ -164,15 +179,101 @@ class _CheckContextV1:
 
 def analyze_v1_static_semantics(plan: LinkPlanV1) -> StaticSemanticsV1:
     types = build_type_environment(plan)
+    behavior_model = build_behavior_model(plan, types)
     function_summaries = _check_functions(plan, types)
     _validate_function_call_graph(types, function_summaries)
-    composites = _check_composites(plan, types)
+
+    local_checks = {
+        model.composite_id: _check_local_composite(plan, types, model)
+        for model in behavior_model.composites
+    }
+    composites = tuple(
+        sorted(
+            (
+                _aggregate_composite_summary(model, local_checks)
+                for model in behavior_model.composites
+            ),
+            key=lambda item: (item.kind, item.composite_id),
+        )
+    )
     return StaticSemanticsV1(
         plan,
         types,
+        behavior_model,
         tuple(sorted(function_summaries, key=lambda item: item.function_id)),
-        tuple(sorted(composites, key=lambda item: (item.kind, item.composite_id))),
+        composites,
     )
+
+
+def _type_environment_surface(types: TypeEnvironmentV1) -> dict[str, object]:
+    return {
+        "records": [
+            {
+                "type_id": item.type_id,
+                "fields": [
+                    {"name": name, "type": type_ref.type_id}
+                    for name, type_ref in item.fields
+                ],
+            }
+            for item in types.records
+        ],
+        "enums": [
+            {"type_id": item.type_id, "variants": list(item.variants)}
+            for item in types.enums
+        ],
+        "functions": [
+            {
+                "function_id": item.callable_id,
+                "parameters": [parameter.type_id for parameter in item.parameters],
+                "return_type": item.return_type.type_id,
+                "origin": "builtin" if item.declaration is None else "source",
+            }
+            for item in types.functions
+        ],
+        "capabilities": [
+            {
+                "capability_id": item.callable_id,
+                "parameters": [parameter.type_id for parameter in item.parameters],
+                "return_type": item.return_type.type_id,
+                "kind": item.kind,
+                "origin": "builtin" if item.declaration is None else "source",
+            }
+            for item in types.capabilities
+        ],
+    }
+
+
+def _behavior_model_surface(model: BehaviorModelIndexV1) -> list[dict[str, object]]:
+    result: list[dict[str, object]] = []
+    for composite in model.composites:
+        result.append(
+            {
+                "composite_id": composite.composite_id,
+                "kind": composite.kind,
+                "flattened_behaviors": list(composite.flattened_behaviors),
+                "visible_states": [
+                    {
+                        "name": item.declaration.name,
+                        "type": item.type_ref.type_id,
+                        "component_id": item.component_id,
+                    }
+                    for item in sorted(
+                        composite.visible_states,
+                        key=lambda value: value.declaration.name,
+                    )
+                ],
+                # Fragment order is semantic and therefore deliberately unsorted.
+                "handler_fragments": [
+                    {
+                        "event_id": item.declaration.event_id,
+                        "component_id": item.component_id,
+                        "parameters": [type_ref.type_id for type_ref in item.parameter_types],
+                    }
+                    for item in composite.handler_fragments
+                ],
+            }
+        )
+    return result
 
 
 def _check_functions(
@@ -190,7 +291,9 @@ def _check_functions(
             scope.push()
             seen: set[str] = set()
             for parameter, parameter_type in zip(
-                declaration.parameters, signature.parameters, strict=True
+                declaration.parameters,
+                signature.parameters,
+                strict=True,
             ):
                 if parameter.name in seen:
                     raise TevScriptError(
@@ -201,7 +304,11 @@ def _check_functions(
                 seen.add(parameter.name)
                 scope.declare(parameter.name, parameter_type, parameter.span)
             context = _CheckContextV1(plan, types, unit.unit_id, scope, "pure")
-            actual = _check_expr(declaration.expression, context, expected=signature.return_type)
+            actual = _check_expr(
+                declaration.expression,
+                context,
+                expected=signature.return_type,
+            )
             require_assignable(actual, signature.return_type, declaration.expression.span)
             summaries.append(
                 FunctionSummaryV1(
@@ -212,161 +319,118 @@ def _check_functions(
     return summaries
 
 
-def _check_composites(
+def _check_local_composite(
     plan: LinkPlanV1,
     types: TypeEnvironmentV1,
-) -> list[CompositeSummaryV1]:
-    result: list[CompositeSummaryV1] = []
-    for unit in plan.units:
-        owner_id = unit.unit_id
-        for symbol in unit.symbols:
-            if isinstance(symbol.declaration, BehaviorDecl):
-                result.append(
-                    _check_composite(
-                        plan,
-                        types,
-                        owner_id,
-                        symbol.semantic_id,
-                        "behavior",
-                        symbol.declaration,
-                    )
-                )
-        if hasattr(unit.declaration, "entities"):
-            for entity in unit.declaration.entities:
-                result.append(
-                    _check_composite(
-                        plan,
-                        types,
-                        owner_id,
-                        f"{owner_id}.{entity.name}",
-                        "entity",
-                        entity,
-                    )
-                )
-    return result
-
-
-def _check_composite(
-    plan: LinkPlanV1,
-    types: TypeEnvironmentV1,
-    owner_id: str,
-    composite_id: str,
-    kind: str,
-    declaration: BehaviorDecl | EntityDecl,
-) -> CompositeSummaryV1:
-    state_types: dict[str, ResolvedTypeV1] = {}
-    for state in declaration.states:
-        if state.name in state_types:
-            raise TevScriptError(
-                "TEVS_V1_TYPE_STATE_DUPLICATE",
-                f"duplicate state {state.name!r} in {composite_id}",
-                state.span,
-            )
-        state_type = resolve_type(plan, owner_id, state.type_ref)
-        if not state_type.is_storable:
+    model: CompositeModelV1,
+) -> _LocalCompositeCheckV1:
+    state_types = model.state_types
+    for state_source in model.visible_states:
+        if not state_source.type_ref.is_storable:
             raise TevScriptError(
                 "TEVS_V1_TYPE_UNIT_PLACEMENT",
-                f"state {state.name!r} cannot use {state_type.type_id}",
-                state.span,
+                f"state {state_source.declaration.name!r} cannot use {state_source.type_ref.type_id}",
+                state_source.declaration.span,
             )
-        state_types[state.name] = state_type
 
-    handler_signatures: dict[str, tuple[ResolvedTypeV1, ...]] = {}
-    handler_parameter_names: dict[str, tuple[str, ...]] = {}
-    for handler in declaration.handlers:
-        if handler.event_id in handler_signatures:
+    # Every declaration is checked exactly once in its owning component. Used
+    # behavior declarations are validated in their own model and merely become
+    # visible state/handler fragments in consumers.
+    for state_source in model.visible_states:
+        if state_source.component_id != model.composite_id:
+            continue
+        init_context = _CheckContextV1(
+            plan,
+            types,
+            state_source.owner_id,
+            _ScopeV1(states={}),
+            "initializer",
+        )
+        actual = _check_expr(
+            state_source.declaration.initial,
+            init_context,
+            expected=state_source.type_ref,
+        )
+        require_assignable(
+            actual,
+            state_source.type_ref,
+            state_source.declaration.initial.span,
+        )
+
+    composed_signatures = _composed_handler_signatures(model)
+    local_seen: set[str] = set()
+    local_emitted: dict[str, tuple[str, ...]] = {}
+    summaries: list[HandlerSummaryV1] = []
+
+    for fragment in model.local_handler_fragments:
+        handler = fragment.declaration
+        if handler.event_id in local_seen:
             raise TevScriptError(
                 "TEVS_V1_TYPE_HANDLER_DUPLICATE",
-                f"duplicate handler for event {handler.event_id!r} in {composite_id}",
+                f"duplicate local handler for event {handler.event_id!r} in {model.composite_id}",
                 handler.span,
             )
-        parameter_types: list[ResolvedTypeV1] = []
+        local_seen.add(handler.event_id)
+        if handler.event_id in {"start", "update"} and fragment.parameter_types:
+            raise TevScriptError(
+                "TEVS_V1_TYPE_BUILTIN_EVENT_SIGNATURE",
+                f"built-in event {handler.event_id!r} takes no parameters",
+                handler.span,
+            )
+
+        scope = _ScopeV1(states=state_types)
+        scope.push()
         names: list[str] = []
         seen_names: set[str] = set()
-        for parameter in handler.parameters:
+        for parameter, parameter_type in zip(
+            handler.parameters,
+            fragment.parameter_types,
+            strict=True,
+        ):
             if parameter.name in seen_names:
                 raise TevScriptError(
                     "TEVS_V1_TYPE_PARAMETER_DUPLICATE",
                     f"duplicate event parameter {parameter.name!r}",
                     parameter.span,
                 )
-            if parameter.name in state_types:
-                raise TevScriptError(
-                    "TEVS_V1_SCOPE_SHADOWING",
-                    f"event parameter {parameter.name!r} shadows a state",
-                    parameter.span,
-                )
-            resolved = resolve_type(plan, owner_id, parameter.type_ref)
-            if not resolved.is_storable:
+            if not parameter_type.is_storable:
                 raise TevScriptError(
                     "TEVS_V1_TYPE_UNIT_PLACEMENT",
-                    f"event parameter {parameter.name!r} cannot use {resolved.type_id}",
+                    f"event parameter {parameter.name!r} cannot use {parameter_type.type_id}",
                     parameter.span,
                 )
             seen_names.add(parameter.name)
             names.append(parameter.name)
-            parameter_types.append(resolved)
-        if handler.event_id in {"start", "update"} and parameter_types:
-            raise TevScriptError(
-                "TEVS_V1_TYPE_BUILTIN_EVENT_SIGNATURE",
-                f"built-in event {handler.event_id!r} takes no parameters",
-                handler.span,
-            )
-        handler_signatures[handler.event_id] = tuple(parameter_types)
-        handler_parameter_names[handler.event_id] = tuple(names)
+            scope.declare(parameter.name, parameter_type, parameter.span)
 
-    # Type-check initializers after the complete local state table exists. Phase D
-    # separately proves that these expressions are compile-time constant.
-    init_context = _CheckContextV1(
-        plan,
-        types,
-        owner_id,
-        _ScopeV1(states={}),
-        "initializer",
-    )
-    for state in declaration.states:
-        expected = state_types[state.name]
-        actual = _check_expr(state.initial, init_context, expected=expected)
-        require_assignable(actual, expected, state.initial.span)
-
-    summaries: list[HandlerSummaryV1] = []
-    composite_emitted: dict[str, tuple[str, ...]] = {}
-    for handler in declaration.handlers:
-        scope = _ScopeV1(states=state_types)
-        scope.push()
-        for name, parameter_type, parameter in zip(
-            handler_parameter_names[handler.event_id],
-            handler_signatures[handler.event_id],
-            handler.parameters,
-            strict=True,
-        ):
-            scope.declare(name, parameter_type, parameter.span)
         context = _CheckContextV1(
             plan,
             types,
-            owner_id,
+            fragment.owner_id,
             scope,
-            "behavior" if kind == "behavior" else "handler",
-            handler_signatures=handler_signatures,
+            "behavior" if model.kind == "behavior" else "handler",
+            handler_signatures=composed_signatures,
         )
         _check_statements(handler.body, context)
+
         for event_id, signature in context.emitted_events.items():
-            previous = composite_emitted.get(event_id)
+            previous = local_emitted.get(event_id)
             if previous is not None and previous != signature:
                 raise TevScriptError(
                     "TEVS_V1_TYPE_EVENT_SIGNATURE_CONFLICT",
                     f"event {event_id!r} emitted with conflicting signatures {previous} and {signature}",
                     handler.span,
                 )
-            composite_emitted[event_id] = signature
+            local_emitted[event_id] = signature
+
         summaries.append(
             HandlerSummaryV1(
                 handler.event_id,
                 tuple(
                     (name, type_ref.type_id)
                     for name, type_ref in zip(
-                        handler_parameter_names[handler.event_id],
-                        handler_signatures[handler.event_id],
+                        names,
+                        fragment.parameter_types,
                         strict=True,
                     )
                 ),
@@ -375,26 +439,156 @@ def _check_composite(
             )
         )
 
-    for event_id, emitted in composite_emitted.items():
-        declared = handler_signatures.get(event_id)
-        if declared is not None:
-            expected = tuple(item.type_id for item in declared)
-            if expected != emitted:
-                raise TevScriptError(
-                    "TEVS_V1_TYPE_EVENT_HANDLER_SIGNATURE",
-                    f"event {event_id!r} handler expects {expected}, emitted {emitted}",
-                    declaration.span,
-                )
-
-    return CompositeSummaryV1(
-        composite_id,
-        kind,
-        tuple(sorted((name, type_ref.type_id) for name, type_ref in state_types.items())),
+    return _LocalCompositeCheckV1(
+        model.composite_id,
         tuple(sorted(summaries, key=lambda item: item.event_id)),
     )
 
 
-def _check_statements(statements: tuple[object, ...], context: _CheckContextV1) -> None:
+def _aggregate_composite_summary(
+    model: CompositeModelV1,
+    local_checks: dict[str, _LocalCompositeCheckV1],
+) -> CompositeSummaryV1:
+    signatures = _composed_handler_signatures(model)
+    by_event: dict[str, list[HandlerSummaryV1]] = {}
+
+    for fragment in model.handler_fragments:
+        checked = local_checks[fragment.component_id].handler(fragment.declaration.event_id)
+        if checked is None:
+            raise AssertionError(
+                f"missing local static summary for {fragment.component_id}:{fragment.declaration.event_id}"
+            )
+        by_event.setdefault(fragment.declaration.event_id, []).append(checked)
+
+    global_emitted: dict[str, tuple[str, ...]] = {}
+    handlers: list[HandlerSummaryV1] = []
+    for event_id in sorted(by_event):
+        parts = by_event[event_id]
+        capability_union = sorted(
+            {capability for part in parts for capability in part.capabilities}
+        )
+        event_emitted: dict[str, tuple[str, ...]] = {}
+        for part in parts:
+            for emitted_event, emitted_signature in part.emitted_events:
+                normalized = _normalize_emitted_signature(
+                    emitted_event,
+                    emitted_signature,
+                    signatures.get(emitted_event),
+                )
+                previous = event_emitted.get(emitted_event)
+                if previous is not None and previous != normalized:
+                    raise TevScriptError(
+                        "TEVS_V1_TYPE_EVENT_SIGNATURE_CONFLICT",
+                        f"event {emitted_event!r} emitted with conflicting signatures {previous} and {normalized} in {model.composite_id}",
+                    )
+                event_emitted[emitted_event] = normalized
+
+                global_previous = global_emitted.get(emitted_event)
+                if global_previous is not None and global_previous != normalized:
+                    raise TevScriptError(
+                        "TEVS_V1_TYPE_EVENT_SIGNATURE_CONFLICT",
+                        f"event {emitted_event!r} emitted with conflicting signatures {global_previous} and {normalized} in {model.composite_id}",
+                    )
+                global_emitted[emitted_event] = normalized
+
+        parameter_names = _canonical_composed_parameter_names(model, event_id)
+        parameter_types = signatures[event_id]
+        handlers.append(
+            HandlerSummaryV1(
+                event_id,
+                tuple(
+                    (name, type_ref.type_id)
+                    for name, type_ref in zip(
+                        parameter_names,
+                        parameter_types,
+                        strict=True,
+                    )
+                ),
+                tuple(capability_union),
+                tuple(sorted(event_emitted.items())),
+            )
+        )
+
+    return CompositeSummaryV1(
+        model.composite_id,
+        model.kind,
+        tuple(
+            sorted(
+                (name, type_ref.type_id)
+                for name, type_ref in model.state_types.items()
+            )
+        ),
+        tuple(handlers),
+    )
+
+
+def _composed_handler_signatures(
+    model: CompositeModelV1,
+) -> dict[str, tuple[ResolvedTypeV1, ...]]:
+    signatures: dict[str, tuple[ResolvedTypeV1, ...]] = {}
+    for fragment in model.handler_fragments:
+        event_id = fragment.declaration.event_id
+        previous = signatures.get(event_id)
+        if previous is not None:
+            previous_ids = tuple(item.type_id for item in previous)
+            current_ids = tuple(item.type_id for item in fragment.parameter_types)
+            if previous_ids != current_ids:
+                raise TevScriptError(
+                    "TEVS_V1_BEHAVIOR_HANDLER_SIGNATURE_CONFLICT",
+                    f"event {event_id!r} has conflicting signatures in {model.composite_id}: {previous_ids} vs {current_ids}",
+                    fragment.declaration.span,
+                )
+        signatures[event_id] = fragment.parameter_types
+    return signatures
+
+
+def _canonical_composed_parameter_names(
+    model: CompositeModelV1,
+    event_id: str,
+) -> tuple[str, ...]:
+    fragments = [
+        item for item in model.handler_fragments
+        if item.declaration.event_id == event_id
+    ]
+    if not fragments:
+        return ()
+    # Prefer the entity/behavior-local fragment when one exists. Otherwise the
+    # first dependency fragment in semantic composition order supplies names.
+    local = next(
+        (item for item in fragments if item.component_id == model.composite_id),
+        fragments[0],
+    )
+    return tuple(parameter.name for parameter in local.declaration.parameters)
+
+
+def _normalize_emitted_signature(
+    event_id: str,
+    actual: tuple[str, ...],
+    expected: tuple[ResolvedTypeV1, ...] | None,
+) -> tuple[str, ...]:
+    if expected is None:
+        return actual
+    if len(actual) != len(expected):
+        raise TevScriptError(
+            "TEVS_V1_TYPE_EVENT_HANDLER_SIGNATURE",
+            f"event {event_id!r} expects {len(expected)} parameters, emitted {len(actual)}",
+        )
+    expected_ids = tuple(item.type_id for item in expected)
+    for actual_id, expected_id in zip(actual, expected_ids, strict=True):
+        if actual_id != expected_id and not (
+            actual_id == "Int" and expected_id == "Rat"
+        ):
+            raise TevScriptError(
+                "TEVS_V1_TYPE_EVENT_HANDLER_SIGNATURE",
+                f"event {event_id!r} expects {expected_ids}, emitted {actual}",
+            )
+    return expected_ids
+
+
+def _check_statements(
+    statements: tuple[object, ...],
+    context: _CheckContextV1,
+) -> None:
     for statement in statements:
         if isinstance(statement, LetStmt):
             expected = (
@@ -440,14 +634,23 @@ def _check_statements(statements: tuple[object, ...], context: _CheckContextV1) 
             continue
 
         if isinstance(statement, CallStmt):
-            signature = _resolve_capability_statement(context, statement.capability_id, statement.span)
+            signature = _resolve_capability_statement(
+                context,
+                statement.capability_id,
+                statement.span,
+            )
             if not signature.return_type.is_unit:
                 raise TevScriptError(
                     "TEVS_V1_TYPE_CALL_RESULT_UNUSED",
                     f"capability {signature.callable_id!r} returns {signature.return_type.type_id}; use it as an expression",
                     statement.span,
                 )
-            _check_arguments(statement.arguments, signature.parameters, context, statement.span)
+            _check_arguments(
+                statement.arguments,
+                signature.parameters,
+                context,
+                statement.span,
+            )
             context.capabilities.add(signature.callable_id)
             continue
 
@@ -503,7 +706,11 @@ def _check_statements(statements: tuple[object, ...], context: _CheckContextV1) 
         if isinstance(statement, ForStmt):
             context.scope.push()
             try:
-                context.scope.declare(statement.variable, primitive_type("Int"), statement.span)
+                context.scope.declare(
+                    statement.variable,
+                    primitive_type("Int"),
+                    statement.span,
+                )
                 _check_statements(statement.body, context)
             finally:
                 context.scope.pop()
@@ -540,12 +747,25 @@ def _check_expr(
     elif kind == "text":
         result = primitive_type("Text")
     elif kind == "group":
-        result = _check_expr(expression.children[0], context, expected=expected)
+        result = _check_expr(
+            expression.children[0],
+            context,
+            expected=expected,
+        )
     elif kind == "name":
-        result = _resolve_value_path(str(expression.value), context, expression.span)
+        result = _resolve_value_path(
+            str(expression.value),
+            context,
+            expression.span,
+        )
     elif kind == "field":
         target = _check_expr(expression.children[0], context)
-        result = _record_field_type(target, str(expression.value), context, expression.span)
+        result = _record_field_type(
+            target,
+            str(expression.value),
+            context,
+            expression.span,
+        )
     elif kind == "enum":
         type_name, variant = expression.value
         type_symbol = resolve_symbol(
@@ -586,7 +806,9 @@ def _check_expr(
                 f"{type_name!r} is not a record type",
                 expression.span,
             )
-        expected_fields = {name: field_type for name, field_type in record.fields}
+        expected_fields = {
+            name: field_type for name, field_type in record.fields
+        }
         seen: set[str] = set()
         for field in field_inits:
             if field.name in seen:
@@ -603,7 +825,11 @@ def _check_expr(
                     f"unknown field {field.name!r} for {record.type_id}",
                     field.span,
                 )
-            actual = _check_expr(field.expression, context, expected=field_type)
+            actual = _check_expr(
+                field.expression,
+                context,
+                expected=field_type,
+            )
             require_assignable(actual, field_type, field.expression.span)
         missing = sorted(set(expected_fields) - seen)
         if missing:
@@ -621,12 +847,24 @@ def _check_expr(
                     expression.span,
                 )
             inner_expected = expected.arguments[0]
-            actual = _check_expr(expression.children[0], context, expected=inner_expected)
-            require_assignable(actual, inner_expected, expression.children[0].span)
+            actual = _check_expr(
+                expression.children[0],
+                context,
+                expected=inner_expected,
+            )
+            require_assignable(
+                actual,
+                inner_expected,
+                expression.children[0].span,
+            )
             result = expected
         else:
             inner = _check_expr(expression.children[0], context)
-            result = ResolvedTypeV1("option", f"Option<{inner.type_id}>", (inner,))
+            result = ResolvedTypeV1(
+                "option",
+                f"Option<{inner.type_id}>",
+                (inner,),
+            )
     elif kind == "none":
         if expected is None or expected.kind != "option":
             raise TevScriptError(
@@ -644,8 +882,16 @@ def _check_expr(
             )
         index = 0 if kind == "ok" else 1
         payload_expected = expected.arguments[index]
-        actual = _check_expr(expression.children[0], context, expected=payload_expected)
-        require_assignable(actual, payload_expected, expression.children[0].span)
+        actual = _check_expr(
+            expression.children[0],
+            context,
+            expected=payload_expected,
+        )
+        require_assignable(
+            actual,
+            payload_expected,
+            expression.children[0].span,
+        )
         result = expected
     elif kind == "unary":
         operand = _check_expr(expression.children[0], context)
@@ -671,12 +917,21 @@ def _check_expr(
             expression.span,
         )
 
-    if expected is not None and kind not in {"some", "none", "ok", "err", "group"}:
+    if expected is not None and kind not in {
+        "some",
+        "none",
+        "ok",
+        "err",
+        "group",
+    }:
         require_assignable(result, expected, expression.span)
     return result
 
 
-def _check_binary(expression: Expr, context: _CheckContextV1) -> ResolvedTypeV1:
+def _check_binary(
+    expression: Expr,
+    context: _CheckContextV1,
+) -> ResolvedTypeV1:
     operator = str(expression.value)
     left = _check_expr(expression.children[0], context)
     right = _check_expr(expression.children[1], context)
@@ -685,7 +940,9 @@ def _check_binary(expression: Expr, context: _CheckContextV1) -> ResolvedTypeV1:
         if left.type_id == right.type_id == "Bool":
             return primitive_type("Bool")
     elif operator in {"==", "!="}:
-        if left.type_id == right.type_id or (left.is_numeric and right.is_numeric):
+        if left.type_id == right.type_id or (
+            left.is_numeric and right.is_numeric
+        ):
             return primitive_type("Bool")
     elif operator in {"<", "<=", ">", ">="}:
         if left.is_numeric and right.is_numeric:
@@ -719,7 +976,10 @@ def _check_binary(expression: Expr, context: _CheckContextV1) -> ResolvedTypeV1:
     )
 
 
-def _check_call_expression(expression: Expr, context: _CheckContextV1) -> ResolvedTypeV1:
+def _check_call_expression(
+    expression: Expr,
+    context: _CheckContextV1,
+) -> ResolvedTypeV1:
     callee = expression.children[0]
     arguments = tuple(expression.children[1:])
     if callee.kind != "name":
@@ -730,11 +990,24 @@ def _check_call_expression(expression: Expr, context: _CheckContextV1) -> Resolv
         )
     reference = str(callee.value)
     function_symbol, function_error = _try_resolve(
-        context, reference, NAMESPACE_FUNCTION, callee.span
+        context,
+        reference,
+        NAMESPACE_FUNCTION,
+        callee.span,
     )
     capability_symbol, capability_error = _try_resolve(
-        context, reference, NAMESPACE_CAPABILITY, callee.span
+        context,
+        reference,
+        NAMESPACE_CAPABILITY,
+        callee.span,
     )
+
+    for error in (function_error, capability_error):
+        if error is not None and error.diagnostic.code in {
+            "TEVS_V1_LINK_NAME_AMBIGUOUS",
+            "TEVS_V1_LINK_CAPABILITY_CONFLICT",
+        }:
+            raise error
 
     if function_symbol is not None and capability_symbol is not None:
         raise TevScriptError(
@@ -742,16 +1015,22 @@ def _check_call_expression(expression: Expr, context: _CheckContextV1) -> Resolv
             f"call {reference!r} is visible as both a pure function and a capability",
             callee.span,
         )
+
     if function_symbol is not None:
         candidates = [
             item for item in context.types.functions
             if item.callable_id == function_symbol.semantic_id
         ]
         signature = _select_expression_signature(
-            candidates, arguments, context, function_symbol.semantic_id, expression.span
+            candidates,
+            arguments,
+            context,
+            function_symbol.semantic_id,
+            expression.span,
         )
         context.function_calls.add(signature.callable_id)
         return signature.return_type
+
     if capability_symbol is not None:
         if context.mode == "pure":
             raise TevScriptError(
@@ -782,17 +1061,19 @@ def _check_call_expression(expression: Expr, context: _CheckContextV1) -> Resolv
                 f"capability {signature.callable_id!r} returns Unit",
                 expression.span,
             )
-        _check_arguments(arguments, signature.parameters, context, expression.span)
+        _check_arguments(
+            arguments,
+            signature.parameters,
+            context,
+            expression.span,
+        )
         context.capabilities.add(signature.callable_id)
         return signature.return_type
 
-    errors = [error for error in (function_error, capability_error) if error is not None]
-    for error in errors:
-        if error.diagnostic.code in {
-            "TEVS_V1_LINK_NAME_AMBIGUOUS",
-            "TEVS_V1_LINK_CAPABILITY_CONFLICT",
-        }:
-            raise error
+    errors = [
+        error for error in (function_error, capability_error)
+        if error is not None
+    ]
     for error in errors:
         if error.diagnostic.code == "TEVS_V1_LINK_PRIVATE_SYMBOL":
             raise error
@@ -821,8 +1102,16 @@ def _select_expression_signature(
         _check_arguments(arguments, signature.parameters, context, span)
         return signature
 
-    actual = tuple(_check_expr(argument, context) for argument in arguments)
-    return select_callable(candidates, actual, callable_id=callable_id, span=span)
+    actual = tuple(
+        _check_expr(argument, context)
+        for argument in arguments
+    )
+    return select_callable(
+        candidates,
+        actual,
+        callable_id=callable_id,
+        span=span,
+    )
 
 
 def _resolve_capability_statement(
@@ -863,7 +1152,11 @@ def _check_arguments(
             span,
         )
     for expression, type_ref in zip(arguments, expected, strict=True):
-        actual = _check_expr(expression, context, expected=type_ref)
+        actual = _check_expr(
+            expression,
+            context,
+            expected=type_ref,
+        )
         require_assignable(actual, type_ref, expression.span)
 
 
@@ -918,13 +1211,15 @@ def _record_field_type(
     return field_type
 
 
-def _type_from_symbol(symbol: SymbolV1, span: SourceSpan) -> ResolvedTypeV1:
-    declaration = symbol.declaration
+def _type_from_symbol(
+    symbol: SymbolV1,
+    span: SourceSpan,
+) -> ResolvedTypeV1:
     from .ast_v1 import EnumDecl, RecordDecl
 
-    if isinstance(declaration, RecordDecl):
+    if isinstance(symbol.declaration, RecordDecl):
         return ResolvedTypeV1("record", symbol.semantic_id)
-    if isinstance(declaration, EnumDecl):
+    if isinstance(symbol.declaration, EnumDecl):
         return ResolvedTypeV1("enum", symbol.semantic_id)
     raise TevScriptError(
         "TEVS_V1_TYPE_SYMBOL_KIND",
@@ -933,7 +1228,10 @@ def _type_from_symbol(symbol: SymbolV1, span: SourceSpan) -> ResolvedTypeV1:
     )
 
 
-def _check_match(statement: MatchStmt, context: _CheckContextV1) -> None:
+def _check_match(
+    statement: MatchStmt,
+    context: _CheckContextV1,
+) -> None:
     target = _check_expr(statement.expression, context)
     seen: set[str] = set()
     expected_keys: set[str]
@@ -971,15 +1269,36 @@ def _check_match(statement: MatchStmt, context: _CheckContextV1) -> None:
                     f"unknown variant {key!r} for {target.type_id}",
                     pattern.span,
                 )
-            _check_match_arm(key, None, arm.body, seen, context, pattern.span)
+            _check_match_arm(
+                key,
+                None,
+                arm.body,
+                seen,
+                context,
+                pattern.span,
+            )
     elif target.kind == "option":
         expected_keys = {"Some", "None"}
         for arm in statement.arms:
             pattern = arm.pattern
             if isinstance(pattern, SomePattern):
-                _check_match_arm("Some", (pattern.binding, target.arguments[0]), arm.body, seen, context, pattern.span)
+                _check_match_arm(
+                    "Some",
+                    (pattern.binding, target.arguments[0]),
+                    arm.body,
+                    seen,
+                    context,
+                    pattern.span,
+                )
             elif isinstance(pattern, NonePattern):
-                _check_match_arm("None", None, arm.body, seen, context, pattern.span)
+                _check_match_arm(
+                    "None",
+                    None,
+                    arm.body,
+                    seen,
+                    context,
+                    pattern.span,
+                )
             else:
                 raise TevScriptError(
                     "TEVS_V1_TYPE_MATCH_PATTERN",
@@ -991,9 +1310,23 @@ def _check_match(statement: MatchStmt, context: _CheckContextV1) -> None:
         for arm in statement.arms:
             pattern = arm.pattern
             if isinstance(pattern, OkPattern):
-                _check_match_arm("Ok", (pattern.binding, target.arguments[0]), arm.body, seen, context, pattern.span)
+                _check_match_arm(
+                    "Ok",
+                    (pattern.binding, target.arguments[0]),
+                    arm.body,
+                    seen,
+                    context,
+                    pattern.span,
+                )
             elif isinstance(pattern, ErrPattern):
-                _check_match_arm("Err", (pattern.binding, target.arguments[1]), arm.body, seen, context, pattern.span)
+                _check_match_arm(
+                    "Err",
+                    (pattern.binding, target.arguments[1]),
+                    arm.body,
+                    seen,
+                    context,
+                    pattern.span,
+                )
             else:
                 raise TevScriptError(
                     "TEVS_V1_TYPE_MATCH_PATTERN",
@@ -1075,7 +1408,10 @@ def _dedupe_callable_contracts(
         current = by_contract.get(key)
         if current is None or item.owner_id < current.owner_id:
             by_contract[key] = item
-    return sorted(by_contract.values(), key=lambda item: (item.callable_id, item.owner_id))
+    return sorted(
+        by_contract.values(),
+        key=lambda item: (item.callable_id, item.owner_id),
+    )
 
 
 def _unique_user_function(
@@ -1107,7 +1443,10 @@ def _validate_function_call_graph(
     }
     graph = {
         summary.function_id: tuple(
-            sorted(call for call in summary.calls if call in user_functions)
+            sorted(
+                call for call in summary.calls
+                if call in user_functions
+            )
         )
         for summary in summaries
     }
@@ -1123,7 +1462,8 @@ def _validate_function_call_graph(
             cycle = [*stack[start:], function_id]
             signature = next(
                 item for item in types.functions
-                if item.callable_id == function_id and item.declaration is not None
+                if item.callable_id == function_id
+                and item.declaration is not None
             )
             raise TevScriptError(
                 "TEVS_V1_PURITY_RECURSION",
