@@ -75,6 +75,11 @@ REQUIRED_GATE_MAP = {
     "certify_full": "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py",
 }
 
+REQUIRED_GOVERNED_TESTS = {
+    "tests/test_v1_browser_witness_authority.py",
+    "tests/test_v1_wasi_authority_boundary.py",
+}
+
 REQUIRED_PRODUCT_FILES = {
     "README.md",
     "docs/TEV_SCRIPT_V1_LANGUAGE_REFERENCE.md",
@@ -100,6 +105,7 @@ REQUIRED_PRODUCT_FILES = {
     "tests/test_v1_linked_program_unit_kind_regression.py",
     "tests/test_v1_artifact_write.py",
     "tests/test_v1_editor_assets.py",
+    *REQUIRED_GOVERNED_TESTS,
 }
 
 REQUIRED_PROMOTION_GATES = {
@@ -186,6 +192,11 @@ def main() -> int:
     require(target.get("stable") is False, "V1_GOVERNANCE_TARGET_STABLE", repr(target.get("stable")))
     require_contains(target.get("authority_files"), REQUIRED_AUTHORITY, "V1_GOVERNANCE_AUTHORITY")
     require_contains(target.get("build_tooling_authority"), REQUIRED_BUILD_TOOLING, "V1_GOVERNANCE_BUILD_TOOLING")
+    require_contains(
+        target.get("example_and_public_api_tests"),
+        REQUIRED_GOVERNED_TESTS,
+        "V1_GOVERNANCE_AUTHORITY_REGRESSION_TESTS",
+    )
     for relative in REQUIRED_AUTHORITY | REQUIRED_BUILD_TOOLING | REQUIRED_PRODUCT_FILES | REQUIRED_INTROSPECTION | REQUIRED_LSP:
         require_file(relative)
 
@@ -430,6 +441,7 @@ def main() -> int:
     print("TEV_SCRIPT_V1_GOVERNANCE_PYTHON_PRODUCTION_SURFACE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PYTHON_CERTIFY_FULL_GATE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_FRONTEND_SKIP_ACCOUNTING=PASS")
+    print("TEV_SCRIPT_V1_GOVERNANCE_AUTHORITY_REGRESSION_TESTS=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_ARTIFACT_COMMIT_POLICY=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PRECERTIFY_CERTIFY_PROTOCOL=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_NO_TRANSITIVE_CERTIFICATION=PASS")
