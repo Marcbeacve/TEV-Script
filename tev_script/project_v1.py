@@ -262,17 +262,20 @@ def _validate_relative_source(value: str, index: int) -> str:
             "TEVS_V1_PROJECT_SOURCE_ABSOLUTE",
             f"sources[{index}] must be a relative portable path",
         )
-    pure = PurePosixPath(value)
-    if any(part in {"", ".", ".."} for part in pure.parts):
+    # Validate the spelling before PurePosixPath can normalize empty or dot
+    # segments away. The manifest path itself is part of portable identity.
+    raw_parts = value.split("/")
+    if any(part in {"", ".", ".."} for part in raw_parts):
         raise TevScriptError(
             "TEVS_V1_PROJECT_SOURCE_TRAVERSAL",
             f"sources[{index}] cannot contain empty, '.' or '..' segments",
         )
-    if any(not _PORTABLE_SEGMENT.fullmatch(part) for part in pure.parts):
+    if any(not _PORTABLE_SEGMENT.fullmatch(part) for part in raw_parts):
         raise TevScriptError(
             "TEVS_V1_PROJECT_SOURCE_PORTABLE",
             f"sources[{index}] contains a non-portable path segment",
         )
+    pure = PurePosixPath(*raw_parts)
     if pure.suffix != ".tevs":
         raise TevScriptError(
             "TEVS_V1_PROJECT_SOURCE_EXTENSION",

@@ -119,7 +119,7 @@ class V1LspTests(unittest.TestCase):
             source = root / "main.tevs"
             source.write_text(
                 '''script ProjectDemo version "1.0.0";
-import missing.module;
+import absent;
 entity E {
   state count: Int = 0;
   on tick { count = count + 1; }

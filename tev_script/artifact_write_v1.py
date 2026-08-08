@@ -231,10 +231,17 @@ def _reserve_backup_path(destination: Path) -> Path:
 
 def _copy_backup(destination: Path) -> Path:
     backup = _reserve_backup_path(destination)
-    shutil.copyfile(destination, backup)
-    with backup.open("rb") as stream:
-        os.fsync(stream.fileno())
-    return backup
+    try:
+        shutil.copyfile(destination, backup)
+        # Windows requires a writable file descriptor for fsync. Opening the
+        # completed copy in update mode preserves its bytes while keeping this
+        # durability step portable.
+        with backup.open("rb+") as stream:
+            os.fsync(stream.fileno())
+        return backup
+    except Exception:
+        _safe_unlink(backup)
+        raise
 
 
 def _safe_unlink(path: Path | None) -> None:

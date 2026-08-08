@@ -89,11 +89,11 @@ class V1BehaviorOrderTests(unittest.TestCase):
             model.flattened_behaviors,
             ("Root.Base", "Root.A", "Root.B"),
         )
-        update_fragments = [
+        update_fragments = tuple(
             item.component_id
             for item in model.handler_fragments
             if item.declaration.event_id == "update"
-        ]
+        )
         self.assertEqual(
             update_fragments,
             ("Root.Base", "Root.A", "Root.B", "Root.E"),
