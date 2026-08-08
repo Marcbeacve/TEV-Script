@@ -134,10 +134,31 @@ class ScriptRuntimeV3:
             current_event, raw_arguments = queue.popleft()
             handler = entity.handlers.get(current_event)
             if handler is None:
-                # External/unhandled invocation has no declaration from which a
-                # portable argument signature can be inferred. This matches the
-                # historical local-handler event model: only emitted events are
-                # recorded canonically.
+                signature = entity.emitted_event_types.get(current_event)
+                if signature is None:
+                    if raw_arguments:
+                        raise TevScriptError(
+                            "TEVS_IR_V3_EVENT_SIGNATURE_UNKNOWN",
+                            f"unhandled event {current_event!r} has arguments but no portable signature",
+                        )
+                    signature = ()
+                if len(signature) != len(raw_arguments):
+                    raise TevScriptError(
+                        "TEVS_IR_V3_EVENT_ARITY",
+                        f"event {current_event!r} expects {len(signature)} arguments",
+                    )
+                coerced = tuple(
+                    _coerce_runtime_v3(
+                        type_id,
+                        raw_arguments[index],
+                        self.type_table,
+                        context=f"invoke {entity_id}.{current_event}[{index}]",
+                    )
+                    for index, type_id in enumerate(signature)
+                )
+                self.emitted.append(
+                    EmittedEventV3(entity_id, current_event, signature, coerced)
+                )
                 continue
             parameters = handler["parameters"]
             if len(parameters) != len(raw_arguments):
@@ -275,8 +296,6 @@ class ScriptRuntimeV3:
             elif op == "EMIT_EVENT":
                 argument_types = tuple(str(value) for value in instruction["argument_types"])
                 args = tuple(_pop_arguments(stack, int(instruction["argc"])))
-                # Values are already typed by the verified stack. Canonicalize and
-                # decode once to guarantee host representation cannot leak.
                 args = tuple(
                     _coerce_runtime_v3(
                         type_id,
@@ -297,8 +316,6 @@ class ScriptRuntimeV3:
                     type_id,
                     tuple((name, by_name[name]) for name, _field_type in descriptor.fields),
                 )
-                # Encoding validates nested semantic representations and returns a
-                # canonical representation; decode normalizes any host containers.
                 stack.append(
                     decode_v3_value(
                         type_id,
