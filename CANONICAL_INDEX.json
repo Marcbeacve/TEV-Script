@@ -93,6 +93,20 @@
         "scope": "IR_PLUS_OPTIONAL_LOWERING_RECEIPT",
         "hardware_atomicity_across_independent_paths": false
       },
+      "python_production_surface": {
+        "implementation": "tev_script/python_host_v1.py",
+        "artifact": "tev_script.PythonProgramArtifactV1",
+        "runtime_host": "tev_script.PythonRuntimeHostV1",
+        "source_build_api": "tev_script.build_python_program_v1",
+        "runtime_accepts_source": false,
+        "runtime_ir_schema": "TEV_SCRIPT_PROGRAM_IR_V3",
+        "least_authority_default": true,
+        "checkpoint_schema": "TEV_SCRIPT_RUNTIME_CHECKPOINT_V2",
+        "documentation": "docs/V1_PYTHON_PRODUCTION.md",
+        "test": "tests/test_v1_python_host.py",
+        "production_gate": "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py",
+        "stable_claim": false
+      },
       "portable_conformance_assets": [
         "conformance/v1-source-syntax-cases.json",
         "conformance/v1-linker-cases.json",
@@ -106,6 +120,7 @@
       ],
       "gates": {
         "implementation": "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py",
+        "python_production": "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py",
         "csharp_surface": "tools/validate_ir_v3_csharp_portable_surface.py",
         "cross_runtime": "tools/validate_ir_v3_cross_runtime_parity.py",
         "checkpoint_cross_runtime": "tools/validate_ir_v3_checkpoint_cross_runtime.py",
@@ -127,7 +142,9 @@
         "v1_module_cli": "python -m tev_script.cli_v1",
         "v1_python_pipeline": "tev_script.pipeline_v1",
         "v1_project_manifest": "tev_script.project_v1",
-        "v1_runtime": "tev_script.ScriptRuntimeV3"
+        "v1_runtime": "tev_script.ScriptRuntimeV3",
+        "v1_python_program_artifact": "tev_script.PythonProgramArtifactV1",
+        "v1_python_production_host": "tev_script.PythonRuntimeHostV1"
       },
       "non_normative_programmer_documentation": [
         "README.md",
@@ -135,6 +152,7 @@
         "docs/TEV_SCRIPT_V1_PROGRAMMING_MODEL.md",
         "docs/V1_PROJECT_MANIFEST.md",
         "docs/V1_LSP.md",
+        "docs/V1_PYTHON_PRODUCTION.md",
         "editors/vscode/README.md",
         "examples/v1/README.md"
       ],
@@ -155,9 +173,11 @@
         "tests/test_v1_descriptor_schema_cardinality.py",
         "tests/test_v1_editor_assets.py",
         "tests/test_v1_examples.py",
+        "tests/test_v1_linked_program_unit_kind_regression.py",
         "tests/test_v1_lsp.py",
         "tests/test_v1_project.py",
         "tests/test_v1_public_api.py",
+        "tests/test_v1_python_host.py",
         "tests/test_v1_runtime_cli_v3.py"
       ],
       "implementation_plan": "docs/V1_IMPLEMENTATION_PLAN.md",
