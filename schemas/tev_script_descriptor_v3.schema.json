@@ -17,6 +17,7 @@
     "boundaries",
     "budgets",
     "build_tooling",
+    "editor_tooling",
     "certification",
     "descriptor_hash"
   ],
@@ -39,9 +40,7 @@
         "implicit_transitive_import_visibility"
       ],
       "properties": {
-        "root_units": {
-          "const": ["script", "module"]
-        },
+        "root_units": {"const": ["script", "module"]},
         "exactly_one_script_root_per_link": {"const": true},
         "module_identity_from_declared_id": {"const": true},
         "filesystem_path_semantic": {"const": false},
@@ -62,17 +61,13 @@
       "properties": {
         "linked_program_schema": {"const": "TEV_SCRIPT_LINKED_PROGRAM_V1"},
         "semantic_hash": {"const": "SHA-256 canonical JSON"},
-        "runtime_targets": {
-          "const": ["TEV_SCRIPT_PROGRAM_IR_V2", "TEV_SCRIPT_PROGRAM_IR_V3"]
-        },
-        "automatic_target_selection": {
-          "const": "IR_V2_IF_LOSSLESSLY_ERASABLE_ELSE_IR_V3"
-        }
+        "runtime_targets": {"const": ["TEV_SCRIPT_PROGRAM_IR_V2", "TEV_SCRIPT_PROGRAM_IR_V3"]},
+        "automatic_target_selection": {"const": "IR_V2_IF_LOSSLESSLY_ERASABLE_ELSE_IR_V3"}
       }
     },
     "features": {
       "type": "array",
-      "minItems": 18,
+      "minItems": 17,
       "uniqueItems": true,
       "items": {"type": "string", "minLength": 1}
     },
@@ -114,6 +109,28 @@
           "const": ["TEV_SCRIPT_LOWERING_RECEIPT_V1", "TEV_SCRIPT_LOWERING_RECEIPT_V2"]
         },
         "artifact_commit_policy": {"const": "EVIDENCE_SAFE_RECEIPT_LAST_V1"}
+      }
+    },
+    "editor_tooling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "vscode_static_language_package",
+        "language_server_cli",
+        "language_server_transport",
+        "language_server_position_encoding",
+        "language_server_project_mode",
+        "formatter",
+        "independent_semantic_authority"
+      ],
+      "properties": {
+        "vscode_static_language_package": {"const": "editors/vscode"},
+        "language_server_cli": {"const": "tev-script-v1-lsp"},
+        "language_server_transport": {"const": "LSP_JSON_RPC_STDIO"},
+        "language_server_position_encoding": {"const": "utf-16"},
+        "language_server_project_mode": {"const": "EXPLICIT_TEV_SCRIPT_PROJECT_V1"},
+        "formatter": {"const": false},
+        "independent_semantic_authority": {"const": false}
       }
     },
     "certification": {
