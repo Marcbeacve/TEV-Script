@@ -311,9 +311,7 @@ public static class TevScriptV3Conformance
 
     private static Dictionary<string, CapabilityContract> GlobalCapabilityContracts(TevScriptRuntimeV3 runtimeProgram)
     {
-        var irField = typeof(TevScriptRuntimeV3).GetField("_ir", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?? throw new InvalidOperationException("IR V3 runtime private program field unavailable");
-        var ir = (JsonElement)irField.GetValue(runtimeProgram)!;
+        var ir = runtimeProgram.IrForCheckpoint;
         var result = new Dictionary<string, CapabilityContract>(StringComparer.Ordinal);
         foreach (var entity in ir.GetProperty("entities").EnumerateArray())
         {
