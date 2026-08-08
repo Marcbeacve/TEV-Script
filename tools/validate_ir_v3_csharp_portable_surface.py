@@ -20,11 +20,18 @@ V3_SOURCES = (
     "TevScriptUpdateV3.cs",
     "TevScriptV3Conformance.cs",
 )
-CONSUMERS = (
+
+RUNTIME_CONSUMERS = (
     CSHARP / "TevScript.V3ConformanceGate" / "TevScript.V3ConformanceGate.csproj",
     CSHARP / "TevScript.V3CheckpointGate" / "TevScript.V3CheckpointGate.csproj",
     CSHARP / "TevScript.V3BrowserWasmGate" / "TevScript.V3BrowserWasmGate.csproj",
     CSHARP / "TevScript.V3WasiGate" / "TevScript.V3WasiGate.csproj",
+)
+
+SIGNED_UPDATE_CONSUMERS = (
+    CSHARP / "TevScript.V3SignedUpdateGate" / "TevScript.V3SignedUpdateGate.csproj",
+    CSHARP / "TevScript.V3BrowserSignedUpdateGate" / "TevScript.V3BrowserSignedUpdateGate.csproj",
+    CSHARP / "TevScript.V3WasiSignedUpdateGate" / "TevScript.V3WasiSignedUpdateGate.csproj",
 )
 
 
@@ -36,6 +43,16 @@ def require(text: str, needle: str, label: str) -> None:
 def forbid(text: str, needle: str, label: str) -> None:
     if needle in text:
         raise RuntimeError(f"{label}_FORBIDDEN:{needle}")
+
+
+def require_v3_consumer(project: Path) -> str:
+    if not project.is_file():
+        raise RuntimeError(f"IR_V3_CSHARP_CONSUMER_MISSING:{project}")
+    text = project.read_text(encoding="utf-8")
+    require(text, "TevScript.Core.V3", "IR_V3_CSHARP_CONSUMER_BINDING")
+    forbid(text, "../TevScript.Core/TevScript.Core.csproj", "IR_V3_CSHARP_CONSUMER_BINDING")
+    forbid(text, "..\\TevScript.Core\\TevScript.Core.csproj", "IR_V3_CSHARP_CONSUMER_BINDING")
+    return text
 
 
 def main() -> int:
@@ -112,6 +129,7 @@ def main() -> int:
     conformance = sources["TevScriptV3Conformance.cs"]
     require(conformance, "runtimeProgram.IrForCheckpoint", "IR_V3_CSHARP_NO_REFLECTION")
     require(conformance, "JsonSerializer.SerializeToElement(value)", "IR_V3_CSHARP_AOT_JSON_BINDING")
+
     runtime = sources["TevScriptRuntimeV3.cs"]
     require(runtime, "internal JsonElement IrForCheckpoint", "IR_V3_CSHARP_INFRASTRUCTURE_BOUNDARY")
     require(runtime, "internal void RestoreStateForCheckpoint", "IR_V3_CSHARP_INFRASTRUCTURE_BOUNDARY")
@@ -165,11 +183,13 @@ def main() -> int:
         require(update, witness, "IR_V3_CSHARP_SIGNED_UPDATE")
     forbid(update, "TryRestoreInstalled", "IR_V3_CSHARP_SIGNED_UPDATE_RESTART_BOUNDARY")
 
-    for consumer in CONSUMERS:
-        text = consumer.read_text(encoding="utf-8")
-        require(text, "TevScript.Core.V3", "IR_V3_CSHARP_CONSUMER_BINDING")
-        forbid(text, "../TevScript.Core/TevScript.Core.csproj", "IR_V3_CSHARP_CONSUMER_BINDING")
-        forbid(text, "..\\TevScript.Core\\TevScript.Core.csproj", "IR_V3_CSHARP_CONSUMER_BINDING")
+    for consumer in RUNTIME_CONSUMERS:
+        text = require_v3_consumer(consumer)
+        forbid(text, "TevScript.Update", "IR_V3_CSHARP_RUNTIME_CRYPTO_COUPLING")
+
+    for consumer in SIGNED_UPDATE_CONSUMERS:
+        text = require_v3_consumer(consumer)
+        require(text, "TevScript.Update", "IR_V3_CSHARP_SIGNED_UPDATE_VERIFIER_BINDING")
 
     print("TEV_SCRIPT_IR_V3_CSHARP_CORE_TFM=NETSTANDARD2_1_PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_V0_2_ASSEMBLY_ISOLATION=PASS")
@@ -181,6 +201,8 @@ def main() -> int:
     print("TEV_SCRIPT_IR_V3_CSHARP_CHECKPOINT_BOUNDARY=PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_TRANSACTIONAL_SWAP=PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_SIGNED_UPDATE=PASS")
+    print("TEV_SCRIPT_IR_V3_CSHARP_SIGNED_UPDATE_CONSUMERS=3_PASS")
+    print("TEV_SCRIPT_IR_V3_CSHARP_RUNTIME_CRYPTO_DECOUPLED=PASS")
     print("TEV_SCRIPT_IR_V3_CSHARP_PORTABLE_SURFACE=PASS")
     return 0
 
