@@ -1,0 +1,104 @@
+{
+  "schema": "TEV_SCRIPT_V1_STATIC_SEMANTICS_CASES_V1",
+  "language_version": "1.0.0",
+  "positive": [
+    {
+      "id": "numeric-vector-widening",
+      "sources": [
+        {"path":"root.tevs","source":"script Numeric version \"1.0.0\"; entity E { state i: Int = 1; state r: Rat = 1; state v: Vec2 = vec2(0, 0); on update { let a: Rat = i + r; let b = i + 2; let c = v * 2; r = b; move c; } }"}
+      ]
+    },
+    {
+      "id": "records-enums-option-result-match",
+      "sources": [
+        {"path":"root.tevs","source":"script Values version \"1.0.0\"; record Damage { amount: Int; critical: Bool; } enum Kind { Fire; Ice; } entity E { state d: Damage = Damage(amount = 1, critical = false); state k: Kind = Kind::Fire; state o: Option<Int> = Some(1); state r: Result<Int, Text> = Ok(2); on start { let amount = d.amount; match k { Kind::Fire => { log \"fire\"; } Kind::Ice => { log \"ice\"; } } match o { Some(v) => { let x = v; } None => { log \"none\"; } } match r { Ok(v) => { let x = v; } Err(e) => { log e; } } } }"}
+      ]
+    },
+    {
+      "id": "imported-function-and-capabilities",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; import math.lib; import world.api; entity E { state out: Rat = 0; on update { out = twice(2); let temp = world.temperature(vec2(0, 0)); call audio.play(\"tick\"); } }"},
+        {"path":"math.tevs","source":"module math.lib version \"1.0.0\"; export fn twice(x: Rat) -> Rat = x * 2;"},
+        {"path":"api.tevs","source":"module world.api version \"1.0.0\"; export capability world.temperature(Vec2) -> Rat observation; export capability audio.play(Text) -> Unit effect;"}
+      ]
+    },
+    {
+      "id": "duplicate-identical-capability-contract",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; import a; import b; entity E { on start { call world.ping(); } }"},
+        {"path":"a.tevs","source":"module a version \"1.0.0\"; export capability world.ping() -> Unit effect;"},
+        {"path":"b.tevs","source":"module b version \"1.0.0\"; export capability world.ping() -> Unit effect;"}
+      ]
+    },
+    {
+      "id": "pure-function-chain",
+      "sources": [
+        {"path":"root.tevs","source":"script Pure version \"1.0.0\"; fn add1(x: Int) -> Int = x + 1; fn add2(x: Int) -> Int = add1(add1(x)); entity E { state x: Int = 0; on start { x = add2(3); } }"}
+      ]
+    },
+    {
+      "id": "nested-lexical-scopes",
+      "sources": [
+        {"path":"root.tevs","source":"script Scope version \"1.0.0\"; entity E { state out: Int = 0; on update { let base = 1; if true { let branch = 2; out = branch; } else { let other = 3; out = other; } for i in 0 .. 2 { let loopValue = i + base; out = loopValue; } } }"}
+      ]
+    },
+    {
+      "id": "event-signature-widening",
+      "sources": [
+        {"path":"root.tevs","source":"script Events version \"1.0.0\"; entity E { on pulse(value: Rat) { log \"pulse\"; } on start { emit pulse(1); emit pulse(2.5); } }"}
+      ]
+    },
+    {
+      "id": "behavior-local-semantics",
+      "sources": [
+        {"path":"root.tevs","source":"script Beh version \"1.0.0\"; behavior Move { state speed: Rat = 1; on update { let dir = input.move2d(); move dir * speed; animate \"Walk\"; } } entity E { use Move; on start { return; } }"}
+      ]
+    }
+  ],
+  "negative": [
+    {"id":"duplicate-record-field","code":"TEVS_V1_TYPE_RECORD_FIELD_DUPLICATE","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; record R { x: Int; x: Rat; } entity E { on start { return; } }"}]},
+    {"id":"duplicate-enum-variant","code":"TEVS_V1_TYPE_ENUM_VARIANT_DUPLICATE","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; enum K { A; A; } entity E { on start { return; } }"}]},
+    {"id":"unit-state","code":"TEVS_V1_TYPE_UNIT_PLACEMENT","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { state x: Unit = 1; on start { return; } }"}]},
+    {"id":"unit-inside-option-record","code":"TEVS_V1_TYPE_UNIT_PLACEMENT","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; record R { x: Option<Unit>; } entity E { on start { return; } }"}]},
+    {"id":"unit-inside-capability-return","code":"TEVS_V1_TYPE_UNIT_PLACEMENT","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; capability bad() -> Option<Unit> observation; entity E { on start { return; } }"}]},
+    {"id":"direct-record-recursion","code":"TEVS_V1_TYPE_RECORD_RECURSION","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; record Node { next: Option<Node>; } entity E { on start { return; } }"}]},
+    {"id":"indirect-record-recursion","code":"TEVS_V1_TYPE_RECORD_RECURSION","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; record A { b: B; } record B { a: Option<A>; } entity E { on start { return; } }"}]},
+    {"id":"duplicate-function-parameter","code":"TEVS_V1_TYPE_PARAMETER_DUPLICATE","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; fn f(x: Int, x: Int) -> Int = x; entity E { on start { return; } }"}]},
+    {"id":"unit-function-return","code":"TEVS_V1_TYPE_UNIT_PLACEMENT","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; fn f(x: Int) -> Unit = x; entity E { on start { return; } }"}]},
+    {"id":"duplicate-state","code":"TEVS_V1_TYPE_STATE_DUPLICATE","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { state x: Int = 0; state x: Int = 1; on start { return; } }"}]},
+    {"id":"duplicate-handler","code":"TEVS_V1_TYPE_HANDLER_DUPLICATE","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { on pulse { return; } on pulse { return; } }"}]},
+    {"id":"parameter-shadows-state","code":"TEVS_V1_SCOPE_SHADOWING","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { state x: Int = 0; on pulse(x: Int) { return; } }"}]},
+    {"id":"local-shadows-parameter","code":"TEVS_V1_SCOPE_SHADOWING","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { on pulse(x: Int) { let x = 1; } }"}]},
+    {"id":"nested-local-shadowing","code":"TEVS_V1_SCOPE_SHADOWING","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { on start { let x = 1; if true { let x = 2; } } }"}]},
+    {"id":"assign-local","code":"TEVS_V1_TYPE_IMMUTABLE_ASSIGNMENT","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { on start { let x = 1; x = 2; } }"}]},
+    {"id":"assign-unknown-state","code":"TEVS_V1_TYPE_STATE_UNKNOWN","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { on start { x = 2; } }"}]},
+    {"id":"state-type-mismatch","code":"TEVS_V1_TYPE_MISMATCH","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { state x: Int = 0; on start { x = \"bad\"; } }"}]},
+    {"id":"unknown-value","code":"TEVS_V1_TYPE_VALUE_UNKNOWN","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { on start { let x = missing; } }"}]},
+    {"id":"record-unknown-field","code":"TEVS_V1_TYPE_RECORD_FIELD_UNKNOWN","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; record R { x: Int; } entity E { state r: R = R(y = 1); on start { return; } }"}]},
+    {"id":"record-missing-field","code":"TEVS_V1_TYPE_RECORD_FIELD_MISSING","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; record R { x: Int; y: Int; } entity E { state r: R = R(x = 1); on start { return; } }"}]},
+    {"id":"record-duplicate-init","code":"TEVS_V1_TYPE_RECORD_INIT_DUPLICATE","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; record R { x: Int; } entity E { state r: R = R(x = 1, x = 2); on start { return; } }"}]},
+    {"id":"enum-variant-unknown","code":"TEVS_V1_TYPE_ENUM_VARIANT_UNKNOWN","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; enum K { A; } entity E { state k: K = K::B; on start { return; } }"}]},
+    {"id":"none-underconstrained","code":"TEVS_V1_TYPE_UNDERCONSTRAINED_NONE","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { on start { let x = None; } }"}]},
+    {"id":"result-underconstrained","code":"TEVS_V1_TYPE_UNDERCONSTRAINED_RESULT","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { on start { let x = Ok(1); } }"}]},
+    {"id":"some-wrong-context","code":"TEVS_V1_TYPE_CONSTRUCTOR_CONTEXT","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { state x: Int = Some(1); on start { return; } }"}]},
+    {"id":"pure-calls-capability","code":"TEVS_V1_PURITY_CAPABILITY","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; fn f() -> Rat = time.delta(); entity E { on start { return; } }"}]},
+    {"id":"effect-used-as-expression","code":"TEVS_V1_EFFECT_EXPRESSION","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; capability fx() -> Int effect; entity E { on start { let x = fx(); } }"}]},
+    {"id":"nonunit-call-statement","code":"TEVS_V1_TYPE_CALL_RESULT_UNUSED","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; capability read() -> Int observation; entity E { on start { call read(); } }"}]},
+    {"id":"call-arity","code":"TEVS_V1_TYPE_CALL_SIGNATURE","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { on start { let x = vec2(1); } }"}]},
+    {"id":"call-unknown","code":"TEVS_V1_TYPE_CALL_UNKNOWN","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { on start { let x = missing(); } }"}]},
+    {"id":"match-non-sum","code":"TEVS_V1_TYPE_MATCH_TARGET","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { state x: Int = 0; on start { match x { None => { return; } } } }"}]},
+    {"id":"option-match-nonexhaustive","code":"TEVS_V1_TYPE_MATCH_NONEXHAUSTIVE","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { state x: Option<Int> = Some(1); on start { match x { Some(v) => { return; } } } }"}]},
+    {"id":"result-match-duplicate","code":"TEVS_V1_TYPE_MATCH_DUPLICATE_ARM","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { state x: Result<Int, Text> = Ok(1); on start { match x { Ok(v) => { return; } Ok(w) => { return; } Err(e) => { return; } } } }"}]},
+    {"id":"enum-match-wrong-pattern-type","code":"TEVS_V1_TYPE_MATCH_PATTERN","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; enum A { X; } enum B { X; } entity E { state a: A = A::X; on start { match a { B::X => { return; } } } }"}]},
+    {"id":"match-binding-shadows-state","code":"TEVS_V1_SCOPE_SHADOWING","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { state value: Int = 0; state x: Option<Int> = Some(1); on start { match x { Some(value) => { return; } None => { return; } } } }"}]},
+    {"id":"behavior-return","code":"TEVS_V1_BEHAVIOR_RETURN","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; behavior B { on update { return; } } entity E { use B; on start { return; } }"}]},
+    {"id":"builtin-event-parameters","code":"TEVS_V1_TYPE_BUILTIN_EVENT_SIGNATURE","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { on update(dt: Rat) { return; } }"}]},
+    {"id":"event-emission-conflict","code":"TEVS_V1_TYPE_EVENT_SIGNATURE_CONFLICT","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { on a { emit ping(1); } on b { emit ping(\"x\"); } }"}]},
+    {"id":"function-direct-recursion","code":"TEVS_V1_PURITY_RECURSION","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; fn f(x: Int) -> Int = f(x); entity E { on start { return; } }"}]},
+    {"id":"function-indirect-recursion","code":"TEVS_V1_PURITY_RECURSION","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; fn f(x: Int) -> Int = g(x); fn g(x: Int) -> Int = f(x); entity E { on start { return; } }"}]},
+    {"id":"cross-namespace-call-ambiguous","code":"TEVS_V1_TYPE_CALL_AMBIGUOUS","sources":[{"path":"root.tevs","source":"script Root version \"1.0.0\"; import fmod; import cmod; entity E { on start { let x = read(); } }"},{"path":"f.tevs","source":"module fmod version \"1.0.0\"; export fn read() -> Int = 1;"},{"path":"c.tevs","source":"module cmod version \"1.0.0\"; export capability read() -> Int observation;"}]},
+    {"id":"cross-nominal-record-assignment","code":"TEVS_V1_TYPE_MISMATCH","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; record A { x: Int; } record B { x: Int; } entity E { state a: A = A(x = 1); on start { a = B(x = 1); } }"}]},
+    {"id":"enum-ordering-forbidden","code":"TEVS_V1_TYPE_BINARY","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; enum K { A; B; } entity E { state k: K = K::A; on start { let x = k < K::B; } }"}]},
+    {"id":"field-on-nonrecord","code":"TEVS_V1_TYPE_FIELD_TARGET","sources":[{"path":"root.tevs","source":"script Bad version \"1.0.0\"; entity E { on start { let x = (1).field; } }"}]}
+  ]
+}
