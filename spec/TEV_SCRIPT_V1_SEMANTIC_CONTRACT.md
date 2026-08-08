@@ -174,10 +174,10 @@ record Damage {
 }
 ```
 
-Construction uses exact field names:
+Construction uses exact field names and named constructor arguments:
 
 ```tevs
-Damage { amount = 12, critical = false }
+Damage(amount = 12, critical = false)
 ```
 
 Rules:
@@ -186,6 +186,7 @@ Rules:
 - fields are unique;
 - field declaration order is not semantic;
 - every field is mandatory at construction;
+- record construction uses named arguments and is syntactically distinct from positional function calls;
 - duplicate field initializers fail closed;
 - unknown field initializers fail closed;
 - field initializer expressions must be assignment-compatible with field types;
