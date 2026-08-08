@@ -1,10 +1,10 @@
 # TEV Script V1 — Python production host
 
-Status: **implementation candidate**. This document does not authorize a V1 stable release and does not replace the global V1 `PRECERTIFY` / `CERTIFY_FULL` sequence.
+Status: **technically certifiable host/product surface with candidate and stable-admission profiles**. This document does not itself authorize a V1 stable release. Only `RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py` may authorize `LANGUAGE_STABLE=YES`.
 
 ## 1. Production boundary
 
-The Python product is split deliberately into a build-time compiler surface and a runtime-only host surface:
+The Python product is deliberately split between build-time source authority and a runtime-only IR host:
 
 ```text
 BUILD / TOOLING
@@ -38,19 +38,17 @@ PythonProgramArtifactV1
 PythonRuntimeHostV1
         |
         +---- explicit host capabilities only
-        |
-        +---- serialized non-reentrant host access
-        |
+        +---- least-authority preflight
+        +---- serialized/non-reentrant host access
         +---- bounded deterministic TEV execution
-        |
         +---- RuntimeCheckpointV2 capture / exact restore
 ```
 
-`PythonRuntimeHostV1` has no source-compilation method. A deployed runtime can therefore be packaged without granting a TEV program permission to compile new source dynamically. The IR V3 boundary itself also requires `runtime_source_compilation=false`, `dynamic_code=false`, `reflection=false`, `automatic_authority_escalation=false` and `host_object_references=false`.
+`PythonRuntimeHostV1` has no source-compilation method. Source compilation remains explicit tooling authority. Runtime IR V3 also keeps `runtime_source_compilation=false`, `dynamic_code=false`, `reflection=false`, `automatic_authority_escalation=false` and `host_object_references=false`.
 
 ## 2. Build-time API
 
-The production profile deliberately targets IR V3 even when a program would be erasable to IR V2. This gives the Python production host one runtime ABI and one checkpoint format.
+The production host deliberately targets IR V3 even when source could erase to IR V2. This gives Python deployment one runtime ABI and one checkpoint format.
 
 ```python
 from tev_script import build_python_program_v1
@@ -72,22 +70,18 @@ print(artifact.ir_semantic_hash)
 print(artifact.canonical_ir_json)
 ```
 
-For filesystem inputs use `build_python_program_v1_paths([...])`. Project builds may continue to use the canonical `tev-script-v1 build` manifest workflow and force `--target irv3` for a Python production artifact.
-
-Source compilation is tooling authority. It is not an ambient service offered by the runtime host.
+For filesystem inputs use `build_python_program_v1_paths([...])`. Project builds may use `tev-script-v1 build` and explicitly select IR V3 when preparing a Python production artifact.
 
 ## 3. Loading a deployed artifact
 
-Use `PythonProgramArtifactV1.parse(text)` at the deployment boundary.
+Use `PythonProgramArtifactV1.parse(text)` at the deployment boundary. It:
 
-The parser:
-
-- uses the strict TEV JSON parser;
-- rejects duplicate keys, floats and non-standard JSON constants through the canonical JSON input rules;
-- requires a valid `TEV_SCRIPT_PROGRAM_IR_V3` program;
-- validates semantic/debug/source identities through the canonical IR V3 validator;
-- accepts only canonical JSON or the repository artifact spelling of canonical JSON followed by exactly one final LF;
-- derives the required runtime capability contracts from the validated IR rather than from a second manifest.
+- uses strict TEV JSON parsing;
+- rejects duplicate keys, floats and non-standard constants;
+- requires `TEV_SCRIPT_PROGRAM_IR_V3`;
+- validates source/semantic/debug identities;
+- accepts canonical JSON or canonical JSON followed by exactly one final LF;
+- derives required capability contracts from validated IR instead of a second manifest.
 
 ```python
 from pathlib import Path
@@ -98,11 +92,11 @@ artifact = PythonProgramArtifactV1.parse(
 )
 ```
 
-Do not deserialize an IR document into a Python object and bypass this validation at an external trust boundary.
+Do not deserialize untrusted IR into a host-native object and bypass this validation boundary.
 
 ## 4. Least-authority capability binding
 
-All physical authority enters through the capability map supplied by the host application.
+All physical authority enters through the host-supplied capability map:
 
 ```python
 from tev_script import PythonRuntimeHostV1
@@ -116,17 +110,17 @@ host = PythonRuntimeHostV1(
 )
 ```
 
-The default policy is exact least authority:
+Default policy:
 
-- every capability required by the IR must be bound before execution;
-- every supplied binding must be callable;
-- unused capability bindings are rejected;
-- the underlying IR runtime validates the capability id and typed return value;
-- the TEV program cannot discover Python objects, modules, filesystem handles, sockets, clocks or environment variables unless the host deliberately exposes equivalent authority through a capability.
+- every required capability must be bound before execution;
+- every binding must be callable;
+- unused bindings are rejected by default;
+- capability id and typed return value are validated by the runtime;
+- the program cannot discover Python modules, filesystem handles, sockets, clocks or environment values unless equivalent authority is deliberately exposed through a capability.
 
-`reject_unused_capabilities=False` exists only for hosts that intentionally use one broader preconstructed binding table. The recommended production policy is the default `True`.
+`reject_unused_capabilities=False` exists only for an embedding application that deliberately chooses a broader preconstructed authority table.
 
-Capability implementations are **trusted host code**. A Python callback that blocks forever, performs unsafe I/O or allocates without bound is outside the TEV machine and cannot be made safe by the script instruction budget. Untrusted capability implementations must be isolated by the embedding application, for example in a separate constrained process. This is an explicit trust boundary, not hidden authority in TEV Script.
+Capability implementations remain trusted host code. TEV instruction/event budgets do not sandbox arbitrary Python callbacks. Untrusted callbacks require application-level process/container and OS-resource isolation.
 
 ## 5. Runtime execution
 
@@ -136,23 +130,11 @@ state = host.state("E")
 canonical = host.canonical_state("E")
 ```
 
-The host delegates execution to `ScriptRuntimeV3`; it does not duplicate interpreter semantics. Therefore the existing V3 rules remain authoritative:
-
-- validated closed type table;
-- typed state/locals/parameters/capabilities/events;
-- per-handler instruction budget;
-- bounded event chain;
-- forward-only CFG;
-- no recursion;
-- no unbounded loop;
-- exact rational arithmetic;
-- canonical algebraic values.
+The host delegates to `ScriptRuntimeV3`; it does not implement a second interpreter. The existing V3 rules therefore remain authoritative: closed type table, typed state/locals/parameters/capabilities/events, bounded instructions/event chains, forward-only CFG, no recursion, no unbounded loops, exact rationals and canonical algebraic values.
 
 ## 6. Serialized host-access boundary
 
-One `PythonRuntimeHostV1` instance is exactly one serialized TEV execution domain. Its mutable runtime state must not acquire an implicit Python thread scheduler or callback-reentrancy semantic that does not exist in TEV Script.
-
-The host therefore uses a non-reentrant, non-blocking access guard around:
+One `PythonRuntimeHostV1` is one serialized TEV execution domain. Operations that can observe or mutate runtime state use a non-reentrant, non-blocking guard:
 
 ```text
 invoke
@@ -162,90 +144,128 @@ capture_checkpoint
 restore_checkpoint
 ```
 
-If another thread or a capability callback tries to enter the same host while one of those operations is active, the host fails closed with:
+Concurrent or callback-driven reentry fails closed with:
 
 ```text
 TEVS_PYTHON_V1_HOST_BUSY
 ```
 
-It does **not** queue, block and later select an order based on host scheduling. That would make Python scheduling part of program meaning without an explicit TEV event.
+The host does not block and later select an order based on Python thread scheduling. Such an order would become implicit TEV semantics. If parallel work is needed, use separate hosts or an explicit application scheduler and convert semantically relevant ordering into TEV events/state.
 
-A capability may call arbitrary trusted host code, but it must not recursively manipulate the same TEV host instance during the active event. If an application needs parallel work, use separate host instances or an explicit application scheduler/queue that chooses when to invoke each host. Any ordering that should be part of TEV semantics should instead enter the machine as explicit events/state.
-
-This contract is canonically recorded as:
+This contract is canonical governance:
 
 ```text
 python_production_surface.serialized_host_access=true
 ```
 
-and is mandatory evidence for Python full certification.
+Both reentrant and real concurrent-access rejection are mandatory Python V2 certificate evidence.
 
-## 7. Checkpoint and process restart
+## 7. Runtime Checkpoint V2
 
 ```python
 checkpoint_text = host.capture_checkpoint_json()
-
-# Later, including in a fresh process created with the exact same IR artifact:
 host.restore_checkpoint(checkpoint_text)
 ```
 
-`RuntimeCheckpointV2` is accepted only when all of the following match exactly:
+Restore requires exact agreement on program id, IR schema/hash, source schema/hash, entity set, state set, each state type and canonical value. It is an exact restart mechanism, not arbitrary schema migration.
 
-- program id;
-- IR schema;
-- IR semantic hash;
-- source schema;
-- source semantic hash;
-- entity set;
-- state set;
-- state type;
-- canonical state value.
+## 8. Candidate and stable profiles
 
-This is exact restoration, not schema migration. Runtime update/migration remains the separate governed hot-swap/update mechanism.
-
-## 8. Python production admission
-
-Run from a clean exact commit with Python 3.11+:
+Both Python gates accept:
 
 ```text
-python RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py
+--profile candidate   # default
+--profile stable
 ```
 
-The gate is intentionally stronger than an in-repository unit-test pass. It performs:
+Profiles change **release/governance expectations**, not runtime semantics.
 
-1. Python-version, Git, pip and setuptools preflight;
-2. clean-worktree and exact Git identity capture;
-3. certified V0.2 oracle ancestry check;
-4. V1 governance validation, including the Python production/certification bindings;
-5. the complete current V1 Python/frontend/IR V3/V0.2 Python closure;
-6. an explicit zero-runtime-dependency assertion for the reference Python package;
-7. two independent `git archive HEAD` source extractions;
-8. two offline, no-build-isolation wheel builds with fixed `SOURCE_DATE_EPOCH`, `PYTHONHASHSEED=0` and pip configuration disabled;
-9. exact wheel filename and SHA-256 byte equality;
-10. a portable `py3-none-any` wheel-tag assertion;
-11. creation of a fresh venv;
-12. offline installation of the wheel with no dependencies;
-13. installed package-version verification;
-14. installed console-script presence verification;
-15. installed V1 descriptor execution and rejection of any unauthorized stable claim;
-16. installed `tev-script-v1` compilation of both a counter and a typed-capability program to explicit IR V3 outside the repository checkout;
-17. verification that the imported `tev_script` module actually resides under the fresh venv and is not shadowed by the source checkout;
-18. loading persisted IR through `PythonProgramArtifactV1`;
-19. installed `PythonRuntimeHostV1` execution;
-20. checkpoint capture, continued execution, exact restore and continuation after restore;
-21. rejection of surplus capability authority;
-22. rejection of missing capability authority;
-23. rejection of capability-driven reentrant access to the active host with `TEVS_PYTHON_V1_HOST_BUSY`, including proof that the failed reentry did not mutate state;
-24. successful execution of an explicitly bound typed capability;
-25. a 10,000-event installed-wheel soak with exact final-state witness;
-26. clean-worktree and identical HEAD/tree verification after the campaign;
-27. emission of `TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V1` bound to commit, tree, Python/build-tool versions, wheel SHA-256, authority/serialization witnesses and soak cardinality.
+Candidate profile expects:
 
-The soak is a deterministic semantic endurance witness, not a hardware-independent latency benchmark. It deliberately has no wall-clock threshold because a fixed timing threshold would make certification depend on machine load/hardware rather than TEV semantics.
+```text
+Python package version = 0.2.0
+release_profile = candidate
+stable = false
+```
 
-The wheel build is explicitly offline (`PIP_NO_INDEX=1`, `--no-deps`, `--no-build-isolation`). If the local build backend needed by `pyproject.toml` is absent or incompatible, the gate fails rather than downloading a different toolchain silently.
+Stable profile expects:
 
-A successful production admission ends with:
+```text
+Python package version = 1.0.0
+release_profile = stable
+stable = true
+```
+
+Stable profile additionally requires the frontend zero-skip witness. It still runs the same Python runtime/distribution evidence and does not itself authorize `LANGUAGE_STABLE=YES`.
+
+## 9. Python production admission V2
+
+Authority:
+
+```text
+RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py
+```
+
+Examples:
+
+```text
+python RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py --profile candidate
+python RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py --profile stable --artifact-out-dir <external-empty-dir>
+```
+
+The gate performs:
+
+1. Python 3.11+, Git, pip and setuptools preflight;
+2. clean exact Git identity capture;
+3. V0.2 oracle ancestry check;
+4. profile-specific governance;
+5. V1 frontend/IR V3/V0.2 Python closure;
+6. stable profile zero-skip enforcement;
+7. zero Python runtime dependencies;
+8. two independent `git archive HEAD` source extractions;
+9. two offline no-build-isolation/no-dependency wheel builds under fixed build epoch/hash seed;
+10. exact wheel filename and SHA-256 equality;
+11. `py3-none-any` portability tag;
+12. fresh venv creation and offline installation;
+13. installed package-version check;
+14. installed CLI presence;
+15. installed `TEV_SCRIPT_DESCRIPTOR_V3` execution with profile/stable claim check;
+16. installed explicit IR V3 compilation outside the checkout;
+17. proof imports originate inside the fresh venv;
+18. IR-only `PythonRuntimeHostV1` execution;
+19. checkpoint capture/restore/continuation;
+20. surplus capability rejection;
+21. missing capability rejection;
+22. callback-driven reentrant host-access rejection with state non-mutation proof;
+23. real concurrent same-host access rejection with `TEVS_PYTHON_V1_HOST_BUSY`;
+24. typed capability execution;
+25. deterministic 10,000-event soak;
+26. clean identical HEAD/tree after the campaign;
+27. canonical content-addressed production receipt.
+
+Receipt schema:
+
+```text
+TEV_SCRIPT_V1_PYTHON_PRODUCTION_RECEIPT_V2
+```
+
+It binds:
+
+```text
+admission_profile
+commit/tree/branch
+Python/pip/setuptools identities
+package name/version
+wheel filename/SHA-256
+runtime dependency count
+least-authority/reentrancy/concurrency witnesses
+checkpoint continuation
+10,000-event soak
+certify_full=false
+language_stable=false
+```
+
+Candidate success:
 
 ```text
 TEV_SCRIPT_V1_PYTHON_PRODUCTION=PASS_CANDIDATE
@@ -253,33 +273,59 @@ CERTIFY_FULL=NO
 LANGUAGE_STABLE=NO
 ```
 
-`PASS_CANDIDATE` means the exact commit demonstrated the Python distribution and production-host properties above. It is evidence input to the Python-specific certification gate; it is not itself a certificate.
-
-## 9. Python-specific full certification
-
-Python can be certified as a host/product profile without waiting for Unity, Browser-WASM or the global multi-host V1 certificate:
+Stable-profile success:
 
 ```text
-python RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py
+TEV_SCRIPT_V1_PYTHON_PRODUCTION=PASS_STABLE_CANDIDATE
+CERTIFY_FULL=NO
+LANGUAGE_STABLE=NO
 ```
 
-This gate is read-only with respect to tracked repository content. It:
+### Exact artifact export
 
-1. requires a clean exact commit and captures HEAD/tree/branch;
-2. verifies certified V0.2 ancestry;
-3. verifies canonical Python production/certification gate bindings, `serialized_host_access=true` and stable=false authority metadata;
-4. runs `RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` on that exact commit;
-5. rejects any skipped result;
-6. parses exactly one production receipt and one external receipt hash;
-7. removes the embedded receipt hash and independently recomputes canonical SHA-256;
-8. requires the embedded hash, external hash and recomputed hash to agree;
-9. requires the production receipt commit/tree/branch/oracle to equal the certifier's own captured identity;
-10. requires zero runtime dependencies, `py3-none-any`, reproducible wheel, isolated install, venv module origin, installed IR V3 compilation/runtime, least-authority rejection cases, reentrant-access rejection, typed capability execution, checkpoint/restart and the exact 10,000-event soak;
-11. requires non-empty Python/pip/setuptools/package/wheel identity witnesses and a valid lowercase SHA-256 wheel hash;
-12. verifies the worktree is still clean and HEAD/tree plus canonical governance/state files are unchanged;
-13. emits `TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V1` bound to the exact production receipt and wheel, with `V1_PYTHON_SERIALIZED_HOST_ACCESS_GUARD` inside the certified scope.
+`--artifact-out-dir` must point outside the repository and must be empty. After both independent builds have proven reproducibility, the gate copies **the already-verified wheel bytes** to that directory and recomputes the copied SHA-256.
 
-A successful Python certificate ends with:
+This is intentionally stronger than “rebuild later from the same commit”. Stable publication must use the bytes bound by the stable-admission receipt.
+
+## 10. Python-specific full certification V2
+
+Authority:
+
+```text
+RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py
+```
+
+Examples:
+
+```text
+python RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py --profile candidate
+python RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py --profile stable --artifact-out-dir <external-empty-dir>
+```
+
+The certifier:
+
+1. captures its own exact clean HEAD/tree/branch;
+2. verifies V0.2 ancestry;
+3. verifies profile-specific canonical Python authority metadata;
+4. runs Python production V2 with the same profile;
+5. propagates the external artifact directory when requested;
+6. rejects skips in mandatory scope;
+7. parses exactly one production receipt and external receipt hash;
+8. independently recomputes canonical production receipt SHA-256;
+9. requires embedded/external/recomputed hashes to agree;
+10. requires exact profile/commit/tree/branch/oracle equality;
+11. requires zero dependencies, portable reproducible wheel, isolated install, module origin, installed IR/runtime, least authority, **reentrant and concurrent** access rejection, typed capability, checkpoint continuation and exact 10,000-event soak;
+12. validates package version (`0.2.0` candidate, `1.0.0` stable);
+13. rechecks worktree/HEAD/tree/governance/state immutability;
+14. emits a technical Python certificate.
+
+Certificate schema:
+
+```text
+TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V2
+```
+
+Success always terminates:
 
 ```text
 PYTHON_CERTIFY_FULL=PASS
@@ -287,61 +333,86 @@ CERTIFY_FULL=NO
 LANGUAGE_STABLE=NO
 ```
 
-The distinction is intentional:
-
-- `PYTHON_CERTIFY_FULL=PASS` certifies the Python V1 implementation/distribution scope recorded by that certificate;
-- `CERTIFY_FULL=NO` says the global V1 cross-runtime certificate has not been asserted by this gate;
-- `LANGUAGE_STABLE=NO` says no stable release metadata has been authorized.
-
-The certificate also explicitly carries `global_certify_full=false` and `stable_release_authorized=false`.
-
-## 10. What neither Python gate claims
-
-Neither a production admission nor a Python-specific certificate means:
-
-- V1 has been promoted to a stable package release;
-- the global Python/JavaScript/C#/Browser-WASM/WASI certification is complete;
-- the package version may be relabeled `1.0.0` without creating and re-certifying the changed commit;
-- arbitrary Python capability implementations are sandboxed;
-- a different wheel, build toolchain or commit inherits the certificate;
-- a host callback is bounded by TEV instruction budgets;
-- multiple host instances acquire an implicit deterministic inter-host scheduler.
-
-## 11. Stable release sequence
-
-The intended Python-first sequence is:
+The certificate explicitly keeps:
 
 ```text
-implementation commit C
-    -> PYTHON_PRODUCTION(C)=PASS_CANDIDATE
-    -> PYTHON_CERTIFY_FULL(C)=PASS
-
-optional global language/runtime certification of C
-    -> V1 PRECERTIFY(C)=PASS
-    -> V1 CERTIFY_FULL(C)=PASS
-
-explicit promotion/version commit S
-    -> PYTHON_PRODUCTION(S)=PASS_CANDIDATE
-    -> PYTHON_CERTIFY_FULL(S)=PASS
-    -> if globally promoted: PRECERTIFY(S)=PASS
-    -> if globally promoted: CERTIFY_FULL(S)=PASS
-    -> explicit release/tag/publication authorization
+python_certify_full=true
+global_certify_full=false
+language_stable=false
+stable_release_authorized=false
 ```
 
-No certification is transitive across a source, metadata, package-version or build-system change. A Python certificate for C cannot certify S merely because S is a descendant.
+Even a successful `--profile stable` Python certificate is therefore subordinate evidence for stable admission, not a stable-language authority.
 
-## 12. Operational deployment checklist
+## 11. Relationship to global and stable certification
 
-For an actual Python service or desktop application:
+Python certification is one bounded product certificate. Global cross-runtime technical certification is separate:
 
-- distribute the exact wheel identified by the Python certificate/production receipt;
-- store the canonical IR V3 artifact and its lowering/build evidence with the release;
-- construct capability maps explicitly per application role;
-- keep default unused-capability rejection unless a broader capability table is a deliberate architectural decision;
-- treat one `PythonRuntimeHostV1` as one serialized execution domain; use separate hosts or explicit application scheduling for parallel workloads;
+```text
+RUN_TEV_SCRIPT_V1_PRECERTIFY.py
+RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py
+```
+
+Stable release authority is separate again:
+
+```text
+RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py
+```
+
+The required stable chain is:
+
+```text
+P = technically certified Stage-D tooling commit
+  -> exact candidate-profile global CERTIFY_FULL V2 receipt persisted externally
+
+S = release-shaped commit from P
+  -> Python package version 1.0.0
+  -> JS package version 1.0.0
+  -> stable release metadata + exact P certificate identity
+  -> stable global CERTIFY_FULL V2 on S
+  -> stable Python CERTIFY_FULL V2 on S
+  -> exact wheel export
+  -> npm test + exact npm pack
+  -> STABLE_ADMISSION(S)=PASS
+```
+
+Only stable admission may terminate:
+
+```text
+CERTIFY_FULL=PASS
+STABLE_ADMISSION=PASS
+LANGUAGE_STABLE=YES
+```
+
+No Python certificate is transitive across source, metadata, package-version, build-system, commit or wheel-byte changes.
+
+## 12. What Python certification does not claim
+
+Neither candidate nor stable-profile Python certification proves:
+
+- global V1 cross-runtime certification;
+- stable language admission;
+- arbitrary callback sandboxing;
+- deterministic scheduling across multiple independent hosts unless the application makes ordering explicit;
+- production signing-key custody;
+- hostile rollback-resistant durable state;
+- public network deployment security;
+- identity of a later rebuilt wheel;
+- Unity product certification.
+
+## 13. Operational deployment checklist
+
+For an actual Python application:
+
+- deploy the exact wheel identified by the relevant Python/stable receipt;
+- retain canonical IR V3 plus source/lowering evidence;
+- construct capability maps explicitly per role;
+- preserve default unused-capability rejection unless broader authority is deliberate;
+- treat one `PythonRuntimeHostV1` as one serialized execution domain;
 - do not reenter the active host from a capability callback;
-- do not expose source compilation to untrusted runtime requests;
-- persist Runtime Checkpoint V2 only when exact restart is required;
-- keep application-level timeouts/process isolation around untrusted or failure-prone host capabilities;
-- log commit/tree, wheel SHA-256, IR semantic hash and source semantic hash with deployment metadata;
-- re-run Python production admission and Python full certification after any Python package, build-system, runtime, source or stable-metadata change.
+- keep source compilation out of untrusted runtime requests;
+- persist Runtime Checkpoint V2 only for exact restart;
+- isolate untrusted/failure-prone callbacks at process/OS level;
+- log commit/tree, wheel SHA-256, IR semantic hash and source semantic hash;
+- re-run the appropriate profile after any source/runtime/build/release-metadata change;
+- for stable publication, publish only artifact bytes emitted and hashed by successful `STABLE_ADMISSION`.
