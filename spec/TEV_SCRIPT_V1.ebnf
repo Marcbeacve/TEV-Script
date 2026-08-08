@@ -119,7 +119,7 @@ primary              = BOOL
                      | "(" expression ")" ;
 
 enum_value           = qualified_name "::" IDENT ;
-record_value         = qualified_name "{" [ field_init ( "," field_init )* [ "," ] ] "}" ;
+record_value         = qualified_name "(" field_init ( "," field_init )* [ "," ] ")" ;
 field_init           = IDENT "=" expression ;
 option_value         = "Some" "(" expression ")" | "None" ;
 result_value         = "Ok" "(" expression ")" | "Err" "(" expression ")" ;
