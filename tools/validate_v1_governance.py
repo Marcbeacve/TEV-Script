@@ -373,10 +373,12 @@ def main() -> int:
     ), "V1_GOVERNANCE_LSP_IMPLEMENTATION")
     require_tokens(frontend_text, (
         '"--require-zero-skips"',
-        "TEV_SCRIPT_V1_TESTS_SKIP_COUNT=",
-        "TEV_SCRIPT_IR_V3_TESTS_SKIP_COUNT=",
-        "TEV_SCRIPT_V0_2_REGRESSION_TESTS_SKIP_COUNT=",
-        "TEV_SCRIPT_V1_FRONTEND_TOTAL_SKIP_COUNT=",
+        "def skip_summary(",
+        'print(f"{label}_SKIP_COUNT={count}")',
+        'skip_summary("TEV_SCRIPT_V1_TESTS", v1_result)',
+        'skip_summary("TEV_SCRIPT_IR_V3_TESTS", ir_v3_result)',
+        'skip_summary("TEV_SCRIPT_V0_2_REGRESSION_TESTS", v02_result)',
+        'print(f"TEV_SCRIPT_V1_FRONTEND_TOTAL_SKIP_COUNT={total_skips}")',
         "TEV_SCRIPT_V1_FRONTEND_ZERO_SKIPS=",
     ), "V1_GOVERNANCE_FRONTEND_SKIP_ACCOUNTING")
 
