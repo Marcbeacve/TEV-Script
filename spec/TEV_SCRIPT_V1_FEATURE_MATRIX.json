@@ -4,6 +4,7 @@
   "repository_language_version_remains": "0.2.0-preview",
   "stable_release_authorized": false,
   "specification": {
+    "lexical_profile": "CLOSED_CANDIDATE_V1",
     "grammar": "CLOSED_CANDIDATE_V2",
     "source_semantics": "CLOSED_CANDIDATE_V2",
     "deterministic_link_model": "CLOSED_CANDIDATE_V1",
