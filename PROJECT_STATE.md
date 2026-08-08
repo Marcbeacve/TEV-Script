@@ -14,6 +14,7 @@ V0.2 language completeness:                            PASS CERTIFIED LOCAL
 
 V1 lexical / grammar / semantic contract:              CLOSED CANDIDATE
 V1 deterministic multi-file linker:                    IMPLEMENTED CANDIDATE
+V1 linked module UnitIndex.kind regression:            FIXED + REGRESSION ADDED
 V1 nominal + constructed type system:                  IMPLEMENTED CANDIDATE
 V1 scopes / purity / effects / events:                 IMPLEMENTED CANDIDATE
 V1 constants / behaviors / bounded control flow:       IMPLEMENTED CANDIDATE
@@ -22,6 +23,9 @@ V1 erasable source semantics -> IR V2:                 IMPLEMENTED CANDIDATE
 V1 full algebraic source semantics -> IR V3:           IMPLEMENTED CANDIDATE
 IR V3 closed type table / codec / validator / CFG:     IMPLEMENTED CANDIDATE
 IR V3 Python runtime:                                  IMPLEMENTED CANDIDATE
+V1 Python production IR-only host:                     IMPLEMENTED CANDIDATE
+V1 Python least-authority capability preflight:        IMPLEMENTED CANDIDATE
+V1 Python reproducible-wheel production admission:     GATE IMPLEMENTED
 IR V3 JavaScript runtime:                              IMPLEMENTED CANDIDATE
 IR V3 C# runtime assembly:                             IMPLEMENTED CANDIDATE
 IR V3 Python/JS/C# canonical receipt byte lock:        GATE IMPLEMENTED
@@ -36,6 +40,7 @@ IR V3 signed update Browser-WASM campaign:             GATE IMPLEMENTED
 IR V3 signed update WASI fresh/restore campaign:       GATE IMPLEMENTED
 V1 full precertify orchestration:                       IMPLEMENTED CANDIDATE V5
 
+Current exact-HEAD Python production gate:              NOT EXECUTED IN THIS CHAT RUNTIME
 Current exact-HEAD dynamic full precertify:             NOT EXECUTED IN THIS CHAT RUNTIME
 V1 CERTIFY_FULL:                                       NO
 V1 LANGUAGE_STABLE:                                    NO
@@ -105,6 +110,8 @@ Implemented candidate:
 - nominal semantic ids;
 - identical capability-contract coalescing and conflicting-contract rejection;
 - canonical reachable closure excluding unreachable supplied modules.
+
+The linked-program module normalizer now consumes the actual `UnitIndexV1.kind` contract. The erroneous `unit_kind` consumer was removed rather than hidden behind a compatibility alias, and `tests/test_v1_linked_program_unit_kind_regression.py` locks that field contract with a real multi-module program.
 
 ### Static semantics
 
@@ -213,6 +220,24 @@ Implemented candidate:
 ### Python
 
 Implemented candidate runtime, validator, type/value codec, V1->V3 lowerer, V2->V3 lift, conformance runner, checkpoint V2 and lowering receipt V2.
+
+The Python product surface additionally contains:
+
+- `PythonProgramArtifactV1`: immutable validated canonical IR V3 deployment artifact;
+- `PythonCapabilityContractV1`: exact capability ABI summary derived from validated IR;
+- `PythonRuntimeHostV1`: runtime-only least-authority host with no source compilation entry point;
+- `build_python_program_v1` / `build_python_program_v1_paths`: explicit build-time source-to-IR V3 helpers;
+- missing capability rejection before execution;
+- unused capability rejection by default;
+- callable validation before authority reaches the runtime;
+- exact Runtime Checkpoint V2 capture/restore through the same V3 runtime semantics;
+- public versioned root-package exports without changing the certified V0.2 unversioned aliases.
+
+The runtime host accepts only precompiled validated IR V3. Source compilation stays a build/tooling concern and cannot be requested through the runtime host.
+
+`RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` implements a clean-commit Python product gate. It runs the Python/frontend closure, builds two wheels from independent `git archive HEAD` trees with fixed build epoch, requires identical wheel bytes, installs the wheel offline in a fresh venv, verifies installed console scripts/descriptor, compiles explicit IR V3 outside the checkout, executes the installed runtime host, captures/restores a checkpoint and requires continuation after restore. The final receipt binds commit, tree and wheel SHA-256 while still declaring `CERTIFY_FULL=NO` and `LANGUAGE_STABLE=NO`.
+
+Capability callback implementations remain trusted embedding code. TEV instruction/event budgets constrain TEV execution, not arbitrary Python code supplied by the embedding application. Untrusted callbacks require process/container isolation at the application boundary.
 
 ### JavaScript
 
@@ -363,6 +388,8 @@ Implemented campaigns exist for:
 11. clean worktree before and after;
 12. identical HEAD/tree throughout validation.
 
+The Python distribution/product admission is intentionally available as the separate `RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` gate. It does not replace the cross-host language/runtime precertification campaign.
+
 Any V1/V3 `SKIPPED_*` is a pre-certification failure.
 
 A successful pre-certify deliberately still emits:
@@ -377,18 +404,19 @@ because technical validation and release/stable admission are separate governanc
 
 ## Verificación actual de esta sesión
 
-The current branch has moved materially beyond earlier locally executed V3 ancestors. This ChatGPT execution environment has Node but currently lacks `dotnet`/`wasmtime`, and its isolated container cannot resolve `github.com` to clone the exact current branch.
+The current branch has moved materially beyond earlier locally executed V3 ancestors. This ChatGPT execution environment cannot materialize and execute the exact GitHub checkout with the full local toolchain required for the repository's certification campaigns.
 
 Therefore the current exact-HEAD status is deliberately:
 
 ```text
 CODE_AND_GATES=PUBLISHED_CANDIDATE
+CURRENT_HEAD_PYTHON_PRODUCTION_GATE=NOT_EXECUTED_HERE
 CURRENT_HEAD_FULL_PRECERTIFY=NOT_EXECUTED_HERE
 CURRENT_HEAD_CERTIFY_FULL=NO
 LANGUAGE_STABLE=NO
 ```
 
-Do not reinterpret implementation presence or a previously passing ancestor as a fresh PASS for the current HEAD.
+Do not reinterpret implementation presence, static inspection or a previously passing ancestor as a fresh dynamic PASS for the current HEAD.
 
 ## Active falsifiable hypotheses
 
@@ -432,14 +460,25 @@ A durable-store failure after runtime commit must restore the previous runtime b
 
 No V1/V3 addition may alter the certified V0.2 semantic/runtime receipts.
 
+### H11 — Python least authority
+
+A Python production host must reject execution before startup when a required capability is missing and must reject surplus capability authority by default.
+
+### H12 — Python wheel reproducibility
+
+Two offline wheel builds from independent archives of the same exact commit, with the governed fixed build epoch, must produce the same filename and SHA-256 bytes.
+
 ## Tareas siguientes
 
-1. Execute `RUN_TEV_SCRIPT_V1_PRECERTIFY.py` on the exact current clean branch in the Windows development environment with Node, .NET, Chromium, Wasmtime and the .NET-required wasi-sdk available.
-2. Fix every failure without weakening or skipping a gate.
-3. Re-run from one exact clean commit/tree until `V1_PRECERTIFY=PASS` with zero skips.
-4. Freeze the resulting evidence receipt and create a separate read-only `CERTIFY_FULL` admission step bound to that exact commit/tree.
-5. Only after `CERTIFY_FULL` should a stable-admission commit be considered; that promoted commit must itself be revalidated rather than inheriting certification from its parent.
+1. Execute `RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` on the exact current clean branch with Python 3.11+ and a locally available compatible setuptools build backend; fix any failure without weakening the gate.
+2. Execute `RUN_TEV_SCRIPT_V1_PRECERTIFY.py` on the same exact current clean branch in the Windows development environment with Node, .NET, Chromium, Wasmtime and the .NET-required wasi-sdk available.
+3. Fix every failure without weakening or skipping a gate.
+4. Re-run from one exact clean commit/tree until the Python production gate and `V1_PRECERTIFY=PASS` both pass with zero skips.
+5. Freeze the resulting evidence receipts and execute the separate read-only `CERTIFY_FULL` admission bound to that exact commit/tree.
+6. Only after `CERTIFY_FULL` should a stable-admission commit be considered; that promoted commit must itself re-run the Python production gate, PRECERTIFY and CERTIFY_FULL rather than inheriting certification from its parent.
 
 ## Production boundaries unchanged
 
 Even a V1 language/runtime `CERTIFY_FULL` would not by itself close production signing-key provisioning/rotation, hostile rollback-resistant monotonic storage, public WAN/TLS/DNS/CDN deployment, physical Unity Input System/Animator providers, evolutionary self-assembly or decentralized peer-to-peer consensus/trust. Those are deployment/system-security surfaces, not missing language semantics.
+
+For Python specifically, TEV execution budgets do not sandbox arbitrary embedding callbacks. If capability implementations are untrusted, failure-prone or tenant supplied, the embedding application must enforce process/container, OS-resource and external I/O controls outside the TEV runtime.
