@@ -1,0 +1,41 @@
+{
+  "name": "tev-script-language",
+  "displayName": "TEV Script Language",
+  "description": "Syntax highlighting and editor configuration for TEV Script V0.2/V1 source files.",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "tevscript",
+        "aliases": [
+          "TEV Script",
+          "tevscript"
+        ],
+        "extensions": [
+          ".tevs"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "tevscript",
+        "scopeName": "source.tevscript",
+        "path": "./syntaxes/tevscript.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "tevscript",
+        "path": "./snippets/tevscript.json"
+      }
+    ]
+  }
+}
