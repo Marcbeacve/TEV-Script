@@ -136,14 +136,18 @@ The gate runs from one exact clean checkout and requires all of the following wi
 - signed-update V3 host campaign;
 - signed-update V3 Browser-WASM campaign;
 - signed-update V3 WASI fresh/restore campaign;
-- complete portable V0.2 regression including browser-WASM and WASI witnesses;
+- complete portable V0.2 Python/JavaScript regression;
+- independent V0.2 Browser-WASM AOT and WASI/Wasmtime dynamic witnesses from
+  `tools/validate_v0_2_portable_hosts.py`;
+- explicit classification of optional `jsonschema` validation as either PASS
+  or `OPTIONAL_DEPENDENCY_UNAVAILABLE`;
 - clean worktree before and after;
 - identical commit and tree before and after validation.
 
 A successful run emits one canonical JSON receipt:
 
 ```text
-TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V5
+TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V6
 ```
 
 and its SHA-256.

@@ -625,7 +625,7 @@ This permits Python to reach host-specific technical certification without waiti
 python .\RUN_TEV_SCRIPT_V1_PRECERTIFY.py
 ```
 
-`PRECERTIFY V5` requires, from one exact clean checkout:
+`PRECERTIFY V6` requires, from one exact clean checkout:
 
 1. governance consistency;
 2. V1 frontend/static/lowering closure;
@@ -637,8 +637,11 @@ python .\RUN_TEV_SCRIPT_V1_PRECERTIFY.py
 8. signed-update host campaign;
 9. signed-update Browser-WASM campaign;
 10. signed-update WASI fresh/restore campaign;
-11. V0.2 complete portable regression;
-12. clean and immutable Git HEAD/tree before/after.
+11. V0.2 Python/JavaScript regression plus independent Browser-WASM AOT and
+    WASI/Wasmtime dynamic witnesses;
+12. an explicit V0.2 JSON Schema result: PASS when the optional validator is
+    installed, or `OPTIONAL_DEPENDENCY_UNAVAILABLE` otherwise;
+13. clean and immutable Git HEAD/tree before/after.
 
 Mandatory V1/V3 `SKIPPED_*` results are not accepted as a full precertification.
 
@@ -700,6 +703,13 @@ Portable entry point:
 
 ```powershell
 python .\RUN_PORTABLE_CONFORMANCE.py
+```
+
+The Browser-WASM and WASI V0.2 hosts have an independent dynamic gate because
+the portable runner above intentionally owns only Python/JavaScript conformance:
+
+```powershell
+python .\tools\validate_v0_2_portable_hosts.py
 ```
 
 Historical V0.2 source CLI:

@@ -58,10 +58,16 @@ the three schema SHA-256 values are identical to the V7 surface that already
 passed Draft 2020-12 validation. The versioned full C# gate checks those hashes
 before accepting this continuity.
 
+Global V1 precertification records this state explicitly as
+`OPTIONAL_DEPENDENCY_UNAVAILABLE`; it does not turn an optional skip into a
+PASS. V0.2 Browser-WASM and WASI execution are separate mandatory dynamic
+witnesses provided by `tools/validate_v0_2_portable_hosts.py`.
+
 ## Commands
 
 ```powershell
 python .\RUN_PORTABLE_CONFORMANCE.py
+python .\tools\validate_v0_2_portable_hosts.py
 
 pwsh -NoProfile -ExecutionPolicy Bypass `
   -File .\RUN_TEV_SCRIPT_CSHARP_CONFORMANCE_V1.ps1

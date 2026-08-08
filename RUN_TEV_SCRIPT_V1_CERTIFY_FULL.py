@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 V0_2_ORACLE = "6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5"
-PRECERTIFY_RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V5"
+PRECERTIFY_RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V6"
 CERTIFY_RECEIPT_SCHEMA = "TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V1"
 
 
@@ -167,11 +167,23 @@ def main() -> int:
         "signed_update_v3_browser_wasm": "PASS",
         "signed_update_v3_wasi": "PASS_FRESH_RESTORE",
         "v0_2_portable_regression": "PASS",
+        "v0_2_browser_wasm": "PASS_AOT_HTTP_WITNESS",
+        "v0_2_wasi": "PASS_WASMTIME",
         "certify_full": False,
         "language_stable": False,
     }
     for key, expected in mandatory.items():
         require_equal("V1_CERTIFY_FULL_EVIDENCE_" + key.upper(), receipt.get(key), expected)
+    schema_status = receipt.get("v0_2_jsonschema_validation")
+    if schema_status not in {"PASS", "OPTIONAL_DEPENDENCY_UNAVAILABLE"}:
+        abort(
+            "V1_CERTIFY_FULL_EVIDENCE_V0_2_JSONSCHEMA_VALIDATION",
+            "INVALID_STATUS=" + repr(schema_status),
+        )
+    print(
+        "V1_CERTIFY_FULL_EVIDENCE_V0_2_JSONSCHEMA_VALIDATION=PASS status="
+        + str(schema_status)
+    )
 
     require_clean("CERTIFY_AFTER_PRECERTIFY")
     head_after = git_text("rev-parse", "HEAD")
@@ -212,6 +224,8 @@ def main() -> int:
             "SIGNED_UPDATE_V3_BROWSER_WASM",
             "SIGNED_UPDATE_V3_WASI_FRESH_RESTORE",
             "V0_2_PORTABLE_NON_REGRESSION",
+            "V0_2_BROWSER_WASM_AOT",
+            "V0_2_WASI_WASMTIME",
         ],
         "certify_full": True,
         "language_stable": False,

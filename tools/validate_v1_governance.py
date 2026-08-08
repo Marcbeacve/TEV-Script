@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 EXPECTED_STATUS = "FULL_IMPLEMENTATION_CANDIDATE_PRECERTIFY_REQUIRED"
 EXPECTED_MATRIX = "TEV_SCRIPT_V1_FEATURE_MATRIX_V5"
-EXPECTED_PRECERTIFY = "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V5"
+EXPECTED_PRECERTIFY = "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V6"
 EXPECTED_CERTIFY = "TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V1"
 EXPECTED_PYTHON_CERTIFY = "TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V1"
 ARTIFACT_POLICY = "EVIDENCE_SAFE_RECEIPT_LAST_V1"
@@ -70,6 +70,7 @@ REQUIRED_GATE_MAP = {
     "signed_update_host": "tools/validate_ir_v3_signed_update.py",
     "signed_update_browser_wasm": "tools/validate_ir_v3_browser_signed_update.py",
     "signed_update_wasi": "tools/validate_ir_v3_wasi_signed_update.py",
+    "v0_2_portable_hosts": "tools/validate_v0_2_portable_hosts.py",
     "precertify": "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
     "certify_full": "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py",
 }

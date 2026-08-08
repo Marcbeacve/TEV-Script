@@ -132,6 +132,7 @@
         "signed_update_host": "tools/validate_ir_v3_signed_update.py",
         "signed_update_browser_wasm": "tools/validate_ir_v3_browser_signed_update.py",
         "signed_update_wasi": "tools/validate_ir_v3_wasi_signed_update.py",
+        "v0_2_portable_hosts": "tools/validate_v0_2_portable_hosts.py",
         "precertify": "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
         "certify_full": "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py"
       },

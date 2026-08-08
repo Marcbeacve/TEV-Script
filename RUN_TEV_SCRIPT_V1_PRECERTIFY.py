@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 V0_2_ORACLE = "6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5"
-RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V5"
+RECEIPT_SCHEMA = "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V6"
 
 
 @dataclass(frozen=True, slots=True)
@@ -251,6 +251,21 @@ def mandatory_gates() -> tuple[Gate, ...]:
                 "TEV_SCRIPT_IR_V3_WASI_SIGNED_UPDATE_GATE=PASS",
             ),
         ),
+        Gate(
+            "TEV_SCRIPT_V0_2_PORTABLE_HOSTS_GATE",
+            python_command("tools/validate_v0_2_portable_hosts.py"),
+            (
+                "TEV_SCRIPT_V0_2_BROWSER_WASM_BUILD=PASS",
+                "TEV_SCRIPT_V0_2_BROWSER_WASM_AOT_REQUESTED=PASS",
+                "TEV_SCRIPT_V0_2_BROWSER_WASM_HTTP_WITNESS=PASS",
+                "TEV_SCRIPT_V0_2_BROWSER_WASM_GATE=PASS",
+                "TEV_SCRIPT_V0_2_WASI_SDK_RESOLVED=PASS",
+                "TEV_SCRIPT_V0_2_WASI_BUILD=PASS",
+                "TEV_SCRIPT_V0_2_WASI_EXECUTION=PASS",
+                "TEV_SCRIPT_V0_2_WASI_GATE=PASS",
+                "TEV_SCRIPT_V0_2_PORTABLE_HOSTS=PASS",
+            ),
+        ),
     )
 
 
@@ -283,12 +298,12 @@ def main() -> int:
     )
     if "=FAIL" in portable or "command_failed:" in portable:
         fail("TEV_SCRIPT_V0_2_PORTABLE_CONFORMANCE", "FAIL_WITNESS")
-    if not any("PASS" in line and ("WASM" in line.upper() or "BROWSER" in line.upper()) for line in portable.splitlines()):
-        fail("TEV_SCRIPT_V0_2_BROWSER_WASM_WITNESS", "MISSING")
-    if not any("PASS" in line and "WASI" in line.upper() for line in portable.splitlines()):
-        fail("TEV_SCRIPT_V0_2_WASI_WITNESS", "MISSING")
-    print("TEV_SCRIPT_V0_2_BROWSER_WASM_WITNESS=PASS")
-    print("TEV_SCRIPT_V0_2_WASI_WITNESS=PASS")
+    schema_pass = "JSON_SCHEMA_VALIDATION=PASS" in portable.splitlines()
+    schema_optional = "JSON_SCHEMA_VALIDATION=SKIPPED_DEPENDENCY_UNAVAILABLE" in portable.splitlines()
+    if not schema_pass and not schema_optional:
+        fail("TEV_SCRIPT_V0_2_JSON_SCHEMA_POLICY", "MISSING_EXPLICIT_STATUS")
+    schema_status = "PASS" if schema_pass else "OPTIONAL_DEPENDENCY_UNAVAILABLE"
+    print("TEV_SCRIPT_V0_2_JSON_SCHEMA_POLICY=PASS status=" + schema_status)
 
     require_clean("AFTER")
     head_after = git_text("rev-parse", "HEAD")
@@ -317,6 +332,9 @@ def main() -> int:
         "signed_update_v3_browser_wasm": "PASS",
         "signed_update_v3_wasi": "PASS_FRESH_RESTORE",
         "v0_2_portable_regression": "PASS",
+        "v0_2_browser_wasm": "PASS_AOT_HTTP_WITNESS",
+        "v0_2_wasi": "PASS_WASMTIME",
+        "v0_2_jsonschema_validation": schema_status,
         "certify_full": False,
         "language_stable": False,
     }
