@@ -150,6 +150,15 @@ def v1_descriptor() -> dict[str, object]:
             ],
             "artifact_commit_policy": "EVIDENCE_SAFE_RECEIPT_LAST_V1",
         },
+        "editor_tooling": {
+            "vscode_static_language_package": "editors/vscode",
+            "language_server_cli": "tev-script-v1-lsp",
+            "language_server_transport": "LSP_JSON_RPC_STDIO",
+            "language_server_position_encoding": "utf-16",
+            "language_server_project_mode": "EXPLICIT_TEV_SCRIPT_PROJECT_V1",
+            "formatter": False,
+            "independent_semantic_authority": False,
+        },
         "certification": {
             "v0_2_oracle_commit": "6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5",
             "current_v1_certify_full_claim": False,
