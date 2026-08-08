@@ -23,10 +23,12 @@ from .ast_v1 import (
     StateDecl,
     TypeRef,
 )
+from .diagnostics import TevScriptError
 from .linker_v1 import (
     LinkPlanV1,
     NAMESPACE_BEHAVIOR,
     NAMESPACE_CAPABILITY,
+    NAMESPACE_FUNCTION,
     NAMESPACE_TYPE,
     canonical_type_id,
     resolve_symbol,
@@ -34,12 +36,12 @@ from .linker_v1 import (
 
 
 def validate_v1_link_names(plan: LinkPlanV1) -> None:
-    """Resolve every V1 reference whose namespace is unambiguous before typing.
+    """Resolve references whose namespace can be constrained before typing.
 
-    Plain expression names/calls are intentionally left for static semantics,
-    because they may denote state, locals, pure functions or observation
-    capabilities depending on context. This phase resolves only references whose
-    grammar already determines their namespace.
+    Value names remain for static semantics. Named call expressions are probed in
+    both callable namespaces only to surface namespace-internal ambiguity or
+    conflicting capability contracts deterministically; cross-namespace
+    function-vs-capability ambiguity is classified by the type checker.
     """
 
     _validate_capability_contracts(plan)
@@ -146,7 +148,6 @@ def _validate_statements(plan: LinkPlanV1, owner_id: str, statements: tuple[obje
 
 
 def _validate_type(plan: LinkPlanV1, owner_id: str, type_ref: TypeRef) -> None:
-    # canonical_type_id recursively resolves all nominal nested type names.
     canonical_type_id(plan, owner_id, type_ref)
 
 
@@ -173,7 +174,36 @@ def _validate_expression(plan: LinkPlanV1, owner_id: str, expression: Expr) -> N
                 NAMESPACE_TYPE,
                 span=current.span,
             )
+        elif current.kind == "call" and current.children:
+            callee = current.children[0]
+            if callee.kind == "name":
+                _probe_callable_namespace_ambiguity(
+                    plan,
+                    owner_id,
+                    str(callee.value),
+                    callee.span,
+                )
         stack.extend(current.children)
+
+
+def _probe_callable_namespace_ambiguity(
+    plan: LinkPlanV1,
+    owner_id: str,
+    reference: str,
+    span,
+) -> None:
+    for namespace in (NAMESPACE_FUNCTION, NAMESPACE_CAPABILITY):
+        try:
+            resolve_symbol(plan, owner_id, reference, namespace, span=span)
+        except TevScriptError as exc:
+            if exc.diagnostic.code in {
+                "TEVS_V1_LINK_NAME_AMBIGUOUS",
+                "TEVS_V1_LINK_CAPABILITY_CONFLICT",
+            }:
+                raise
+            # Unknown/private in one callable namespace can coexist with a valid
+            # candidate in the other namespace. Static semantics decides the
+            # aggregate callable result.
 
 
 def _validate_capability_contracts(plan: LinkPlanV1) -> None:
@@ -192,8 +222,6 @@ def _validate_capability_contracts(plan: LinkPlanV1) -> None:
             )
             previous = seen.get(symbol.semantic_id)
             if previous is not None and previous != signature:
-                from .diagnostics import TevScriptError
-
                 raise TevScriptError(
                     "TEVS_V1_LINK_CAPABILITY_CONFLICT",
                     f"conflicting declarations for capability {symbol.semantic_id!r}",
