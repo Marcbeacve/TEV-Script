@@ -3,77 +3,128 @@
 ## Progreso
 
 ```text
-Python / JavaScript / C# conformance:             PASS CERTIFICADO
-Unity Editor / PlayMode / Mono / IL2CPP:          PASS CERTIFICADO
-Gate-5A transactional program swap:               PASS CERTIFICADO
-Gate-5B transactional swap inside IL2CPP/AOT:     PASS CERTIFICADO
-Gate-5C signed canonical update package:          PASS CERTIFICADO
-Gate-5D durable anti-replay authority:             PASS CERTIFICADO WITH BOUNDARY
-Gate-5E remote transport inside IL2CPP:            PASS CERTIFICADO LOOPBACK_HTTP
-Gate-6A Unity Web / browser-WASM:                  PASS CERTIFICADO
-Gate-6B pure Core browser-WASM AOT:                PASS CERTIFICADO
-Gate-6C pure Core WASI / Wasmtime:                 PASS CERTIFICADO
-Gate-6D signed update Browser + WASI:              PASS CERTIFICADO
+V0.2 exact source grammar / static semantics:      PASS CERTIFIED LOCAL
+V0.2 source -> IR V2 closure:                      PASS CERTIFIED LOCAL
+Python / JavaScript / C# conformance:              PASS CERTIFIED LOCAL
+Unity Editor / PlayMode / Mono / IL2CPP:           PASS CERTIFIED LOCAL
+Gate-5A transactional program swap:                PASS CERTIFIED LOCAL
+Gate-5B transactional swap inside IL2CPP/AOT:      PASS CERTIFIED LOCAL
+Gate-5C signed canonical update package:           PASS CERTIFIED LOCAL
+Gate-5D durable anti-replay / restart restore:      PASS WITH EXPLICIT BOUNDARY
+Gate-5E remote transport inside IL2CPP/AOT:         PASS LOOPBACK_HTTP
+Gate-6A Unity Web / browser-WASM:                   PASS CERTIFIED LOCAL
+Gate-6B pure Core browser-WASM AOT:                 PASS CERTIFIED LOCAL
+Gate-6C pure Core WASI / Wasmtime:                  PASS CERTIFIED LOCAL
+Gate-6D signed update Browser-WASM + WASI:          PASS CERTIFIED LOCAL
+Gate-7A deterministic replay:                      PASS CERTIFIED LOCAL
+Gate-7B cross-host byte lockstep:                  PASS CERTIFIED LOCAL
+Gate-7C first-divergence localization:             PASS CERTIFIED LOCAL
+Gate-7D canonical checkpoint / process restart:    PASS CERTIFIED LOCAL
+Gate-7E signed-update lockstep:                    PASS CERTIFIED LOCAL
+V0.2 language completeness:                        PASS CERTIFIED LOCAL
 
-Gate-7A deterministic replay:                     PASS OBSERVED LOCAL PRECOMMIT
-Gate-7B cross-host lockstep:                      PASS OBSERVED LOCAL PRECOMMIT
-Gate-7C first divergence localization:            PASS OBSERVED LOCAL PRECOMMIT
-Gate-7D canonical checkpoint / restart:           PASS OBSERVED LOCAL PRECOMMIT
-Gate-7E signed-update lockstep:                   PASS OBSERVED LOCAL PRECOMMIT
-Gate-7 Core product changes:                      2 PHYSICAL / 1 LOGICAL
-Gate-7 checkpoint:                                TEV_SCRIPT_RUNTIME_CHECKPOINT_V1
-Stable release:                                   NO
+V1 exact grammar:                                  CLOSED CANDIDATE V2
+V1 source semantic contract:                       CLOSED CANDIDATE V2
+V1 deterministic link model:                      CLOSED CANDIDATE V1
+V1 normative resource budgets:                    CLOSED CANDIDATE V1
+V1 linked semantic program schema:                 CLOSED CANDIDATE V1
+V1 reference frontend:                            PENDING IMPLEMENTATION
+V1 deterministic linker:                          PENDING IMPLEMENTATION
+V1 IR-V2 erasable lowering:                       PENDING IMPLEMENTATION
+V1 IR V3 for non-erasable value kinds:            PENDING DESIGN/FREEZE
+V1 cross-runtime conformance:                      PENDING
+
+Stable release:                                    NO
 ```
 
-## Log de cambios
+## Progreso certificado V0.2
 
-- Gate-7A executes the same governed episode 64 times per Python, JavaScript and C# runtime and requires byte-identical replay receipts.
-- Gate-7B compares the exact canonical receipt across Python, JavaScript, native C#, real browser-wasm AOT and WASI/Wasmtime.
-- Gate-7C introduces an intentional single input change at invocation 7 and proves that prefix receipts localize the first semantic divergence exactly at invocation 7, even when the episode can later reconverge.
-- Gate-7D adds `TEV_SCRIPT_RUNTIME_CHECKPOINT_V1`, a canonical exact-state checkpoint bound to `program_id`, `semantic_hash`, complete entity set and complete typed state set.
-- Checkpoint restore is exact-only and cannot be used as a compatibility path across semantic program versions.
-- Browser checkpoint continuation is reproduced after a true Chromium process restart.
-- WASI checkpoint continuation is reproduced in a second Wasmtime process.
-- Gate-7E applies the same signed package through the already certified `TevScriptUpdateAuthority` on native C#, browser-wasm and WASI and requires a byte-identical signed-update lockstep receipt.
-- The C# Core and Unity Core checkpoint implementations are byte-identical mirrors.
-- No production key provisioning, hostile rollback-resistant store or public WAN boundary is claimed.
+The exact certified V0.2 language-completeness candidate is:
 
-## Hipótesis falsable
+```text
+COMMIT=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5
+TREE=4d97cc4c50096325c6ccb1f36edf22afebea19fc
+PARENT=6a33404eb9712b5fae30367d1beb189d8e42f170
+TEV_SCRIPT_LANGUAGE_COMPLETE=PASS_CERTIFIED_LOCAL
+```
 
-Given the same canonical TEV program, exact initial checkpoint and ordered invocation sequence, independent hosts must produce the same canonical observable receipts. If one invocation changes, the first divergent prefix must be localized exactly. A canonical checkpoint restored by another process must reproduce the uninterrupted continuation, and the same signed update must produce the same authoritative transition across native C#, browser-wasm and WASI.
+The V0.2 closure includes exact lexical/source grammar, normative static semantics, source-to-IR closure, typed extensible capability catalogs, IR operational semantics, typed CFG/stack/local definite-initialization verification, canonical ABI identifiers, shared negative corpora, C# Core/Unity Core byte-identical mirrors and Browser-WASM/WASI AOT compile-smoke coverage.
+
+The certified Gate-7 chain additionally covers deterministic replay, Python/JavaScript/C#/Browser-WASM/WASI canonical lockstep, first-divergence localization, canonical checkpoint/restart continuation and signed-update lockstep.
+
+## Log de cambios — V1 specification closure V2
+
+V1 is now developed from the exact certified V0.2 head rather than from the older divergent semantic-freeze branch.
+
+The V1 specification has been strengthened before implementation so the frontend cannot invent host-dependent semantics. The previous prose-only expression placeholder has been replaced by exact precedence productions and exact constructor/pattern syntax.
+
+The following V1 decisions are now normative candidates:
+
+- source version `1.0.0` for V1 roots and reachable modules;
+- explicit finite source-set linking with no implicit network/registry/search-path resolution;
+- exactly one root script and deterministic module-id-based linking;
+- explicit private/export visibility with no wildcard import, aliases or implicit re-export;
+- distinct type/function/behavior/capability/entity namespaces;
+- longest-resolvable-symbol-prefix rule for dotted expression names and record field access;
+- nominal record/enum type identity;
+- exact record construction with named mandatory fields;
+- enum value/pattern syntax `Type::Variant`;
+- built-in `Option<T>` and `Result<T,E>` constructors/patterns;
+- `Unit` restricted to capability return position;
+- acyclic record dependencies and acyclic pure-function call graphs;
+- capability-free pure functions;
+- compile-time constant state initializers;
+- nested immutable lexical bindings without shadowing;
+- deterministic short-circuit boolean semantics;
+- statically bounded half-open integer `for` ranges;
+- exhaustive enum/Option/Result match with no wildcard/default arm;
+- deterministic behavior expansion in explicit `use` order with cycle/diamond/conflict rejection;
+- canonical `TEV_SCRIPT_LINKED_PROGRAM_V1` as a semantic layer before runtime IR;
+- explicit split between IR-V2-erasable V1 abstractions and IR-V3-required runtime value kinds.
+
+## Hipótesis falsables
+
+### H1 — V1 frontend determinism
+
+Given identical decoded semantic source units, changing file paths, input enumeration order, locale, timezone or dictionary iteration order must not change the canonical linked bytes or semantic hash.
+
+### H2 — bounded composition
+
+Every accepted V1 program must have statically bounded parsing, linking, type analysis, behavior expansion, pure-function evaluation/inlining, loop unrolling and runtime instruction emission according to `spec/TEV_SCRIPT_V1_BUDGETS.md`.
+
+### H3 — V0.2 non-regression
+
+Adding the V1 frontend/linker must leave every certified V0.2 canonical IR and conformance receipt byte-identical.
+
+### H4 — no lossy V1 lowering
+
+Any V1 program requiring records, enums, `Option`, `Result`, runtime field access or non-constant matching must fail closed until the corresponding IR V3 profile is frozen. No host-object, ad-hoc JSON or Text tunneling is conformant.
 
 ## Tareas
 
-1. Create one exact local Gate-7A→7E commit from the observed candidate plus closure metadata.
-2. Bind the dynamic evidence to the clean child commit by exact SHA-256 identity of all 20 functional Gate-7 files; the five closure-only files are metadata and are not consumed by the runner.
-3. Publish only after content-identity certification succeeds; keep PR #1 Draft/Open/Unmerged.
-4. After semantic distributed determinism, close the remaining production-hardening boundaries separately.
+1. Implement Phase A: exact versioned AST, lexer and parser for every V1 production while preserving the V0.2 path.
+2. Implement Phase B: deterministic source-set linker, import graph, visibility and namespace-aware resolution.
+3. Implement Phase C: nominal/constructed type system, lexical scopes, constructors and static semantics.
+4. Implement Phase D/E: purity graph, constant evaluator, effect inference, behavior expansion, bounded `for` and exhaustive `match`.
+5. Close IR-V2-preserving lowering for erasable V1 features and prove V0.2 byte non-regression.
+6. Freeze IR V3 before implementing non-erasable V1 runtime values.
+7. Reproduce authoritative V1 semantics across Python, JavaScript, C#, Unity Core, Browser-WASM and WASI before any V1 promotion.
 
-## Verificación precommit
+## Verificación de esta rama
+
+This branch changes specification/governance content only at this stage. It does not claim a V1 frontend or runtime implementation PASS.
+
+The new JSON feature matrix and linked-program schema were syntax-validated during authoring. Their semantic implementation remains intentionally pending and must be tested by executable conformance gates.
 
 ```text
-GATE7A_DETERMINISTIC_REPLAY=PASS
-GATE7B_CROSS_HOST_LOCKSTEP=PASS
-GATE7C_FIRST_DIVERGENCE_LOCALIZATION=PASS
-GATE7D_CHECKPOINT_RESTART=PASS
-GATE7E_SIGNED_UPDATE_LOCKSTEP=PASS
-GATE7_CORE_PRODUCT_CHANGES=2_PHYSICAL_1_LOGICAL
-PRECOMMIT_EVIDENCE_SHA256=00a890f61a29c046c6c0dfb84ffbadd7c5a337621b83fddae9fbeeeb44b6dc25
-STABLE_RELEASE=NO
+V0_2_CERTIFIED_BASE_PRESERVED=YES
+V1_SPECIFICATION_CLOSED_CANDIDATE=YES
+V1_IMPLEMENTED=NO
+V1_RUNTIME_CONFORMANT=NO
+LANGUAGE_STABLE=NO
+PR1_MERGED=NO
 ```
 
-This committed state records Gate-7A→7E as observed dynamically on the exact 20-file functional payload. Exact commit authority is established by content-identity binding: every functional file must remain byte-identical through the clean commit, the five closure-only files must remain non-executable metadata, and the external receipt binds that payload identity to HEAD/TREE.
+## Production boundaries unchanged
 
-## TEV_SCRIPT_LANGUAGE_COMPLETENESS_V1
-
-- Base certified head: `6a33404eb9712b5fae30367d1beb189d8e42f170`
-- Source grammar / static semantics / IR operational semantics: PASS
-- Source-to-IR closure: PASS
-- Typed capability catalog extension: PASS
-- IR typed CFG verifier: PASS
-- Python/JavaScript/C# shared negative corpus: 8/8 PASS
-- Browser-WASM + WASI AOT compile smoke after Core change: PASS
-- Existing positive language receipts: byte-identical PASS
-- Functional payload identity: `e7af8fbe431507d52981600bef9721960a44dcccba7d97dd6ce6a79bcd413eef`
-- Gate-5/6/7 dynamic reruns: 0
-- Stable release: NO
+The V1 specification work does not close production signing-key provisioning/rotation, hostile rollback-resistant monotonic storage, public WAN/TLS/DNS/CDN update campaigns, physical Unity Input System/Animator providers, safe evolutionary self-assembly or decentralized peer-to-peer consensus/trust.
