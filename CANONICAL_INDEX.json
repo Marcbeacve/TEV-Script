@@ -35,7 +35,7 @@
   "candidate_language_targets": [
     {
       "language_version": "1.0.0",
-      "status": "SPEC_CLOSED_IMPLEMENTATION_PENDING",
+      "status": "IMPLEMENTED_CANDIDATE_UNCERTIFIED",
       "stable": false,
       "authority_files": [
         "spec/TEV_SCRIPT_V1_LEXICAL_PROFILE.md",
@@ -44,8 +44,28 @@
         "spec/TEV_SCRIPT_V1_LINK_MODEL.md",
         "spec/TEV_SCRIPT_V1_BUDGETS.md",
         "spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json",
-        "schemas/tev_script_linked_program_v1.schema.json"
+        "spec/TEV_SCRIPT_LINKED_CANONICALIZATION_V1.md",
+        "spec/TEV_SCRIPT_IR_V3.md",
+        "spec/TEV_SCRIPT_IR_V3_VALUE_MODEL.md",
+        "spec/TEV_SCRIPT_IR_V3_OPERATIONAL_SEMANTICS.md",
+        "spec/TEV_SCRIPT_RUNTIME_CHECKPOINT_V2.md",
+        "schemas/tev_script_linked_program_v1.schema.json",
+        "schemas/tev_script_lowering_receipt_v1.schema.json",
+        "schemas/tev_script_lowering_receipt_v2.schema.json",
+        "schemas/tev_script_program_ir_v3.schema.json",
+        "schemas/tev_script_runtime_checkpoint_v2.schema.json"
       ],
+      "portable_conformance_assets": [
+        "conformance/v1-source-syntax-cases.json",
+        "conformance/v1-linker-cases.json",
+        "conformance/v1-static-semantics-cases.json",
+        "conformance/v1-behavior-composition-cases.json",
+        "conformance/v1-constant-cases.json",
+        "conformance/v1-linked-program-cases.json",
+        "conformance/v1-irv2-lowering-cases.json",
+        "conformance/ir-v3-validator-cases.json"
+      ],
+      "implementation_gate": "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py",
       "implementation_plan": "docs/V1_IMPLEMENTATION_PLAN.md"
     }
   ],
