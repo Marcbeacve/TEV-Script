@@ -1,65 +1,71 @@
 # TEV Script IR V3 operational semantics
 
-Status: **normative V1 / IR V3 candidate V1**.
+Status: **normative V1 / IR V3 candidate V2**.
 
-IR V3 is the runtime target for TEV Script V1 programs that cannot be erased into the certified IR V2 value domain. It retains the bounded deterministic abstract machine of IR V2 and adds only typed algebraic-value operations.
+This document is a focused executable companion to `spec/TEV_SCRIPT_IR_V3.md`. It freezes the identity envelope, stack effects and lowering obligations that the Python/JavaScript/C# validators and runtimes must reproduce.
 
-## 1. Program identity
+## 1. Identity envelope
 
-An IR V3 program has:
+A canonical V3 program requires:
 
 ```text
 schema               = TEV_SCRIPT_PROGRAM_IR_V3
 language_version     = 1.0.0
 lowering_profile     = TEV_SCRIPT_V1_IR_V3_PROFILE_V1
+                         or TEV_SCRIPT_V2_LIFT_TO_IR_V3_PROFILE_V1
 source_schema        = TEV_SCRIPT_LINKED_PROGRAM_V1
-source_semantic_hash = SHA-256 of the canonical linked V1 semantic program
-semantic_hash        = SHA-256 of the canonical IR V3 semantic object
+                         or TEV_SCRIPT_PROGRAM_IR_V2
+source_semantic_hash = exact semantic hash of that source artifact
+program_id           = TEV source identifier
+types                = closed canonical runtime type table
+entities             = runtime entities
+boundary             = explicit safety/resource boundary
+semantic_hash        = canonical semantic IR hash
+debug                = non-semantic metadata
+debug_hash           = canonical debug hash
 ```
 
-`source_semantic_hash` is part of IR V3 semantic identity. Two IR V3 programs cannot claim to represent different linked V1 programs while retaining the same IR semantic object.
+The profile and source schema are correlated:
 
-The IR `semantic_hash` is computed before adding `semantic_hash`, `debug` and `debug_hash`, exactly as in IR V2.
+```text
+V1_IR_V3_PROFILE  <-> TEV_SCRIPT_LINKED_PROGRAM_V1
+V2_LIFT_PROFILE   <-> TEV_SCRIPT_PROGRAM_IR_V2
+```
 
-## 2. Program semantic object
+`source_semantic_hash` participates in IR V3 semantic identity. The target therefore cannot silently be rebound to a different source semantic program.
 
-The semantic object contains:
+## 2. Semantic hash
 
-- schema/version/lowering profile/source binding;
-- program id;
-- closed runtime type registry;
-- entities;
-- explicit boundary flags/budgets.
+The V3 semantic hash is SHA-256 over canonical JSON of every semantic field except `semantic_hash`, `debug` and `debug_hash`.
 
-Debug/source-map data is excluded from semantic identity and separately hashed.
+Debug data is separately canonicalized and hashed. Changing source paths/debug maps must not alter V3 semantic identity.
 
 ## 3. Abstract machine
 
 Each handler executes over:
 
 ```text
-(pc, operand-stack, locals, parameters, entity-state, emitted-buffer)
+(pc, stack, locals, parameters, entity-state, emitted-buffer)
 ```
 
-All values are strongly typed by canonical V3 type ids.
+All stack slots have exact canonical type ids.
 
-Invariants inherited from IR V2:
+The V2 bounded-CFG invariants remain mandatory:
 
-- every jump is forward;
-- no backward edge exists in the runtime CFG;
-- every reachable path terminates at `RETURN`;
-- `RETURN` requires an empty operand stack;
+- jumps are forward only;
+- no runtime loop/back-edge exists;
+- every reachable path ends at `RETURN`;
+- `RETURN` requires an empty stack;
+- each CFG entry has a unique stack type vector;
 - locals are readable only after definite initialization on every reaching path;
-- at a CFG merge, incoming stack type vectors are identical;
-- definitely initialized locals are intersected at merges;
-- instruction execution is sequential and deterministic;
-- runtime instruction and event-chain budgets fail closed.
+- local initialization sets merge by intersection;
+- instruction/event budgets fail closed.
 
-IR V3 does not introduce runtime recursion, runtime loops, threads or implicit parallelism.
+No runtime recursion, user-function stack, thread or implicit concurrency is introduced.
 
-## 4. Existing instruction family
+## 4. Retained V2 operations
 
-The following IR V2 operations remain with the same semantics, generalized to V3 storable type ids where appropriate:
+The following operations retain their V2 semantics while using the V3 type table:
 
 ```text
 CONST
@@ -81,68 +87,57 @@ RETURN
 
 ### 4.1 CONST
 
-```json
-{"op":"CONST","type":"game.Damage","value":{"$record":{...}}}
+`CONST type value` decodes and validates `value` recursively against `type`, then pushes it. `Unit` cannot be used.
+
+### 4.2 Loads and stores
+
+Loads push the exact declared slot type. Stores consume the exact declared type; any source-level widening has already been materialized by `CONVERT_INT_TO_RAT`.
+
+### 4.3 CALL_PURE
+
+Runtime `CALL_PURE` is restricted to the frozen portable intrinsic set:
+
+```text
+vec2 vec3 min max
 ```
 
-The value is recursively decoded/validated against `type`. `Unit` is forbidden.
+V1 user pure functions are validated and call-by-value inlined before IR emission.
 
-### 4.2 LOAD / STORE
+### 4.4 CALL_CAPABILITY
 
-State/local/parameter operations require exact declared canonical type ids. Assignment widening is already materialized by explicit conversion instructions before a store; stores themselves are exact-type operations.
+Arguments are consumed according to the exact entity capability declaration. Host return values are recursively coerced/validated against the declared V3 return type. `Unit` pushes nothing.
 
-### 4.3 CONVERT_INT_TO_RAT
+### 4.5 BINARY equality
 
-Unchanged: pop `Int`, push exact `Rat(n,1)`.
+`EQEQ` and `NE` support same-type V3 algebraic values with recursive value equality. Numeric Int/Rat widening remains exact. Ordering remains numeric-only.
 
-### 4.4 UNARY
+## 5. MAKE_RECORD
 
-`not` accepts `Bool`; unary minus accepts numeric types. No algebraic-value unary operation exists.
-
-### 4.5 BINARY
-
-Arithmetic and ordering remain restricted to the V1 operator matrix.
-
-`EQEQ` / `NE` additionally support same-type V3 records/enums/Option/Result with the recursive equality rules from the IR V3 value model.
-
-No implicit structural conversion between different nominal record/enum types exists.
-
-### 4.6 CALL_PURE
-
-IR V3 runtime pure calls are restricted to the frozen portable built-ins (`vec2`, `vec3`, `min`, `max`) unless a later IR revision explicitly adds another runtime intrinsic. V1 user functions are lowered/inlined before runtime IR.
-
-### 4.7 CALL_CAPABILITY
-
-Capability calls use the entity-declared complete V3 signature. Arguments are popped in source order, validated by static flow, and the host result is recursively coerced/validated against the declared return type before entering TEV state/stack.
-
-A `Unit` return pushes nothing.
-
-### 4.8 EMIT_EVENT
-
-Event argument types may be any V3 storable type. The instruction must exactly match the entity emitted-event declaration.
-
-## 5. New record instructions
-
-### 5.1 MAKE_RECORD
+Shape:
 
 ```json
-{"op":"MAKE_RECORD","type":"game.Damage"}
+{
+  "op":"MAKE_RECORD",
+  "type":"game.Damage",
+  "fields":["critical","amount"]
+}
 ```
 
-Preconditions:
+The `fields` array is **constructor evaluation order** and is semantic. It must contain each descriptor field exactly once but need not equal descriptor storage order.
 
-- `type` resolves to a record descriptor;
-- if the descriptor has fields `(f0:T0, ..., fn:Tn)` in canonical field-name order, the operand stack ends with values `(v0:T0, ..., vn:Tn)` in that same order.
+If fields `f0...fn` were evaluated left-to-right, their typed values are present on the operand stack in that same order. `MAKE_RECORD` consumes them, maps them by the `fields` list, validates assignment compatibility and constructs one immutable nominal record stored in canonical descriptor field order.
 
-Operation:
+This design preserves observable observations/effects embedded in constructor expressions while still making the resulting value canonical.
 
-1. pop all field values as one ordered argument vector;
-2. create immutable `RecordValue(type, fields)`;
-3. push one value of the nominal record type.
+Stack effect:
 
-No source field order is retained.
+```text
+[..., T(field0), ..., T(fieldN)] -> [..., RecordType]
+```
 
-### 5.2 LOAD_FIELD
+## 6. LOAD_FIELD
+
+Shape:
 
 ```json
 {
@@ -153,198 +148,197 @@ No source field order is retained.
 }
 ```
 
-Preconditions:
+The descriptor must define the field with exact `result_type`.
 
-- top of stack has exact `record_type`;
-- registry descriptor contains `field` with exact `result_type`.
+Stack effect:
 
-Operation:
-
-- pop the record;
-- push the immutable field value.
-
-No reflection or dynamic field name exists.
-
-## 6. New closed-variant instructions
-
-`enum`, `Option` and `Result` share the abstract `VariantValue(type, tag, optional_payload)` representation.
-
-### 6.1 MAKE_VARIANT
-
-```json
-{"op":"MAKE_VARIANT","type":"Option<Int>","variant":"Some"}
+```text
+[..., game.Damage] -> [..., Int]
 ```
 
-The registry/type parser determines payload arity/type:
+No dynamic field names or reflection exist.
 
-- nominal enum variant: arity 0;
-- `Option<T>.None`: arity 0;
-- `Option<T>.Some`: arity 1 of `T`;
-- `Result<T,E>.Ok`: arity 1 of `T`;
-- `Result<T,E>.Err`: arity 1 of `E`.
+## 7. MAKE_VARIANT
 
-For arity 1, pop one exact payload value. Push the constructed variant value.
-
-Unknown type/variant or wrong stack type is invalid IR/runtime state and fails closed.
-
-### 6.2 IS_VARIANT
+Shape:
 
 ```json
-{"op":"IS_VARIANT","type":"Option<Int>","variant":"Some"}
+{"op":"MAKE_VARIANT","type":"Option<Int>","variant":"Some","argc":1}
 ```
 
-Pop one value of exact `type`; push `Bool` indicating whether its tag equals `variant`.
+Descriptor-directed arities are:
 
-This operation has no side effects and does not expose payload content.
+```text
+nominal enum variant -> argc 0
+Option<T>.None       -> argc 0
+Option<T>.Some       -> argc 1, payload T
+Result<T,E>.Ok       -> argc 1, payload T
+Result<T,E>.Err      -> argc 1, payload E
+```
 
-### 6.3 UNWRAP_VARIANT
+For `argc=1`, the exact payload is consumed before the immutable variant value is pushed.
+
+## 8. TEST_VARIANT
+
+Shape:
+
+```json
+{"op":"TEST_VARIANT","type":"Option<Int>","variant":"Some"}
+```
+
+It consumes one exact `type` value and pushes Bool indicating tag equality. The variant must exist for the descriptor.
+
+```text
+[..., Option<Int>] -> [..., Bool]
+```
+
+## 9. LOAD_VARIANT_PAYLOAD
+
+Shape:
 
 ```json
 {
-  "op":"UNWRAP_VARIANT",
+  "op":"LOAD_VARIANT_PAYLOAD",
   "type":"Option<Int>",
   "variant":"Some",
-  "result_type":"Int"
+  "payload_type":"Int"
 }
 ```
 
-Preconditions:
+The selected descriptor variant must have exactly one payload of `payload_type`.
 
-- `variant` must be a payload-bearing variant of `type`;
-- `result_type` must equal its payload type;
-- top stack value has exact `type`.
+The operation consumes one exact `type`. If the actual runtime tag is not the requested variant, execution fails deterministically; otherwise its payload is pushed.
 
-Operation:
+A conforming compiler emits this operation only on a path guarded by the corresponding source match/`TEST_VARIANT` logic, but runtime validation still remains fail-closed.
 
-- pop the variant;
-- if the runtime tag is not exactly `variant`, raise deterministic variant-unwrapping fault;
-- push its payload with exact `result_type`.
+## 10. Exhaustive match lowering
 
-`UNWRAP_VARIANT` is invalid for payload-free enum variants and `None`.
+A linked V1 match is compiled into finite CFG, never a reflective runtime opcode.
 
-## 7. Lowering exhaustive match
+Normative lowering:
 
-A source `match` is lowered without runtime reflection.
+1. evaluate the scrutinee exactly once;
+2. store it in a compiler local;
+3. process arms in linked canonical/source-semantic order;
+4. `LOAD_LOCAL` + `TEST_VARIANT`;
+5. `JUMP_IF_FALSE` to the next arm;
+6. if payload-bearing, reload the scrutinee, `LOAD_VARIANT_PAYLOAD`, then `STORE_LOCAL` for the alpha-normalized binding;
+7. emit the arm body;
+8. jump to common match end when necessary.
 
-The target expression is evaluated exactly once and stored in a compiler-generated local. Arms use `LOAD_LOCAL + IS_VARIANT + JUMP_IF_FALSE`. Payload-bearing arms use `LOAD_LOCAL + UNWRAP_VARIANT + STORE_LOCAL` to initialize the canonical arm binding.
+All branches are forward. Source exhaustiveness has already been proved; the IR verifier proves type/CFG correctness independently.
 
-All jumps remain forward.
+## 11. Boolean short-circuit lowering
 
-Source exhaustiveness is already proved by linked static semantics. IR V3 does not add a wildcard/default runtime feature.
+Source `and` and `or` preserve short-circuit observability. They lower to conditional forward jumps, not eager `BINARY AND/OR`, whenever evaluation of the right operand could be observable.
 
-## 8. Short-circuit boolean semantics
+This is required because observation capabilities are permitted in handler expressions.
 
-As in the V1-to-IR-V2 lowering, source `and` / `or` MUST lower to forward conditional control flow. They MUST NOT lower to eager `BINARY AND/OR` when the right operand could contain an observation capability.
+## 12. Compile-time erasure before V3
 
-The runtime may retain `BINARY AND/OR` for already-evaluated Bool operands, but V1 source lowering must preserve source short-circuit observability.
+IR V3 does not contain modules, imports, exports, behavior objects, user-function frames or source `for` loops.
 
-## 9. Behavior and function erasure
+Before V3 emission:
 
-IR V3 contains no runtime behavior objects and no user-function call frames.
+```text
+imports/names -> resolved
+authority visibility -> checked
+behaviors -> deterministically expanded
+user pure functions -> call-by-value inlined
+for -> bounded unrolling
+lexical names -> alpha normalized
+records/variants/match -> explicit typed V3 instructions
+```
 
-Before IR V3:
+The runtime remains intentionally small despite the richer source language.
 
-- modules/imports/export are resolved/erased;
-- behaviors are deterministically expanded into entity handlers/states;
-- user pure functions are call-by-value inlined;
-- bounded `for` is unrolled;
-- lexical names are alpha-renamed;
-- source algebraic expressions become explicit V3 value instructions.
+## 13. Closed type-table validation
 
-Therefore runtime semantics remain small despite richer source semantics.
+Runtime construction must reject the program unless the entire `types` table is valid before any entity executes.
 
-## 10. Type registry validation
+The validator proves at least:
 
-Before runtime construction the validator MUST prove:
+- six primitive descriptors + Unit exist exactly once;
+- all `type_id` values are unique and canonically ordered;
+- record fields and enum variants are canonical/unique;
+- Option/Result descriptor ids agree with their arguments;
+- all referenced types exist;
+- Unit occurs only in permitted signature-return positions;
+- record dependencies are acyclic;
+- type/value nesting is within `maximum_value_nesting`;
+- no host-object/reference boundary is enabled.
 
-- every nominal type id is unique;
-- descriptors are canonical and sorted;
-- record fields are unique, sorted and storable;
-- enum variants are unique, sorted and nonempty;
-- all referenced nominal type ids exist;
-- `Option`/`Result` type ids parse exactly and contain storable types;
-- `Unit` appears only as an allowed signature return;
-- record dependency graph is acyclic;
-- type nesting is within the normative limit.
+## 14. Typed CFG verification
 
-## 11. Typed CFG verification
-
-IR V3 has a dedicated abstract interpreter. It includes all IR V2 flow checks plus stack effects for V3 operations.
+The V3 abstract interpreter extends the V2 flow verifier with descriptor-aware stack effects.
 
 Examples:
 
 ```text
-MAKE_RECORD game.R:
-  [..., F0, F1] -> [..., game.R]
+MAKE_RECORD R fields=[a,b]
+  [..., T(a), T(b)] -> [..., R]
 
-LOAD_FIELD game.R.x:Int:
-  [..., game.R] -> [..., Int]
+LOAD_FIELD R.a:A
+  [..., R] -> [..., A]
 
-MAKE_VARIANT Option<Int>.Some:
-  [..., Int] -> [..., Option<Int>]
+MAKE_VARIANT Option<A>.Some argc=1
+  [..., A] -> [..., Option<A>]
 
-IS_VARIANT Option<Int>.Some:
-  [..., Option<Int>] -> [..., Bool]
+TEST_VARIANT Option<A>.Some
+  [..., Option<A>] -> [..., Bool]
 
-UNWRAP_VARIANT Option<Int>.Some:Int:
-  [..., Option<Int>] -> [..., Int]
+LOAD_VARIANT_PAYLOAD Option<A>.Some:A
+  [..., Option<A>] -> [..., A]
 ```
 
-A stack mismatch, invalid descriptor, local-before-store, CFG merge mismatch or invalid variant operation is rejected before execution.
+The verifier rejects invalid descriptors, stack underflow, mismatched operands, invalid jumps, local-before-store, incompatible CFG joins and stack leaks before runtime construction succeeds.
 
-## 12. Runtime faults
+## 15. Runtime value/capability faults
 
-Deterministic runtime faults include:
+After structural + flow validation, deterministic runtime faults still include:
 
-- instruction/event budget exhaustion;
-- missing capability;
-- capability input/output coercion failure;
+- missing capability binding;
+- invalid capability return coercion;
 - division by zero;
-- invalid variant unwrap;
-- corrupted checkpoint value;
-- semantic/debug hash mismatch;
-- runtime program boundary violation.
+- invalid variant payload extraction;
+- instruction budget exhaustion;
+- event-chain budget exhaustion.
 
-Malformed IR/type/value structures are rejected during runtime construction and are not deferred until a handler happens to execute them.
+Malformed IR/value/type tables are construction-time failures, not deferred execution failures.
 
-## 13. Event machine
+## 16. Event machine
 
-The bounded FIFO event machine is inherited from IR V2.
+V3 inherits the bounded FIFO local event model. Emitted V3 values are recorded canonically and requeued only when an exact local handler exists.
 
-A handled emitted event is:
+No implicit cross-entity routing, networking or concurrency is introduced.
 
-1. recorded as emitted;
-2. requeued locally if an exact handler exists;
-3. processed under the maximum event-chain budget.
+## 17. V2 lift profile
 
-No thread or implicit parallel event dispatch is introduced.
-
-## 14. Debug identity
-
-IR V3 debug data may contain linked-source ids, source paths and instruction-to-component/source maps. It is excluded from semantic identity and protected by `debug_hash`.
-
-Changing only debug paths must not change IR semantic bytes/hash.
-
-## 15. Compatibility boundary
-
-IR V2 remains immutable and authoritative for V0.2 and for the proven erasable V1 subset.
-
-IR V3 is not a reinterpretation of IR V2. Hosts explicitly dispatch by `schema`:
+A separately certified adapter may lift valid IR V2 into V3 using:
 
 ```text
-TEV_SCRIPT_PROGRAM_IR_V2 -> certified V2 validator/runtime
-TEV_SCRIPT_PROGRAM_IR_V3 -> V3 validator/runtime
+lowering_profile     = TEV_SCRIPT_V2_LIFT_TO_IR_V3_PROFILE_V1
+source_schema        = TEV_SCRIPT_PROGRAM_IR_V2
+source_semantic_hash = V2 semantic hash
 ```
 
-A V1 program that is IR-V2-lowerable may target IR V2 and emit a `TEV_SCRIPT_LOWERING_RECEIPT_V1`. A program requiring V1 runtime values targets IR V3.
+The adapter adds the closed primitive type table and V3 envelope without numeric loss. Equivalent runtime behavior does not imply equal V2/V3 semantic hashes.
 
-## 16. Checkpoint/update boundary
+## 18. Checkpoint/update boundary
 
-IR V3 checkpoint and signed-update support are separate promotion gates.
+Runtime V3 is not complete until `TEV_SCRIPT_RUNTIME_CHECKPOINT_V2` supports all V3 state values and signed-update/replay campaigns are repeated on V3.
 
-A V3 runtime implementation is not considered feature-complete until:
+Checkpoint restore remains exact-program only and must bind:
 
-- checkpoint V2 exact restore supports every V3 value kind;
-- signed update can transition between validated V3 programs without reinterpreting old state;
-- exact hash/type compatibility boundaries are enforced;
-- cross-host canonical checkpoint/update receipts agree.
+- checkpoint schema;
+- program id;
+- IR schema;
+- V3 semantic hash;
+- source semantic hash;
+- complete typed state set.
+
+## 19. Promotion condition
+
+IR V3 may be called frozen only after structural schema, type-table validator, typed CFG verifier, Python runtime, V1→V3 lowering, V2→V3 lift, value canonicalization, checkpoint V2 and the cross-runtime Browser/WASI campaigns all pass from exact reproducible content.
+
+Until then the correct state is `IR_V3=IMPLEMENTATION_CANDIDATE` and `LANGUAGE_STABLE=NO`.
