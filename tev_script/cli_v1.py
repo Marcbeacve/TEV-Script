@@ -6,6 +6,8 @@ from pathlib import Path
 
 from .canonical import canonical_json
 from .diagnostics import TevScriptError
+from .lowering_receipt_v1 import build_ir_v2_lowering_receipt
+from .lowering_receipt_v2 import build_ir_v3_lowering_receipt
 from .pipeline_v1 import (
     analyze_v1_paths,
     compile_v1_paths_auto,
@@ -60,6 +62,10 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     compile_command.add_argument("--output", "-o", required=True)
+    compile_command.add_argument(
+        "--receipt",
+        help="optional path for canonical TEV Script lowering receipt",
+    )
 
     lower_v2 = subcommands.add_parser(
         "lower-irv2",
@@ -67,6 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_sources(lower_v2)
     lower_v2.add_argument("--output", "-o", required=True)
+    lower_v2.add_argument("--receipt")
 
     lower_v3 = subcommands.add_parser(
         "lower-irv3",
@@ -74,6 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_sources(lower_v3)
     lower_v3.add_argument("--output", "-o", required=True)
+    lower_v3.add_argument("--receipt")
 
     return parser
 
@@ -135,28 +143,45 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if analysis.ir_v2_boundary.lowerable else 3
 
         if arguments.command == "compile":
-            return _compile_command(arguments.sources, arguments.target, arguments.output)
+            return _compile_command(
+                arguments.sources,
+                arguments.target,
+                arguments.output,
+                arguments.receipt,
+            )
 
         if arguments.command == "lower-irv2":
             compilation = compile_v1_paths_to_ir_v2(arguments.sources)
+            receipt = _emit_receipt(
+                compilation.analysis.linked_program,
+                compilation.target,
+                arguments.receipt,
+            )
             return _write_compilation_result(
                 compilation.analysis.plan.program_id,
                 compilation.analysis.linked_program.semantic_hash,
                 compilation.target.ir,
                 compilation.target.canonical_json,
                 arguments.output,
-                "TEV_SCRIPT_V1_IRV2_LOWER_RESULT_V1",
+                "TEV_SCRIPT_V1_IRV2_LOWER_RESULT_V2",
+                receipt,
             )
 
         if arguments.command == "lower-irv3":
             compilation = compile_v1_paths_to_ir_v3(arguments.sources)
+            receipt = _emit_receipt(
+                compilation.analysis.linked_program,
+                compilation.target,
+                arguments.receipt,
+            )
             return _write_compilation_result(
                 compilation.analysis.plan.program_id,
                 compilation.analysis.linked_program.semantic_hash,
                 compilation.target.ir,
                 compilation.target.canonical_json,
                 arguments.output,
-                "TEV_SCRIPT_V1_IRV3_LOWER_RESULT_V1",
+                "TEV_SCRIPT_V1_IRV3_LOWER_RESULT_V2",
+                receipt,
             )
 
         raise AssertionError(arguments.command)
@@ -187,42 +212,65 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
 
-def _compile_command(sources: list[str], target: str, output: str) -> int:
+def _compile_command(
+    sources: list[str],
+    target: str,
+    output: str,
+    receipt_path: str | None,
+) -> int:
     if target == "irv2":
         compilation = compile_v1_paths_to_ir_v2(sources)
-        selected = compilation.target
-        program_id = compilation.analysis.plan.program_id
-        linked_hash = compilation.analysis.linked_program.semantic_hash
     elif target == "irv3":
         compilation = compile_v1_paths_to_ir_v3(sources)
-        selected = compilation.target
-        program_id = compilation.analysis.plan.program_id
-        linked_hash = compilation.analysis.linked_program.semantic_hash
     elif target == "auto":
         compilation = compile_v1_paths_auto(sources)
-        selected = compilation.target
-        program_id = compilation.analysis.plan.program_id
-        linked_hash = compilation.analysis.linked_program.semantic_hash
     else:
         raise AssertionError(target)
 
+    selected = compilation.target
+    linked = compilation.analysis.linked_program
+    receipt = _emit_receipt(linked, selected, receipt_path)
     _write_text(output, selected.canonical_json)
+
     print(
         canonical_json(
             {
-                "schema": "TEV_SCRIPT_V1_COMPILE_RESULT_V1",
+                "schema": "TEV_SCRIPT_V1_COMPILE_RESULT_V2",
                 "status": "PASS_CANDIDATE",
-                "program_id": program_id,
+                "program_id": compilation.analysis.plan.program_id,
                 "requested_target": target,
                 "target_ir_schema": selected.ir["schema"],
-                "linked_semantic_hash": linked_hash,
+                "linked_semantic_hash": linked.semantic_hash,
                 "target_ir_semantic_hash": selected.ir["semantic_hash"],
                 "output": Path(output).as_posix(),
+                "lowering_receipt": receipt,
                 "stable_release": False,
             }
         )
     )
     return 0
+
+
+def _emit_receipt(linked, target, receipt_path: str | None) -> dict[str, object] | None:
+    if receipt_path is None:
+        return None
+    schema = str(target.ir["schema"])
+    if schema == "TEV_SCRIPT_PROGRAM_IR_V2":
+        bundle = build_ir_v2_lowering_receipt(linked, target)
+    elif schema == "TEV_SCRIPT_PROGRAM_IR_V3":
+        bundle = build_ir_v3_lowering_receipt(linked, target)
+    else:
+        raise TevScriptError(
+            "TEVS_V1_CLI_RECEIPT_TARGET",
+            f"unsupported lowering receipt target schema {schema!r}",
+        )
+    _write_text(receipt_path, bundle.canonical_json)
+    return {
+        "schema": bundle.receipt["schema"],
+        "profile": bundle.receipt["profile"],
+        "receipt_hash": bundle.receipt_hash,
+        "output": Path(receipt_path).as_posix(),
+    }
 
 
 def _write_compilation_result(
@@ -232,6 +280,7 @@ def _write_compilation_result(
     ir_json: str,
     output: str,
     result_schema: str,
+    receipt: dict[str, object] | None,
 ) -> int:
     _write_text(output, ir_json)
     print(
@@ -244,6 +293,7 @@ def _write_compilation_result(
                 "target_ir_schema": ir["schema"],
                 "target_ir_semantic_hash": ir["semantic_hash"],
                 "output": Path(output).as_posix(),
+                "lowering_receipt": receipt,
             }
         )
     )
