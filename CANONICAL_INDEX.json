@@ -105,6 +105,7 @@
         "documentation": "docs/V1_PYTHON_PRODUCTION.md",
         "test": "tests/test_v1_python_host.py",
         "production_gate": "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py",
+        "certify_full_gate": "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py",
         "stable_claim": false
       },
       "portable_conformance_assets": [
@@ -121,6 +122,7 @@
       "gates": {
         "implementation": "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py",
         "python_production": "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py",
+        "python_certify_full": "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py",
         "csharp_surface": "tools/validate_ir_v3_csharp_portable_surface.py",
         "cross_runtime": "tools/validate_ir_v3_cross_runtime_parity.py",
         "checkpoint_cross_runtime": "tools/validate_ir_v3_checkpoint_cross_runtime.py",
