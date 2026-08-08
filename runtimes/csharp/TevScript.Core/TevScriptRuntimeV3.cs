@@ -13,7 +13,7 @@ public sealed record TevScriptEmittedEventV3(
     IReadOnlyList<string> ArgumentTypes,
     IReadOnlyList<TevScriptValueV3> Arguments);
 
-public sealed class TevScriptRuntimeV3
+public sealed partial class TevScriptRuntimeV3
 {
     private static readonly Regex Local = new("^[A-Za-z_][A-Za-z0-9_]*$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
     private static readonly Regex Stable = new("^[A-Za-z_][A-Za-z0-9_.:/-]*$", RegexOptions.CultureInvariant | RegexOptions.NonBacktracking);
@@ -86,6 +86,29 @@ public sealed class TevScriptRuntimeV3
     public string SemanticHash => _ir.GetProperty("semantic_hash").GetString()!;
     public string SourceSemanticHash => _ir.GetProperty("source_semantic_hash").GetString()!;
     public IReadOnlyList<TevScriptEmittedEventV3> Emitted => _emitted.AsReadOnly();
+
+    internal JsonElement IrForCheckpoint => _ir.Clone();
+    internal IReadOnlyList<string> EntityIdsForCheckpoint => _entities.Keys.OrderBy(item => item, StringComparer.Ordinal).ToArray();
+
+    internal IReadOnlyDictionary<string, string> StateTypesForCheckpoint(string entityId)
+    {
+        if (!_entities.TryGetValue(entityId, out var entity))
+            throw new TevScriptV3Exception("TEVS_IR_V3_ENTITY_UNKNOWN", $"unknown entity {entityId}");
+        return new Dictionary<string, string>(entity.StateTypes, StringComparer.Ordinal);
+    }
+
+    internal void RestoreStateForCheckpoint(
+        string entityId,
+        IReadOnlyDictionary<string, TevScriptValueV3> values)
+    {
+        if (!_entities.TryGetValue(entityId, out var entity))
+            throw new TevScriptV3Exception("TEVS_IR_V3_ENTITY_UNKNOWN", $"unknown entity {entityId}");
+        if (values.Count != entity.StateTypes.Count || entity.StateTypes.Keys.Any(name => !values.ContainsKey(name)))
+            throw new TevScriptV3Exception("TEVS_CHECKPOINT_V2_STATE_SET", $"checkpoint state set does not exactly match entity {entityId}");
+        entity.State.Clear();
+        foreach (var name in entity.StateTypes.Keys.OrderBy(item => item, StringComparer.Ordinal))
+            entity.State.Add(name, values[name]);
+    }
 
     public IReadOnlyList<TevScriptEmittedEventV3> Invoke(
         string entityId,
