@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev-script.local/schemas/tev_script_descriptor_v3.schema.json",
+  "title": "TEV Script Descriptor V3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "language_version",
+    "release_status",
+    "stable",
+    "source_extension",
+    "source_model",
+    "canonical_semantics",
+    "features",
+    "primitive_types",
+    "boundaries",
+    "budgets",
+    "build_tooling",
+    "certification",
+    "descriptor_hash"
+  ],
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_DESCRIPTOR_V3"},
+    "language_version": {"const": "1.0.0"},
+    "release_status": {"const": "IMPLEMENTATION_CANDIDATE_UNCERTIFIED"},
+    "stable": {"const": false},
+    "source_extension": {"const": ".tevs"},
+    "source_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "root_units",
+        "exactly_one_script_root_per_link",
+        "module_identity_from_declared_id",
+        "filesystem_path_semantic",
+        "network_import_resolution",
+        "registry_import_resolution",
+        "implicit_transitive_import_visibility"
+      ],
+      "properties": {
+        "root_units": {
+          "const": ["script", "module"]
+        },
+        "exactly_one_script_root_per_link": {"const": true},
+        "module_identity_from_declared_id": {"const": true},
+        "filesystem_path_semantic": {"const": false},
+        "network_import_resolution": {"const": false},
+        "registry_import_resolution": {"const": false},
+        "implicit_transitive_import_visibility": {"const": false}
+      }
+    },
+    "canonical_semantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "linked_program_schema",
+        "semantic_hash",
+        "runtime_targets",
+        "automatic_target_selection"
+      ],
+      "properties": {
+        "linked_program_schema": {"const": "TEV_SCRIPT_LINKED_PROGRAM_V1"},
+        "semantic_hash": {"const": "SHA-256 canonical JSON"},
+        "runtime_targets": {
+          "const": ["TEV_SCRIPT_PROGRAM_IR_V2", "TEV_SCRIPT_PROGRAM_IR_V3"]
+        },
+        "automatic_target_selection": {
+          "const": "IR_V2_IF_LOSSLESSLY_ERASABLE_ELSE_IR_V3"
+        }
+      }
+    },
+    "features": {
+      "type": "array",
+      "minItems": 18,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "primitive_types": {
+      "const": ["Bool", "Int", "Rat", "Text", "Vec2", "Vec3", "Unit"]
+    },
+    "boundaries": {
+      "type": "object",
+      "minProperties": 10,
+      "additionalProperties": {"type": "boolean"}
+    },
+    "budgets": {
+      "type": "object",
+      "minProperties": 20,
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 1
+      }
+    },
+    "build_tooling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_schema",
+        "project_sources_explicit",
+        "project_globs",
+        "project_network_resolution",
+        "project_input_hash",
+        "lowering_receipts",
+        "artifact_commit_policy"
+      ],
+      "properties": {
+        "project_schema": {"const": "TEV_SCRIPT_PROJECT_V1"},
+        "project_sources_explicit": {"const": true},
+        "project_globs": {"const": false},
+        "project_network_resolution": {"const": false},
+        "project_input_hash": {"const": true},
+        "lowering_receipts": {
+          "const": ["TEV_SCRIPT_LOWERING_RECEIPT_V1", "TEV_SCRIPT_LOWERING_RECEIPT_V2"]
+        },
+        "artifact_commit_policy": {"const": "EVIDENCE_SAFE_RECEIPT_LAST_V1"}
+      }
+    },
+    "certification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "v0_2_oracle_commit",
+        "current_v1_certify_full_claim",
+        "current_v1_language_stable_claim"
+      ],
+      "properties": {
+        "v0_2_oracle_commit": {
+          "const": "6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5"
+        },
+        "current_v1_certify_full_claim": {"const": false},
+        "current_v1_language_stable_claim": {"const": false}
+      }
+    },
+    "descriptor_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}
