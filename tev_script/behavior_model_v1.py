@@ -65,7 +65,7 @@ def build_behavior_model(
         symbol = behaviors[behavior_id]
         declaration = symbol.declaration
         assert isinstance(declaration, BehaviorDecl)
-        flattened = _flatten_behavior_closure(
+        flattened = _flatten_behavior_dependencies(
             plan,
             behavior_id,
             declaration.uses,
@@ -113,7 +113,7 @@ def build_behavior_model(
     return BehaviorModelIndexV1(tuple(models))
 
 
-def _flatten_behavior_closure(
+def _flatten_behavior_dependencies(
     plan: LinkPlanV1,
     behavior_id: str,
     uses,
@@ -123,7 +123,7 @@ def _flatten_behavior_closure(
 ) -> tuple[str, ...]:
     result: list[str] = []
     seen: set[str] = set()
-    active: list[str] = []
+    active: list[str] = [behavior_id]
 
     def expand(target_id: str, span: SourceSpan) -> None:
         if target_id in active:
@@ -157,8 +157,6 @@ def _flatten_behavior_closure(
         seen.add(target_id)
         result.append(target_id)
 
-    # A behavior model contains its dependency closure followed by itself.
-    active.append(behavior_id)
     for use in uses:
         dependency = resolve_symbol(
             plan,
@@ -168,8 +166,6 @@ def _flatten_behavior_closure(
             span=use.span,
         )
         expand(dependency.semantic_id, use.span)
-    active.pop()
-    result.append(behavior_id)
     return tuple(result)
 
 
