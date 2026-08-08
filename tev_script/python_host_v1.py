@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from threading import Lock
 from typing import Any, Callable, Mapping, Sequence
 
 from .canonical import canonical_json
@@ -101,6 +102,10 @@ class PythonRuntimeHostV1:
     The host has no source compiler entry point and receives all physical
     authority through an explicit capability map. By default it rejects both
     missing and unused capability bindings before execution.
+
+    One host instance is one serialized TEV execution domain. Concurrent or
+    reentrant state/runtime access fails closed instead of introducing an
+    implicit scheduling semantic outside the TEV event machine.
     """
 
     def __init__(
@@ -121,6 +126,7 @@ class PythonRuntimeHostV1:
             self._capabilities,
             expected_source_semantic_hash=artifact.source_semantic_hash,
         )
+        self._access_lock = Lock()
 
     @property
     def artifact(self) -> PythonProgramArtifactV1:
@@ -136,16 +142,32 @@ class PythonRuntimeHostV1:
         event_id: str,
         *arguments: Any,
     ) -> tuple[EmittedEventV3, ...]:
-        return self._runtime.invoke(entity_id, event_id, *arguments)
+        self._acquire_access("invoke")
+        try:
+            return self._runtime.invoke(entity_id, event_id, *arguments)
+        finally:
+            self._access_lock.release()
 
     def state(self, entity_id: str) -> dict[str, Any]:
-        return self._runtime.state(entity_id)
+        self._acquire_access("state")
+        try:
+            return self._runtime.state(entity_id)
+        finally:
+            self._access_lock.release()
 
     def canonical_state(self, entity_id: str) -> dict[str, Any]:
-        return self._runtime.canonical_state(entity_id)
+        self._acquire_access("canonical_state")
+        try:
+            return self._runtime.canonical_state(entity_id)
+        finally:
+            self._access_lock.release()
 
     def capture_checkpoint(self) -> RuntimeCheckpointV2:
-        return RuntimeCheckpointV2.capture(self._runtime)
+        self._acquire_access("capture_checkpoint")
+        try:
+            return RuntimeCheckpointV2.capture(self._runtime)
+        finally:
+            self._access_lock.release()
 
     def capture_checkpoint_json(self) -> str:
         return self.capture_checkpoint().to_canonical_json()
@@ -159,10 +181,21 @@ class PythonRuntimeHostV1:
             if isinstance(checkpoint, str)
             else checkpoint
         )
-        self._runtime = selected.restore_exact(
-            self._artifact.ir(),
-            self._capabilities,
-        )
+        self._acquire_access("restore_checkpoint")
+        try:
+            self._runtime = selected.restore_exact(
+                self._artifact.ir(),
+                self._capabilities,
+            )
+        finally:
+            self._access_lock.release()
+
+    def _acquire_access(self, operation: str) -> None:
+        if not self._access_lock.acquire(blocking=False):
+            raise TevScriptError(
+                "TEVS_PYTHON_V1_HOST_BUSY",
+                f"PythonRuntimeHostV1 rejects concurrent or reentrant {operation!r} access; serialize one host instance explicitly",
+            )
 
 
 def _collect_capabilities(
