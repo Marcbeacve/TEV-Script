@@ -50,6 +50,13 @@ REQUIRED_INTROSPECTION = {
     "tests/test_v1_runtime_cli_v3.py",
 }
 
+REQUIRED_LSP = {
+    "tev_script/lsp_v1.py",
+    "docs/V1_LSP.md",
+    "tests/test_v1_lsp.py",
+    "editors/vscode/README.md",
+}
+
 REQUIRED_GATE_MAP = {
     "implementation": "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py",
     "csharp_surface": "tools/validate_ir_v3_csharp_portable_surface.py",
@@ -83,6 +90,7 @@ REQUIRED_PRODUCT_FILES = {
     "tests/test_v1_project.py",
     "tests/test_v1_public_api.py",
     "tests/test_v1_artifact_write.py",
+    "tests/test_v1_editor_assets.py",
 }
 
 REQUIRED_PROMOTION_GATES = {
@@ -151,6 +159,7 @@ def main() -> int:
     descriptor_text = (ROOT / "tev_script" / "descriptor_v1.py").read_text(encoding="utf-8")
     describe_text = (ROOT / "tev_script" / "describe_v1.py").read_text(encoding="utf-8")
     runtime_tool_text = (ROOT / "tev_script" / "runtime_cli_v3.py").read_text(encoding="utf-8")
+    lsp_text = (ROOT / "tev_script" / "lsp_v1.py").read_text(encoding="utf-8")
 
     require(canonical.get("schema") == "TEV_SCRIPT_CANONICAL_INDEX_V1", "V1_GOVERNANCE_CANONICAL_SCHEMA", repr(canonical.get("schema")))
     require(canonical.get("stable") is False, "V1_GOVERNANCE_CANONICAL_STABLE", repr(canonical.get("stable")))
@@ -164,7 +173,7 @@ def main() -> int:
     require(target.get("stable") is False, "V1_GOVERNANCE_TARGET_STABLE", repr(target.get("stable")))
     require_contains(target.get("authority_files"), REQUIRED_AUTHORITY, "V1_GOVERNANCE_AUTHORITY")
     require_contains(target.get("build_tooling_authority"), REQUIRED_BUILD_TOOLING, "V1_GOVERNANCE_BUILD_TOOLING")
-    for relative in REQUIRED_AUTHORITY | REQUIRED_BUILD_TOOLING | REQUIRED_PRODUCT_FILES | REQUIRED_INTROSPECTION:
+    for relative in REQUIRED_AUTHORITY | REQUIRED_BUILD_TOOLING | REQUIRED_PRODUCT_FILES | REQUIRED_INTROSPECTION | REQUIRED_LSP:
         require_file(relative)
 
     introspection = target.get("introspection_surface")
@@ -178,6 +187,24 @@ def main() -> int:
         "stable_claim": False,
     }.items():
         require(introspection.get(key) == expected, "V1_GOVERNANCE_INTROSPECTION", f"{key}:{introspection.get(key)!r}")
+
+    lsp = target.get("language_server_surface")
+    require(isinstance(lsp, dict), "V1_GOVERNANCE_LSP", "missing")
+    for key, expected in {
+        "implementation": "tev_script/lsp_v1.py",
+        "installed_cli": "tev-script-v1-lsp",
+        "protocol": "LSP_JSON_RPC_STDIO",
+        "position_encoding": "utf-16",
+        "document_sync": "FULL_TEXT",
+        "standalone_authority": "parse_v1_bytes",
+        "project_authority": "analyze_v1_mapping",
+        "explicit_project_manifest_only": True,
+        "independent_parser_or_type_checker": False,
+        "generic_execution_host": False,
+        "documentation": "docs/V1_LSP.md",
+        "test": "tests/test_v1_lsp.py",
+    }.items():
+        require(lsp.get(key) == expected, "V1_GOVERNANCE_LSP", f"{key}:{lsp.get(key)!r}")
 
     gates = target.get("gates")
     require(isinstance(gates, dict), "V1_GOVERNANCE_GATE_MAP", "missing")
@@ -193,6 +220,7 @@ def main() -> int:
         "v1_cli": "tev-script-v1",
         "v1_descriptor_cli": "tev-script-v1-describe",
         "v1_ir_tool_cli": "tev-script-v1-ir",
+        "v1_lsp_cli": "tev-script-v1-lsp",
         "v1_module_cli": "python -m tev_script.cli_v1",
         "v1_python_pipeline": "tev_script.pipeline_v1",
         "v1_project_manifest": "tev_script.project_v1",
@@ -205,6 +233,7 @@ def main() -> int:
         'tev-script-v1 = "tev_script.cli_v1:main"',
         'tev-script-v1-describe = "tev_script.describe_v1:main"',
         'tev-script-v1-ir = "tev_script.runtime_cli_v3:main"',
+        'tev-script-v1-lsp = "tev_script.lsp_v1:main"',
     ), "V1_GOVERNANCE_CLI_BINDINGS")
     require_tokens(package_text, (
         "compile_v1_paths_auto", "compile_v1_paths_to_ir_v2", "compile_v1_paths_to_ir_v3",
@@ -245,6 +274,15 @@ def main() -> int:
         '"describe"', '"validate"', '"conformance"',
         "run_ir_v3_conformance", "validate_program_ir_v3", "write_text_artifact_v1",
     ), "V1_GOVERNANCE_IR_TOOL")
+    require_tokens(lsp_text, (
+        'LSP_POSITION_ENCODING = "utf-16"',
+        '"change": 1',
+        '"textDocument/publishDiagnostics"',
+        "parse_v1_bytes", "analyze_v1_mapping", "load_v1_project",
+        "codepoint_offset_to_lsp_position", "Content-Length",
+        "optional explicit TEV_SCRIPT_PROJECT_V1",
+        "No independent language semantics are embedded",
+    ), "V1_GOVERNANCE_LSP_IMPLEMENTATION")
 
     require(matrix.get("schema") == EXPECTED_MATRIX, "V1_GOVERNANCE_MATRIX_SCHEMA", repr(matrix.get("schema")))
     require(matrix.get("target_language_version") == "1.0.0", "V1_GOVERNANCE_MATRIX_VERSION", repr(matrix.get("target_language_version")))
@@ -281,6 +319,7 @@ def main() -> int:
     print("TEV_SCRIPT_V1_GOVERNANCE_GATE_BINDINGS=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PUBLIC_SURFACE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_INTROSPECTION_SURFACE=PASS")
+    print("TEV_SCRIPT_V1_GOVERNANCE_LSP_SURFACE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_ARTIFACT_COMMIT_POLICY=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PRECERTIFY_CERTIFY_PROTOCOL=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_NO_TRANSITIVE_CERTIFICATION=PASS")
