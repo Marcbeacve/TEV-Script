@@ -156,6 +156,7 @@ def require_tokens(text: str, tokens: tuple[str, ...], code: str) -> None:
 def main() -> int:
     canonical = load_json("CANONICAL_INDEX.json")
     matrix = load_json("spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json")
+    frontend_text = (ROOT / "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py").read_text(encoding="utf-8")
     pre_text = (ROOT / "RUN_TEV_SCRIPT_V1_PRECERTIFY.py").read_text(encoding="utf-8")
     certify_text = (ROOT / "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py").read_text(encoding="utf-8")
     python_gate_text = (ROOT / "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py").read_text(encoding="utf-8")
@@ -359,6 +360,14 @@ def main() -> int:
         "optional explicit TEV_SCRIPT_PROJECT_V1",
         "No independent language semantics are embedded",
     ), "V1_GOVERNANCE_LSP_IMPLEMENTATION")
+    require_tokens(frontend_text, (
+        '"--require-zero-skips"',
+        "TEV_SCRIPT_V1_TESTS_SKIP_COUNT=",
+        "TEV_SCRIPT_IR_V3_TESTS_SKIP_COUNT=",
+        "TEV_SCRIPT_V0_2_REGRESSION_TESTS_SKIP_COUNT=",
+        "TEV_SCRIPT_V1_FRONTEND_TOTAL_SKIP_COUNT=",
+        "TEV_SCRIPT_V1_FRONTEND_ZERO_SKIPS=",
+    ), "V1_GOVERNANCE_FRONTEND_SKIP_ACCOUNTING")
 
     require(matrix.get("schema") == EXPECTED_MATRIX, "V1_GOVERNANCE_MATRIX_SCHEMA", repr(matrix.get("schema")))
     require(matrix.get("target_language_version") == "1.0.0", "V1_GOVERNANCE_MATRIX_VERSION", repr(matrix.get("target_language_version")))
@@ -369,22 +378,44 @@ def main() -> int:
     require(not missing, "V1_GOVERNANCE_PROMOTION_GATES", ",".join(missing))
 
     require_tokens(pre_text, (
-        EXPECTED_PRECERTIFY, "validate_v1_governance.py",
-        '"v1_governance": "PASS"', '"certify_full": False', '"language_stable": False',
-        '"signed_update_v3_host": "PASS"', '"signed_update_v3_browser_wasm": "PASS"',
+        EXPECTED_PRECERTIFY,
+        "validate_v1_governance.py",
+        'require_python_distribution("jsonschema")',
+        '"--require-zero-skips"',
+        "def has_witness(",
+        'line == witness or line.startswith(witness + " ")',
+        '"v1_governance": "PASS"',
+        '"v1_frontend_closure": "PASS"',
+        '"v1_frontend_zero_skips": "PASS"',
+        "GLOBAL_CERTIFICATION_REQUIRES_PASS",
+        '"certify_full": False',
+        '"language_stable": False',
+        '"signed_update_v3_host": "PASS"',
+        '"signed_update_v3_browser_wasm": "PASS"',
         '"signed_update_v3_wasi": "PASS_FRESH_RESTORE"',
     ), "V1_GOVERNANCE_PRECERTIFY")
     require_tokens(certify_text, (
-        EXPECTED_PRECERTIFY, EXPECTED_CERTIFY, "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
-        '"v1_governance": "PASS"', '"certify_full": True', '"language_stable": False',
-        "V1_PRECERTIFY_RECEIPT_SHA256=", "CERTIFY_FULL=PASS", "LANGUAGE_STABLE=NO",
+        EXPECTED_PRECERTIFY,
+        EXPECTED_CERTIFY,
+        "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
+        '"v1_governance": "PASS"',
+        '"v1_frontend_closure": "PASS"',
+        '"v1_frontend_zero_skips": "PASS"',
+        '"v0_2_jsonschema_validation": "PASS"',
+        "V1_FRONTEND_ZERO_SKIPS",
+        "V0_2_JSONSCHEMA_VALIDATION",
+        '"certify_full": True',
+        '"language_stable": False',
+        "V1_PRECERTIFY_RECEIPT_SHA256=",
+        "CERTIFY_FULL=PASS",
+        "LANGUAGE_STABLE=NO",
     ), "V1_GOVERNANCE_CERTIFY")
     require_tokens(protocol_text, (
         "PRECERTIFY(C)=PASS", "CERTIFY_FULL(C)=PASS", "PRECERTIFY(S)=PASS",
         "CERTIFY_FULL(S)=PASS", "No transitive certification", "No skipped mandatory target",
     ), "V1_GOVERNANCE_PROTOCOL")
     require_tokens(state_text, (
-        "BRANCH=agent/tev-script-v1-irv3-spec-v1",
+        "BASE_CERTIFIED_V0_2=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5",
         "CURRENT_HEAD_FULL_PRECERTIFY=NOT_EXECUTED_HERE",
         "CURRENT_HEAD_CERTIFY_FULL=NO", "LANGUAGE_STABLE=NO",
     ), "V1_GOVERNANCE_PROJECT_STATE")
@@ -398,6 +429,7 @@ def main() -> int:
     print("TEV_SCRIPT_V1_GOVERNANCE_LSP_SURFACE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PYTHON_PRODUCTION_SURFACE=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PYTHON_CERTIFY_FULL_GATE=PASS")
+    print("TEV_SCRIPT_V1_GOVERNANCE_FRONTEND_SKIP_ACCOUNTING=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_ARTIFACT_COMMIT_POLICY=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PRECERTIFY_CERTIFY_PROTOCOL=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_NO_TRANSITIVE_CERTIFICATION=PASS")
