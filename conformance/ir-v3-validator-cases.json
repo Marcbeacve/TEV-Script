@@ -113,6 +113,7 @@
     {"id":"record-type-tamper","operation":"set","path":["entities",0,"states",3,"initial","$record","type"],"value":"Other.Pair","code":"TEVS_IR_V3_VALUE_INVALID"},
     {"id":"record-field-order-tamper","operation":"swap","path":["entities",0,"states",3,"initial","$record","fields"],"left":0,"right":1,"code":"TEVS_IR_V3_VALUE_INVALID"},
     {"id":"option-none-payload","operation":"set","path":["entities",0,"states",2,"initial","$option","value"],"value":{"$int":"1"},"code":"TEVS_IR_V3_VALUE_INVALID"},
+    {"id":"negative-zero-int","operation":"set","path":["entities",0,"states",0,"initial","$int"],"value":"-0","code":"TEVS_IR_V3_VALUE_INVALID"},
     {"id":"duplicate-type-id","operation":"set","path":["types",6,"type_id"],"value":"Root.Kind","code":"TEVS_IR_V3_CONTRACT"},
     {"id":"type-table-order","operation":"swap","path":["types"],"left":0,"right":1,"code":"TEVS_IR_V3_CONTRACT"},
     {"id":"make-record-field-set","operation":"set","path":["entities",0,"handlers",1,"instructions",2,"fields"],"value":["a"],"code":"TEVS_IR_V3_CONTRACT"},
