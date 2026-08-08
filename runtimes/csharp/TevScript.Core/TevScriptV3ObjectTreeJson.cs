@@ -84,6 +84,26 @@ internal static class TevScriptObjectTreeJsonV3
                 }
                 writer.WriteEndObject();
                 return;
+            case IDictionary dictionary:
+            {
+                var entries = new List<(string Key, object? Value)>();
+                foreach (DictionaryEntry entry in dictionary)
+                {
+                    if (entry.Key is not string key)
+                        throw new TevScriptV3Exception(
+                            "TEVS_IR_V3_OBJECT_TREE_KEY",
+                            "closed object-tree dictionary keys must be strings");
+                    entries.Add((key, entry.Value));
+                }
+                writer.WriteStartObject();
+                foreach (var entry in entries.OrderBy(item => item.Key, StringComparer.Ordinal))
+                {
+                    writer.WritePropertyName(entry.Key);
+                    Write(writer, entry.Value);
+                }
+                writer.WriteEndObject();
+                return;
+            }
             case IEnumerable sequence:
                 writer.WriteStartArray();
                 foreach (var item in sequence) Write(writer, item);
@@ -103,4 +123,14 @@ internal static class TevScriptObjectTreeJsonV3
                 "TEVS_IR_V3_OBJECT_TREE_NUMBER",
                 $"structural integer exceeds portable safe range: {value}");
     }
+}
+
+// Namespace-local facade deliberately shadows System.Text.Json.JsonSerializer
+// inside TevScript.Core.V3. It exposes only the one operation conformance needs
+// and routes it through the closed writer above, so AOT execution never falls
+// back to reflection-based arbitrary-type serialization.
+internal static class JsonSerializer
+{
+    public static JsonElement SerializeToElement<T>(T value) =>
+        TevScriptObjectTreeJsonV3.Element(value);
 }
