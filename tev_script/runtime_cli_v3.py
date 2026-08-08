@@ -17,8 +17,8 @@ def build_parser() -> argparse.ArgumentParser:
         prog="python -m tev_script.runtime_cli_v3",
         description=(
             "Read-only TEV Script IR V3 validation/conformance tooling. "
-            "This CLI never supplies arbitrary host capabilities and does not "
-            "act as a generic production execution host."
+            "This CLI never supplies arbitrary host capabilities and "
+            "does not act as a generic production execution host."
         ),
     )
     subcommands = parser.add_subparsers(dest="command", required=True)
