@@ -35,6 +35,35 @@ namespace System.Diagnostics.CodeAnalysis
     {
     }
 }
+
+namespace System.Diagnostics
+{
+    internal sealed class UnreachableException : System.Exception
+    {
+        public UnreachableException()
+            : base("The program executed an instruction that was thought to be unreachable.")
+        {
+        }
+
+        public UnreachableException(string message)
+            : base(message)
+        {
+        }
+    }
+}
+
+namespace System.Linq
+{
+    internal static class TevScriptEnumerableCompatibilityV3
+    {
+        public static System.Linq.IOrderedEnumerable<T> Order<T>(
+            this System.Collections.Generic.IEnumerable<T> source,
+            System.Collections.Generic.IComparer<T>? comparer)
+        {
+            return System.Linq.Enumerable.OrderBy(source, item => item, comparer);
+        }
+    }
+}
 #endif
 
 namespace TevScript.Core.V3
@@ -67,5 +96,38 @@ namespace TevScript.Core.V3
             System.Text.RegularExpressions.RegexOptions.ECMAScript;
         public const System.Text.RegularExpressions.RegexOptions NonBacktracking =
             System.Text.RegularExpressions.RegexOptions.None;
+    }
+
+    // System.Text.Json gained SerializeToElement after the oldest portable
+    // target used by TevScript.Core. The canonical semantic result is exactly
+    // serialize -> strict parse -> detached JsonElement.
+    internal static class JsonSerializer
+    {
+        public static System.Text.Json.JsonElement SerializeToElement<T>(T value)
+        {
+            var text = System.Text.Json.JsonSerializer.Serialize(value);
+            return TevScriptStrictJsonV3.ParseElement(text);
+        }
+
+        public static string Serialize<T>(T value)
+        {
+            return System.Text.Json.JsonSerializer.Serialize(value);
+        }
+    }
+
+    // Runtime object GetHashCode is explicitly non-semantic. This helper only
+    // removes a BCL-version dependency for value objects; canonical SHA-256 is
+    // defined elsewhere and remains the sole portable hash authority.
+    internal static class HashCode
+    {
+        public static int Combine<T1, T2>(T1 first, T2 second)
+        {
+            unchecked
+            {
+                var a = first is null ? 0 : System.Collections.Generic.EqualityComparer<T1>.Default.GetHashCode(first);
+                var b = second is null ? 0 : System.Collections.Generic.EqualityComparer<T2>.Default.GetHashCode(second);
+                return (a * 397) ^ b;
+            }
+        }
     }
 }
