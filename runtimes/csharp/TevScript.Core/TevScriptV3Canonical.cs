@@ -43,8 +43,15 @@ public static class TevScriptCanonicalV3
     public static string Sha256Text(string text)
     {
         var bytes = Encoding.UTF8.GetBytes(text);
-        var hash = SHA256.HashData(bytes);
-        return Convert.ToHexString(hash).ToLowerInvariant();
+        byte[] hash;
+        using (var sha = SHA256.Create())
+        {
+            hash = sha.ComputeHash(bytes);
+        }
+        var builder = new StringBuilder(hash.Length * 2);
+        foreach (var item in hash)
+            builder.Append(item.ToString("x2", CultureInfo.InvariantCulture));
+        return builder.ToString();
     }
 
     public static JsonElement ParseClone(string json)
