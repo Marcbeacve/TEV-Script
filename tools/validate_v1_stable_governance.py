@@ -23,6 +23,16 @@ from tev_script.release_metadata_v1 import (  # noqa: E402
 
 STABLE_STATUS = "STABLE_ADMISSION_REQUESTED"
 STABLE_ADMISSION_GATE = "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py"
+STABLE_RECEIPT_SCHEMA = "TEV_SCRIPT_V1_STABLE_ADMISSION_RECEIPT_V1"
+REQUIRED_STABLE_PROMOTION_GATES = {
+    "STABLE_ADMISSION_TOOLING_TECHNICALLY_CERTIFIED_PASS",
+    "STABLE_PARENT_CERTIFICATE_BINDING_PASS",
+    "STABLE_RELEASE_DIFF_CONFINEMENT_PASS",
+    "STABLE_GLOBAL_PROFILE_RECERTIFICATION_PASS",
+    "STABLE_PYTHON_PROFILE_RECERTIFICATION_PASS",
+    "STABLE_ARTIFACT_BYTE_IDENTITY_PASS",
+    "EXACT_STABLE_ADMISSION_PASS",
+}
 
 
 def require(condition: bool, code: str, detail: str) -> None:
@@ -65,7 +75,7 @@ def main() -> int:
         "V1_STABLE_GOVERNANCE_CANONICAL_SCHEMA",
         repr(canonical.get("schema")),
     )
-    # Top-level V0.2 historical authority remains unchanged.
+    # Top-level V0.2 historical authority remains unchanged by V1 promotion.
     require(canonical.get("language_version") == "0.2.0", "V1_STABLE_GOVERNANCE_V0_2_INDEX_VERSION", repr(canonical.get("language_version")))
     require(canonical.get("stable") is False, "V1_STABLE_GOVERNANCE_V0_2_INDEX_STABLE", repr(canonical.get("stable")))
 
@@ -90,6 +100,21 @@ def main() -> int:
     require(python_surface.get("least_authority_default") is True, "V1_STABLE_GOVERNANCE_LEAST_AUTHORITY", repr(python_surface.get("least_authority_default")))
     require(python_surface.get("serialized_host_access") is True, "V1_STABLE_GOVERNANCE_SERIALIZED_HOST", repr(python_surface.get("serialized_host_access")))
 
+    stable_surface = target.get("stable_release_surface")
+    require(isinstance(stable_surface, dict), "V1_STABLE_GOVERNANCE_STABLE_SURFACE", "missing")
+    expected_stable_surface = {
+        "release_metadata": "tev_script/release_metadata_v1.py",
+        "governance": "tools/validate_v1_stable_governance.py",
+        "admission_gate": STABLE_ADMISSION_GATE,
+        "receipt_schema": STABLE_RECEIPT_SCHEMA,
+        "exact_parent_certificate_required": True,
+        "release_diff_whitelist_required": True,
+        "published_artifact_byte_identity_required": True,
+        "stable_claim": True,
+    }
+    for key, expected in expected_stable_surface.items():
+        require(stable_surface.get(key) == expected, "V1_STABLE_GOVERNANCE_STABLE_SURFACE", f"{key}:{stable_surface.get(key)!r}")
+
     gates = target.get("gates")
     require(isinstance(gates, dict), "V1_STABLE_GOVERNANCE_GATES", "missing")
     require(gates.get("stable_admission") == STABLE_ADMISSION_GATE, "V1_STABLE_GOVERNANCE_STABLE_GATE", repr(gates.get("stable_admission")))
@@ -101,6 +126,9 @@ def main() -> int:
     require(matrix.get("repository_language_version_remains") == STABLE_LANGUAGE_VERSION, "V1_STABLE_GOVERNANCE_REPOSITORY_VERSION", repr(matrix.get("repository_language_version_remains")))
     require(matrix.get("stable_release_authorized") is True, "V1_STABLE_GOVERNANCE_MATRIX_STABLE", repr(matrix.get("stable_release_authorized")))
     require(matrix.get("certification_status") == STABLE_STATUS, "V1_STABLE_GOVERNANCE_MATRIX_STATUS", repr(matrix.get("certification_status")))
+    promotion = {str(item) for item in matrix.get("promotion_gates", [])}
+    missing = sorted(REQUIRED_STABLE_PROMOTION_GATES - promotion)
+    require(not missing, "V1_STABLE_GOVERNANCE_PROMOTION_GATES", ",".join(missing))
 
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     require(str(project.get("version")) == STABLE_LANGUAGE_VERSION, "V1_STABLE_GOVERNANCE_PYTHON_VERSION", repr(project.get("version")))
@@ -138,9 +166,10 @@ def main() -> int:
     protocol = (ROOT / "docs" / "V1_CERTIFICATION_PROTOCOL.md").read_text(encoding="utf-8")
     for token in (
         "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py",
-        "TEV_SCRIPT_V1_STABLE_ADMISSION_RECEIPT_V1",
+        STABLE_RECEIPT_SCHEMA,
         "STABLE_ADMISSION=PASS",
         "LANGUAGE_STABLE=YES",
+        "--technical-parent-certificate",
     ):
         require(token in protocol, "V1_STABLE_GOVERNANCE_PROTOCOL", token)
 
@@ -149,6 +178,7 @@ def main() -> int:
     print("TEV_SCRIPT_V1_STABLE_GOVERNANCE_FEATURE_MATRIX=PASS")
     print("TEV_SCRIPT_V1_STABLE_GOVERNANCE_DESCRIPTOR=PASS")
     print("TEV_SCRIPT_V1_STABLE_GOVERNANCE_DISTRIBUTION_VERSIONS=PASS")
+    print("TEV_SCRIPT_V1_STABLE_GOVERNANCE_STABLE_SURFACE=PASS")
     print("TEV_SCRIPT_V1_STABLE_GOVERNANCE=PASS")
     return 0
 
