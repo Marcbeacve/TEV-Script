@@ -84,6 +84,34 @@
         "precertify": "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
         "certify_full": "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py"
       },
+      "public_interfaces": {
+        "python_package": "tev_script",
+        "v0_2_cli": "tev-script",
+        "v1_cli": "tev-script-v1",
+        "v1_module_cli": "python -m tev_script.cli_v1",
+        "v1_python_pipeline": "tev_script.pipeline_v1",
+        "v1_runtime": "tev_script.ScriptRuntimeV3"
+      },
+      "non_normative_programmer_documentation": [
+        "README.md",
+        "docs/TEV_SCRIPT_V1_LANGUAGE_REFERENCE.md",
+        "docs/TEV_SCRIPT_V1_PROGRAMMING_MODEL.md",
+        "examples/v1/README.md"
+      ],
+      "executable_examples": [
+        "examples/v1/Calculator.tevs",
+        "examples/v1/ErasableToIrV2.tevs",
+        "examples/v1/AlgebraicCapability.tevs",
+        "examples/v1/ecosystem/main.tevs",
+        "examples/v1/ecosystem/model.tevs",
+        "examples/v1/ecosystem/rules.tevs",
+        "examples/v1/ecosystem/storage.tevs"
+      ],
+      "example_and_public_api_tests": [
+        "tests/test_v1_examples.py",
+        "tests/test_v1_cli_full.py",
+        "tests/test_v1_public_api.py"
+      ],
       "implementation_plan": "docs/V1_IMPLEMENTATION_PLAN.md",
       "certification_protocol": "docs/V1_CERTIFICATION_PROTOCOL.md"
     }
