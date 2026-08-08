@@ -55,6 +55,12 @@ def require_sha(value: object, length: int, code: str) -> str:
     return value
 
 
+def require_release_document(relative: str) -> None:
+    text = (ROOT / relative).read_text(encoding="utf-8")
+    require("1.0.0" in text, "V1_STABLE_GOVERNANCE_RELEASE_DOCUMENT", relative + ":missing 1.0.0")
+    require("STABLE_ADMISSION" in text, "V1_STABLE_GOVERNANCE_RELEASE_DOCUMENT", relative + ":missing STABLE_ADMISSION")
+
+
 def main() -> int:
     validate_release_metadata()
     require(RELEASE_PROFILE == "stable", "V1_STABLE_GOVERNANCE_PROFILE", RELEASE_PROFILE)
@@ -138,6 +144,9 @@ def main() -> int:
     require(javascript.get("version") == STABLE_LANGUAGE_VERSION, "V1_STABLE_GOVERNANCE_JAVASCRIPT_VERSION", repr(javascript.get("version")))
     require(javascript.get("license") == "UNLICENSED", "V1_STABLE_GOVERNANCE_JAVASCRIPT_LICENSE", repr(javascript.get("license")))
 
+    require_release_document("README.md")
+    require_release_document("CHANGELOG.md")
+
     descriptor = v1_descriptor()
     require(descriptor.get("language_version") == STABLE_LANGUAGE_VERSION, "V1_STABLE_GOVERNANCE_DESCRIPTOR_VERSION", repr(descriptor.get("language_version")))
     require(descriptor.get("release_profile") == "stable", "V1_STABLE_GOVERNANCE_DESCRIPTOR_PROFILE", repr(descriptor.get("release_profile")))
@@ -178,6 +187,7 @@ def main() -> int:
     print("TEV_SCRIPT_V1_STABLE_GOVERNANCE_FEATURE_MATRIX=PASS")
     print("TEV_SCRIPT_V1_STABLE_GOVERNANCE_DESCRIPTOR=PASS")
     print("TEV_SCRIPT_V1_STABLE_GOVERNANCE_DISTRIBUTION_VERSIONS=PASS")
+    print("TEV_SCRIPT_V1_STABLE_GOVERNANCE_RELEASE_DOCUMENTS=PASS")
     print("TEV_SCRIPT_V1_STABLE_GOVERNANCE_STABLE_SURFACE=PASS")
     print("TEV_SCRIPT_V1_STABLE_GOVERNANCE=PASS")
     return 0
