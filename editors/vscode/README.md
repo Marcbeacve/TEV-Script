@@ -19,7 +19,7 @@ It deliberately does **not** provide:
 an independent parser
 a second type checker
 a formatter
-an LSP implementation
+an embedded LSP implementation
 code execution
 capability discovery
 network/package resolution
@@ -31,19 +31,41 @@ The current source frontend does not preserve comments/trivia as a lossless synt
 
 A production formatter should be added only after TEV Script has a lossless concrete-syntax/trivia representation or another proof that comments/source intent are preserved.
 
-## Why no independent LSP?
+## Canonical LSP
 
-A language server that reimplemented import/name/type/effect semantics would create a second semantic authority and could disagree with the compiler.
+The repository now provides an **external thin LSP adapter**:
 
-A future LSP should call the canonical V1 compiler pipeline and translate its existing source spans/diagnostics into editor protocol messages.
+```powershell
+tev-script-v1-lsp
+```
 
-Until then, use the compiler directly:
+or with an explicit project manifest:
+
+```powershell
+tev-script-v1-lsp --project .\tevscript.project.json
+```
+
+The VS Code package does not embed or reimplement that server. The external server delegates diagnostics to the canonical V1 parser/linker/static-semantic pipeline and translates the existing source spans to LSP UTF-16 positions. See `docs/V1_LSP.md`.
+
+This keeps the architecture:
+
+```text
+VS Code lexical package -> presentation only
+external V1 LSP         -> protocol adapter only
+V1 compiler pipeline    -> semantic authority
+```
+
+Until an optional VS Code client launcher is added, configure your editor/LSP client to start `tev-script-v1-lsp` explicitly. The static package remains useful independently for highlighting and snippets.
+
+## Compiler commands
+
+Single explicit source set:
 
 ```powershell
 tev-script-v1 check .\Program.tevs
 ```
 
-or, for a project manifest:
+Project manifest:
 
 ```powershell
 tev-script-v1 project-check .\tevscript.project.json
@@ -87,4 +109,4 @@ spec/TEV_SCRIPT_V1.ebnf
 spec/TEV_SCRIPT_V1_SEMANTIC_CONTRACT.md
 ```
 
-The editor assets are non-normative tooling and are tested only for structural/lexical alignment with that surface.
+The editor assets and LSP transport layer are non-normative tooling. Neither may redefine TEV Script semantics.
