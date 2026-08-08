@@ -19,18 +19,21 @@ V1_JSON_INPUTS = (
     "spec/TEV_SCRIPT_V1_FEATURE_MATRIX.json",
     "schemas/tev_script_linked_program_v1.schema.json",
     "schemas/tev_script_lowering_receipt_v1.schema.json",
+    "schemas/tev_script_lowering_receipt_v2.schema.json",
     "schemas/tev_script_program_ir_v3.schema.json",
+    "schemas/tev_script_runtime_checkpoint_v2.schema.json",
     "CANONICAL_INDEX.json",
 )
 V0_2_TESTS = ("test_canonical.py", "test_compiler.py", "test_conformance.py")
 IR_V3_TEST_PATTERNS = (
     "test_ir_v3_*.py",
     "test_ir_v2_to_v3_lift.py",
+    "test_runtime_checkpoint_v2.py",
 )
 
 
 def main() -> int:
-    print("TEV_SCRIPT_V1_FRONTEND_CLOSURE_SCHEMA=V4")
+    print("TEV_SCRIPT_V1_FRONTEND_CLOSURE_SCHEMA=V5")
     print("V0_2_CERTIFIED_BASE=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5")
 
     compiled = compileall.compile_dir(str(ROOT / "tev_script"), quiet=1) and compileall.compile_dir(
@@ -101,12 +104,14 @@ def main() -> int:
     print("TEV_SCRIPT_V1_LINKED_PROGRAM=PASS_CANDIDATE")
     print("TEV_SCRIPT_V1_LINKED_PROGRAM_SCHEMA=PASS_CANDIDATE")
     print("TEV_SCRIPT_V1_IRV2_ERASABLE_LOWERING=PASS_CANDIDATE")
-    print("TEV_SCRIPT_V1_LOWERING_RECEIPT=PASS_CANDIDATE")
+    print("TEV_SCRIPT_V1_LOWERING_RECEIPT_V1=PASS_CANDIDATE")
     print("TEV_SCRIPT_IR_V3_TYPE_VALUE_MODEL=PASS_CANDIDATE")
     print("TEV_SCRIPT_IR_V3_TYPED_CFG=PASS_CANDIDATE")
     print("TEV_SCRIPT_IR_V3_PYTHON_RUNTIME=PASS_CANDIDATE")
     print("TEV_SCRIPT_V1_TO_IR_V3_LOWERING=PASS_CANDIDATE")
+    print("TEV_SCRIPT_V1_LOWERING_RECEIPT_V2=PASS_CANDIDATE")
     print("TEV_SCRIPT_IR_V2_TO_V3_LIFT=PASS_CANDIDATE")
+    print("TEV_SCRIPT_RUNTIME_CHECKPOINT_V2=PASS_CANDIDATE")
     print("V1_CROSS_RUNTIME_PARITY=NOT_CLAIMED")
     print("V1_STABLE_RELEASE=NO")
     print("TEV_SCRIPT_V1_PYTHON_CLOSURE=PASS_CANDIDATE")
