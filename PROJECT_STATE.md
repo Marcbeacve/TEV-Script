@@ -25,8 +25,8 @@ IR V3 closed type table / codec / validator / CFG:     IMPLEMENTED CANDIDATE
 IR V3 Python runtime:                                  IMPLEMENTED CANDIDATE
 V1 Python production IR-only host:                     IMPLEMENTED CANDIDATE
 V1 Python least-authority capability preflight:        IMPLEMENTED CANDIDATE
-V1 Python reproducible-wheel production admission:     GATE IMPLEMENTED
-V1 Python host-specific full certification:            GATE IMPLEMENTED
+V1 Python reproducible-wheel production admission:     CERTIFIED PROFILE AVAILABLE
+V1 Python host-specific full certification:            PASS ON 5d2bd345... ONLY
 IR V3 JavaScript runtime:                              IMPLEMENTED CANDIDATE
 IR V3 C# runtime assembly:                             IMPLEMENTED CANDIDATE
 IR V3 Python/JS/C# canonical receipt byte lock:        GATE IMPLEMENTED
@@ -39,15 +39,26 @@ IR V3 signed update package/body V2:                   IMPLEMENTED CANDIDATE
 IR V3 signed update host campaign:                     GATE IMPLEMENTED
 IR V3 signed update Browser-WASM campaign:             GATE IMPLEMENTED
 IR V3 signed update WASI fresh/restore campaign:       GATE IMPLEMENTED
-V1 full precertify orchestration:                       IMPLEMENTED CANDIDATE V5
+V0.2 Browser-WASM/WASI global regression witnesses:    GATE IMPLEMENTED
+V1 full precertify orchestration:                       IMPLEMENTED CANDIDATE V6
+V1 global zero-skip frontend admission:                IMPLEMENTED CANDIDATE
+V1 global JSON Schema certification admission:         IMPLEMENTED CANDIDATE
+
+Python certified reference commit:                     5d2bd345b2bd0c852d95fbf2795566722186a67f
+Python certified reference tree:                       059a6de31e977c3866ab7baa8e0ae39aa4c63842
+Python certified wheel SHA256:                         1fa49b926e68d203e3528cc42ffb68cf0d179b98bb7cedc4a95f6b3102f18e05
+Python certificate receipt SHA256:                     e59738a5d5631723449e3a4e8ff94a99df73081be0fd005d5191bbfd2186a0eb
+PYTHON_CERTIFY_FULL(reference 5d2bd345...):             PASS
 
 Current exact-HEAD Python production gate:              NOT EXECUTED IN THIS CHAT RUNTIME
 Current exact-HEAD Python host full certification:      NOT EXECUTED IN THIS CHAT RUNTIME
-Current exact-HEAD dynamic full precertify:             NOT EXECUTED IN THIS CHAT RUNTIME
-V1 PYTHON_CERTIFY_FULL:                                NO
+CURRENT_HEAD_FULL_PRECERTIFY=NOT_EXECUTED_HERE
+CURRENT_HEAD_CERTIFY_FULL=NO
 V1 CERTIFY_FULL:                                       NO
-V1 LANGUAGE_STABLE:                                    NO
+LANGUAGE_STABLE=NO
 ```
+
+The Python certificate above is identity-bound to `5d2bd345...` and is not inherited by the current global-certification branch. It proves the bounded Python product/host profile for that exact commit. It does not prove the current HEAD, global `CERTIFY_FULL`, or stable release admission.
 
 ## Autoridad V0.2 preservada
 
@@ -65,14 +76,15 @@ V1 does not reinterpret those receipts. The C# V0.2 assembly remains `TevScript.
 ## Rama de trabajo actual
 
 ```text
-BRANCH=agent/tev-script-v1-irv3-spec-v1
+BRANCH=agent/tev-script-v1-global-certification-fix-v1
 BASE_CERTIFIED_V0_2=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5
+PYTHON_CERTIFIED_REFERENCE=5d2bd345b2bd0c852d95fbf2795566722186a67f
 STABLE_RELEASE=NO
-PYTHON_CERTIFY_FULL=NO
-CERTIFY_FULL=NO
+CURRENT_HEAD_CERTIFY_FULL=NO
+LANGUAGE_STABLE=NO
 ```
 
-The branch is an implementation/certification candidate. No merge, tag or stable promotion follows merely from code presence.
+The branch is an implementation/global-certification candidate. No merge, PR, tag or stable promotion follows merely from code presence or from the Python certificate on another Git identity.
 
 ## Cierre del lenguaje fuente V1
 
@@ -115,7 +127,7 @@ Implemented candidate:
 - identical capability-contract coalescing and conflicting-contract rejection;
 - canonical reachable closure excluding unreachable supplied modules.
 
-The linked-program module normalizer now consumes the actual `UnitIndexV1.kind` contract. The erroneous `unit_kind` consumer was removed rather than hidden behind a compatibility alias, and `tests/test_v1_linked_program_unit_kind_regression.py` locks that field contract with a real multi-module program.
+The linked-program module normalizer consumes the actual `UnitIndexV1.kind` contract. The erroneous `unit_kind` consumer was removed rather than hidden behind a compatibility alias, and `tests/test_v1_linked_program_unit_kind_regression.py` locks that field contract with a real multi-module program.
 
 ### Static semantics
 
@@ -217,7 +229,9 @@ Implemented candidate:
 - definite local initialization;
 - algebraic opcode stack effects;
 - canonical `semantic_hash` and `debug_hash` validation;
-- V2 -> V3 verified lift preserving the certified primitive model.
+- V2 -> V3 verified lift preserving the certified primitive model;
+- canonical integer lexical hardening includes explicit `-0` rejection;
+- shared Python/JavaScript/C# IR-V3 negative corpus includes a negative-zero mutation.
 
 ## Multi-runtime implementation
 
@@ -243,7 +257,7 @@ The runtime host accepts only precompiled validated IR V3. Source compilation st
 
 `RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py` is the read-only Python-host certificate admission. It re-runs the complete production admission on the same exact commit, independently verifies the production receipt's embedded and external hashes, rebinds all mandatory evidence to its own HEAD/tree, requires repository/canonical/state immutability, and emits `TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_V1`. A successful host certificate may emit `PYTHON_CERTIFY_FULL=PASS` while deliberately retaining global `CERTIFY_FULL=NO`, `LANGUAGE_STABLE=NO` and `stable_release_authorized=false`.
 
-This allows the Python V1 host/product profile to be certified independently of Unity or global multi-runtime V1 certification without redefining the meaning of the global language certificate.
+The exact Python host/product profile was dynamically certified on commit `5d2bd345b2bd0c852d95fbf2795566722186a67f`. That certificate is preserved as reference evidence but is not transitive to the current global branch.
 
 Capability callback implementations remain trusted embedding code. TEV instruction/event budgets constrain TEV execution, not arbitrary Python code supplied by the embedding application. Untrusted callbacks require process/container isolation at the application boundary.
 
@@ -272,6 +286,8 @@ Hardening includes:
 - strict duplicate-key JSON reader;
 - closed object-tree JSON writer for AOT receipt generation rather than general serializer metadata;
 - host-independent SHA-256 implementation for canonical identity;
+- closed ASCII lexical predicates for AOT-portable identifiers/hashes/canonical integers;
+- explicit `-0` rejection in the canonical integer helper;
 - explicit separation from the V0.2 `netstandard2.1` assembly;
 - signed-update consumers bind the existing managed ES256 verifier through `TevScript.Update` without coupling the V3 runtime assembly to it.
 
@@ -379,26 +395,32 @@ Implemented campaigns exist for:
 - Browser-WASM signed update AOT witness;
 - WASI signed update fresh process -> durable installed record/checkpoint -> separate restore process.
 
-## Full precertify V5
+## Full precertify V6
 
-`RUN_TEV_SCRIPT_V1_PRECERTIFY.py` now requires, from one clean immutable checkout:
+`RUN_TEV_SCRIPT_V1_PRECERTIFY.py` requires, from one clean immutable checkout:
 
-1. V1 Python frontend/static/IR gates;
-2. C# assembly/surface isolation guard;
-3. Python/JavaScript/C# IR V3 receipt byte lock;
-4. Python/JavaScript/C# Runtime Checkpoint V2 byte lock + restart;
-5. Browser-WASM V3 AOT receipt/checkpoint parity;
-6. WASI V3 receipt/checkpoint parity + fresh/restore continuation;
-7. signed-update V3 host campaign;
-8. signed-update V3 Browser-WASM campaign;
-9. signed-update V3 WASI fresh/restore campaign;
-10. complete V0.2 portable regression including Browser-WASM and WASI;
-11. clean worktree before and after;
-12. identical HEAD/tree throughout validation.
+1. V1 governance consistency;
+2. V1 frontend/static/IR closure in `--require-zero-skips` mode;
+3. explicit zero unittest skips across V1, IR V3 and selected V0.2 Python regression suites;
+4. certification-time `jsonschema` availability and `JSON_SCHEMA_VALIDATION=PASS`;
+5. C# assembly/surface isolation guard;
+6. Python/JavaScript/C# IR V3 receipt byte lock;
+7. Python/JavaScript/C# Runtime Checkpoint V2 byte lock + restart;
+8. Browser-WASM V3 AOT receipt/checkpoint parity;
+9. WASI V3 receipt/checkpoint parity + fresh/restore continuation;
+10. signed-update V3 host campaign;
+11. signed-update V3 Browser-WASM campaign;
+12. signed-update V3 WASI fresh/restore campaign;
+13. complete V0.2 portable regression;
+14. independent V0.2 Browser-WASM AOT and WASI/Wasmtime dynamic witnesses;
+15. clean worktree before and after;
+16. identical HEAD/tree throughout validation.
 
-Python product certification is intentionally split into `RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` plus `RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py`. Those gates certify the Python distribution/host profile and do not replace the cross-host language/runtime precertification campaign.
+`jsonschema` is a certification-tool dependency, not a runtime dependency of the Python wheel. Ordinary development runs may report its absence, but global PRECERTIFY/CERTIFY_FULL does not admit that absence.
 
-Any V1/V3 `SKIPPED_*` is a pre-certification failure.
+Python product certification remains intentionally separate from the global campaign. `PYTHON_CERTIFY_FULL` certifies the Python distribution/host profile; it does not replace the cross-host language/runtime certificate.
+
+Any mandatory `SKIPPED_*`, any frontend unittest skip count above zero, or any non-PASS JSON Schema result is a global pre-certification failure.
 
 A successful global pre-certify deliberately still emits:
 
@@ -412,12 +434,13 @@ because technical validation and release/stable admission are separate governanc
 
 ## Verificación actual de esta sesión
 
-The current branch has moved materially beyond earlier locally executed V3 ancestors. This ChatGPT execution environment cannot materialize and execute the exact GitHub checkout with the full local toolchain required for the repository's certification campaigns.
+The global-certification branch contains additional hardening beyond the already Python-certified reference commit. This ChatGPT execution environment cannot materialize the exact GitHub checkout over the network or execute the full Windows/Chromium/WASI certification toolchain. Static repository audit and governed branch edits therefore do not count as a dynamic certificate.
 
-Therefore the current exact-HEAD status is deliberately:
+Current exact-HEAD status remains deliberately:
 
 ```text
 CODE_AND_GATES=PUBLISHED_CANDIDATE
+PYTHON_CERTIFIED_REFERENCE=5d2bd345b2bd0c852d95fbf2795566722186a67f
 CURRENT_HEAD_PYTHON_PRODUCTION_GATE=NOT_EXECUTED_HERE
 CURRENT_HEAD_PYTHON_CERTIFY_FULL=NOT_EXECUTED_HERE
 CURRENT_HEAD_FULL_PRECERTIFY=NOT_EXECUTED_HERE
@@ -425,7 +448,7 @@ CURRENT_HEAD_CERTIFY_FULL=NO
 LANGUAGE_STABLE=NO
 ```
 
-Do not reinterpret implementation presence, static inspection or a previously passing ancestor as a fresh dynamic PASS for the current HEAD.
+Do not reinterpret implementation presence, static inspection, the Python certificate on `5d2bd345...`, or a previously passing ancestor as a fresh dynamic PASS for the current HEAD.
 
 ## Active falsifiable hypotheses
 
@@ -481,15 +504,28 @@ Two offline wheel builds from independent archives of the same exact commit, wit
 
 A Python full certificate is valid only if the independently recomputed production receipt hash, embedded receipt hash, external receipt hash, certificate HEAD/tree and wheel identity all agree exactly and the repository remains unchanged throughout certification.
 
+### H14 — global zero-skip evidence
+
+Global PRECERTIFY must fail if any V1, IR V3 or selected V0.2 Python regression unittest is skipped, regardless of whether the test runner writes its summary to stdout or stderr.
+
+### H15 — global schema evidence
+
+Global PRECERTIFY must fail when certification-time `jsonschema` is unavailable or when the V0.2 portable campaign does not emit exact `JSON_SCHEMA_VALIDATION=PASS`; this requirement must not become a runtime dependency of the Python wheel.
+
+### H16 — canonical integer cross-host rejection
+
+The shared IR V3 negative corpus must force Python, JavaScript and C# to reject `-0` as a non-canonical semantic integer.
+
 ## Tareas siguientes
 
-1. Execute `RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py` on the exact current clean branch with Python 3.11+ and a locally available compatible setuptools build backend; fix any failure without weakening the gate.
-2. Execute `RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py` on that exact clean commit; this re-runs and independently validates the production admission and is the Python-host certificate authority.
-3. Separately, execute `RUN_TEV_SCRIPT_V1_PRECERTIFY.py` on the same exact current clean branch in the Windows development environment with Node, .NET, Chromium, Wasmtime and the .NET-required wasi-sdk available.
-4. Fix every failure without weakening or skipping a gate.
-5. Re-run from one exact clean commit/tree until `PYTHON_CERTIFY_FULL=PASS` and, for global V1 certification, `V1_PRECERTIFY=PASS` both pass with zero skips.
-6. Execute the separate global read-only `RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py` only for the cross-runtime V1 certificate.
-7. Only after the intended certificate scope passes should a stable-admission/version commit be considered; that promoted commit must itself re-run Python production + Python full certification and, if globally promoted, PRECERTIFY + global CERTIFY_FULL rather than inheriting certification from its parent.
+1. Materialize one isolated clean checkout/worktree of the exact current global-certification HEAD; do not use or alter the WIP checkout at `C:\mio\TEV-Script`.
+2. Verify the certification environment provides Python 3.11+, `jsonschema`, Node, .NET, Chromium, Wasmtime and the required .NET WASI/wasi-sdk surfaces.
+3. Execute `RUN_TEV_SCRIPT_V1_PRECERTIFY.py` once as the diagnostic global campaign. Do not waive or reinterpret any zero-skip, schema, Browser-WASM, WASI or signed-update failure.
+4. Fix every real failure on this isolated global-certification branch without weakening the corresponding gate, then restart the campaign from one exact clean commit/tree.
+5. When and only when `V1_PRECERTIFY=PASS`, execute `RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py`. The full certifier re-runs PRECERTIFY and independently verifies its receipt.
+6. Preserve `CERTIFY_FULL=NO` and `LANGUAGE_STABLE=NO` until the exact current commit dynamically earns the global certificate.
+7. Only after global `CERTIFY_FULL=PASS` should a stable-admission/version commit be considered. That new commit must be re-certified rather than inheriting the candidate certificate. If the release includes the Python distribution, rerun Python production + Python full certification on that promoted commit as well.
+8. Do not merge, tag, publish or mark stable without explicit authorization.
 
 ## Production boundaries unchanged
 
