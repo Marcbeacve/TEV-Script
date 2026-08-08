@@ -72,6 +72,20 @@
         "descriptor_is_generated_from_v1_contract_constants": true,
         "stable_claim": false
       },
+      "language_server_surface": {
+        "implementation": "tev_script/lsp_v1.py",
+        "installed_cli": "tev-script-v1-lsp",
+        "protocol": "LSP_JSON_RPC_STDIO",
+        "position_encoding": "utf-16",
+        "document_sync": "FULL_TEXT",
+        "standalone_authority": "parse_v1_bytes",
+        "project_authority": "analyze_v1_mapping",
+        "explicit_project_manifest_only": true,
+        "independent_parser_or_type_checker": false,
+        "generic_execution_host": false,
+        "documentation": "docs/V1_LSP.md",
+        "test": "tests/test_v1_lsp.py"
+      },
       "artifact_commit_policy": {
         "policy": "EVIDENCE_SAFE_RECEIPT_LAST_V1",
         "implementation": "tev_script/artifact_write_v1.py",
@@ -109,6 +123,7 @@
         "v1_cli": "tev-script-v1",
         "v1_descriptor_cli": "tev-script-v1-describe",
         "v1_ir_tool_cli": "tev-script-v1-ir",
+        "v1_lsp_cli": "tev-script-v1-lsp",
         "v1_module_cli": "python -m tev_script.cli_v1",
         "v1_python_pipeline": "tev_script.pipeline_v1",
         "v1_project_manifest": "tev_script.project_v1",
@@ -119,6 +134,8 @@
         "docs/TEV_SCRIPT_V1_LANGUAGE_REFERENCE.md",
         "docs/TEV_SCRIPT_V1_PROGRAMMING_MODEL.md",
         "docs/V1_PROJECT_MANIFEST.md",
+        "docs/V1_LSP.md",
+        "editors/vscode/README.md",
         "examples/v1/README.md"
       ],
       "executable_examples": [
@@ -136,7 +153,9 @@
         "tests/test_v1_cli_full.py",
         "tests/test_v1_descriptor.py",
         "tests/test_v1_descriptor_schema_cardinality.py",
+        "tests/test_v1_editor_assets.py",
         "tests/test_v1_examples.py",
+        "tests/test_v1_lsp.py",
         "tests/test_v1_project.py",
         "tests/test_v1_public_api.py",
         "tests/test_v1_runtime_cli_v3.py"
