@@ -132,6 +132,34 @@ def parse_json_marker(stdout: str, prefix: str, hash_prefix: str, label: str) ->
     return value, external_hash
 
 
+def load_parent_certificate(path: Path, parent: str, expected_hash: str) -> tuple[dict[str, object], str]:
+    if not path.is_file():
+        fail("STABLE_PARENT_CERTIFICATE", "FILE_MISSING=" + str(path))
+    text = path.read_text(encoding="utf-8")
+    payload = text[:-1] if text.endswith("\n") else text
+    if "\n" in payload or "\r" in payload:
+        fail("STABLE_PARENT_CERTIFICATE", "EXPECTED_ONE_CANONICAL_JSON_LINE")
+    observed_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    require_equal("STABLE_PARENT_CERTIFICATE_HASH", observed_hash, expected_hash)
+    try:
+        certificate = json.loads(payload)
+    except json.JSONDecodeError as error:
+        fail("STABLE_PARENT_CERTIFICATE", "INVALID_JSON=" + str(error))
+    if not isinstance(certificate, dict):
+        fail("STABLE_PARENT_CERTIFICATE", "ROOT_NOT_OBJECT")
+    require_equal("STABLE_PARENT_CERTIFICATE_SCHEMA", certificate.get("schema"), GLOBAL_CERT_SCHEMA)
+    require_equal("STABLE_PARENT_CERTIFICATE_PROFILE", certificate.get("admission_profile"), "candidate")
+    require_equal("STABLE_PARENT_CERTIFICATE_COMMIT", certificate.get("commit"), parent)
+    require_equal(
+        "STABLE_PARENT_CERTIFICATE_TREE",
+        certificate.get("tree"),
+        git_text("rev-parse", parent + "^{tree}"),
+    )
+    require_equal("STABLE_PARENT_CERTIFICATE_CERTIFY_FULL", certificate.get("certify_full"), True)
+    require_equal("STABLE_PARENT_CERTIFICATE_LANGUAGE_STABLE", certificate.get("language_stable"), False)
+    return certificate, observed_hash
+
+
 def validate_release_diff(parent: str, head: str) -> list[str]:
     ancestry = run(["git", "merge-base", "--is-ancestor", parent, head])
     if ancestry.returncode != 0:
@@ -150,6 +178,7 @@ def validate_release_diff(parent: str, head: str) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="TEV Script V1 stable release admission")
     parser.add_argument("--artifact-out-dir", required=True)
+    parser.add_argument("--technical-parent-certificate", required=True)
     args = parser.parse_args(argv)
 
     if shutil.which("git") is None:
@@ -179,7 +208,12 @@ def main(argv: list[str] | None = None) -> int:
     validate_release_metadata()
     require_equal("STABLE_RELEASE_PROFILE", RELEASE_PROFILE, "stable")
     parent = TECHNICAL_PARENT_COMMIT
-    parent_certificate = TECHNICAL_PARENT_CERTIFICATE_SHA256
+    parent_certificate_hash = TECHNICAL_PARENT_CERTIFICATE_SHA256
+    parent_certificate, observed_parent_certificate_hash = load_parent_certificate(
+        Path(args.technical_parent_certificate).expanduser().resolve(),
+        parent,
+        parent_certificate_hash,
+    )
     changed_files = validate_release_diff(parent, head)
 
     stable_governance = run(
@@ -305,7 +339,8 @@ def main(argv: list[str] | None = None) -> int:
         "tree": tree,
         "language_version": STABLE_VERSION,
         "technical_parent_commit": parent,
-        "technical_parent_certificate_sha256": parent_certificate,
+        "technical_parent_tree": parent_certificate["tree"],
+        "technical_parent_certificate_sha256": observed_parent_certificate_hash,
         "release_changed_paths": changed_files,
         "global_certify_full_receipt_sha256": global_receipt_hash,
         "python_certify_full_receipt_sha256": python_receipt_hash,
