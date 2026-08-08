@@ -1,12 +1,28 @@
 {
   "name": "@tev-script/runtime",
   "version": "0.2.0",
-  "description": "Portable JavaScript runtime for TEV_SCRIPT_PROGRAM_IR_V2",
+  "description": "Portable TEV Script runtime: certified IR V2 surface plus additive IR V3 candidate modules",
   "type": "module",
   "exports": {
     ".": {
       "types": "./src/runtime.d.ts",
       "import": "./src/runtime.mjs"
+    },
+    "./runtime-v3": {
+      "types": "./src/runtime-v3.d.ts",
+      "import": "./src/runtime-v3.mjs"
+    },
+    "./ir-v3-values": {
+      "types": "./src/ir-v3-values.d.ts",
+      "import": "./src/ir-v3-values.mjs"
+    },
+    "./ir-v3-validation": {
+      "types": "./src/ir-v3-validation.d.ts",
+      "import": "./src/ir-v3-validation.mjs"
+    },
+    "./ir-v3-flow": {
+      "types": "./src/ir-v3-flow.d.ts",
+      "import": "./src/ir-v3-flow.mjs"
     },
     "./canonical": {
       "types": "./src/canonical.d.ts",
@@ -47,15 +63,26 @@
     "src/values.mjs",
     "src/runtime.mjs",
     "src/runtime.d.ts",
+    "src/ir-v3-values.mjs",
+    "src/ir-v3-values.d.ts",
+    "src/ir-v3-flow.mjs",
+    "src/ir-v3-flow.d.ts",
+    "src/ir-v3-validation.mjs",
+    "src/ir-v3-validation.d.ts",
+    "src/runtime-v3.mjs",
+    "src/runtime-v3.d.ts",
     "src/conformance.mjs",
     "src/conformance.d.ts",
     "src/run-conformance.mjs",
     "test/runtime.test.mjs",
+    "test/runtime-v3.test.mjs",
     "fixtures",
     "README.md"
   ],
   "scripts": {
-    "test": "node --test test/runtime.test.mjs",
+    "test": "node --test test/runtime.test.mjs test/runtime-v3.test.mjs",
+    "test:v2": "node --test test/runtime.test.mjs",
+    "test:v3": "node --test test/runtime-v3.test.mjs",
     "conformance": "node src/run-conformance.mjs fixtures/conformance/player.scenario.json"
   },
   "engines": {
