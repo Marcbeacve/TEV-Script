@@ -36,7 +36,9 @@ class V1CliTargetTests(unittest.TestCase):
             )
             self.assertEqual(code, 0, stderr)
             result = json.loads(stdout)
+            self.assertEqual(result["schema"], "TEV_SCRIPT_V1_COMPILE_RESULT_V2")
             self.assertEqual(result["target_ir_schema"], "TEV_SCRIPT_PROGRAM_IR_V2")
+            self.assertIsNone(result["lowering_receipt"])
             self.assertEqual(json.loads(output.read_text())["schema"], "TEV_SCRIPT_PROGRAM_IR_V2")
 
     def test_auto_selects_ir_v3_for_algebraic_program(self) -> None:
@@ -57,6 +59,62 @@ class V1CliTargetTests(unittest.TestCase):
             self.assertEqual(result["target_ir_schema"], "TEV_SCRIPT_PROGRAM_IR_V3")
             self.assertEqual(json.loads(output.read_text())["schema"], "TEV_SCRIPT_PROGRAM_IR_V3")
 
+    def test_auto_ir_v2_can_emit_canonical_lowering_receipt_v1(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "program.json"
+            receipt = Path(directory) / "receipt.json"
+            code, stdout, stderr = self.invoke(
+                [
+                    "compile",
+                    str(EXAMPLES / "ErasableToIrV2.tevs"),
+                    "--target",
+                    "auto",
+                    "--output",
+                    str(output),
+                    "--receipt",
+                    str(receipt),
+                ]
+            )
+            self.assertEqual(code, 0, stderr)
+            result = json.loads(stdout)
+            summary = result["lowering_receipt"]
+            self.assertEqual(summary["schema"], "TEV_SCRIPT_LOWERING_RECEIPT_V1")
+            self.assertEqual(summary["profile"], "TEV_SCRIPT_V1_TO_IR_V2_ERASABLE_PROFILE_V1")
+            self.assertRegex(summary["receipt_hash"], r"^[0-9a-f]{64}$")
+            receipt_value = json.loads(receipt.read_text())
+            self.assertEqual(receipt_value["receipt_hash"], summary["receipt_hash"])
+            self.assertEqual(receipt_value["target"]["schema"], "TEV_SCRIPT_PROGRAM_IR_V2")
+
+    def test_auto_ir_v3_can_emit_canonical_lowering_receipt_v2(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "program.json"
+            receipt = Path(directory) / "receipt.json"
+            code, stdout, stderr = self.invoke(
+                [
+                    "compile",
+                    str(EXAMPLES / "AlgebraicCapability.tevs"),
+                    "--target",
+                    "auto",
+                    "--output",
+                    str(output),
+                    "--receipt",
+                    str(receipt),
+                ]
+            )
+            self.assertEqual(code, 0, stderr)
+            result = json.loads(stdout)
+            summary = result["lowering_receipt"]
+            self.assertEqual(summary["schema"], "TEV_SCRIPT_LOWERING_RECEIPT_V2")
+            self.assertEqual(summary["profile"], "TEV_SCRIPT_V1_TO_IR_V3_FULL_PROFILE_V1")
+            self.assertRegex(summary["receipt_hash"], r"^[0-9a-f]{64}$")
+            receipt_value = json.loads(receipt.read_text())
+            self.assertEqual(receipt_value["receipt_hash"], summary["receipt_hash"])
+            self.assertEqual(receipt_value["target"]["schema"], "TEV_SCRIPT_PROGRAM_IR_V3")
+            self.assertEqual(
+                receipt_value["target"]["source_semantic_hash"],
+                result["linked_semantic_hash"],
+            )
+
     def test_explicit_ir_v3_compiles_erasable_program_without_changing_source_semantics(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "program.json"
@@ -76,9 +134,10 @@ class V1CliTargetTests(unittest.TestCase):
             self.assertRegex(result["linked_semantic_hash"], r"^[0-9a-f]{64}$")
             self.assertRegex(result["target_ir_semantic_hash"], r"^[0-9a-f]{64}$")
 
-    def test_forcing_ir_v2_on_algebraic_program_fails_closed(self) -> None:
+    def test_forcing_ir_v2_on_algebraic_program_fails_closed_and_writes_nothing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "program.json"
+            receipt = Path(directory) / "receipt.json"
             code, stdout, stderr = self.invoke(
                 [
                     "compile",
@@ -87,6 +146,8 @@ class V1CliTargetTests(unittest.TestCase):
                     "irv2",
                     "--output",
                     str(output),
+                    "--receipt",
+                    str(receipt),
                 ]
             )
             self.assertEqual(code, 2)
@@ -94,6 +155,7 @@ class V1CliTargetTests(unittest.TestCase):
             diagnostic = json.loads(stderr)
             self.assertEqual(diagnostic["status"], "FAIL")
             self.assertFalse(output.exists())
+            self.assertFalse(receipt.exists())
 
     def test_multifile_check_accepts_explicit_finite_source_set(self) -> None:
         sources = [
