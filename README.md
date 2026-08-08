@@ -581,7 +581,13 @@ TEV Script deliberately distinguishes implementation from host certification, gl
 python .\RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py
 ```
 
-This covers the Python V1 source-semantic/lowering suite, V3 Python tests, V1 CLI/examples and selected V0.2 Python regressions.
+This covers the Python V1 source-semantic/lowering suite, V3 Python tests, V1 CLI/examples and selected V0.2 Python regressions. Development mode reports explicit skip counters but does not require zero skips unless requested.
+
+For the stricter certification form:
+
+```powershell
+python .\RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py --require-zero-skips
+```
 
 ## Python production admission
 
@@ -599,7 +605,7 @@ CERTIFY_FULL=NO
 LANGUAGE_STABLE=NO
 ```
 
-It is a Python product/distribution admission, not yet a Python certificate and not a substitute for V1 cross-runtime certification.
+It is a Python product/distribution admission, not yet a Python certificate and not a substitute for V1 cross-runtime certification. `jsonschema` is not a runtime dependency of that wheel.
 
 ## Python full certification
 
@@ -628,7 +634,7 @@ python .\RUN_TEV_SCRIPT_V1_PRECERTIFY.py
 `PRECERTIFY V6` requires, from one exact clean checkout:
 
 1. governance consistency;
-2. V1 frontend/static/lowering closure;
+2. V1 frontend/static/lowering closure in `--require-zero-skips` mode, with explicit zero skip counts for V1, IR V3 and V0.2 regression tests;
 3. C# V0.2/V3 assembly and AOT surface guard;
 4. Python/JavaScript/C# IR V3 receipt byte lock;
 5. Python/JavaScript/C# checkpoint V2 byte lock + restart;
@@ -637,13 +643,11 @@ python .\RUN_TEV_SCRIPT_V1_PRECERTIFY.py
 8. signed-update host campaign;
 9. signed-update Browser-WASM campaign;
 10. signed-update WASI fresh/restore campaign;
-11. V0.2 Python/JavaScript regression plus independent Browser-WASM AOT and
-    WASI/Wasmtime dynamic witnesses;
-12. an explicit V0.2 JSON Schema result: PASS when the optional validator is
-    installed, or `OPTIONAL_DEPENDENCY_UNAVAILABLE` otherwise;
+11. V0.2 Python/JavaScript regression plus independent Browser-WASM AOT and WASI/Wasmtime dynamic witnesses;
+12. `jsonschema` installed in the certification environment and an exact `JSON_SCHEMA_VALIDATION=PASS` result;
 13. clean and immutable Git HEAD/tree before/after.
 
-Mandatory V1/V3 `SKIPPED_*` results are not accepted as a full precertification.
+`jsonschema` is a certification-tool dependency, not a TEV Script runtime dependency. `OPTIONAL_DEPENDENCY_UNAVAILABLE` may be reported by ordinary diagnostic runs, but it is not admitted by global PRECERTIFY/CERTIFY_FULL. Mandatory `SKIPPED_*` results and unittest skip counts above zero are rejected.
 
 ## Technical full certification
 
@@ -651,7 +655,7 @@ Mandatory V1/V3 `SKIPPED_*` results are not accepted as a full precertification.
 python .\RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py
 ```
 
-This gate is read-only. It re-runs pre-certify, validates the canonical pre-certify receipt and binds the global certificate to the exact Git commit/tree.
+This gate is read-only. It re-runs pre-certify, validates the canonical pre-certify receipt, requires the zero-skip and JSON Schema PASS evidence, and binds the global certificate to the exact Git commit/tree.
 
 A global technical success means:
 
