@@ -78,6 +78,22 @@ def require_nonempty_string(label: str, observed: object) -> str:
     return observed
 
 
+def prepare_receipt_out(raw: str | None) -> Path | None:
+    if raw is None:
+        return None
+    destination = Path(raw).expanduser().resolve()
+    try:
+        destination.relative_to(ROOT.resolve())
+    except ValueError:
+        pass
+    else:
+        abort("V1_CERTIFY_FULL_RECEIPT_OUT", "MUST_BE_OUTSIDE_REPOSITORY")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        abort("V1_CERTIFY_FULL_RECEIPT_OUT", "MUST_NOT_EXIST=" + str(destination))
+    return destination
+
+
 def validate_authority_metadata(profile: str) -> tuple[str, str, str]:
     canonical_path = ROOT / "CANONICAL_INDEX.json"
     matrix_path = ROOT / "spec" / "TEV_SCRIPT_V1_FEATURE_MATRIX.json"
@@ -87,7 +103,6 @@ def validate_authority_metadata(profile: str) -> tuple[str, str, str]:
     matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
 
     require_equal("V1_CERTIFY_FULL_CANONICAL_INDEX_SCHEMA", canonical.get("schema"), "TEV_SCRIPT_CANONICAL_INDEX_V1")
-    # This top-level field belongs to the preserved V0.2 historical descriptor.
     require_equal("V1_CERTIFY_FULL_REPOSITORY_V0_2_STABLE_FALSE", canonical.get("stable"), False)
 
     targets = [
@@ -135,8 +150,10 @@ def validate_authority_metadata(profile: str) -> tuple[str, str, str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="TEV Script V1 global technical certification")
     parser.add_argument("--profile", choices=("candidate", "stable"), default="candidate")
+    parser.add_argument("--receipt-out")
     args = parser.parse_args(argv)
     profile = args.profile
+    receipt_out = prepare_receipt_out(args.receipt_out)
     print("V1_CERTIFY_FULL_PROFILE=" + profile)
 
     require_clean("CERTIFY_BEFORE")
@@ -269,6 +286,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     certificate_sha = hashlib.sha256(certificate_json.encode("utf-8")).hexdigest()
 
+    if receipt_out is not None:
+        receipt_out.write_text(certificate_json + "\n", encoding="utf-8", newline="\n")
+        print("V1_CERTIFY_FULL_RECEIPT_FILE=" + str(receipt_out))
     print("V1_CERTIFY_FULL_RECEIPT=" + certificate_json)
     print("V1_CERTIFY_FULL_RECEIPT_SHA256=" + certificate_sha)
     print("CERTIFY_FULL=PASS")
