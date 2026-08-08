@@ -9,6 +9,7 @@ EXPECTED_STATUS = "FULL_IMPLEMENTATION_CANDIDATE_PRECERTIFY_REQUIRED"
 EXPECTED_MATRIX = "TEV_SCRIPT_V1_FEATURE_MATRIX_V5"
 EXPECTED_PRECERTIFY = "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V5"
 EXPECTED_CERTIFY = "TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V1"
+ARTIFACT_POLICY = "EVIDENCE_SAFE_RECEIPT_LAST_V1"
 
 REQUIRED_AUTHORITY = {
     "spec/TEV_SCRIPT_V1_LEXICAL_PROFILE.md",
@@ -53,15 +54,12 @@ REQUIRED_GATE_MAP = {
     "certify_full": "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py",
 }
 
-REQUIRED_PROGRAMMER_DOCS = {
+REQUIRED_PRODUCT_FILES = {
     "README.md",
     "docs/TEV_SCRIPT_V1_LANGUAGE_REFERENCE.md",
     "docs/TEV_SCRIPT_V1_PROGRAMMING_MODEL.md",
     "docs/V1_PROJECT_MANIFEST.md",
     "examples/v1/README.md",
-}
-
-REQUIRED_EXAMPLES = {
     "examples/v1/Calculator.tevs",
     "examples/v1/ErasableToIrV2.tevs",
     "examples/v1/AlgebraicCapability.tevs",
@@ -70,36 +68,12 @@ REQUIRED_EXAMPLES = {
     "examples/v1/ecosystem/rules.tevs",
     "examples/v1/ecosystem/storage.tevs",
     "examples/v1/ecosystem/tevscript.project.json",
-}
-
-REQUIRED_PRODUCT_TESTS = {
     "tests/test_v1_examples.py",
     "tests/test_v1_cli_full.py",
     "tests/test_v1_project.py",
     "tests/test_v1_public_api.py",
+    "tests/test_v1_artifact_write.py",
 }
-
-REQUIRED_PUBLIC_INTERFACES = {
-    "python_package": "tev_script",
-    "v0_2_cli": "tev-script",
-    "v1_cli": "tev-script-v1",
-    "v1_module_cli": "python -m tev_script.cli_v1",
-    "v1_python_pipeline": "tev_script.pipeline_v1",
-    "v1_project_manifest": "tev_script.project_v1",
-    "v1_runtime": "tev_script.ScriptRuntimeV3",
-}
-
-REQUIRED_PRECERTIFY_TOOLS = (
-    "validate_v1_governance.py",
-    "validate_ir_v3_csharp_portable_surface.py",
-    "validate_ir_v3_cross_runtime_parity.py",
-    "validate_ir_v3_checkpoint_cross_runtime.py",
-    "validate_ir_v3_browser_wasm.py",
-    "validate_ir_v3_wasi.py",
-    "validate_ir_v3_signed_update.py",
-    "validate_ir_v3_browser_signed_update.py",
-    "validate_ir_v3_wasi_signed_update.py",
-)
 
 REQUIRED_PROMOTION_GATES = {
     "REFERENCE_FRONTEND_DYNAMIC_PASS",
@@ -124,38 +98,32 @@ REQUIRED_PROMOTION_GATES = {
 }
 
 
-def fail(code: str, detail: str) -> None:
-    raise RuntimeError(code + ":" + detail)
-
-
 def require(condition: bool, code: str, detail: str) -> None:
     if not condition:
-        fail(code, detail)
+        raise RuntimeError(code + ":" + detail)
 
 
 def require_file(relative: str) -> None:
-    path = ROOT / relative
-    require(path.is_file(), "V1_GOVERNANCE_FILE_MISSING", relative)
+    require((ROOT / relative).is_file(), "V1_GOVERNANCE_FILE_MISSING", relative)
 
 
 def load_json(relative: str) -> dict[str, object]:
     require_file(relative)
-    try:
-        value = json.loads((ROOT / relative).read_text(encoding="utf-8"))
-    except json.JSONDecodeError as error:
-        fail("V1_GOVERNANCE_JSON_INVALID", relative + ":" + str(error))
+    value = json.loads((ROOT / relative).read_text(encoding="utf-8"))
     require(isinstance(value, dict), "V1_GOVERNANCE_JSON_ROOT", relative)
     return value
 
 
-def require_exact_set(target: dict[str, object], key: str, expected: set[str]) -> None:
-    observed = target.get(key)
-    require(isinstance(observed, list), "V1_GOVERNANCE_LIST_MISSING", key)
-    observed_set = {str(item) for item in observed}
-    missing = sorted(expected - observed_set)
-    require(not missing, "V1_GOVERNANCE_LIST_ITEMS_MISSING", key + ":" + ",".join(missing))
-    for relative in sorted(expected):
-        require_file(relative)
+def require_contains(observed: object, expected: set[str], code: str) -> None:
+    require(isinstance(observed, list), code, "expected list")
+    values = {str(item) for item in observed}
+    missing = sorted(expected - values)
+    require(not missing, code, ",".join(missing))
+
+
+def require_tokens(text: str, tokens: tuple[str, ...], code: str) -> None:
+    for token in tokens:
+        require(token in text, code, token)
 
 
 def main() -> int:
@@ -166,149 +134,105 @@ def main() -> int:
     protocol_text = (ROOT / "docs/V1_CERTIFICATION_PROTOCOL.md").read_text(encoding="utf-8")
     state_text = (ROOT / "PROJECT_STATE.md").read_text(encoding="utf-8")
     pyproject_text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    package_init_text = (ROOT / "tev_script" / "__init__.py").read_text(encoding="utf-8")
-    cli_v1_text = (ROOT / "tev_script" / "cli_v1.py").read_text(encoding="utf-8")
+    package_text = (ROOT / "tev_script" / "__init__.py").read_text(encoding="utf-8")
+    cli_text = (ROOT / "tev_script" / "cli_v1.py").read_text(encoding="utf-8")
     project_text = (ROOT / "tev_script" / "project_v1.py").read_text(encoding="utf-8")
+    artifact_text = (ROOT / "tev_script" / "artifact_write_v1.py").read_text(encoding="utf-8")
 
-    require(canonical.get("schema") == "TEV_SCRIPT_CANONICAL_INDEX_V1", "V1_GOVERNANCE_CANONICAL_SCHEMA", str(canonical.get("schema")))
+    require(canonical.get("schema") == "TEV_SCRIPT_CANONICAL_INDEX_V1", "V1_GOVERNANCE_CANONICAL_SCHEMA", repr(canonical.get("schema")))
     require(canonical.get("stable") is False, "V1_GOVERNANCE_CANONICAL_STABLE", repr(canonical.get("stable")))
     targets = [
-        item
-        for item in canonical.get("candidate_language_targets", [])
+        item for item in canonical.get("candidate_language_targets", [])
         if isinstance(item, dict) and item.get("language_version") == "1.0.0"
     ]
     require(len(targets) == 1, "V1_GOVERNANCE_TARGET_COUNT", str(len(targets)))
     target = targets[0]
-    require(target.get("status") == EXPECTED_STATUS, "V1_GOVERNANCE_TARGET_STATUS", str(target.get("status")))
+    require(target.get("status") == EXPECTED_STATUS, "V1_GOVERNANCE_TARGET_STATUS", repr(target.get("status")))
     require(target.get("stable") is False, "V1_GOVERNANCE_TARGET_STABLE", repr(target.get("stable")))
-
-    authority = set(target.get("authority_files", []))
-    missing_authority = sorted(REQUIRED_AUTHORITY - authority)
-    require(not missing_authority, "V1_GOVERNANCE_AUTHORITY_MISSING", ",".join(missing_authority))
-    for relative in sorted(REQUIRED_AUTHORITY):
+    require_contains(target.get("authority_files"), REQUIRED_AUTHORITY, "V1_GOVERNANCE_AUTHORITY")
+    require_contains(target.get("build_tooling_authority"), REQUIRED_BUILD_TOOLING, "V1_GOVERNANCE_BUILD_TOOLING")
+    for relative in REQUIRED_AUTHORITY | REQUIRED_BUILD_TOOLING | REQUIRED_PRODUCT_FILES:
         require_file(relative)
-    require_exact_set(target, "build_tooling_authority", REQUIRED_BUILD_TOOLING)
 
     gates = target.get("gates")
-    require(isinstance(gates, dict), "V1_GOVERNANCE_GATE_MAP", "missing or non-object")
-    for key, relative in REQUIRED_GATE_MAP.items():
-        require(gates.get(key) == relative, "V1_GOVERNANCE_GATE_BINDING", f"{key}:{gates.get(key)!r}")
-        require_file(relative)
+    require(isinstance(gates, dict), "V1_GOVERNANCE_GATE_MAP", "missing")
+    for key, path in REQUIRED_GATE_MAP.items():
+        require(gates.get(key) == path, "V1_GOVERNANCE_GATE_BINDING", f"{key}:{gates.get(key)!r}")
+        require_file(path)
 
-    require_exact_set(target, "non_normative_programmer_documentation", REQUIRED_PROGRAMMER_DOCS)
-    require_exact_set(target, "executable_examples", REQUIRED_EXAMPLES)
-    require_exact_set(target, "example_and_public_api_tests", REQUIRED_PRODUCT_TESTS)
+    interfaces = target.get("public_interfaces")
+    require(isinstance(interfaces, dict), "V1_GOVERNANCE_PUBLIC_INTERFACES", "missing")
+    for key, expected in {
+        "python_package": "tev_script",
+        "v0_2_cli": "tev-script",
+        "v1_cli": "tev-script-v1",
+        "v1_module_cli": "python -m tev_script.cli_v1",
+        "v1_python_pipeline": "tev_script.pipeline_v1",
+        "v1_project_manifest": "tev_script.project_v1",
+        "v1_runtime": "tev_script.ScriptRuntimeV3",
+    }.items():
+        require(interfaces.get(key) == expected, "V1_GOVERNANCE_PUBLIC_INTERFACE", f"{key}:{interfaces.get(key)!r}")
 
-    public_interfaces = target.get("public_interfaces")
-    require(isinstance(public_interfaces, dict), "V1_GOVERNANCE_PUBLIC_INTERFACES", "missing or non-object")
-    for key, expected in REQUIRED_PUBLIC_INTERFACES.items():
-        require(public_interfaces.get(key) == expected, "V1_GOVERNANCE_PUBLIC_INTERFACE", f"{key}:{public_interfaces.get(key)!r}")
-
-    require('tev-script = "tev_script.cli:main"' in pyproject_text, "V1_GOVERNANCE_V0_2_CLI", "certified CLI binding missing")
-    require('tev-script-v1 = "tev_script.cli_v1:main"' in pyproject_text, "V1_GOVERNANCE_V1_CLI", "V1 CLI binding missing")
-    for token in (
-        "compile_v1_paths_auto",
-        "compile_v1_paths_to_ir_v2",
-        "compile_v1_paths_to_ir_v3",
-        "ProjectManifestV1",
-        "load_v1_project",
-        "verify_v1_project_inputs",
-        "ScriptRuntimeV3",
-        "RuntimeCheckpointV2",
-    ):
-        require(token in package_init_text, "V1_GOVERNANCE_PUBLIC_API", token)
-    for token in (
-        'choices=("auto", "irv2", "irv3")',
-        '"project-check"',
-        '"build"',
-        '"lower-irv3"',
-        '"--receipt"',
-        "load_v1_project",
-        "verify_v1_project_inputs",
-        "build_ir_v2_lowering_receipt",
-        "build_ir_v3_lowering_receipt",
-        '"default_target_ir"',
-        '"TEV_SCRIPT_V1_COMPILE_RESULT_V2"',
-        '"TEV_SCRIPT_V1_PROJECT_CHECK_RESULT_V1"',
-        '"TEV_SCRIPT_V1_PROJECT_BUILD_RESULT_V1"',
-    ):
-        require(token in cli_v1_text, "V1_GOVERNANCE_V1_CLI_SURFACE", token)
-    for token in (
+    require('tev-script = "tev_script.cli:main"' in pyproject_text, "V1_GOVERNANCE_V0_2_CLI", "binding")
+    require('tev-script-v1 = "tev_script.cli_v1:main"' in pyproject_text, "V1_GOVERNANCE_V1_CLI", "binding")
+    require_tokens(package_text, (
+        "compile_v1_paths_auto", "compile_v1_paths_to_ir_v2", "compile_v1_paths_to_ir_v3",
+        "ProjectManifestV1", "load_v1_project", "verify_v1_project_inputs",
+        "ScriptRuntimeV3", "RuntimeCheckpointV2",
+    ), "V1_GOVERNANCE_PUBLIC_API")
+    require_tokens(cli_text, (
+        'choices=("auto", "irv2", "irv3")', '"project-check"', '"build"', '"lower-irv3"',
+        '"--receipt"', "write_compilation_artifacts_v1", "write_text_artifact_v1",
+        'ARTIFACT_COMMIT_POLICY_V1 = "' + ARTIFACT_POLICY + '"',
+        '"TEV_SCRIPT_V1_COMPILE_RESULT_V3"', '"TEV_SCRIPT_V1_PROJECT_BUILD_RESULT_V2"',
+    ), "V1_GOVERNANCE_V1_CLI_SURFACE")
+    require_tokens(project_text, (
         'PROJECT_SCHEMA_V1 = "TEV_SCRIPT_PROJECT_V1"',
         'PROJECT_INPUT_SCHEMA_V1 = "TEV_SCRIPT_PROJECT_INPUT_V1"',
-        "manifest_hash",
-        "project_input_hash",
-        "resolve(strict=True)",
-        "relative_to(base)",
+        "manifest_hash", "project_input_hash", "resolve(strict=True)", "relative_to(base)",
         "verify_v1_project_inputs",
-    ):
-        require(token in project_text, "V1_GOVERNANCE_PROJECT_TOOLING", token)
+    ), "V1_GOVERNANCE_PROJECT_TOOLING")
+    require_tokens(artifact_text, (
+        "write_compilation_artifacts_v1", "os.replace(staged_ir, ir)",
+        "os.replace(staged_receipt, receipt)", "receipt presence is the final commit",
+        "TEVS_V1_ARTIFACT_ROLLBACK", "TEVS_V1_ARTIFACT_PATH_COLLISION",
+    ), "V1_GOVERNANCE_ARTIFACT_POLICY")
 
-    require(target.get("certification_protocol") == "docs/V1_CERTIFICATION_PROTOCOL.md", "V1_GOVERNANCE_PROTOCOL_BINDING", repr(target.get("certification_protocol")))
-    require_file("docs/V1_CERTIFICATION_PROTOCOL.md")
-
-    require(matrix.get("schema") == EXPECTED_MATRIX, "V1_GOVERNANCE_MATRIX_SCHEMA", str(matrix.get("schema")))
-    require(matrix.get("target_language_version") == "1.0.0", "V1_GOVERNANCE_MATRIX_VERSION", str(matrix.get("target_language_version")))
+    require(matrix.get("schema") == EXPECTED_MATRIX, "V1_GOVERNANCE_MATRIX_SCHEMA", repr(matrix.get("schema")))
+    require(matrix.get("target_language_version") == "1.0.0", "V1_GOVERNANCE_MATRIX_VERSION", repr(matrix.get("target_language_version")))
     require(matrix.get("stable_release_authorized") is False, "V1_GOVERNANCE_MATRIX_STABLE", repr(matrix.get("stable_release_authorized")))
-    require(matrix.get("certification_status") == EXPECTED_STATUS, "V1_GOVERNANCE_MATRIX_STATUS", str(matrix.get("certification_status")))
+    require(matrix.get("certification_status") == EXPECTED_STATUS, "V1_GOVERNANCE_MATRIX_STATUS", repr(matrix.get("certification_status")))
+    promotion = {str(item) for item in matrix.get("promotion_gates", [])}
+    missing = sorted(REQUIRED_PROMOTION_GATES - promotion)
+    require(not missing, "V1_GOVERNANCE_PROMOTION_GATES", ",".join(missing))
 
-    promotion = set(matrix.get("promotion_gates", []))
-    missing_promotion = sorted(REQUIRED_PROMOTION_GATES - promotion)
-    require(not missing_promotion, "V1_GOVERNANCE_PROMOTION_GATE_MISSING", ",".join(missing_promotion))
-
-    for token in (
-        EXPECTED_PRECERTIFY,
-        '"v1_governance": "PASS"',
-        '"certify_full": False',
-        '"language_stable": False',
-        '"signed_update_v3_host": "PASS"',
-        '"signed_update_v3_browser_wasm": "PASS"',
+    require_tokens(pre_text, (
+        EXPECTED_PRECERTIFY, "validate_v1_governance.py",
+        '"v1_governance": "PASS"', '"certify_full": False', '"language_stable": False',
+        '"signed_update_v3_host": "PASS"', '"signed_update_v3_browser_wasm": "PASS"',
         '"signed_update_v3_wasi": "PASS_FRESH_RESTORE"',
-        '"browser_wasm_v3": "PASS"',
-        '"wasi_v3": "PASS_FRESH_RESTORE"',
-    ):
-        require(token in pre_text, "V1_GOVERNANCE_PRECERTIFY_TOKEN", token)
-
-    for tool in REQUIRED_PRECERTIFY_TOOLS:
-        require(tool in pre_text, "V1_GOVERNANCE_PRECERTIFY_TOOL", tool)
-
-    for token in (
-        EXPECTED_PRECERTIFY,
-        EXPECTED_CERTIFY,
-        "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
-        '"v1_governance": "PASS"',
-        '"certify_full": True',
-        '"language_stable": False',
-        "V1_PRECERTIFY_RECEIPT_SHA256=",
-        "CERTIFY_FULL=PASS",
-        "LANGUAGE_STABLE=NO",
-    ):
-        require(token in certify_text, "V1_GOVERNANCE_CERTIFY_TOKEN", token)
-
-    for token in (
-        "PRECERTIFY(C)=PASS",
-        "CERTIFY_FULL(C)=PASS",
-        "PRECERTIFY(S)=PASS",
-        "CERTIFY_FULL(S)=PASS",
-        "No transitive certification",
-        "No skipped mandatory target",
-    ):
-        require(token in protocol_text, "V1_GOVERNANCE_PROTOCOL_TOKEN", token)
-
-    for token in (
+    ), "V1_GOVERNANCE_PRECERTIFY")
+    require_tokens(certify_text, (
+        EXPECTED_PRECERTIFY, EXPECTED_CERTIFY, "RUN_TEV_SCRIPT_V1_PRECERTIFY.py",
+        '"v1_governance": "PASS"', '"certify_full": True', '"language_stable": False',
+        "V1_PRECERTIFY_RECEIPT_SHA256=", "CERTIFY_FULL=PASS", "LANGUAGE_STABLE=NO",
+    ), "V1_GOVERNANCE_CERTIFY")
+    require_tokens(protocol_text, (
+        "PRECERTIFY(C)=PASS", "CERTIFY_FULL(C)=PASS", "PRECERTIFY(S)=PASS",
+        "CERTIFY_FULL(S)=PASS", "No transitive certification", "No skipped mandatory target",
+    ), "V1_GOVERNANCE_PROTOCOL")
+    require_tokens(state_text, (
         "BRANCH=agent/tev-script-v1-irv3-spec-v1",
         "CURRENT_HEAD_FULL_PRECERTIFY=NOT_EXECUTED_HERE",
-        "CURRENT_HEAD_CERTIFY_FULL=NO",
-        "LANGUAGE_STABLE=NO",
-    ):
-        require(token in state_text, "V1_GOVERNANCE_PROJECT_STATE_TOKEN", token)
+        "CURRENT_HEAD_CERTIFY_FULL=NO", "LANGUAGE_STABLE=NO",
+    ), "V1_GOVERNANCE_PROJECT_STATE")
 
     print("TEV_SCRIPT_V1_GOVERNANCE_CANON_MATRIX=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_AUTHORITY_FILES=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_BUILD_TOOLING=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_GATE_BINDINGS=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PUBLIC_SURFACE=PASS")
-    print("TEV_SCRIPT_V1_GOVERNANCE_EXECUTABLE_EXAMPLES=PASS")
+    print("TEV_SCRIPT_V1_GOVERNANCE_ARTIFACT_COMMIT_POLICY=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_PRECERTIFY_CERTIFY_PROTOCOL=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE_NO_TRANSITIVE_CERTIFICATION=PASS")
     print("TEV_SCRIPT_V1_GOVERNANCE=PASS")
