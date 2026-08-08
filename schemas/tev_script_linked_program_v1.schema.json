@@ -1,0 +1,443 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev-script.local/schemas/tev_script_linked_program_v1.schema.json",
+  "title": "TEV Script linked semantic program V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "language_version",
+    "program_id",
+    "modules",
+    "capabilities",
+    "records",
+    "enums",
+    "functions",
+    "behaviors",
+    "entities"
+  ],
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_LINKED_PROGRAM_V1"},
+    "language_version": {"const": "1.0.0"},
+    "program_id": {"$ref": "#/$defs/id"},
+    "modules": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/module"}
+    },
+    "capabilities": {
+      "type": "array",
+      "maxItems": 8192,
+      "items": {"$ref": "#/$defs/capability"}
+    },
+    "records": {
+      "type": "array",
+      "maxItems": 8192,
+      "items": {"$ref": "#/$defs/record"}
+    },
+    "enums": {
+      "type": "array",
+      "maxItems": 8192,
+      "items": {"$ref": "#/$defs/enum"}
+    },
+    "functions": {
+      "type": "array",
+      "maxItems": 2048,
+      "items": {"$ref": "#/$defs/function"}
+    },
+    "behaviors": {
+      "type": "array",
+      "maxItems": 8192,
+      "items": {"$ref": "#/$defs/behavior"}
+    },
+    "entities": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": {"$ref": "#/$defs/entity"}
+    },
+    "semantic_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$"
+    },
+    "localName": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+    },
+    "typeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module_id", "version", "imports", "exports"],
+      "properties": {
+        "module_id": {"$ref": "#/$defs/id"},
+        "version": {"const": "1.0.0"},
+        "imports": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {"$ref": "#/$defs/id"}
+        },
+        "exports": {
+          "type": "array",
+          "maxItems": 1024,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["namespace", "semantic_id"],
+            "properties": {
+              "namespace": {"enum": ["type", "function", "behavior", "capability"]},
+              "semantic_id": {"type": "string", "minLength": 1, "maxLength": 1024}
+            }
+          }
+        }
+      }
+    },
+    "parameter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type"],
+      "properties": {
+        "name": {"$ref": "#/$defs/localName"},
+        "type": {"$ref": "#/$defs/typeId"}
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability_id", "parameters", "return_type", "kind", "declared_in", "exported"],
+      "properties": {
+        "capability_id": {"$ref": "#/$defs/id"},
+        "parameters": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"$ref": "#/$defs/typeId"}
+        },
+        "return_type": {"$ref": "#/$defs/typeId"},
+        "kind": {"enum": ["observation", "effect"]},
+        "declared_in": {"$ref": "#/$defs/id"},
+        "exported": {"type": "boolean"}
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type_id", "declared_in", "exported", "fields"],
+      "properties": {
+        "type_id": {"$ref": "#/$defs/typeId"},
+        "declared_in": {"$ref": "#/$defs/id"},
+        "exported": {"type": "boolean"},
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "type"],
+            "properties": {
+              "name": {"$ref": "#/$defs/localName"},
+              "type": {"$ref": "#/$defs/typeId"}
+            }
+          }
+        }
+      }
+    },
+    "enum": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type_id", "declared_in", "exported", "variants"],
+      "properties": {
+        "type_id": {"$ref": "#/$defs/typeId"},
+        "declared_in": {"$ref": "#/$defs/id"},
+        "exported": {"type": "boolean"},
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {"$ref": "#/$defs/localName"}
+        }
+      }
+    },
+    "function": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["function_id", "declared_in", "exported", "parameters", "return_type", "body", "calls"],
+      "properties": {
+        "function_id": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "declared_in": {"$ref": "#/$defs/id"},
+        "exported": {"type": "boolean"},
+        "parameters": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"$ref": "#/$defs/parameter"}
+        },
+        "return_type": {"$ref": "#/$defs/typeId"},
+        "body": {"$ref": "#/$defs/expression"},
+        "calls": {
+          "type": "array",
+          "maxItems": 2048,
+          "items": {"type": "string", "minLength": 1, "maxLength": 1024}
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "initial"],
+      "properties": {
+        "name": {"$ref": "#/$defs/localName"},
+        "type": {"$ref": "#/$defs/typeId"},
+        "initial": {"$ref": "#/$defs/expression"}
+      }
+    },
+    "handler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "parameters", "body", "capabilities"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/localName"},
+        "parameters": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"$ref": "#/$defs/parameter"}
+        },
+        "body": {
+          "type": "array",
+          "maxItems": 16384,
+          "items": {"$ref": "#/$defs/statement"}
+        },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 8192,
+          "items": {"$ref": "#/$defs/id"}
+        }
+      }
+    },
+    "behavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["behavior_id", "declared_in", "exported", "uses", "states", "handlers"],
+      "properties": {
+        "behavior_id": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "declared_in": {"$ref": "#/$defs/id"},
+        "exported": {"type": "boolean"},
+        "uses": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"type": "string", "minLength": 1, "maxLength": 1024}
+        },
+        "states": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {"$ref": "#/$defs/state"}
+        },
+        "handlers": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {"$ref": "#/$defs/handler"}
+        }
+      }
+    },
+    "entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_id", "uses", "states", "handlers", "capabilities"],
+      "properties": {
+        "entity_id": {"$ref": "#/$defs/localName"},
+        "uses": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {"type": "string", "minLength": 1, "maxLength": 1024}
+        },
+        "states": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {"$ref": "#/$defs/state"}
+        },
+        "handlers": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {"$ref": "#/$defs/handler"}
+        },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 8192,
+          "items": {"$ref": "#/$defs/id"}
+        }
+      }
+    },
+    "expression": {
+      "oneOf": [
+        {"$ref": "#/$defs/boolExpression"},
+        {"$ref": "#/$defs/intExpression"},
+        {"$ref": "#/$defs/ratExpression"},
+        {"$ref": "#/$defs/textExpression"},
+        {"$ref": "#/$defs/nameExpression"},
+        {"$ref": "#/$defs/unaryExpression"},
+        {"$ref": "#/$defs/binaryExpression"},
+        {"$ref": "#/$defs/callExpression"},
+        {"$ref": "#/$defs/fieldExpression"},
+        {"$ref": "#/$defs/enumExpression"},
+        {"$ref": "#/$defs/recordExpression"},
+        {"$ref": "#/$defs/someExpression"},
+        {"$ref": "#/$defs/noneExpression"},
+        {"$ref": "#/$defs/okExpression"},
+        {"$ref": "#/$defs/errExpression"}
+      ]
+    },
+    "boolExpression": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "type", "value"],
+      "properties": {"kind":{"const":"bool"},"type":{"const":"Bool"},"value":{"type":"boolean"}}
+    },
+    "intExpression": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "type", "value"],
+      "properties": {"kind":{"const":"int"},"type":{"const":"Int"},"value":{"type":"string","pattern":"^-?(0|[1-9][0-9]*)$"}}
+    },
+    "ratExpression": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "type", "numerator", "denominator"],
+      "properties": {
+        "kind":{"const":"rat"},"type":{"const":"Rat"},
+        "numerator":{"type":"string","pattern":"^-?(0|[1-9][0-9]*)$"},
+        "denominator":{"type":"string","pattern":"^[1-9][0-9]*$"}
+      }
+    },
+    "textExpression": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "type", "value"],
+      "properties": {"kind":{"const":"text"},"type":{"const":"Text"},"value":{"type":"string"}}
+    },
+    "nameExpression": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "type", "symbol_id"],
+      "properties": {"kind":{"const":"name"},"type":{"$ref":"#/$defs/typeId"},"symbol_id":{"type":"string","minLength":1,"maxLength":1024}}
+    },
+    "unaryExpression": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "type", "operator", "operand"],
+      "properties": {"kind":{"const":"unary"},"type":{"$ref":"#/$defs/typeId"},"operator":{"enum":["not","-"]},"operand":{"$ref":"#/$defs/expression"}}
+    },
+    "binaryExpression": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "type", "operator", "left", "right"],
+      "properties": {
+        "kind":{"const":"binary"},"type":{"$ref":"#/$defs/typeId"},
+        "operator":{"enum":["or","and","==","!=","<","<=",">",">=","+","-","*","/"]},
+        "left":{"$ref":"#/$defs/expression"},"right":{"$ref":"#/$defs/expression"}
+      }
+    },
+    "callExpression": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "type", "callable_kind", "callable_id", "arguments"],
+      "properties": {
+        "kind":{"const":"call"},"type":{"$ref":"#/$defs/typeId"},
+        "callable_kind":{"enum":["pure_function","observation_capability"]},
+        "callable_id":{"type":"string","minLength":1,"maxLength":1024},
+        "arguments":{"type":"array","maxItems":64,"items":{"$ref":"#/$defs/expression"}}
+      }
+    },
+    "fieldExpression": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "type", "target", "field"],
+      "properties": {"kind":{"const":"field"},"type":{"$ref":"#/$defs/typeId"},"target":{"$ref":"#/$defs/expression"},"field":{"$ref":"#/$defs/localName"}}
+    },
+    "enumExpression": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "type", "variant"],
+      "properties": {"kind":{"const":"enum"},"type":{"$ref":"#/$defs/typeId"},"variant":{"$ref":"#/$defs/localName"}}
+    },
+    "recordExpression": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "type", "fields"],
+      "properties": {
+        "kind":{"const":"record"},"type":{"$ref":"#/$defs/typeId"},
+        "fields":{"type":"array","maxItems":256,"items":{"type":"object","additionalProperties":false,"required":["name","value"],"properties":{"name":{"$ref":"#/$defs/localName"},"value":{"$ref":"#/$defs/expression"}}}}
+      }
+    },
+    "someExpression": {
+      "type":"object","additionalProperties":false,"required":["kind","type","value"],
+      "properties":{"kind":{"const":"some"},"type":{"$ref":"#/$defs/typeId"},"value":{"$ref":"#/$defs/expression"}}
+    },
+    "noneExpression": {
+      "type":"object","additionalProperties":false,"required":["kind","type"],
+      "properties":{"kind":{"const":"none"},"type":{"$ref":"#/$defs/typeId"}}
+    },
+    "okExpression": {
+      "type":"object","additionalProperties":false,"required":["kind","type","value"],
+      "properties":{"kind":{"const":"ok"},"type":{"$ref":"#/$defs/typeId"},"value":{"$ref":"#/$defs/expression"}}
+    },
+    "errExpression": {
+      "type":"object","additionalProperties":false,"required":["kind","type","value"],
+      "properties":{"kind":{"const":"err"},"type":{"$ref":"#/$defs/typeId"},"value":{"$ref":"#/$defs/expression"}}
+    },
+    "statement": {
+      "oneOf": [
+        {"$ref":"#/$defs/letStatement"},
+        {"$ref":"#/$defs/assignStatement"},
+        {"$ref":"#/$defs/ifStatement"},
+        {"$ref":"#/$defs/callStatement"},
+        {"$ref":"#/$defs/emitStatement"},
+        {"$ref":"#/$defs/forStatement"},
+        {"$ref":"#/$defs/matchStatement"},
+        {"$ref":"#/$defs/returnStatement"}
+      ]
+    },
+    "letStatement": {
+      "type":"object","additionalProperties":false,"required":["kind","name","type","value"],
+      "properties":{"kind":{"const":"let"},"name":{"$ref":"#/$defs/localName"},"type":{"$ref":"#/$defs/typeId"},"value":{"$ref":"#/$defs/expression"}}
+    },
+    "assignStatement": {
+      "type":"object","additionalProperties":false,"required":["kind","state","value"],
+      "properties":{"kind":{"const":"assign"},"state":{"$ref":"#/$defs/localName"},"value":{"$ref":"#/$defs/expression"}}
+    },
+    "ifStatement": {
+      "type":"object","additionalProperties":false,"required":["kind","condition","then","else"],
+      "properties":{"kind":{"const":"if"},"condition":{"$ref":"#/$defs/expression"},"then":{"type":"array","items":{"$ref":"#/$defs/statement"}},"else":{"type":"array","items":{"$ref":"#/$defs/statement"}}}
+    },
+    "callStatement": {
+      "type":"object","additionalProperties":false,"required":["kind","capability_id","arguments"],
+      "properties":{"kind":{"const":"call"},"capability_id":{"$ref":"#/$defs/id"},"arguments":{"type":"array","maxItems":64,"items":{"$ref":"#/$defs/expression"}}}
+    },
+    "emitStatement": {
+      "type":"object","additionalProperties":false,"required":["kind","event_id","arguments"],
+      "properties":{"kind":{"const":"emit"},"event_id":{"$ref":"#/$defs/localName"},"arguments":{"type":"array","maxItems":64,"items":{"$ref":"#/$defs/expression"}}}
+    },
+    "forStatement": {
+      "type":"object","additionalProperties":false,"required":["kind","variable","lower","upper","body"],
+      "properties":{"kind":{"const":"for"},"variable":{"$ref":"#/$defs/localName"},"lower":{"type":"string","pattern":"^-?(0|[1-9][0-9]*)$"},"upper":{"type":"string","pattern":"^-?(0|[1-9][0-9]*)$"},"body":{"type":"array","items":{"$ref":"#/$defs/statement"}}}
+    },
+    "matchStatement": {
+      "type":"object","additionalProperties":false,"required":["kind","value","arms"],
+      "properties":{"kind":{"const":"match"},"value":{"$ref":"#/$defs/expression"},"arms":{"type":"array","minItems":2,"maxItems":256,"items":{"$ref":"#/$defs/matchArm"}}}
+    },
+    "matchArm": {
+      "type":"object","additionalProperties":false,"required":["pattern","body"],
+      "properties":{"pattern":{"$ref":"#/$defs/pattern"},"body":{"type":"array","items":{"$ref":"#/$defs/statement"}}}
+    },
+    "pattern": {
+      "type":"object","additionalProperties":false,"required":["kind"],
+      "properties": {
+        "kind":{"enum":["enum","some","none","ok","err"]},
+        "type":{"$ref":"#/$defs/typeId"},
+        "variant":{"$ref":"#/$defs/localName"},
+        "binding":{"$ref":"#/$defs/localName"}
+      }
+    },
+    "returnStatement": {
+      "type":"object","additionalProperties":false,"required":["kind"],
+      "properties":{"kind":{"const":"return"}}
+    }
+  }
+}
