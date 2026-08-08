@@ -409,11 +409,11 @@ export class ScriptRuntimeV3 {
   }
 }
 
+export { validateProgramIrV3 } from "./ir-v3-validation.mjs";
 export {
   RecordValueV3,
   VariantValueV3,
   Rational,
   TevScriptError,
   encodeV3Value,
-  validateProgramIrV3,
 } from "./ir-v3-values.mjs";
