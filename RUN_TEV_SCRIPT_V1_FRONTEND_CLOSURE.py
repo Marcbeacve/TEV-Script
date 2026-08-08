@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+from collections import Counter
 import compileall
 import hashlib
 import json
@@ -39,8 +41,31 @@ IR_V3_TEST_PATTERNS = (
 )
 
 
-def main() -> int:
-    print("TEV_SCRIPT_V1_FRONTEND_CLOSURE_SCHEMA=V8")
+def skip_summary(label: str, result: unittest.TestResult) -> int:
+    reasons = Counter(reason for _test, reason in result.skipped)
+    payload = json.dumps(
+        dict(sorted(reasons.items())),
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    )
+    count = len(result.skipped)
+    print(f"{label}_SKIP_COUNT={count}")
+    print(f"{label}_SKIP_REASONS={payload}")
+    return count
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="TEV Script V1 frontend closure")
+    parser.add_argument(
+        "--require-zero-skips",
+        action="store_true",
+        help="fail certification closure if any unittest case is skipped",
+    )
+    args = parser.parse_args(argv)
+
+    print("TEV_SCRIPT_V1_FRONTEND_CLOSURE_SCHEMA=V9")
     print("V0_2_CERTIFIED_BASE=6e102f3cc3dcd131ae11e0cfc8bcfe64cccf87f5")
 
     compiled = compileall.compile_dir(str(ROOT / "tev_script"), quiet=1) and compileall.compile_dir(
@@ -75,6 +100,7 @@ def main() -> int:
     )
     v1_result = unittest.TextTestRunner(verbosity=2).run(v1_suite)
     print(f"TEV_SCRIPT_V1_TESTS_RUN={v1_result.testsRun}")
+    v1_skips = skip_summary("TEV_SCRIPT_V1_TESTS", v1_result)
     print("TEV_SCRIPT_V1_TESTS=" + ("PASS" if v1_result.wasSuccessful() else "FAIL"))
     if not v1_result.wasSuccessful():
         return 1
@@ -88,6 +114,7 @@ def main() -> int:
         )
     ir_v3_result = unittest.TextTestRunner(verbosity=2).run(ir_v3_suite)
     print(f"TEV_SCRIPT_IR_V3_TESTS_RUN={ir_v3_result.testsRun}")
+    ir_v3_skips = skip_summary("TEV_SCRIPT_IR_V3_TESTS", ir_v3_result)
     print("TEV_SCRIPT_IR_V3_TESTS=" + ("PASS" if ir_v3_result.wasSuccessful() else "FAIL"))
     if not ir_v3_result.wasSuccessful():
         return 1
@@ -101,12 +128,23 @@ def main() -> int:
         )
     v02_result = unittest.TextTestRunner(verbosity=2).run(v02_suite)
     print(f"TEV_SCRIPT_V0_2_REGRESSION_TESTS_RUN={v02_result.testsRun}")
+    v0_2_skips = skip_summary("TEV_SCRIPT_V0_2_REGRESSION_TESTS", v02_result)
     print(
         "TEV_SCRIPT_V0_2_PYTHON_REGRESSION="
         + ("PASS" if v02_result.wasSuccessful() else "FAIL")
     )
     if not v02_result.wasSuccessful():
         return 1
+
+    total_skips = v1_skips + ir_v3_skips + v0_2_skips
+    print(f"TEV_SCRIPT_V1_FRONTEND_TOTAL_SKIP_COUNT={total_skips}")
+    if args.require_zero_skips and total_skips != 0:
+        print("TEV_SCRIPT_V1_FRONTEND_ZERO_SKIPS=FAIL")
+        return 1
+    print(
+        "TEV_SCRIPT_V1_FRONTEND_ZERO_SKIPS="
+        + ("PASS" if args.require_zero_skips else "NOT_REQUIRED")
+    )
 
     print("TEV_SCRIPT_V1_LINKED_PROGRAM=PASS_CANDIDATE")
     print("TEV_SCRIPT_V1_LINKED_PROGRAM_SCHEMA=PASS_CANDIDATE")
