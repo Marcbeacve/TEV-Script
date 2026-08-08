@@ -58,6 +58,17 @@ def require_clean(stage: str) -> None:
     print("GIT_CLEAN_" + stage + "=PASS")
 
 
+def require_witnesses(label: str, stdout: str, witnesses: tuple[str, ...]) -> None:
+    for witness in witnesses:
+        if witness not in stdout:
+            print(label + "=FAIL missing=" + witness)
+            raise SystemExit(1)
+    if "SKIPPED_" in stdout:
+        print(label + "=FAIL unexpected_skip")
+        raise SystemExit(1)
+    print(label + "=PASS")
+
+
 def main() -> int:
     for tool in ("git", "node", "dotnet"):
         if shutil.which(tool) is None:
@@ -78,42 +89,81 @@ def main() -> int:
 
     closure = run([sys.executable, str(ROOT / "RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py")])
     closure_stdout = require_success("TEV_SCRIPT_V1_FRONTEND_CLOSURE_GATE", closure)
-    required_closure = (
-        "TEV_SCRIPT_V1_PYTHON_COMPILE=PASS",
-        "TEV_SCRIPT_V1_TESTS=PASS",
-        "TEV_SCRIPT_IR_V3_TESTS=PASS",
-        "TEV_SCRIPT_V0_2_PYTHON_REGRESSION=PASS",
-        "TEV_SCRIPT_V1_PYTHON_CLOSURE=PASS_CANDIDATE",
+    require_witnesses(
+        "TEV_SCRIPT_V1_FRONTEND_CLOSURE_WITNESSES",
+        closure_stdout,
+        (
+            "TEV_SCRIPT_V1_PYTHON_COMPILE=PASS",
+            "TEV_SCRIPT_V1_TESTS=PASS",
+            "TEV_SCRIPT_IR_V3_TESTS=PASS",
+            "TEV_SCRIPT_V0_2_PYTHON_REGRESSION=PASS",
+            "TEV_SCRIPT_V1_PYTHON_CLOSURE=PASS_CANDIDATE",
+        ),
     )
-    for witness in required_closure:
-        if witness not in closure_stdout:
-            print("TEV_SCRIPT_V1_FRONTEND_CLOSURE_WITNESS=FAIL missing=" + witness)
-            return 1
     if "skipped=" in closure_stdout.lower():
         print("TEV_SCRIPT_V1_FRONTEND_CLOSURE_SKIPS=FAIL")
         return 1
-    print("TEV_SCRIPT_V1_FRONTEND_CLOSURE_WITNESSES=PASS")
+
+    csharp_surface = run(
+        [sys.executable, str(ROOT / "tools" / "validate_ir_v3_csharp_portable_surface.py")]
+    )
+    csharp_surface_stdout = require_success(
+        "TEV_SCRIPT_IR_V3_CSHARP_PORTABLE_SURFACE_GATE",
+        csharp_surface,
+    )
+    require_witnesses(
+        "TEV_SCRIPT_IR_V3_CSHARP_PORTABLE_SURFACE_WITNESSES",
+        csharp_surface_stdout,
+        (
+            "TEV_SCRIPT_IR_V3_CSHARP_CORE_TFM=NETSTANDARD2_1_PASS",
+            "TEV_SCRIPT_IR_V3_CSHARP_REFLECTION_FREE=PASS",
+            "TEV_SCRIPT_IR_V3_CSHARP_MODERN_API_GUARD=PASS",
+            "TEV_SCRIPT_IR_V3_CSHARP_CHECKPOINT_BOUNDARY=PASS",
+            "TEV_SCRIPT_IR_V3_CSHARP_PORTABLE_SURFACE=PASS",
+        ),
+    )
 
     cross = run([sys.executable, str(ROOT / "tools" / "validate_ir_v3_cross_runtime_parity.py")])
     cross_stdout = require_success("TEV_SCRIPT_IR_V3_CROSS_RUNTIME_GATE", cross)
-    required_cross = (
-        "TEV_SCRIPT_IR_V3_NODE_TESTS=PASS",
-        "TEV_SCRIPT_IR_V3_CSHARP_BUILD=PASS",
-        "TEV_SCRIPT_IR_V3_CSHARP_SELF_TEST=PASS",
-        "TEV_SCRIPT_IR_V3_PYTHON_JS_PARITY=PASS",
-        "TEV_SCRIPT_IR_V3_PYTHON_CSHARP_PARITY=PASS",
-        "TEV_SCRIPT_IR_V3_JS_CSHARP_PARITY=PASS",
-        "TEV_SCRIPT_IR_V3_CROSS_RUNTIME_CANONICAL_BYTES=PASS",
-        "TEV_SCRIPT_IR_V3_CROSS_RUNTIME_PARITY=PASS",
+    require_witnesses(
+        "TEV_SCRIPT_IR_V3_CROSS_RUNTIME_WITNESSES",
+        cross_stdout,
+        (
+            "TEV_SCRIPT_IR_V3_NODE_TESTS=PASS",
+            "TEV_SCRIPT_IR_V3_CSHARP_BUILD=PASS",
+            "TEV_SCRIPT_IR_V3_CSHARP_SELF_TEST=PASS",
+            "TEV_SCRIPT_IR_V3_PYTHON_JS_PARITY=PASS",
+            "TEV_SCRIPT_IR_V3_PYTHON_CSHARP_PARITY=PASS",
+            "TEV_SCRIPT_IR_V3_JS_CSHARP_PARITY=PASS",
+            "TEV_SCRIPT_IR_V3_CROSS_RUNTIME_CANONICAL_BYTES=PASS",
+            "TEV_SCRIPT_IR_V3_CROSS_RUNTIME_PARITY=PASS",
+        ),
     )
-    for witness in required_cross:
-        if witness not in cross_stdout:
-            print("TEV_SCRIPT_IR_V3_CROSS_RUNTIME_WITNESS=FAIL missing=" + witness)
-            return 1
-    if "SKIPPED_" in cross_stdout:
-        print("TEV_SCRIPT_IR_V3_CROSS_RUNTIME_SKIP=FAIL")
-        return 1
-    print("TEV_SCRIPT_IR_V3_CROSS_RUNTIME_WITNESSES=PASS")
+
+    checkpoint = run(
+        [sys.executable, str(ROOT / "tools" / "validate_ir_v3_checkpoint_cross_runtime.py")]
+    )
+    checkpoint_stdout = require_success(
+        "TEV_SCRIPT_IR_V3_CHECKPOINT_CROSS_RUNTIME_GATE",
+        checkpoint,
+    )
+    require_witnesses(
+        "TEV_SCRIPT_IR_V3_CHECKPOINT_CROSS_RUNTIME_WITNESSES",
+        checkpoint_stdout,
+        (
+            "TEV_SCRIPT_IR_V3_CHECKPOINT_PYTHON_CAPTURE=PASS",
+            "TEV_SCRIPT_IR_V3_CHECKPOINT_PYTHON_RESTORE=PASS",
+            "TEV_SCRIPT_IR_V3_CHECKPOINT_NODE_TEST=PASS",
+            "TEV_SCRIPT_IR_V3_CHECKPOINT_PYTHON_JS_PARITY=PASS",
+            "TEV_SCRIPT_IR_V3_CHECKPOINT_CSHARP_BUILD=PASS",
+            "TEV_SCRIPT_IR_V3_CHECKPOINT_CSHARP_SELF_TEST=PASS",
+            "TEV_SCRIPT_IR_V3_CHECKPOINT_PYTHON_CSHARP_PARITY=PASS",
+            "TEV_SCRIPT_IR_V3_CHECKPOINT_JS_CSHARP_PARITY=PASS",
+            "TEV_SCRIPT_IR_V3_CHECKPOINT_CANONICAL_BYTES=PASS",
+            "TEV_SCRIPT_IR_V3_CHECKPOINT_RESTART_CONTINUATION=PASS",
+            "TEV_SCRIPT_IR_V3_CHECKPOINT_CROSS_RUNTIME=PASS",
+        ),
+    )
 
     portable = run([sys.executable, str(ROOT / "RUN_PORTABLE_CONFORMANCE.py")])
     portable_stdout = require_success("TEV_SCRIPT_V0_2_PORTABLE_CONFORMANCE", portable)
@@ -138,18 +188,19 @@ def main() -> int:
     print("GIT_IDENTITY_STABLE_DURING_VALIDATION=PASS")
 
     evidence = {
-        "schema": "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V1",
+        "schema": "TEV_SCRIPT_V1_PRECERTIFY_RECEIPT_V2",
         "branch": branch,
         "commit": head,
         "tree": tree,
         "v0_2_oracle": V0_2_ORACLE,
         "tracked_index_manifest_sha256": tree_manifest_sha(),
         "v1_python_gate": "PASS",
+        "ir_v3_csharp_portable_surface": "PASS",
         "ir_v3_python_js_csharp_parity": "PASS",
+        "checkpoint_v2_cross_host": "PASS",
         "v0_2_portable_regression": "PASS",
         "browser_wasm_v3": "PENDING",
         "wasi_v3": "PENDING",
-        "checkpoint_v2_cross_host": "PENDING",
         "certify_full": False,
         "language_stable": False,
     }
