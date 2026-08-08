@@ -39,7 +39,7 @@ public sealed class TevScriptRuntimeCheckpointV2
 
     public static TevScriptRuntimeCheckpointV2 Capture(TevScriptRuntimeV3 runtime)
     {
-        ArgumentNullException.ThrowIfNull(runtime);
+        if (runtime is null) throw new ArgumentNullException(nameof(runtime));
         var ir = runtime.IrForCheckpoint;
         var entities = new List<EntityEntry>();
         foreach (var entityId in runtime.EntityIdsForCheckpoint)
@@ -73,7 +73,7 @@ public sealed class TevScriptRuntimeCheckpointV2
 
     public static TevScriptRuntimeCheckpointV2 Parse(string text)
     {
-        ArgumentNullException.ThrowIfNull(text);
+        if (text is null) throw new ArgumentNullException(nameof(text));
         var root = TevScriptStrictJsonV3.ParseElement(text);
         if (!string.Equals(TevScriptCanonicalV3.Json(root), text, StringComparison.Ordinal))
             throw new TevScriptV3Exception(
