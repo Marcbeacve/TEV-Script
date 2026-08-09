@@ -1,0 +1,12 @@
+* text=auto eol=lf
+
+# Binary artifacts must never be line-ending normalized.
+*.zip binary
+*.whl binary
+*.tgz binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary

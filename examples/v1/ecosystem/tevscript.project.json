@@ -1,0 +1,11 @@
+{
+  "schema": "TEV_SCRIPT_PROJECT_V1",
+  "language_version": "1.0.0",
+  "default_target": "auto",
+  "sources": [
+    "main.tevs",
+    "model.tevs",
+    "rules.tevs",
+    "storage.tevs"
+  ]
+}

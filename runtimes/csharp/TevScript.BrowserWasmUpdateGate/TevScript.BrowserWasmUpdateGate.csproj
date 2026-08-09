@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <WasmMainJSPath>main.mjs</WasmMainJSPath>
+    <OverrideHtmlAssetPlaceholders>false</OverrideHtmlAssetPlaceholders>
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TevScript.Core\TevScript.Core.csproj" />
+    <ProjectReference Include="..\TevScript.Update\TevScript.Update.csproj" />
+    <EmbeddedResource Include="$(TevGate6DFixtureDir)\*.json" Condition="'$(TevGate6DFixtureDir)' != ''">
+      <LogicalName>%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <Content Include="index.html" TargetPath="wwwroot/index.html" CopyToPublishDirectory="Always" />
+    <Content Include="main.mjs" TargetPath="wwwroot/main.mjs" CopyToPublishDirectory="Always" />
+  </ItemGroup>
+</Project>

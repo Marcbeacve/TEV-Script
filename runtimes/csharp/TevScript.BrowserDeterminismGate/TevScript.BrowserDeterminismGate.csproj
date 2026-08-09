@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <WasmMainJSPath>main.mjs</WasmMainJSPath>
+    <OverrideHtmlAssetPlaceholders>false</OverrideHtmlAssetPlaceholders>
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TevScript.Core\TevScript.Core.csproj" />
+    <ProjectReference Include="..\TevScript.Update\TevScript.Update.csproj" />
+    <Compile Include="..\TevScript.DeterminismGate.Shared\Gate7Shared.cs"
+             Link="Gate7Shared.cs" />
+
+    <EmbeddedResource Include="..\..\..\examples\Player.tevs.ir.json">
+      <LogicalName>Player.tevs.ir.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\..\conformance\distributed-lockstep.scenario.json">
+      <LogicalName>distributed-lockstep.scenario.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="$(Gate7FixtureDir)\package1.json">
+      <LogicalName>package1.json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="$(Gate7FixtureDir)\authority.json">
+      <LogicalName>authority.json</LogicalName>
+    </EmbeddedResource>
+
+    <Content Include="index.html"
+             TargetPath="wwwroot/index.html"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="Always" />
+    <Content Include="main.mjs"
+             TargetPath="wwwroot/main.mjs"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="Always" />
+  </ItemGroup>
+</Project>

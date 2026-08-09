@@ -1,0 +1,16 @@
+{
+  "name": "Marcbeacve.TevScript.Unity",
+  "rootNamespace": "Marcbeacve.TevScript.Unity",
+  "references": [
+    "Marcbeacve.TevScript.Core"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

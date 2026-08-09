@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev.dev/schemas/tev_script_capability_catalog_v1.schema.json",
+  "title": "TEV Script Capability Catalog V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "capabilities"],
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_CAPABILITY_CATALOG_V1"},
+    "capabilities": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/capability"}
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.:/-]*$"
+    },
+    "typeName": {
+      "enum": ["Bool", "Int", "Rat", "Text", "Vec2", "Vec3", "Unit"]
+    },
+    "valueTypeName": {
+      "enum": ["Bool", "Int", "Rat", "Text", "Vec2", "Vec3"]
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability_id", "parameters", "return_type", "kind"],
+      "properties": {
+        "capability_id": {"$ref": "#/$defs/stableId"},
+        "parameters": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"$ref": "#/$defs/valueTypeName"}
+        },
+        "return_type": {"$ref": "#/$defs/typeName"},
+        "kind": {"enum": ["observation", "effect"]}
+      }
+    }
+  }
+}

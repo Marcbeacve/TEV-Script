@@ -1,0 +1,130 @@
+{
+  "V1 script": {
+    "prefix": "tevs-script",
+    "body": [
+      "script ${1:Program} version \"1.0.0\";",
+      "",
+      "entity ${2:Entity} {",
+      "    on start {",
+      "        ${0:return;}",
+      "    }",
+      "}"
+    ],
+    "description": "TEV Script V1 root script"
+  },
+  "V1 module": {
+    "prefix": "tevs-module",
+    "body": [
+      "module ${1:domain.module} version \"1.0.0\";",
+      "",
+      "${0}"
+    ],
+    "description": "TEV Script V1 module"
+  },
+  "Entity": {
+    "prefix": "entity",
+    "body": [
+      "entity ${1:Name} {",
+      "    ${0}",
+      "}"
+    ],
+    "description": "Reactive entity"
+  },
+  "Behavior": {
+    "prefix": "behavior",
+    "body": [
+      "behavior ${1:Name} {",
+      "    ${0}",
+      "}"
+    ],
+    "description": "Compile-time behavior composition unit"
+  },
+  "Record": {
+    "prefix": "record",
+    "body": [
+      "record ${1:Name} {",
+      "    ${2:field}: ${3:Int};",
+      "    ${0}",
+      "}"
+    ],
+    "description": "Nominal immutable record type"
+  },
+  "Enum": {
+    "prefix": "enum",
+    "body": [
+      "enum ${1:Name} {",
+      "    ${2:First};",
+      "    ${3:Second};",
+      "    ${0}",
+      "}"
+    ],
+    "description": "Closed payload-free enum type"
+  },
+  "Pure function": {
+    "prefix": "fn",
+    "body": [
+      "fn ${1:name}(${2:value}: ${3:Int}) -> ${4:Int} = ${0:value};"
+    ],
+    "description": "Pure expression function"
+  },
+  "Capability observation": {
+    "prefix": "cap-observation",
+    "body": [
+      "capability ${1:domain.read}(${2}) -> ${3:Int} observation;"
+    ],
+    "description": "Typed observation capability"
+  },
+  "Capability effect": {
+    "prefix": "cap-effect",
+    "body": [
+      "capability ${1:domain.write}(${2:Int}) -> Unit effect;"
+    ],
+    "description": "Typed effect capability"
+  },
+  "Option match": {
+    "prefix": "match-option",
+    "body": [
+      "match ${1:value} {",
+      "    Some(${2:payload}) => {",
+      "        ${3}",
+      "    }",
+      "    None => {",
+      "        ${0}",
+      "    }",
+      "}"
+    ],
+    "description": "Exhaustive Option match"
+  },
+  "Result match": {
+    "prefix": "match-result",
+    "body": [
+      "match ${1:result} {",
+      "    Ok(${2:value}) => {",
+      "        ${3}",
+      "    }",
+      "    Err(${4:error}) => {",
+      "        ${0}",
+      "    }",
+      "}"
+    ],
+    "description": "Exhaustive Result match"
+  },
+  "Bounded for": {
+    "prefix": "for",
+    "body": [
+      "for ${1:i} in ${2:0} .. ${3:8} {",
+      "    ${0}",
+      "}"
+    ],
+    "description": "Statically bounded half-open integer loop"
+  },
+  "Event handler": {
+    "prefix": "on",
+    "body": [
+      "on ${1:event}(${2}) {",
+      "    ${0}",
+      "}"
+    ],
+    "description": "Entity/behavior event handler"
+  }
+}

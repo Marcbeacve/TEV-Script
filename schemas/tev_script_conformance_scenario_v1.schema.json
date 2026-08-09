@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev.dev/schemas/tev_script_conformance_scenario_v1.schema.json",
+  "title": "TEV Script Conformance Scenario V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "scenario_id",
+    "program",
+    "entity_id",
+    "capabilities",
+    "invocations"
+  ],
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_CONFORMANCE_SCENARIO_V1"},
+    "scenario_id": {"type": "string", "minLength": 1},
+    "program": {"type": "string", "minLength": 1},
+    "entity_id": {"$ref": "#/$defs/identifier"},
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/capabilityBinding"}
+    },
+    "invocations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": {"$ref": "#/$defs/invocation"}
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+    },
+    "typeName": {
+      "enum": ["Bool", "Int", "Rat", "Text", "Vec2", "Vec3", "Unit"]
+    },
+    "canonicalIntegerText": {
+      "type": "string",
+      "pattern": "^-?(0|[1-9][0-9]*)$",
+      "not": {"const": "-0"}
+    },
+    "intValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["$int"],
+      "properties": {"$int": {"$ref": "#/$defs/canonicalIntegerText"}}
+    },
+    "ratValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["$rat"],
+      "properties": {
+        "$rat": {
+          "type": "array",
+          "prefixItems": [
+            {"$ref": "#/$defs/canonicalIntegerText"},
+            {"type": "string", "pattern": "^[1-9][0-9]*$"}
+          ],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "encodedValue": {
+      "oneOf": [
+        {"type": "boolean"},
+        {"type": "string"},
+        {"type": "null"},
+        {"$ref": "#/$defs/intValue"},
+        {"$ref": "#/$defs/ratValue"},
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 3,
+          "items": {"$ref": "#/$defs/ratValue"}
+        }
+      ]
+    },
+    "capabilityBinding": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode"],
+          "properties": {"mode": {"const": "trace"}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "value_type", "value"],
+          "properties": {
+            "mode": {"const": "constant"},
+            "value_type": {"$ref": "#/$defs/typeName"},
+            "value": {"$ref": "#/$defs/encodedValue"}
+          }
+        }
+      ]
+    },
+    "typedArgument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "value"],
+      "properties": {
+        "type": {"$ref": "#/$defs/typeName"},
+        "value": {"$ref": "#/$defs/encodedValue"}
+      }
+    },
+    "invocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_id", "event_id", "arguments"],
+      "properties": {
+        "entity_id": {"$ref": "#/$defs/identifier"},
+        "event_id": {"$ref": "#/$defs/identifier"},
+        "arguments": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"$ref": "#/$defs/typedArgument"}
+        }
+      }
+    }
+  }
+}

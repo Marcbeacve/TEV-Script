@@ -1,0 +1,45 @@
+{
+  "schema": "TEV_SCRIPT_WASM_BATCH_6A_6C_EVIDENCE_V1",
+  "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+  "branch": "agent/tev-script-wasm-batch-6a-6c-v1",
+  "base_head": "966f87c43a5a2c9ba5336ae3a313515832dd8498",
+  "base_tree": "62e1d86838adc191963686acd0f15f62ca4af187",
+  "precommit_evidence_sha256": "08a8c949ffb4e8991030a5684dec0523d2691adc9b9fcc9d76e0642109bc09bf",
+  "gates": {
+    "6A": {
+      "status": "PASS_UNITY_WEB_REAL_BROWSER",
+      "authority": "LOOPBACK_HTTP_WITNESS"
+    },
+    "6B": {
+      "status": "PASS_PURE_CORE_BROWSER_WASM",
+      "aot": "PASS_REQUESTED_AND_BROWSER_EXECUTED"
+    },
+    "6C": {
+      "status": "PASS_PURE_CORE_WASI_WASMTIME",
+      "wasmtime": "47.0.3",
+      "run_contract": "NON_SINGLE_FILE",
+      "wasi_http": "ENABLED_FOR_LINKAGE_ONLY"
+    },
+    "6D": {
+      "status": "NOT_IN_SCOPE"
+    }
+  },
+  "core_change": {
+    "status": "2_PHYSICAL_1_LOGICAL",
+    "canonical_sha256_provider": "TEV_MANAGED_HOST_INDEPENDENT",
+    "cause": "System.PlatformNotSupportedException from SHA256.Create() on WASI"
+  },
+  "certification": {
+    "commit": "NOT_YET_CREATED",
+    "clean_tree_rerun": "REQUIRED",
+    "remote_push": false,
+    "pr_modified": false,
+    "merge": false
+  },
+  "boundaries": {
+    "gate6d_signed_wasm_update": "NOT_IN_SCOPE",
+    "stable_release": false,
+    "distributed_determinism": "NOT_IN_SCOPE",
+    "public_wan": "NOT_PROBED"
+  }
+}

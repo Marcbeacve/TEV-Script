@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tev-script-portable-reference"
+version = "0.2.0"
+description = "Portable TEV Script compiler and Python conformance runtime"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+tev-script = "tev_script.cli:main"
+tev-script-v1 = "tev_script.cli_v1:main"
+tev-script-v1-describe = "tev_script.describe_v1:main"
+tev-script-v1-ir = "tev_script.runtime_cli_v3:main"
+tev-script-v1-lsp = "tev_script.lsp_v1:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["tev_script*"]

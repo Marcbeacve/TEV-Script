@@ -1,0 +1,16 @@
+script EventChain version "0.2.0";
+
+entity Chain {
+    state value: Int = 0;
+
+    on start {
+        call motion.move2d(vec2(0, 0));
+        emit internal(7);
+    }
+
+    on internal(amount: Int) {
+        value = amount;
+        emit completed(value);
+        return;
+    }
+}

@@ -1,0 +1,75 @@
+{
+  "authority": {
+    "commit_created": false,
+    "merge": false,
+    "pr1_modified": false,
+    "release": false,
+    "remote_push": false,
+    "tag": false
+  },
+  "base": {
+    "branch": "agent/tev-script-portable-v0-2-bootstrap-v7",
+    "head": "10f5cce6eb96744c93f80c74cba8f86b390a370f"
+  },
+  "candidate_branch": "agent/tev-script-csharp-conformance-v1",
+  "date": "2026-08-06",
+  "environment": {
+    "architecture": "x64",
+    "conformance_target": "net8.0",
+    "core_target": "netstandard2.1",
+    "dotnet_runtime": "Microsoft.NETCore.App 10.0.10",
+    "dotnet_sdk": "10.0.302",
+    "os": "Windows",
+    "os_version": "10.0.26200",
+    "smoke_target": "net8.0",
+    "test_host_roll_forward": "Major"
+  },
+  "gates": {
+    "canonical_vectors": "12_PASS",
+    "conformance_scenarios": "4_PASS",
+    "csharp_build": "PASS",
+    "csharp_gate1_smoke": "PASS",
+    "csharp_python_javascript_byte_parity": "PASS",
+    "ir_negative_campaign": "PASS",
+    "missing_capability_fail_closed": "PASS",
+    "python_javascript_regression": "PASS",
+    "strict_json_boundary": "PASS",
+    "strict_utf8_boundary": "PASS"
+  },
+  "receipt_hash": "024497e5782e20993d2b519bebd7109f1f9337da2b7add3205df27eac2ac5655",
+  "scenarios": [
+    {
+      "program_hash": "f18d1b2428b96bf8c859463ab62a431c654933e65e23c3d8183335506d5adb5d",
+      "receipt_hash": "b275ccc6530ad84c0f96320ba1c8893b401638a926a99a78479d99fbd3c4aba5",
+      "scenario": "player.basic.v1"
+    },
+    {
+      "program_hash": "899c555b1825e340e53a53ad21aaf7e8fb7a4f7fe53e26f0a66b196515ed2393",
+      "receipt_hash": "70df629159b6088aa3807deea217d4cdb06f28a41042aac1f6ebff6332179500",
+      "scenario": "matrix.full.v1"
+    },
+    {
+      "program_hash": "f18d1b2428b96bf8c859463ab62a431c654933e65e23c3d8183335506d5adb5d",
+      "receipt_hash": "647d3211f7411b88c155d658ba4c9494482378cde75c9f427dc4e38475acd17c",
+      "scenario": "player.idle.v1"
+    },
+    {
+      "program_hash": "a362d9b7e2850c8327eb0f6a4cbebf949cb6edb82fb493f980a8c5c8c078aea5",
+      "receipt_hash": "5fcbd07512192ec298ff18bc313c71418e079e04d303aa3514a49ab91462371d",
+      "scenario": "event-chain.v1"
+    }
+  ],
+  "schema": "TEV_SCRIPT_CSHARP_CONFORMANCE_EVIDENCE_V1",
+  "schema_continuity": {
+    "blocking": false,
+    "observed_gate2_revalidation": "SKIPPED_DEPENDENCY_UNAVAILABLE",
+    "reason": "Gate C#-2 changed only C# runtime/test-host files. The three JSON schemas and authoritative conformance vectors are byte-identical to the V7 surface already validated with Draft 2020-12.",
+    "schema_sha256": {
+      "tev_script_conformance_receipt_v1.schema.json": "9d63ffb3284f909649d54769d033a6509c318b392fff2e97e21e907ba67598fb",
+      "tev_script_conformance_scenario_v1.schema.json": "33cc609a27e7657fecb5a25c2422d11417dd9ba4c178c9bbd58e6fa2046009bd",
+      "tev_script_program_ir_v2.schema.json": "b07d64de19000999c10baa648632d374890d96bac40bf385b6a173b5cacdeb08"
+    },
+    "v7_json_schema_validation": "PASS"
+  },
+  "status": "PASS_OBSERVED_LOCAL_UNCOMMITTED"
+}

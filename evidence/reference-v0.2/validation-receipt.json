@@ -1,0 +1,136 @@
+{
+  "authority": {
+    "merge": false,
+    "promotion": false,
+    "repository_write": false,
+    "stable_release": false
+  },
+  "compiler_hardening": {
+    "absolute_path_independent_output": "PASS",
+    "control_flow_local_escape": "REJECTED",
+    "parameter_state_shadowing": "REJECTED"
+  },
+  "contracts": {
+    "canonical_json_vectors": "PASS",
+    "closed_boundary_validation": "PASS",
+    "debug_hash_validation": "PASS",
+    "deterministic_utf8_lf_output": "PASS",
+    "json_schema_validation": "PASS",
+    "pre_execution_ir_validation": [
+      "Python",
+      "JavaScript",
+      "C#"
+    ],
+    "redirected_stdio_unicode_safe": "PASS",
+    "strict_json_input_boundary": "PASS",
+    "utf8_fixture_io_locale_independent": "PASS"
+  },
+  "cross_runtime": {
+    "csharp_python_javascript_byte_parity": "PASS_OBSERVED_WINDOWS_DOTNET10",
+    "python_javascript_byte_parity": "PASS",
+    "runtime_count": 3,
+    "scenario_count": 4,
+    "scenarios": [
+      {
+        "program_hash": "f18d1b2428b96bf8c859463ab62a431c654933e65e23c3d8183335506d5adb5d",
+        "receipt_hash": "b275ccc6530ad84c0f96320ba1c8893b401638a926a99a78479d99fbd3c4aba5",
+        "scenario": "player.basic.v1"
+      },
+      {
+        "program_hash": "899c555b1825e340e53a53ad21aaf7e8fb7a4f7fe53e26f0a66b196515ed2393",
+        "receipt_hash": "70df629159b6088aa3807deea217d4cdb06f28a41042aac1f6ebff6332179500",
+        "scenario": "matrix.full.v1"
+      },
+      {
+        "program_hash": "f18d1b2428b96bf8c859463ab62a431c654933e65e23c3d8183335506d5adb5d",
+        "receipt_hash": "647d3211f7411b88c155d658ba4c9494482378cde75c9f427dc4e38475acd17c",
+        "scenario": "player.idle.v1"
+      },
+      {
+        "program_hash": "a362d9b7e2850c8327eb0f6a4cbebf949cb6edb82fb493f980a8c5c8c078aea5",
+        "receipt_hash": "5fcbd07512192ec298ff18bc313c71418e079e04d303aa3514a49ab91462371d",
+        "scenario": "event-chain.v1"
+      }
+    ]
+  },
+  "csharp": {
+    "canonical_vectors": "12_PASS",
+    "compilation": "PASS_OBSERVED_WINDOWS_DOTNET_10_0_302",
+    "conformance_byte_parity": "PASS",
+    "conformance_scenarios": 4,
+    "evidence": "evidence/reference-v0.2/csharp-conformance-windows-dotnet10.json",
+    "gate1_smoke": "PASS",
+    "ir_negative_campaign": "PASS",
+    "missing_capability_fail_closed": "PASS",
+    "source_implemented": true,
+    "source_self_contained": true,
+    "static_boundary": "PASS",
+    "strict_json_boundary": "PASS",
+    "strict_utf8_boundary": "PASS",
+    "target_framework": "netstandard2.1"
+  },
+  "date": "2026-08-06",
+  "external_distribution_provenance": [
+    {
+      "bytes": 23179,
+      "filename": "tev-script-runtime-0.2.0.tgz",
+      "repository_commit_policy": "DO_NOT_COMMIT_IN_BOOTSTRAP_PR",
+      "sha256": "249ff962cffdfcef6a54b0a0f7c6579c4338fccb7a4da6116a354b426393559e"
+    },
+    {
+      "bytes": 29098,
+      "filename": "tev_script_portable_reference-0.2.0-py3-none-any.whl",
+      "repository_commit_policy": "DO_NOT_COMMIT_IN_BOOTSTRAP_PR",
+      "sha256": "7e3ba02f889f9d0dabbdfa4028360c7b1cf119a3f732870b58d9775d5f47230d"
+    }
+  ],
+  "ir_schema": "TEV_SCRIPT_PROGRAM_IR_V2",
+  "javascript": {
+    "es2022_runtime": "PASS",
+    "node_version_observed": "v22.16.0",
+    "packed_conformance_scenarios": 4,
+    "packed_tarball_tests": "PASS",
+    "unit_tests_passed": 21
+  },
+  "language_version": "0.2.0",
+  "python": {
+    "platform_newline_translation_simulated": "PASS",
+    "redirected_ascii_stdio_regression": "PASS",
+    "reference_runtime": "PASS",
+    "unit_tests_passed": 29,
+    "utf8_mode_disabled_regression": "PASS",
+    "version_observed": "3.13.5",
+    "wheel_isolated_conformance": "PASS",
+    "wheel_isolated_conformance_scenarios": 4
+  },
+  "receipt_hash": "51b065ab4530c16bbf7257b4e24db44675cc64f078296f11c0205dab32ca5ad3",
+  "repository_tree": {
+    "binary_distribution_artifacts_committed": false,
+    "generated_python_bytecode_committed": false,
+    "github_actions_present": false
+  },
+  "schema": "TEV_SCRIPT_PORTABLE_VALIDATION_RECEIPT_CSHARP_V1",
+  "status": "PASS_THREE_RUNTIME_CONFORMANCE_CSHARP_OBSERVED_WINDOWS",
+  "validation_logs": {
+    "redirected_stderr": {
+      "bytes": 3624,
+      "path": "evidence/reference-v0.2/validation-ascii-stdio.stderr.txt",
+      "sha256": "4cc35ecfd4a9835cccf0d20c691b417a493af68a9459bd8706f09c8eb6347ee2"
+    },
+    "redirected_stdout": {
+      "bytes": 10318,
+      "path": "evidence/reference-v0.2/validation-ascii-stdio.stdout.txt",
+      "sha256": "6451c993f7a637433876be3f2ad01de41b899707269177c4a8f75c3ba984666c"
+    },
+    "stderr": {
+      "bytes": 3624,
+      "path": "evidence/reference-v0.2/validation.stderr.txt",
+      "sha256": "56ad23a99f586c5e6ab1e612e4b2591fa04ce96aca0598232f46f9796101b5fb"
+    },
+    "stdout": {
+      "bytes": 10317,
+      "path": "evidence/reference-v0.2/validation.stdout.txt",
+      "sha256": "8e9165932f74e9924daf4442d0d95856a966a4386610f569a85d91a0571f6a26"
+    }
+  }
+}

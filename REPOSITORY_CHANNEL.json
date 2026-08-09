@@ -3,11 +3,28 @@
     "AGENTS.md",
     "CANONICAL_INDEX.json",
     "REPOSITORY_CHANNEL.json",
-    "LICENSE",
-    "README.md"
+    "DESIGN_DECISION.json",
+    "descriptor.json",
+    "docs/CANON.md",
+    "docs/STATUS.md",
+    "spec/**",
+    "schemas/**",
+    "conformance/**",
+    "docs/VALIDATION.md"
   ],
   "ignore": [
-    ".git/**"
+    ".git/**",
+    ".venv/**",
+    "**/__pycache__/**",
+    "node_modules/**",
+    "build/**",
+    "dist/**",
+    "artifacts/**",
+    "reports/**",
+    "receipts/**",
+    "state/**",
+    "**/bin/**",
+    "**/obj/**"
   ],
   "publication": {
     "branch_prefix": "agent/",
@@ -22,26 +39,87 @@
   "repository_kind": "multi_language_specification_and_runtimes",
   "schema": "lrcp.repository-manifest/v1",
   "source_roots": [
-    "."
+    "spec",
+    "schemas",
+    "catalogs",
+    "conformance",
+    "tev_script",
+    "javascript/src",
+    "runtimes/csharp",
+    "adapters",
+    "tests",
+    "examples"
   ],
   "validation": {
-    "full_after_changed_files": 1,
+    "full_after_changed_files": 64,
     "rules": [
       {
         "commands": [
           [
             "python",
             "-c",
-            "print('TEV_SCRIPT_BOOTSTRAP_VALIDATION=PASS')"
+            "from pathlib import Path; Path('README.md').read_text(encoding='utf-8')"
+          ]
+        ],
+        "exclude": [],
+        "horizon": "FAST_METADATA",
+        "include": [
+          "*.md",
+          "docs/**"
+        ],
+        "priority": 10,
+        "rule_id": "metadata"
+      },
+      {
+        "commands": [
+          [
+            "python",
+            "RUN_PORTABLE_CONFORMANCE.py"
+          ]
+        ],
+        "exclude": [],
+        "horizon": "CAUSAL_CONTENT",
+        "include": [
+          "tev_script/**",
+          "javascript/**",
+          "conformance/**",
+          "tests/**",
+          "examples/**",
+          "adapters/**"
+        ],
+        "priority": 20,
+        "rule_id": "portable-core"
+      },
+      {
+        "commands": [
+          [
+            "python",
+            "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py"
+          ],
+          [
+            "python",
+            "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py"
           ]
         ],
         "exclude": [],
         "horizon": "CERTIFY_FULL",
         "include": [
-          "**"
+          "REPOSITORY_CHANNEL.json",
+          "AGENTS.md",
+          "CANONICAL_INDEX.json",
+          "DESIGN_DECISION.json",
+          "descriptor.json",
+          "pyproject.toml",
+          "RUN_TEV_SCRIPT_V1_*.py",
+          "tools/**",
+          "spec/**",
+          "schemas/**",
+          "conformance/**",
+          "runtimes/csharp/**",
+          "docs/VALIDATION.md"
         ],
-        "priority": 100,
-        "rule_id": "bootstrap-full"
+        "priority": 30,
+        "rule_id": "v1-certify-full"
       }
     ]
   }

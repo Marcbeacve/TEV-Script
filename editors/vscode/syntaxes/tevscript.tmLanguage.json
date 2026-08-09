@@ -1,0 +1,177 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "TEV Script",
+  "scopeName": "source.tevscript",
+  "patterns": [
+    {"include": "#comments"},
+    {"include": "#strings"},
+    {"include": "#declarations"},
+    {"include": "#types"},
+    {"include": "#constructors"},
+    {"include": "#keywords"},
+    {"include": "#constants"},
+    {"include": "#numbers"},
+    {"include": "#operators"}
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.tevscript",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.tevscript",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.tevscript",
+              "match": "\\\\[nrt\"\\\\]"
+            },
+            {
+              "name": "invalid.illegal.escape.tevscript",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "match": "\\b(script)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {"name": "storage.type.tevscript"},
+            "2": {"name": "entity.name.type.script.tevscript"}
+          }
+        },
+        {
+          "match": "\\b(module)\\s+([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)",
+          "captures": {
+            "1": {"name": "storage.type.tevscript"},
+            "2": {"name": "entity.name.namespace.tevscript"}
+          }
+        },
+        {
+          "match": "\\b(entity|behavior|record|enum)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {"name": "storage.type.tevscript"},
+            "2": {"name": "entity.name.type.tevscript"}
+          }
+        },
+        {
+          "match": "\\b(fn)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {"name": "storage.type.function.tevscript"},
+            "2": {"name": "entity.name.function.tevscript"}
+          }
+        },
+        {
+          "match": "\\b(capability)\\s+([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)",
+          "captures": {
+            "1": {"name": "storage.type.tevscript"},
+            "2": {"name": "entity.name.function.tevscript"}
+          }
+        },
+        {
+          "match": "\\b(on)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {"name": "keyword.control.event.tevscript"},
+            "2": {"name": "entity.name.function.event.tevscript"}
+          }
+        },
+        {
+          "match": "\\b(state|let)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {"name": "storage.modifier.tevscript"},
+            "2": {"name": "variable.other.definition.tevscript"}
+          }
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "support.type.primitive.tevscript",
+          "match": "\\b(?:Bool|Int|Rat|Text|Vec2|Vec3|Unit)\\b"
+        }
+      ]
+    },
+    "constructors": {
+      "patterns": [
+        {
+          "name": "support.type.algebraic.tevscript",
+          "match": "\\b(?:Option|Result)\\b"
+        },
+        {
+          "name": "support.function.constructor.tevscript",
+          "match": "\\b(?:Some|None|Ok|Err)\\b"
+        },
+        {
+          "match": "\\b([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)::([A-Za-z_][A-Za-z0-9_]*)\\b",
+          "captures": {
+            "1": {"name": "entity.name.type.tevscript"},
+            "2": {"name": "constant.other.enum.tevscript"}
+          }
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.tevscript",
+          "match": "\\b(?:if|else|match|for|in|return|and|or|not)\\b"
+        },
+        {
+          "name": "keyword.declaration.tevscript",
+          "match": "\\b(?:script|module|version|import|export|capability|record|enum|fn|behavior|entity|use|state|on|let)\\b"
+        },
+        {
+          "name": "keyword.other.effect.tevscript",
+          "match": "\\b(?:observation|effect|call|emit|log|move|animate)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.tevscript",
+          "match": "\\b(?:true|false)\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.rational-source.tevscript",
+          "match": "(?<![A-Za-z0-9_])(?:0|[1-9][0-9]*)\\.[0-9]+(?!\\.)"
+        },
+        {
+          "name": "constant.numeric.integer.tevscript",
+          "match": "(?<![A-Za-z0-9_])(?:0|[1-9][0-9]*)(?![A-Za-z0-9_])"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.tevscript",
+          "match": "->|=>|::|\\.\\.|==|!=|<=|>=|[=+\\-*/<>]"
+        },
+        {
+          "name": "punctuation.separator.tevscript",
+          "match": "[,:;.]"
+        },
+        {
+          "name": "punctuation.section.tevscript",
+          "match": "[{}()]"
+        }
+      ]
+    }
+  }
+}

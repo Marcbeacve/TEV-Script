@@ -1,0 +1,89 @@
+script ConformanceMatrix version "0.2.0";
+
+entity Matrix {
+    state int_plus: Int = 0;
+    state int_minus: Int = 0;
+    state int_star: Int = 0;
+    state int_unary: Int = 0;
+
+    state rat_plus: Rat = 0;
+    state rat_minus: Rat = 0;
+    state rat_star: Rat = 0;
+    state rat_div: Rat = 0;
+    state rat_mixed: Rat = 0;
+    state rat_unary: Rat = 0;
+    state observed_delta: Rat = 0;
+    state max_rat: Rat = 0;
+    state min_int: Int = 0;
+
+    state bool_and: Bool = false;
+    state bool_or: Bool = false;
+    state bool_not: Bool = false;
+    state bool_eq: Bool = false;
+    state bool_ne: Bool = false;
+    state bool_lt: Bool = false;
+    state bool_le: Bool = false;
+    state bool_gt: Bool = false;
+    state bool_ge: Bool = false;
+
+    state text_value: Text = "";
+    state vec2_plus: Vec2 = vec2(0, 0);
+    state vec2_minus: Vec2 = vec2(0, 0);
+    state vec2_scaled_left: Vec2 = vec2(0, 0);
+    state vec2_scaled_right: Vec2 = vec2(0, 0);
+    state vec2_div: Vec2 = vec2(0, 0);
+    state vec3_value: Vec3 = vec3(0, 0, 0);
+
+    on exercise(
+        a: Int,
+        b: Int,
+        x: Rat,
+        y: Rat,
+        flag: Bool,
+        label: Text,
+        incoming2: Vec2,
+        incoming3: Vec3
+    ) {
+        int_plus = a + b;
+        int_minus = a - b;
+        int_star = a * b;
+        int_unary = -a;
+
+        rat_plus = x + y;
+        rat_minus = x - y;
+        rat_star = x * y;
+        rat_div = x / y;
+        rat_mixed = a + x;
+        rat_unary = -x;
+        observed_delta = time.delta();
+        max_rat = max(x, a);
+        min_int = min(a, b);
+
+        bool_and = flag and a < b;
+        bool_or = flag or a > b;
+        bool_not = not flag;
+        bool_eq = a == x;
+        bool_ne = label != "blocked";
+        bool_lt = x < y;
+        bool_le = x <= y;
+        bool_gt = x > y;
+        bool_ge = x >= y;
+
+        text_value = label;
+        vec2_plus = incoming2 + vec2(x, y);
+        vec2_minus = incoming2 - vec2(y, x);
+        vec2_scaled_left = a * incoming2;
+        vec2_scaled_right = incoming2 * y;
+        vec2_div = incoming2 / b;
+        vec3_value = incoming3 + vec3(x, y, a);
+
+        emit observed(
+            int_plus,
+            rat_div,
+            bool_and,
+            text_value,
+            vec2_plus,
+            vec3_value
+        );
+    }
+}

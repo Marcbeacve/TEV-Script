@@ -1,0 +1,12 @@
+{
+  "schema": "TEV_SCRIPT_CONFORMANCE_SCENARIO_V1",
+  "scenario_id": "event-chain.v1",
+  "program": "../examples/EventChain.tevs.ir.json",
+  "entity_id": "Chain",
+  "capabilities": {
+    "motion.move2d": {"mode": "trace"}
+  },
+  "invocations": [
+    {"entity_id": "Chain", "event_id": "start", "arguments": []}
+  ]
+}

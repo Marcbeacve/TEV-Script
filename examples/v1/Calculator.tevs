@@ -1,0 +1,47 @@
+script Calculator version "1.0.0";
+
+enum Operation {
+    Add;
+    Subtract;
+    Multiply;
+    Divide;
+    Clear;
+}
+
+enum CalcError {
+    DivisionByZero;
+}
+
+entity Calculator {
+    state accumulator: Rat = 0;
+    state last: Result<Rat, CalcError> = Ok(0);
+
+    on calculate(operation: Operation, value: Rat) {
+        match operation {
+            Operation::Add => {
+                accumulator = accumulator + value;
+                last = Ok(accumulator);
+            }
+            Operation::Subtract => {
+                accumulator = accumulator - value;
+                last = Ok(accumulator);
+            }
+            Operation::Multiply => {
+                accumulator = accumulator * value;
+                last = Ok(accumulator);
+            }
+            Operation::Divide => {
+                if value == 0 {
+                    last = Err(CalcError::DivisionByZero);
+                } else {
+                    accumulator = accumulator / value;
+                    last = Ok(accumulator);
+                }
+            }
+            Operation::Clear => {
+                accumulator = 0;
+                last = Ok(accumulator);
+            }
+        }
+    }
+}

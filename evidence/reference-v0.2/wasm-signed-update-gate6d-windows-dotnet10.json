@@ -1,0 +1,47 @@
+{
+  "schema": "TEV_SCRIPT_WASM_SIGNED_UPDATE_GATE6D_EVIDENCE_V1",
+  "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+  "branch": "agent/tev-script-wasm-signed-update-gate6d-v1",
+  "base_head": "3d0390d0071204410544a3989391283fd0b66bfa",
+  "base_tree": "719cf3cc5eb29b6d494f1338efbe9cfbf5efaf7d",
+  "precommit_evidence_sha256": "024fdd1125afc8ab4b6300e042a341415738650a9ce845868757ae32bb3d558e",
+  "gate6d": {
+    "browser": {
+      "status": "PASS_REAL_BROWSER_TWO_PHASE_LOCALSTORAGE",
+      "webcrypto_oracle": "PASS",
+      "restart_restore": "PASS",
+      "signature_negatives": "FAIL_CLOSED_PASS",
+      "store_failure_runtime_rollback": "PASS"
+    },
+    "wasi": {
+      "status": "PASS_WASMTIME_TWO_PROCESS_FILE_STORE",
+      "managed_es256": "PASS",
+      "durable_restore": "PASS",
+      "replay_after_restore": "FAIL_CLOSED_PASS",
+      "epoch_advance": "PASS",
+      "store_failure_runtime_rollback": "PASS"
+    },
+    "update_authority": "SAME_TEV_AUTHORITY_PASS",
+    "gate5c_5d_regression": "PASS",
+    "private_key_product": "ABSENT_PASS"
+  },
+  "product_changes": {
+    "core": 0,
+    "update": "2_PHYSICAL_1_LOGICAL",
+    "managed_verifier": "TEV_MANAGED_ES256_P256_SHA256_HOST_INDEPENDENT"
+  },
+  "certification": {
+    "commit": "NOT_YET_CREATED",
+    "clean_tree_rerun": "REQUIRED",
+    "remote_push": false,
+    "pr_modified": false,
+    "merge": false
+  },
+  "boundaries": {
+    "production_key_provisioning": "NOT_IN_SCOPE",
+    "hostile_rollback_resistant_store": "NOT_IN_SCOPE",
+    "public_wan": "NOT_PROBED",
+    "distributed_determinism": "NOT_IN_SCOPE",
+    "stable_release": false
+  }
+}

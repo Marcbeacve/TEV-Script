@@ -1,0 +1,6 @@
+module ecosystem.storage version "1.0.0";
+
+import ecosystem.model;
+
+export capability storage.deposit(ecosystem.model.Resource) -> Unit effect;
+export capability storage.remainingCapacity() -> Rat observation;

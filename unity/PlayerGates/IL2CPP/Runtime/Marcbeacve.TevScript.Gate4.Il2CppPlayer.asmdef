@@ -1,0 +1,17 @@
+{
+  "name": "Marcbeacve.TevScript.Gate4.Il2CppPlayer",
+  "rootNamespace": "Marcbeacve.TevScript.Gate4.Il2CppPlayer",
+  "references": [
+    "Marcbeacve.TevScript.Core",
+    "Marcbeacve.TevScript.Unity"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
