@@ -241,6 +241,9 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(prefix="tev_irv3_browser_") as temp_raw:
         temp = Path(temp_raw)
+        # Keep Mono AOT intermediates below MAX_PATH even when an isolated
+        # executor materializes the repository under a deeply nested root.
+        artifacts = temp / "artifacts"
         publish = temp / "publish"
         build = _run(
             [
@@ -252,6 +255,8 @@ def main() -> int:
                 "--nologo",
                 "--verbosity",
                 "minimal",
+                "--artifacts-path",
+                str(artifacts),
                 "-p:RunAOTCompilation=true",
                 f"-p:PublishDir={publish}",
             ]
