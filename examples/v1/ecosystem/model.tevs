@@ -1,0 +1,16 @@
+module ecosystem.model version "1.0.0";
+
+export enum ResourceKind {
+    Mineral;
+    Organic;
+}
+
+export record Resource {
+    amount: Rat;
+    kind: ResourceKind;
+}
+
+export record TransferReceipt {
+    accepted: Rat;
+    remaining: Rat;
+}

@@ -1,0 +1,185 @@
+from __future__ import annotations
+
+from contextlib import redirect_stderr, redirect_stdout
+from io import StringIO
+import json
+from pathlib import Path
+import tempfile
+import unittest
+
+from tev_script.cli_v1 import main
+
+ROOT = Path(__file__).resolve().parents[1]
+EXAMPLES = ROOT / "examples" / "v1"
+ECOSYSTEM_PROJECT = EXAMPLES / "ecosystem" / "tevscript.project.json"
+ARTIFACT_COMMIT = "EVIDENCE_SAFE_RECEIPT_LAST_V1"
+
+
+class V1CliTargetTests(unittest.TestCase):
+    def invoke(self, arguments: list[str]) -> tuple[int, str, str]:
+        stdout = StringIO()
+        stderr = StringIO()
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            code = main(arguments)
+        return code, stdout.getvalue(), stderr.getvalue()
+
+    def test_auto_selects_ir_v2_for_erasable_program(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "program.json"
+            code, stdout, stderr = self.invoke([
+                "compile", str(EXAMPLES / "ErasableToIrV2.tevs"),
+                "--target", "auto", "--output", str(output),
+            ])
+            self.assertEqual(code, 0, stderr)
+            result = json.loads(stdout)
+            self.assertEqual(result["schema"], "TEV_SCRIPT_V1_COMPILE_RESULT_V3")
+            self.assertEqual(result["target_ir_schema"], "TEV_SCRIPT_PROGRAM_IR_V2")
+            self.assertEqual(result["artifact_commit"], ARTIFACT_COMMIT)
+            self.assertIsNone(result["lowering_receipt"])
+            self.assertEqual(json.loads(output.read_text())["schema"], "TEV_SCRIPT_PROGRAM_IR_V2")
+
+    def test_auto_selects_ir_v3_for_algebraic_program(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "program.json"
+            code, stdout, stderr = self.invoke([
+                "compile", str(EXAMPLES / "AlgebraicCapability.tevs"),
+                "--target", "auto", "--output", str(output),
+            ])
+            self.assertEqual(code, 0, stderr)
+            result = json.loads(stdout)
+            self.assertEqual(result["schema"], "TEV_SCRIPT_V1_COMPILE_RESULT_V3")
+            self.assertEqual(result["target_ir_schema"], "TEV_SCRIPT_PROGRAM_IR_V3")
+            self.assertEqual(result["artifact_commit"], ARTIFACT_COMMIT)
+            self.assertEqual(json.loads(output.read_text())["schema"], "TEV_SCRIPT_PROGRAM_IR_V3")
+
+    def test_auto_ir_v2_can_emit_canonical_lowering_receipt_v1(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "program.json"
+            receipt = Path(directory) / "receipt.json"
+            code, stdout, stderr = self.invoke([
+                "compile", str(EXAMPLES / "ErasableToIrV2.tevs"),
+                "--target", "auto", "--output", str(output),
+                "--receipt", str(receipt),
+            ])
+            self.assertEqual(code, 0, stderr)
+            result = json.loads(stdout)
+            self.assertEqual(result["artifact_commit"], ARTIFACT_COMMIT)
+            summary = result["lowering_receipt"]
+            self.assertEqual(summary["schema"], "TEV_SCRIPT_LOWERING_RECEIPT_V1")
+            self.assertEqual(summary["profile"], "TEV_SCRIPT_V1_TO_IR_V2_ERASABLE_PROFILE_V1")
+            self.assertRegex(summary["receipt_hash"], r"^[0-9a-f]{64}$")
+            receipt_value = json.loads(receipt.read_text())
+            self.assertEqual(receipt_value["receipt_hash"], summary["receipt_hash"])
+            self.assertEqual(receipt_value["target"]["schema"], "TEV_SCRIPT_PROGRAM_IR_V2")
+
+    def test_auto_ir_v3_can_emit_canonical_lowering_receipt_v2(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "program.json"
+            receipt = Path(directory) / "receipt.json"
+            code, stdout, stderr = self.invoke([
+                "compile", str(EXAMPLES / "AlgebraicCapability.tevs"),
+                "--target", "auto", "--output", str(output),
+                "--receipt", str(receipt),
+            ])
+            self.assertEqual(code, 0, stderr)
+            result = json.loads(stdout)
+            self.assertEqual(result["artifact_commit"], ARTIFACT_COMMIT)
+            summary = result["lowering_receipt"]
+            self.assertEqual(summary["schema"], "TEV_SCRIPT_LOWERING_RECEIPT_V2")
+            self.assertEqual(summary["profile"], "TEV_SCRIPT_V1_TO_IR_V3_FULL_PROFILE_V1")
+            self.assertRegex(summary["receipt_hash"], r"^[0-9a-f]{64}$")
+            receipt_value = json.loads(receipt.read_text())
+            self.assertEqual(receipt_value["receipt_hash"], summary["receipt_hash"])
+            self.assertEqual(receipt_value["target"]["schema"], "TEV_SCRIPT_PROGRAM_IR_V3")
+            self.assertEqual(receipt_value["target"]["source_semantic_hash"], result["linked_semantic_hash"])
+
+    def test_explicit_ir_v3_compiles_erasable_program(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "program.json"
+            code, stdout, stderr = self.invoke([
+                "compile", str(EXAMPLES / "ErasableToIrV2.tevs"),
+                "--target", "irv3", "--output", str(output),
+            ])
+            self.assertEqual(code, 0, stderr)
+            result = json.loads(stdout)
+            self.assertEqual(result["target_ir_schema"], "TEV_SCRIPT_PROGRAM_IR_V3")
+            self.assertEqual(result["artifact_commit"], ARTIFACT_COMMIT)
+            self.assertRegex(result["linked_semantic_hash"], r"^[0-9a-f]{64}$")
+            self.assertRegex(result["target_ir_semantic_hash"], r"^[0-9a-f]{64}$")
+
+    def test_forcing_ir_v2_on_algebraic_program_fails_closed_and_writes_nothing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "program.json"
+            receipt = Path(directory) / "receipt.json"
+            code, stdout, stderr = self.invoke([
+                "compile", str(EXAMPLES / "AlgebraicCapability.tevs"),
+                "--target", "irv2", "--output", str(output),
+                "--receipt", str(receipt),
+            ])
+            self.assertEqual(code, 2)
+            self.assertEqual(stdout, "")
+            self.assertEqual(json.loads(stderr)["status"], "FAIL")
+            self.assertFalse(output.exists())
+            self.assertFalse(receipt.exists())
+
+    def test_multifile_check_accepts_explicit_finite_source_set(self) -> None:
+        sources = [
+            str(EXAMPLES / "ecosystem" / "main.tevs"),
+            str(EXAMPLES / "ecosystem" / "model.tevs"),
+            str(EXAMPLES / "ecosystem" / "rules.tevs"),
+            str(EXAMPLES / "ecosystem" / "storage.tevs"),
+        ]
+        code, stdout, stderr = self.invoke(["check", *sources])
+        self.assertEqual(code, 0, stderr)
+        result = json.loads(stdout)
+        self.assertEqual(result["program_id"], "Ecosystem")
+        self.assertEqual(result["default_target_ir"], "TEV_SCRIPT_PROGRAM_IR_V3")
+        self.assertFalse(result["ir_v2_lowerable"])
+
+    def test_project_check_uses_manifest_source_set(self) -> None:
+        code, stdout, stderr = self.invoke(["project-check", str(ECOSYSTEM_PROJECT)])
+        self.assertEqual(code, 0, stderr)
+        result = json.loads(stdout)
+        self.assertEqual(result["schema"], "TEV_SCRIPT_V1_PROJECT_CHECK_RESULT_V1")
+        self.assertEqual(result["program_id"], "Ecosystem")
+        self.assertEqual(result["source_count"], 4)
+        self.assertEqual(result["manifest_default_target"], "auto")
+        self.assertEqual(result["default_target_ir"], "TEV_SCRIPT_PROGRAM_IR_V3")
+        self.assertRegex(result["project_manifest_hash"], r"^[0-9a-f]{64}$")
+        self.assertRegex(result["project_input_hash"], r"^[0-9a-f]{64}$")
+
+    def test_project_build_auto_emits_ir_v3_and_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "ecosystem.ir.json"
+            receipt = Path(directory) / "ecosystem.receipt.json"
+            code, stdout, stderr = self.invoke([
+                "build", str(ECOSYSTEM_PROJECT),
+                "--output", str(output), "--receipt", str(receipt),
+            ])
+            self.assertEqual(code, 0, stderr)
+            result = json.loads(stdout)
+            self.assertEqual(result["schema"], "TEV_SCRIPT_V1_PROJECT_BUILD_RESULT_V2")
+            self.assertEqual(result["effective_target"], "auto")
+            self.assertEqual(result["target_ir_schema"], "TEV_SCRIPT_PROGRAM_IR_V3")
+            self.assertEqual(result["artifact_commit"], ARTIFACT_COMMIT)
+            self.assertEqual(result["lowering_receipt"]["schema"], "TEV_SCRIPT_LOWERING_RECEIPT_V2")
+            self.assertEqual(json.loads(output.read_text())["schema"], "TEV_SCRIPT_PROGRAM_IR_V3")
+            self.assertEqual(json.loads(receipt.read_text())["receipt_hash"], result["lowering_receipt"]["receipt_hash"])
+
+    def test_project_build_forced_ir_v2_fails_without_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "ecosystem.ir.json"
+            receipt = Path(directory) / "ecosystem.receipt.json"
+            code, stdout, stderr = self.invoke([
+                "build", str(ECOSYSTEM_PROJECT), "--target", "irv2",
+                "--output", str(output), "--receipt", str(receipt),
+            ])
+            self.assertEqual(code, 2)
+            self.assertEqual(stdout, "")
+            self.assertEqual(json.loads(stderr)["status"], "FAIL")
+            self.assertFalse(output.exists())
+            self.assertFalse(receipt.exists())
+
+
+if __name__ == "__main__":
+    unittest.main()

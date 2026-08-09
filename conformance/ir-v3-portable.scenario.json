@@ -1,0 +1,54 @@
+{
+  "schema": "TEV_SCRIPT_IR_V3_SCENARIO_V1",
+  "scenario_id": "algebraic_roundtrip",
+  "program_semantic_hash": "c119a700ccaca88e929812c854c250aa15d78f4bd1fe0d7841deb599161d45da",
+  "source_semantic_hash": "1111111111111111111111111111111111111111111111111111111111111111",
+  "capabilities": [
+    {
+      "capability_id": "sink.write",
+      "calls": [
+        {
+          "arguments": [
+            {
+              "type": "Root.Pair",
+              "value": {
+                "$record": {
+                  "type": "Root.Pair",
+                  "fields": [
+                    {"name": "a", "value": {"$int": "10"}},
+                    {"name": "b", "value": {"$rat": ["1", "2"]}}
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "capability_id": "world.read",
+      "calls": [
+        {
+          "arguments": [],
+          "return": {
+            "type": "Root.Pair",
+            "value": {
+              "$record": {
+                "type": "Root.Pair",
+                "fields": [
+                  {"name": "a", "value": {"$int": "10"}},
+                  {"name": "b", "value": {"$rat": ["1", "2"]}}
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "steps": [
+    {"entity_id": "E", "event_id": "start", "arguments": []},
+    {"entity_id": "E", "event_id": "update", "arguments": []},
+    {"entity_id": "E", "event_id": "pulse", "arguments": []}
+  ]
+}

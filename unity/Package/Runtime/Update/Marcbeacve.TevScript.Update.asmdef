@@ -1,0 +1,16 @@
+{
+  "name": "Marcbeacve.TevScript.Update",
+  "rootNamespace": "Marcbeacve.TevScript.Update",
+  "references": [
+    "Marcbeacve.TevScript.Core"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}

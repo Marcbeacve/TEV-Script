@@ -1,0 +1,156 @@
+{
+  "schema": "TEV_SCRIPT_V1_SOURCE_SYNTAX_CASES_V1",
+  "language_version": "1.0.0",
+  "positive": [
+    {
+      "id": "minimal-script",
+      "source": "script Minimal version \"1.0.0\"; entity E { on start { return; } }"
+    },
+    {
+      "id": "module-exports",
+      "source": "module game.math version \"1.0.0\"; import base.types; export record Point { x: Rat; y: Rat; } export fn twice(x: Int) -> Int = x * 2;"
+    },
+    {
+      "id": "custom-capabilities",
+      "source": "module world.api version \"1.0.0\"; export capability world.temperature(Vec2) -> Rat observation; export capability audio.play(Text) -> Unit effect;"
+    },
+    {
+      "id": "record-constructor",
+      "source": "script Records version \"1.0.0\"; record Damage { amount: Int; critical: Bool; } entity E { state d: Damage = Damage(amount = 12, critical = false); on start { let x = Damage(amount = 1, critical = true); return; } }"
+    },
+    {
+      "id": "enum-values-and-match",
+      "source": "script Enums version \"1.0.0\"; enum Kind { A; B; C; } entity E { state k: Kind = Kind::A; on start { match k { Kind::A => { log \"a\"; } Kind::B => { log \"b\"; } Kind::C => { log \"c\"; } } } }"
+    },
+    {
+      "id": "option-result",
+      "source": "script Sums version \"1.0.0\"; entity E { state x: Option<Int> = Some(1); state y: Result<Int, Text> = Ok(2); on start { match x { Some(v) => { log \"some\"; } None => { log \"none\"; } } match y { Ok(v) => { log \"ok\"; } Err(e) => { log e; } } } }"
+    },
+    {
+      "id": "static-for-negative-lower",
+      "source": "script Loop version \"1.0.0\"; entity E { on start { for i in -2 .. 3 { log \"tick\"; } } }"
+    },
+    {
+      "id": "behavior-composition",
+      "source": "script Beh version \"1.0.0\"; behavior Base { state alive: Bool = true; on start { log \"base\"; } } behavior Move { use Base; state speed: Rat = 1.0; on update { move vec2(speed, 0); } } entity E { use Move; on update { animate \"Walk\"; } }"
+    },
+    {
+      "id": "nested-types",
+      "source": "script Types version \"1.0.0\"; record Box { value: Result<Option<Int>, Text>; } entity E { state box: Box = Box(value = Ok(Some(1))); on start { return; } }"
+    },
+    {
+      "id": "nested-let-if",
+      "source": "script Scope version \"1.0.0\"; entity E { state x: Int = 0; on update { if true { let y: Int = 1; x = y; } else { let z = 2; x = z; } } }"
+    },
+    {
+      "id": "record-followed-by-field",
+      "source": "script Field version \"1.0.0\"; record Pair { x: Int; y: Int; } entity E { state x: Int = 0; on start { let v = (Pair(x = 1, y = 2)).x; return; } }"
+    },
+    {
+      "id": "complex-precedence",
+      "source": "script Expr version \"1.0.0\"; entity E { state out: Bool = false; on update { out = 1 + 2 * 3 < 8 and not false or true; } }"
+    }
+  ],
+  "negative": [
+    {
+      "id": "unsupported-version",
+      "code": "TEVS_V1_VERSION_UNSUPPORTED",
+      "source": "script Bad version \"1.1.0\"; entity E { on start { return; } }"
+    },
+    {
+      "id": "missing-entity",
+      "code": "TEVS_V1_PARSE_ENTITY_MISSING",
+      "source": "script Bad version \"1.0.0\"; record R { x: Int; }"
+    },
+    {
+      "id": "empty-record-decl",
+      "code": "TEVS_V1_PARSE_RECORD_FIELD_MISSING",
+      "source": "script Bad version \"1.0.0\"; record Empty { } entity E { on start { return; } }"
+    },
+    {
+      "id": "empty-enum-decl",
+      "code": "TEVS_V1_PARSE_ENUM_VARIANT_MISSING",
+      "source": "script Bad version \"1.0.0\"; enum Empty { } entity E { on start { return; } }"
+    },
+    {
+      "id": "module-entity-forbidden",
+      "code": "TEVS_V1_PARSE_EXPECTED_TOKEN",
+      "source": "module bad.mod version \"1.0.0\"; entity E { on start { return; } }"
+    },
+    {
+      "id": "script-export-forbidden",
+      "code": "TEVS_V1_PARSE_ENTITY_MISSING",
+      "source": "script Bad version \"1.0.0\"; export fn f(x: Int) -> Int = x; entity E { on start { return; } }"
+    },
+    {
+      "id": "capability-missing-arrow",
+      "code": "TEVS_V1_PARSE_EXPECTED_TOKEN",
+      "source": "module bad.api version \"1.0.0\"; capability x(Int) Rat effect;"
+    },
+    {
+      "id": "capability-missing-kind",
+      "code": "TEVS_V1_PARSE_CAPABILITY_KIND",
+      "source": "module bad.api version \"1.0.0\"; capability x(Int) -> Rat;"
+    },
+    {
+      "id": "result-missing-comma",
+      "code": "TEVS_V1_PARSE_EXPECTED_TOKEN",
+      "source": "script Bad version \"1.0.0\"; entity E { state x: Result<Int Text> = Ok(1); on start { return; } }"
+    },
+    {
+      "id": "record-old-brace-constructor-rejected",
+      "code": "TEVS_V1_PARSE_EXPECTED_TOKEN",
+      "source": "script Bad version \"1.0.0\"; record R { x: Int; } entity E { state r: R = R { x = 1 }; on start { return; } }"
+    },
+    {
+      "id": "record-colon-named-arg-rejected",
+      "code": "TEVS_V1_PARSE_EXPECTED_TOKEN",
+      "source": "script Bad version \"1.0.0\"; record R { x: Int; } entity E { state r: R = R(x: 1); on start { return; } }"
+    },
+    {
+      "id": "for-nonliteral-lower",
+      "code": "TEVS_V1_PARSE_EXPECTED_TOKEN",
+      "source": "script Bad version \"1.0.0\"; entity E { on start { let a = 0; for i in a .. 4 { return; } } }"
+    },
+    {
+      "id": "for-malformed-range",
+      "code": "TEVS_V1_PARSE_EXPECTED_TOKEN",
+      "source": "script Bad version \"1.0.0\"; entity E { on start { for i in 0 ... 4 { return; } } }"
+    },
+    {
+      "id": "empty-match",
+      "code": "TEVS_V1_PARSE_MATCH_ARM_MISSING",
+      "source": "script Bad version \"1.0.0\"; entity E { state x: Int = 0; on start { match x { } } }"
+    },
+    {
+      "id": "match-missing-fat-arrow",
+      "code": "TEVS_V1_PARSE_EXPECTED_TOKEN",
+      "source": "script Bad version \"1.0.0\"; enum K { A; } entity E { state k: K = K::A; on start { match k { K::A { return; } } } }"
+    },
+    {
+      "id": "non-ascii-identifier",
+      "code": "TEVS_V1_LEX_IDENTIFIER_NON_ASCII",
+      "source": "script Café version \"1.0.0\"; entity E { on start { return; } }"
+    },
+    {
+      "id": "invalid-string-escape",
+      "code": "TEVS_V1_LEX_STRING_ESCAPE",
+      "source": "script Bad version \"1.0.0\"; entity E { on start { log \"\\q\"; } }"
+    },
+    {
+      "id": "unterminated-block",
+      "code": "TEVS_V1_PARSE_BLOCK_UNTERMINATED",
+      "source": "script Bad version \"1.0.0\"; entity E { on start { return;"
+    },
+    {
+      "id": "top-decl-after-entity",
+      "code": "TEVS_V1_PARSE_EXPECTED_TOKEN",
+      "source": "script Bad version \"1.0.0\"; entity E { on start { return; } } record R { x: Int; }"
+    },
+    {
+      "id": "bad-option-arity",
+      "code": "TEVS_V1_PARSE_EXPECTED_TOKEN",
+      "source": "script Bad version \"1.0.0\"; entity E { state x: Option<Int, Text> = None; on start { return; } }"
+    }
+  ]
+}

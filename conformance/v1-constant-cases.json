@@ -1,0 +1,43 @@
+{
+  "schema": "TEV_SCRIPT_V1_CONSTANT_CASES_V1",
+  "language_version": "1.0.0",
+  "positive": [
+    {
+      "id": "exact-rational-arithmetic",
+      "source": "script C version \"1.0.0\"; entity E { state x: Rat = 0.1 + 0.2; state y: Rat = 1 / 3; on start { return; } }"
+    },
+    {
+      "id": "pure-function-constant-chain",
+      "source": "script C version \"1.0.0\"; fn add1(x: Int) -> Int = x + 1; fn twice(x: Int) -> Int = x * 2; fn calc(x: Int) -> Int = twice(add1(x)); entity E { state x: Int = calc(3); on start { return; } }"
+    },
+    {
+      "id": "records-enums-and-sums",
+      "source": "script C version \"1.0.0\"; record R { x: Rat; ok: Bool; } enum K { A; B; } entity E { state r: R = R(ok = true, x = 1); state k: K = K::B; state o: Option<Rat> = Some(2); state n: Option<Int> = None; state a: Result<Int, Text> = Ok(4); state b: Result<Int, Text> = Err(\"bad\"); on start { return; } }"
+    },
+    {
+      "id": "constant-record-field-through-function",
+      "source": "script C version \"1.0.0\"; record R { x: Int; } fn get(r: R) -> Int = r.x; entity E { state x: Int = get(R(x = 7)); on start { return; } }"
+    },
+    {
+      "id": "vectors-and-short-circuit",
+      "source": "script C version \"1.0.0\"; entity E { state v: Vec2 = vec2(1, 2) * 3; state safe: Bool = false and (1 / 0 > 0); on start { return; } }"
+    }
+  ],
+  "negative": [
+    {
+      "id": "observation-not-constant",
+      "code": "TEVS_V1_CONSTANT_CAPABILITY",
+      "source": "script Bad version \"1.0.0\"; entity E { state dt: Rat = time.delta(); on start { return; } }"
+    },
+    {
+      "id": "observation-hidden-by-short-circuit-still-not-constant",
+      "code": "TEVS_V1_CONSTANT_CAPABILITY",
+      "source": "script Bad version \"1.0.0\"; entity E { state safe: Bool = false and (time.delta() > 0); on start { return; } }"
+    },
+    {
+      "id": "constant-division-zero",
+      "code": "TEVS_V1_CONSTANT_DIV_ZERO",
+      "source": "script Bad version \"1.0.0\"; entity E { state x: Rat = 1 / 0; on start { return; } }"
+    }
+  ]
+}

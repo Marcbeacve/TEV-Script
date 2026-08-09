@@ -1,0 +1,60 @@
+{
+  "aot": {
+    "backend": "IL2CPP",
+    "gameassembly": "PASS",
+    "gameassembly_sha256": "4c12a147cbb8a9c0955369a0cbe657a35ca6721e7a28d9c5af6ab5630ac7dc92",
+    "global_metadata": "PASS",
+    "global_metadata_sha256": "c275fb10db88810f7fcc0eb2f96fce2ed6d0f8a260a0f4747944845170277266",
+    "mono_runtime": "ABSENT_PASS",
+    "player_exe_sha256": "c05ef2b9ae780cac8fc66d81eef3179cb52b49694235b5ba38c863b26b22f180"
+  },
+  "base_head": "50e920e4562358c28cb13ca7970599a15aa39408",
+  "base_tree": "1271106bab88e93f63bc0b3dc31f41853c2749f7",
+  "boundaries": {
+    "anti_replay": "NOT_IN_SCOPE",
+    "network": "NOT_IN_SCOPE",
+    "signature_authority": "NOT_IN_SCOPE",
+    "stable_release": false,
+    "wasm": "NOT_IN_SCOPE"
+  },
+  "branch": "agent/tev-script-unity-il2cpp-transactional-swap-v1",
+  "certification": {
+    "clean_tree_rerun": "REQUIRED",
+    "commit": "NOT_YET_CREATED",
+    "merge": false,
+    "pr_modified": false,
+    "remote_push": false
+  },
+  "gate": "5B",
+  "lower_regressions": {
+    "gate4_il2cpp_player": "PASS",
+    "gate5a_transactional_swap": "PASS"
+  },
+  "precommit_evidence": {
+    "build_sha256": "e0711c90633579e175f6caa3d3c15d9780c13295cbc3d8a690d6df6c38f519c9",
+    "player_sha256": "6a0fb8a91f201296d085b97798135f12efb3082feb9d412e040df1398b25069c"
+  },
+  "product_changes": {
+    "core": 0,
+    "gate5a_implementation": "UNCHANGED"
+  },
+  "schema": "TEV_SCRIPT_UNITY_IL2CPP_TRANSACTIONAL_SWAP_GATE5B_EVIDENCE_V1",
+  "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+  "transactional_claims": {
+    "additive_state_initialization": "PASS",
+    "atomic_reference_swap": "PASS",
+    "capability_ceiling": "EXPLICIT_PASS",
+    "dynamic_code": "ABSENT_PASS",
+    "existing_state_migration": "EXACT_EXISTING_TYPES_PASS",
+    "old_behavior": "PASS",
+    "plan_reuse": "FAIL_CLOSED_PASS",
+    "prepare_non_authoritative": "PASS",
+    "program_id_continuity": "FAIL_CLOSED_PASS",
+    "rollback_behavior_restored": "PASS",
+    "rollback_exact_previous_runtime": "PASS",
+    "stale_plan": "FAIL_CLOSED_PASS",
+    "state_removal": "FAIL_CLOSED_PASS",
+    "updated_behavior_active": "PASS"
+  },
+  "unity_editor_version": "6000.3.10f1"
+}

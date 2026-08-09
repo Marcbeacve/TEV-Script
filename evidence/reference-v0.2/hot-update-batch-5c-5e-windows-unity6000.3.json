@@ -1,0 +1,53 @@
+{
+  "base_head": "8a560f349a8ca7ad7f893e16648c140d771020cb",
+  "base_tree": "bd85ff82195597f62d3df38b970983465bd9a339",
+  "boundaries": {
+    "stable_release": false,
+    "wasm": "NOT_IN_SCOPE"
+  },
+  "branch": "agent/tev-script-hot-update-batch-v1",
+  "certification": {
+    "clean_tree_rerun": "REQUIRED",
+    "commit": "NOT_YET_CREATED",
+    "merge": false,
+    "pr_modified": false,
+    "remote_push": false
+  },
+  "gates": {
+    "5C": {
+      "algorithm": "ES256_P256_SHA256",
+      "algorithm_substitution": "FAIL_CLOSED_PASS",
+      "canonical_package": "PASS",
+      "production_key_provisioning": "NOT_IN_SCOPE",
+      "signature_format": "IEEE_P1363_FIXED_64",
+      "status": "PASS",
+      "tamper": "FAIL_CLOSED_PASS",
+      "test_private_key_runtime": "ABSENT_PASS",
+      "wrong_key": "FAIL_CLOSED_PASS"
+    },
+    "5D": {
+      "durable_state": "PASS",
+      "epoch_rollback": "FAIL_CLOSED_PASS",
+      "hostile_store_rollback": "NOT_IN_SCOPE",
+      "replay_after_restart": "FAIL_CLOSED_PASS",
+      "restart_restore": "PASS",
+      "stale_plan": "FAIL_CLOSED_PASS",
+      "status": "PASS_WITH_DURABLE_STATE_BOUNDARY"
+    },
+    "5E": {
+      "aot": "PASS",
+      "backend": "IL2CPP",
+      "http_error": "FAIL_CLOSED_PASS",
+      "network_bytes": "UNTRUSTED_UNTIL_VERIFIED_PASS",
+      "public_wan": "NOT_PROBED",
+      "replay_after_restart": "FAIL_CLOSED_PASS",
+      "signature_provider": "WINDOWS_CNG_PASS",
+      "status": "PASS_LOOPBACK_HTTP_IL2CPP",
+      "tamper": "FAIL_CLOSED_PASS",
+      "truncation": "FAIL_CLOSED_PASS"
+    }
+  },
+  "precommit_evidence_sha256": "3c1f52e56c52117bcfb4ffd548afeb564e9dec16a68552a7ad73b6e2b6308f38",
+  "schema": "TEV_SCRIPT_HOT_UPDATE_BATCH_5C_5E_EVIDENCE_V1",
+  "status": "PASS_OBSERVED_LOCAL_PRECOMMIT"
+}

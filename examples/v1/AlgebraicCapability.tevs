@@ -1,0 +1,40 @@
+script AlgebraicCapability version "1.0.0";
+
+record Sample {
+    value: Rat;
+    confidence: Rat;
+}
+
+enum SensorError {
+    Offline;
+    OutOfRange;
+}
+
+capability sensor.read() -> Result<Sample, SensorError> observation;
+capability storage.accept(Sample) -> Unit effect;
+
+entity Monitor {
+    state last: Result<Sample, SensorError> = Err(SensorError::Offline);
+    state accepted: Option<Sample> = None;
+
+    on update {
+        last = sensor.read();
+
+        match last {
+            Ok(sample) => {
+                accepted = Some(sample);
+                call storage.accept(sample);
+            }
+            Err(error) => {
+                match error {
+                    SensorError::Offline => {
+                        log "sensor offline";
+                    }
+                    SensorError::OutOfRange => {
+                        log "sensor out of range";
+                    }
+                }
+            }
+        }
+    }
+}

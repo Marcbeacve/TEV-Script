@@ -1,0 +1,60 @@
+{
+  "schema": "TEV_SCRIPT_UNITY_PLAYMODE_CONFORMANCE_EVIDENCE_V1",
+  "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+  "date": "2026-08-07",
+  "branch": "agent/tev-script-unity-playmode-capabilities-v1",
+  "base_head": "5438da66d407bf9f7ed306cf8a3208189a19fdb7",
+  "base_tree": "777430d1a4c14f14c3c84da9d55d3f965b11395e",
+  "environment": {
+    "unity_editor": "6000.3.10f1",
+    "unity_test_framework": "1.6.0",
+    "platform": "Windows"
+  },
+  "gate1_regression": {
+    "status": "PASS",
+    "isolation": "CERTIFIED_BASE_NAMED_BRANCH_CLONE",
+    "head": "5438da66d407bf9f7ed306cf8a3208189a19fdb7",
+    "branch_mode": "EPHEMERAL_NAMED_BRANCH"
+  },
+  "playmode": {
+    "status": "PASS_OBSERVED",
+    "tests_passed": 3,
+    "tests_failed": 0
+  },
+  "capability_abi": {
+    "input.move2d": "PASS",
+    "motion.move2d": "PASS_TRANSFORM2D",
+    "animation.play": "PASS_EXPLICIT_UNITY_SINK",
+    "time.delta": "PASS",
+    "debug.log": "PASS"
+  },
+  "numeric_boundary": {
+    "float_to_rat_exact": "PASS",
+    "rat_to_float_boundary_witness": "PASS",
+    "time_delta_float_to_rat_exact": "PASS",
+    "rat_to_float_rounding_exposed": "PASS",
+    "nonfinite_float_fail_closed": "PASS"
+  },
+  "authority": {
+    "provider_selection": "EXPLICIT_PASS",
+    "core_modified": false,
+    "implicit_object_discovery": false
+  },
+  "observed_receipts": {
+    "unity_playmode_log_sha256": "fe248dac949240b09be6fc683ff1c23a5a43b3b5d6186048ead030315945b0b6",
+    "unity_playmode_results_xml_sha256": "6e85e06cf82f965850221610190efe539c3c663fcded621bf451ce32232a82ac"
+  },
+  "remaining_boundaries": {
+    "input_system_device": "NOT_PROBED",
+    "animator_controller": "NOT_PROBED",
+    "mono_player": "NOT_PROBED",
+    "il2cpp": "NOT_PROBED"
+  },
+  "provenance": {
+    "commit_created": false,
+    "remote_push": false,
+    "pr_modified": false,
+    "merge": false,
+    "note": "Historical precommit observation. Exact commit authority is established only by a subsequent clean-tree rerun."
+  }
+}

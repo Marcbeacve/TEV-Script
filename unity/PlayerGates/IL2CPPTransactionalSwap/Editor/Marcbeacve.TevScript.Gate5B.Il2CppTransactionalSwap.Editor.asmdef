@@ -1,0 +1,18 @@
+{
+  "name": "Marcbeacve.TevScript.Gate5B.Il2CppTransactionalSwap.Editor",
+  "rootNamespace": "Marcbeacve.TevScript.Gate5B.Il2CppTransactionalSwap.Editor",
+  "references": [
+    "Marcbeacve.TevScript.Gate5B.Il2CppTransactionalSwap"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

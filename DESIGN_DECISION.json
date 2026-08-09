@@ -1,0 +1,48 @@
+{
+  "authority": [
+    "GRAMMAR",
+    "STATIC_SEMANTICS",
+    "TEV_SCRIPT_PROGRAM_IR_V2",
+    "PORTABLE_VALUE_MODEL_V1",
+    "RUNTIME_ABI_V1",
+    "CANONICAL_HASHING",
+    "CONFORMANCE_RECEIPTS",
+    "CANONICAL_JSON_PROFILE_V1",
+    "STRICT_JSON_INPUT",
+    "CONFORMANCE_SCENARIO_SCHEMA"
+  ],
+  "boundaries": {
+    "dynamic_code": false,
+    "merge": false,
+    "promotion": false,
+    "reflection": false,
+    "repository_write": false,
+    "runtime_source_compilation": false,
+    "stable_release": false,
+    "unbounded_loops": false
+  },
+  "host_adapters": [
+    "UNITY",
+    "WEB",
+    "MONOGAME",
+    "SERVER_DOTNET",
+    "CLI"
+  ],
+  "implementations_are_replaceable": true,
+  "rejected": [
+    "CSHARP_AS_LANGUAGE_AUTHORITY",
+    "JAVASCRIPT_AS_LANGUAGE_AUTHORITY",
+    "PYTHON_AS_LANGUAGE_AUTHORITY",
+    "UNITY_AS_LANGUAGE_AUTHORITY",
+    "GENERATED_CSHARP_AS_PRIMARY_SEMANTICS",
+    "RUNTIME_SOURCE_INTERPRETATION"
+  ],
+  "runtimes": {
+    "csharp": "CONFORMANT_DOTNET_REFERENCE_FOUR_SCENARIOS_OBSERVED_WINDOWS_NET10",
+    "javascript": "CONFORMANT_ES2022_REFERENCE_FOUR_SCENARIOS",
+    "python": "CONFORMANT_REFERENCE_FOUR_SCENARIOS"
+  },
+  "schema": "TEV_SCRIPT_PORTABLE_ARCHITECTURE_DECISION_V2",
+  "semantic_base_language": null,
+  "status": "ACCEPTED_AND_IMPLEMENTED_THREE_CONFORMANT_RUNTIMES_PREVIEW"
+}

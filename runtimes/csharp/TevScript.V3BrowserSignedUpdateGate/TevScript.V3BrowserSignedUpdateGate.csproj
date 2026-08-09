@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RuntimeIdentifier>browser-wasm</RuntimeIdentifier>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <WasmMainJSPath>main.mjs</WasmMainJSPath>
+    <OverrideHtmlAssetPlaceholders>false</OverrideHtmlAssetPlaceholders>
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TevV3UpdateFixtureDir Condition="'$(TevV3UpdateFixtureDir)' == ''">$(MSBuildProjectDirectory)</TevV3UpdateFixtureDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TevScript.Core.V3\TevScript.Core.V3.csproj" />
+    <ProjectReference Include="..\TevScript.Update\TevScript.Update.csproj" />
+    <EmbeddedResource Include="$(TevV3UpdateFixtureDir)\base.ir.json"><LogicalName>base.ir.json</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="$(TevV3UpdateFixtureDir)\package1.json"><LogicalName>package1.json</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="$(TevV3UpdateFixtureDir)\package_wrong_key.json"><LogicalName>package_wrong_key.json</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="$(TevV3UpdateFixtureDir)\package_wrong_from.json"><LogicalName>package_wrong_from.json</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="$(TevV3UpdateFixtureDir)\package_capability_abi_changed.json"><LogicalName>package_capability_abi_changed.json</LogicalName></EmbeddedResource>
+    <Content Include="index.html" TargetPath="wwwroot/index.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="main.mjs" TargetPath="wwwroot/main.mjs" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+  </ItemGroup>
+</Project>

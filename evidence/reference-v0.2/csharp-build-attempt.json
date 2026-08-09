@@ -1,0 +1,38 @@
+{
+  "attempts": [
+    {
+      "compiler_reached": false,
+      "diagnostic": "NuGet.targets(782,5): Value cannot be null. (Parameter 'path1')",
+      "phase_reached": "dotnet restore / NuGet initialization",
+      "repotalk_session_id": "ddf474cb3b5445c7bc1f56362cc565d5",
+      "result": "HOLD"
+    },
+    {
+      "compiler_reached": false,
+      "diagnostic": "NuGet.targets(782,5): Value cannot be null. (Parameter 'path1')",
+      "phase_reached": "dotnet restore / NuGet initialization with isolated profile paths",
+      "repotalk_session_id": "695e042e5fb6484f92ec323ca892809a",
+      "result": "HOLD"
+    }
+  ],
+  "date": "2026-08-06",
+  "interpretation": "No C# compiler diagnostic was produced. The environment failed before compilation while initializing the SDK/NuGet path model. This receipt does not prove that the C# source compiles and does not prove a source defect.",
+  "required_follow_up": [
+    "dotnet build .\\runtimes\\csharp\\TevScript.Core\\TevScript.Core.csproj",
+    "dotnet run --project .\\runtimes\\csharp\\TevScript.Core.Smoke -- .\\examples\\Player.tevs.ir.json",
+    "Reproduce the authoritative conformance receipt byte-for-byte."
+  ],
+  "schema": "TEV_SCRIPT_CSHARP_BUILD_ATTEMPT_V1",
+  "source_status": {
+    "self_contained": true,
+    "static_boundary": "PASS",
+    "target_framework": "netstandard2.1",
+    "tev_lnu_core_dependency": false,
+    "unityengine_dependency": false
+  },
+  "status": "HOLD_ENVIRONMENT",
+  "toolchain_observed": {
+    "dotnet_path": "C:\\Program Files\\dotnet\\dotnet.exe",
+    "sdk_version": "10.0.302"
+  }
+}

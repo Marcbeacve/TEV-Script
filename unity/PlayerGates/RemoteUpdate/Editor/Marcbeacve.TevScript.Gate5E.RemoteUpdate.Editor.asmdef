@@ -1,0 +1,18 @@
+{
+  "name": "Marcbeacve.TevScript.Gate5E.RemoteUpdate.Editor",
+  "rootNamespace": "Marcbeacve.TevScript.Gate5E.RemoteUpdate.Editor",
+  "references": [
+    "Marcbeacve.TevScript.Gate5E.RemoteUpdate"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

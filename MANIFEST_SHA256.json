@@ -1,0 +1,1456 @@
+{
+  "branch": "agent/tev-script-language-completeness-v1",
+  "file_count": 290,
+  "files": [
+    {
+      "bytes": 195,
+      "path": ".gitattributes",
+      "sha256": "0b0351094571b19bb7b39e5fbbd03270597259e353750c9c0874d09a3fdf30c2"
+    },
+    {
+      "bytes": 185,
+      "path": ".gitignore",
+      "sha256": "182b7afc8bc4246c1945f162332394f2e194301dc0f785cb2cd232f3f721eaf5"
+    },
+    {
+      "bytes": 1096,
+      "path": "AGENTS.md",
+      "sha256": "110b0b3136123276ea40411f3e88a4863a31091bb57315493b5bf0c55ada7e7e"
+    },
+    {
+      "bytes": 1396,
+      "path": "CANONICAL_INDEX.json",
+      "sha256": "def1cd4a6345a2da75d2e521a96554c2c06106c0b543b86bce8f75501f83a11f"
+    },
+    {
+      "bytes": 1104,
+      "path": "CHANGELOG.md",
+      "sha256": "9976549214c0bd37ac53704d34da77e1212e5255e95c00bb8ff1599fc887e0a1"
+    },
+    {
+      "bytes": 626,
+      "path": "CONTRIBUTING.md",
+      "sha256": "4092d53bb96f992426537f41b35a1e495a2d6d258a5444780d9919d4fe24d0da"
+    },
+    {
+      "bytes": 1320,
+      "path": "DESIGN_DECISION.json",
+      "sha256": "eebf9939124220ed8f73c1e03d1e0b79b9363e3f9651640c0468b1d984f3f25e"
+    },
+    {
+      "bytes": 234,
+      "path": "LICENSE",
+      "sha256": "23d38237f098ac6c03ee0b1a9ed7e93bfa9322530bd672663a18c854d7654af1"
+    },
+    {
+      "bytes": 5116,
+      "path": "PROJECT_STATE.md",
+      "sha256": "aff95618bd3e40b44b16054994e2285278ea2e223d592847b861831b18c6bb7b"
+    },
+    {
+      "bytes": 4533,
+      "path": "README.md",
+      "sha256": "bb5f29cbdb36fe46348cfbf129d8b2bd5349b288a32d87f37cd6a41822617e8a"
+    },
+    {
+      "bytes": 1643,
+      "path": "REPOSITORY_CHANNEL.json",
+      "sha256": "caff14644241e3ba788d7dd26525eaa21f1e9351e6b7856da3f9eb4ef2c9cfeb"
+    },
+    {
+      "bytes": 8119,
+      "path": "RUN_PORTABLE_CONFORMANCE.py",
+      "sha256": "48f76873c8865d2da540e88c11c19cc8378b9f91dba4b30144537570a8fa4fdf"
+    },
+    {
+      "bytes": 6461,
+      "path": "RUN_TEV_SCRIPT_CSHARP_CONFORMANCE_V1.ps1",
+      "sha256": "f16972cb8d8546ddd0b4e932175c3a0616e04bdbc03fc436d06268ee0b7fc99c"
+    },
+    {
+      "bytes": 29121,
+      "path": "RUN_TEV_SCRIPT_DISTRIBUTED_DETERMINISM_GATE7A_7E_V1.ps1",
+      "sha256": "98e56eb38fd4ac5a639167841fc1338b0e72102e49fe8f9193c615c7d5f45bcc"
+    },
+    {
+      "bytes": 22390,
+      "path": "RUN_TEV_SCRIPT_HOT_UPDATE_BATCH_5C_5E_V1.ps1",
+      "sha256": "f98f9459264aebf417338cb32fa8312c9570129b1ba3059d7ef177534a7a7ebf"
+    },
+    {
+      "bytes": 9696,
+      "path": "RUN_TEV_SCRIPT_LANGUAGE_COMPLETENESS_V1.py",
+      "sha256": "2ee72093a5ce09dbf4b84667e58d16a53b99686f5cd308662f9eae1642923fe1"
+    },
+    {
+      "bytes": 378,
+      "path": "RUN_TEV_SCRIPT_PORTABLE_V0_2.ps1",
+      "sha256": "59071085d2604cca03686b02703406c814d3a23502de67227d0c89d9f3e951c4"
+    },
+    {
+      "bytes": 6285,
+      "path": "RUN_TEV_SCRIPT_TRANSACTIONAL_SWAP_GATE5A_V1.ps1",
+      "sha256": "3d0073a603abe6befb465ca430c88e75833fe2f937449083136f3436395eb7eb"
+    },
+    {
+      "bytes": 7835,
+      "path": "RUN_TEV_SCRIPT_UNITY_EDITOR_CONFORMANCE_V1.ps1",
+      "sha256": "41a822e059ff9c14f8afc1faef27e89131bacfd7287bafaa0e3d2a005a9211ea"
+    },
+    {
+      "bytes": 15746,
+      "path": "RUN_TEV_SCRIPT_UNITY_IL2CPP_PLAYER_CONFORMANCE_V1.ps1",
+      "sha256": "b8fda716b7ff5f93cf11d57d165ae3aa87f1fe9b29f0b23a77947a1e35463dd2"
+    },
+    {
+      "bytes": 20626,
+      "path": "RUN_TEV_SCRIPT_UNITY_IL2CPP_TRANSACTIONAL_SWAP_GATE5B_V1.ps1",
+      "sha256": "94d55b53b7400131ee89662aeca0879f563c87495105c488edfd4f41be99c48e"
+    },
+    {
+      "bytes": 15928,
+      "path": "RUN_TEV_SCRIPT_UNITY_MONO_PLAYER_CONFORMANCE_V1.ps1",
+      "sha256": "c8aa2b2cd2aa46df8076ed5efcb6e8f84a39020316d6b00482279b7350797391"
+    },
+    {
+      "bytes": 13168,
+      "path": "RUN_TEV_SCRIPT_UNITY_PLAYMODE_CONFORMANCE_V1.ps1",
+      "sha256": "5c4d36bb8078690a8b7ec13f548fb77772350f02951915843bdd52634651d3c5"
+    },
+    {
+      "bytes": 61878,
+      "path": "RUN_TEV_SCRIPT_WASM_BATCH_6A_6C_V1.ps1",
+      "sha256": "24e701607469a0463a2156965aa928bc481a6a4413d8c0770ae327bb838ac418"
+    },
+    {
+      "bytes": 19331,
+      "path": "RUN_TEV_SCRIPT_WASM_SIGNED_UPDATE_GATE6D_V1.ps1",
+      "sha256": "2b271f665ea2fc1607674e48d66ff6b6a64fc62ea3f17d22a6b357828c47399f"
+    },
+    {
+      "bytes": 4916,
+      "path": "VALIDATION_RECEIPT.json",
+      "sha256": "18db4aefb02fcd935dc99262dda5f1c852b7f92bd712ddcd6470769de5592377"
+    },
+    {
+      "bytes": 3137,
+      "path": "adapters/unity/UNITY_ADAPTER_CONTRACT_V2.md",
+      "sha256": "c29ec6974f5da0042763d9eaac2a9485c5392fb3e6c1b635b4f8aa6967b3fa63"
+    },
+    {
+      "bytes": 497,
+      "path": "adapters/web/canvas-adapter.mjs",
+      "sha256": "b40bdf71b4f6e74c5760dca9175f87939aa7bf83f25b584ca45e3713b5ba2913"
+    },
+    {
+      "bytes": 740,
+      "path": "catalogs/portable_capabilities_v1.json",
+      "sha256": "efa5d2db360fdc5a11f388883cad0ef7f3339e7d5841fa2e85e21ee116a56497"
+    },
+    {
+      "bytes": 3619,
+      "path": "conformance/canonical.vectors.json",
+      "sha256": "a9ac8d0ba6c067be48186be29a19ecd988f1fde92d17b665eda4d3de807a1477"
+    },
+    {
+      "bytes": 2116,
+      "path": "conformance/distributed-lockstep.counterfactual.json",
+      "sha256": "4084fd32bce1f006c39e0148f188df53f353f89b0e0c7263a4d4ac6c3b99879f"
+    },
+    {
+      "bytes": 2116,
+      "path": "conformance/distributed-lockstep.scenario.json",
+      "sha256": "c19c4f133a0f95e43a1815ab53a4509f86d41210a38cb453af9aca7003693e8c"
+    },
+    {
+      "bytes": 620,
+      "path": "conformance/event-chain.expected.json",
+      "sha256": "3cfa00dea002ed058ca4745695c0539a6db952c795bebc0072502a8112e569af"
+    },
+    {
+      "bytes": 317,
+      "path": "conformance/event-chain.scenario.json",
+      "sha256": "e680cd67d065ec7fcb69b463e30931ed3efba176ef8929447ccac5c812e8bb37"
+    },
+    {
+      "bytes": 2570,
+      "path": "conformance/language-negative-v1.json",
+      "sha256": "143ba3fdcc1d47e42867a84310b6d5ed8113c67bba920f80feb85e248f39e9f7"
+    },
+    {
+      "bytes": 2241,
+      "path": "conformance/matrix.expected.json",
+      "sha256": "44abea03d9077834294150dbb03878012f6d2b80097c3237d6b505dd03ede729"
+    },
+    {
+      "bytes": 1072,
+      "path": "conformance/matrix.scenario.json",
+      "sha256": "a6fdb057ecd59e079b79c03e1d8757b23d58e4ee85daba2be0fa85fd3c27bd77"
+    },
+    {
+      "bytes": 699,
+      "path": "conformance/player-idle.expected.json",
+      "sha256": "b379adfde8cab9e68049558338562a9c9d1be752ad3940e1cb792205eb86a5a1"
+    },
+    {
+      "bytes": 560,
+      "path": "conformance/player-idle.scenario.json",
+      "sha256": "58ab158794d6819747c244d0680bcfdb97358c8b839542c2bba4b02a77ff1206"
+    },
+    {
+      "bytes": 826,
+      "path": "conformance/player.expected.json",
+      "sha256": "d5e99dbda29b55a94dea7a801a2bafd5abfbb6dc8eebb3f3844a09c89837b447"
+    },
+    {
+      "bytes": 861,
+      "path": "conformance/player.scenario.json",
+      "sha256": "5f482c0e60af6075666d282ded912714174b091222af4c3fab213e96e8729423"
+    },
+    {
+      "bytes": 6419,
+      "path": "descriptor.json",
+      "sha256": "c2d4b667d81d49742cbc1967a4f55d8357d96167a6ce950be6f7794c1f36f9b3"
+    },
+    {
+      "bytes": 4731,
+      "path": "docs/ARCHITECTURE.md",
+      "sha256": "5f1ebd2e95a75ed9da09b7b6752d2db04ff5f43d4547a2560ac90f01dd4fae4a"
+    },
+    {
+      "bytes": 1579,
+      "path": "docs/CANON.md",
+      "sha256": "cd37181f470efc4d2a5d61abadf0d314d77440d8985311bf72300935ff48a770"
+    },
+    {
+      "bytes": 2688,
+      "path": "docs/DISTRIBUTED_DETERMINISM_GATE7A_7E_V1.md",
+      "sha256": "f3a2e6a9787067e5ee95f955673699c109397e45df3fcecb0385d9c4ad2a4759"
+    },
+    {
+      "bytes": 2728,
+      "path": "docs/HOT_UPDATE_BATCH_5C_5E_V1.md",
+      "sha256": "bd9e4455debf9f582ddb3eee2782ffc08f0cfc350bf93c6a9f37c684fa57acd3"
+    },
+    {
+      "bytes": 1171,
+      "path": "docs/LANGUAGE_COMPLETENESS_V1.md",
+      "sha256": "aab1297d7d7ea17bea94cd6aab867b22474614b525e52f2d64e4849c4e29970b"
+    },
+    {
+      "bytes": 2254,
+      "path": "docs/STATUS.md",
+      "sha256": "e7a1f1dcd33dc13d0ef1c1bea5c1001c48feb9c4efe8004b3628aa18d982cbff"
+    },
+    {
+      "bytes": 2087,
+      "path": "docs/TRANSACTIONAL_PROGRAM_UPDATE_V1.md",
+      "sha256": "c6caeabc8265a7f920ca8f41984663c15f15498d7f0a930679736cc9dc4b43de"
+    },
+    {
+      "bytes": 2902,
+      "path": "docs/VALIDATION.md",
+      "sha256": "6bb2da6722ab2b48a38a78978692237cbb84e98ff66ed905b8fd643ea33b0082"
+    },
+    {
+      "bytes": 4674,
+      "path": "docs/WASM_BATCH_6A_6C_V1.md",
+      "sha256": "0a2177efcd026b1b0c43975476af9df0d86d4abe72cde8f708bec890217b9554"
+    },
+    {
+      "bytes": 2889,
+      "path": "docs/WASM_SIGNED_UPDATE_GATE6D_V1.md",
+      "sha256": "baf6e7b2c4aab80edcd2482870d9617b50c5eaa8dbe22e8faeb651179ec6e3f7"
+    },
+    {
+      "bytes": 1576,
+      "path": "evidence/reference-v0.2/csharp-build-attempt.json",
+      "sha256": "f87cf48013f3d4ce2a065982ec5e45ec04fce1dbc2eb1326b16e287ad9b328b2"
+    },
+    {
+      "bytes": 3001,
+      "path": "evidence/reference-v0.2/csharp-conformance-windows-dotnet10.json",
+      "sha256": "f084ab75f079c24110b98c9c197e1536cf9354dfc407b3a24776688d3e29130e"
+    },
+    {
+      "bytes": 1597,
+      "path": "evidence/reference-v0.2/distributed-determinism-gate7a-7e-windows-dotnet10.json",
+      "sha256": "e9bd474c417aaf6162a27f9494c4f533b231c5a8a76050c903d206b3b7accb34"
+    },
+    {
+      "bytes": 620,
+      "path": "evidence/reference-v0.2/event-chain.javascript.receipt.json",
+      "sha256": "3cfa00dea002ed058ca4745695c0539a6db952c795bebc0072502a8112e569af"
+    },
+    {
+      "bytes": 620,
+      "path": "evidence/reference-v0.2/event-chain.python.receipt.json",
+      "sha256": "3cfa00dea002ed058ca4745695c0539a6db952c795bebc0072502a8112e569af"
+    },
+    {
+      "bytes": 1766,
+      "path": "evidence/reference-v0.2/hot-update-batch-5c-5e-windows-unity6000.3.json",
+      "sha256": "30a3e589100ab0771dd16ce9405ffcb16f68a51e841942e28a1b9227f1131041"
+    },
+    {
+      "bytes": 826,
+      "path": "evidence/reference-v0.2/javascript.receipt.json",
+      "sha256": "d5e99dbda29b55a94dea7a801a2bafd5abfbb6dc8eebb3f3844a09c89837b447"
+    },
+    {
+      "bytes": 1212,
+      "path": "evidence/reference-v0.2/language-completeness-v1-windows-dotnet10.json",
+      "sha256": "d136c2c4fdf1fe1bd5eca341b381a86b0bca2326a6b19a59f69f4d8b275c3b96"
+    },
+    {
+      "bytes": 2241,
+      "path": "evidence/reference-v0.2/matrix.javascript.receipt.json",
+      "sha256": "44abea03d9077834294150dbb03878012f6d2b80097c3237d6b505dd03ede729"
+    },
+    {
+      "bytes": 2241,
+      "path": "evidence/reference-v0.2/matrix.python.receipt.json",
+      "sha256": "44abea03d9077834294150dbb03878012f6d2b80097c3237d6b505dd03ede729"
+    },
+    {
+      "bytes": 699,
+      "path": "evidence/reference-v0.2/player-idle.javascript.receipt.json",
+      "sha256": "b379adfde8cab9e68049558338562a9c9d1be752ad3940e1cb792205eb86a5a1"
+    },
+    {
+      "bytes": 699,
+      "path": "evidence/reference-v0.2/player-idle.python.receipt.json",
+      "sha256": "b379adfde8cab9e68049558338562a9c9d1be752ad3940e1cb792205eb86a5a1"
+    },
+    {
+      "bytes": 261,
+      "path": "evidence/reference-v0.2/powershell-parser-receipt.json",
+      "sha256": "35416bb9a85c47a1abc2e481d00180b809aabe1ce0c8999768c3d1c635676d83"
+    },
+    {
+      "bytes": 596,
+      "path": "evidence/reference-v0.2/powershell-static-receipt.json",
+      "sha256": "bf3dda0f5d78943df33fb53801818e1e925e33c21a34a9060bbca15f3da3eb74"
+    },
+    {
+      "bytes": 826,
+      "path": "evidence/reference-v0.2/python.receipt.json",
+      "sha256": "d5e99dbda29b55a94dea7a801a2bafd5abfbb6dc8eebb3f3844a09c89837b447"
+    },
+    {
+      "bytes": 1408,
+      "path": "evidence/reference-v0.2/transactional-program-swap-windows-dotnet10.json",
+      "sha256": "9d4e100960f3f3f93a166b86be43dc3a943479592e0222ba6bb4b56c6f10b12d"
+    },
+    {
+      "bytes": 972,
+      "path": "evidence/reference-v0.2/unity-editor-conformance-windows-unity6000.3.json",
+      "sha256": "16b67ca74b98233bc498a4f7fc94042d9ebd29263ef0fcf745c4d118f7e23598"
+    },
+    {
+      "bytes": 2629,
+      "path": "evidence/reference-v0.2/unity-il2cpp-player-conformance-windows-unity6000.3.json",
+      "sha256": "f3200b23d08db42d3f6d441b8f3d887b7e9e265cf747a4ee7b2a529868a5d64e"
+    },
+    {
+      "bytes": 2153,
+      "path": "evidence/reference-v0.2/unity-il2cpp-transactional-swap-windows-unity6000.3.json",
+      "sha256": "7c6a3ed479ad68eb754dac50bdd378161ff11ff41220ba3295696ba4d3a9fa78"
+    },
+    {
+      "bytes": 2431,
+      "path": "evidence/reference-v0.2/unity-mono-player-conformance-windows-unity6000.3.json",
+      "sha256": "a6be344cb61e2e05196e242286470b33cc294711ee0c711ff9eb845491cc239e"
+    },
+    {
+      "bytes": 1973,
+      "path": "evidence/reference-v0.2/unity-playmode-conformance-windows-unity6000.3.json",
+      "sha256": "8dbb89acd6da077e30ab3628369ecda57da4c0cd3cb6f496dbf92dd3fb153557"
+    },
+    {
+      "bytes": 3624,
+      "path": "evidence/reference-v0.2/validation-ascii-stdio.stderr.txt",
+      "sha256": "4cc35ecfd4a9835cccf0d20c691b417a493af68a9459bd8706f09c8eb6347ee2"
+    },
+    {
+      "bytes": 10318,
+      "path": "evidence/reference-v0.2/validation-ascii-stdio.stdout.txt",
+      "sha256": "6451c993f7a637433876be3f2ad01de41b899707269177c4a8f75c3ba984666c"
+    },
+    {
+      "bytes": 4916,
+      "path": "evidence/reference-v0.2/validation-receipt.json",
+      "sha256": "18db4aefb02fcd935dc99262dda5f1c852b7f92bd712ddcd6470769de5592377"
+    },
+    {
+      "bytes": 3624,
+      "path": "evidence/reference-v0.2/validation.stderr.txt",
+      "sha256": "56ad23a99f586c5e6ab1e612e4b2591fa04ce96aca0598232f46f9796101b5fb"
+    },
+    {
+      "bytes": 10317,
+      "path": "evidence/reference-v0.2/validation.stdout.txt",
+      "sha256": "8e9165932f74e9924daf4442d0d95856a966a4386610f569a85d91a0571f6a26"
+    },
+    {
+      "bytes": 1400,
+      "path": "evidence/reference-v0.2/wasm-batch-6a-6c-windows-unity6000.3.json",
+      "sha256": "46f97b6064e06cf14e4abdd731a4cf0d3d304b0197a80fdb30b70c06280f3751"
+    },
+    {
+      "bytes": 1610,
+      "path": "evidence/reference-v0.2/wasm-signed-update-gate6d-windows-dotnet10.json",
+      "sha256": "7be8a772d4cf7d103f3f473622dc31bed0825bace4c4e567878220828bfe428e"
+    },
+    {
+      "bytes": 2301,
+      "path": "examples/ConformanceMatrix.tevs",
+      "sha256": "1c758550a80cd92b95b2e89dfa23266c9664fe59a3f5dbfee76984219b8f38b2"
+    },
+    {
+      "bytes": 27469,
+      "path": "examples/ConformanceMatrix.tevs.ir.json",
+      "sha256": "7c48f2115b1debb0a7d470c4a9afd808e5da33ce36790bb2b420058ef3b90141"
+    },
+    {
+      "bytes": 225,
+      "path": "examples/Door.tevs",
+      "sha256": "02a8e28bea2e16cd4d4ceab0d3dfd709be9b28a177658ff0e97a9c603af6946c"
+    },
+    {
+      "bytes": 276,
+      "path": "examples/EventChain.tevs",
+      "sha256": "eac47bcddfbb059a6b112c24fb0cb1e58683d79fa3b2572a0410258693cf354a"
+    },
+    {
+      "bytes": 3679,
+      "path": "examples/EventChain.tevs.ir.json",
+      "sha256": "fe01856a12b6db64ef1cd7c4032144ce9799fa4500c5a90f6bb321924b6760c3"
+    },
+    {
+      "bytes": 522,
+      "path": "examples/Player.tevs",
+      "sha256": "ee3ae2981c1e4a222f7453aedc8dbe9d6ac44881844d95962e85ca34647b01ff"
+    },
+    {
+      "bytes": 8112,
+      "path": "examples/Player.tevs.ir.json",
+      "sha256": "dc7d75d80d7d1fa0cba3956db25d1504b7a5cab6eaddb3263aa209fc0bb06937"
+    },
+    {
+      "bytes": 1130,
+      "path": "javascript/README.md",
+      "sha256": "0f5a3b201eb2fbd85d31f2127a46c8b0ac0a8527d17882e46584e82bdf12feb3"
+    },
+    {
+      "bytes": 3619,
+      "path": "javascript/fixtures/conformance/canonical.vectors.json",
+      "sha256": "a9ac8d0ba6c067be48186be29a19ecd988f1fde92d17b665eda4d3de807a1477"
+    },
+    {
+      "bytes": 620,
+      "path": "javascript/fixtures/conformance/event-chain.expected.json",
+      "sha256": "3cfa00dea002ed058ca4745695c0539a6db952c795bebc0072502a8112e569af"
+    },
+    {
+      "bytes": 317,
+      "path": "javascript/fixtures/conformance/event-chain.scenario.json",
+      "sha256": "e680cd67d065ec7fcb69b463e30931ed3efba176ef8929447ccac5c812e8bb37"
+    },
+    {
+      "bytes": 2241,
+      "path": "javascript/fixtures/conformance/matrix.expected.json",
+      "sha256": "44abea03d9077834294150dbb03878012f6d2b80097c3237d6b505dd03ede729"
+    },
+    {
+      "bytes": 1072,
+      "path": "javascript/fixtures/conformance/matrix.scenario.json",
+      "sha256": "a6fdb057ecd59e079b79c03e1d8757b23d58e4ee85daba2be0fa85fd3c27bd77"
+    },
+    {
+      "bytes": 699,
+      "path": "javascript/fixtures/conformance/player-idle.expected.json",
+      "sha256": "b379adfde8cab9e68049558338562a9c9d1be752ad3940e1cb792205eb86a5a1"
+    },
+    {
+      "bytes": 560,
+      "path": "javascript/fixtures/conformance/player-idle.scenario.json",
+      "sha256": "58ab158794d6819747c244d0680bcfdb97358c8b839542c2bba4b02a77ff1206"
+    },
+    {
+      "bytes": 826,
+      "path": "javascript/fixtures/conformance/player.expected.json",
+      "sha256": "d5e99dbda29b55a94dea7a801a2bafd5abfbb6dc8eebb3f3844a09c89837b447"
+    },
+    {
+      "bytes": 861,
+      "path": "javascript/fixtures/conformance/player.scenario.json",
+      "sha256": "5f482c0e60af6075666d282ded912714174b091222af4c3fab213e96e8729423"
+    },
+    {
+      "bytes": 27469,
+      "path": "javascript/fixtures/examples/ConformanceMatrix.tevs.ir.json",
+      "sha256": "7c48f2115b1debb0a7d470c4a9afd808e5da33ce36790bb2b420058ef3b90141"
+    },
+    {
+      "bytes": 3679,
+      "path": "javascript/fixtures/examples/EventChain.tevs.ir.json",
+      "sha256": "fe01856a12b6db64ef1cd7c4032144ce9799fa4500c5a90f6bb321924b6760c3"
+    },
+    {
+      "bytes": 8112,
+      "path": "javascript/fixtures/examples/Player.tevs.ir.json",
+      "sha256": "dc7d75d80d7d1fa0cba3956db25d1504b7a5cab6eaddb3263aa209fc0bb06937"
+    },
+    {
+      "bytes": 1672,
+      "path": "javascript/package.json",
+      "sha256": "1f1112870eb0b8c0531c3ef416be5d93cefb8f8f7640806f3db2758aaea5d009"
+    },
+    {
+      "bytes": 345,
+      "path": "javascript/src/canonical.d.ts",
+      "sha256": "4a4b0891808e52a0316b3ce1ee525af5f14693637000811d619d029dea3548cc"
+    },
+    {
+      "bytes": 6429,
+      "path": "javascript/src/canonical.mjs",
+      "sha256": "3059407014a34f0ac53a8518e2ad654cef7bfafdf92cfffbaf62b64af5e50824"
+    },
+    {
+      "bytes": 375,
+      "path": "javascript/src/conformance.d.ts",
+      "sha256": "fd6380f590f4e488d41af966f0d3bdc7ac50ab60ae08af9fc6a2ca67f3c814ba"
+    },
+    {
+      "bytes": 2753,
+      "path": "javascript/src/conformance.mjs",
+      "sha256": "7bafd2fe3b0b7c3791539d2c859d297e41300eeb61ec9db8422d3c0cce89e1b9"
+    },
+    {
+      "bytes": 98,
+      "path": "javascript/src/ir-flow.d.ts",
+      "sha256": "997697d645853e360b6b22954ba18d9361ecabc88ca27a31fd67caf88c100853"
+    },
+    {
+      "bytes": 6732,
+      "path": "javascript/src/ir-flow.mjs",
+      "sha256": "7d68464eed97d9a983cecdd4d9ef439d29af97e15a3e8c0e742e8c0b66a4684b"
+    },
+    {
+      "bytes": 181,
+      "path": "javascript/src/ir-validation.d.ts",
+      "sha256": "f210ddde01646e92fc1e7c6298f2651fdc0b7038f0042ad27fa76c87dac388af"
+    },
+    {
+      "bytes": 16216,
+      "path": "javascript/src/ir-validation.mjs",
+      "sha256": "6ea36ca75196d33a90799f85ab26a98e20b6787993344c81cca1eb95d9e51929"
+    },
+    {
+      "bytes": 658,
+      "path": "javascript/src/run-conformance.mjs",
+      "sha256": "887f0480d31d719e8aff0e51e316abbe4e5f7870ea229e2714ef6ad082992a19"
+    },
+    {
+      "bytes": 1686,
+      "path": "javascript/src/runtime.d.ts",
+      "sha256": "f35d1ed015afc652edfa5ce4fea0cf9a260aa53e7dc68a85f5a04a368e866180"
+    },
+    {
+      "bytes": 10678,
+      "path": "javascript/src/runtime.mjs",
+      "sha256": "e8680696d1870d9217151e0a40d58d00701de598dbbedf9a334176b49254fae3"
+    },
+    {
+      "bytes": 118,
+      "path": "javascript/src/strict-json-node.d.ts",
+      "sha256": "a462d9b5285e514d1906bb33292db1812d02c443aee872bf72f203a745078e0d"
+    },
+    {
+      "bytes": 518,
+      "path": "javascript/src/strict-json-node.mjs",
+      "sha256": "db310500abec4467f49fb07cba2fa31c6b484f96320d28dac487496b0fc494e8"
+    },
+    {
+      "bytes": 203,
+      "path": "javascript/src/strict-json.d.ts",
+      "sha256": "076d14b2bb73ff4b622e4597b6b6306a6a937dafe6c73cc773fe4fc84bf9d3f2"
+    },
+    {
+      "bytes": 7077,
+      "path": "javascript/src/strict-json.mjs",
+      "sha256": "cf34fef13caa626c7f7c857510e52ba8b539310f8c98b09ef5a80c0976568135"
+    },
+    {
+      "bytes": 8030,
+      "path": "javascript/src/values.mjs",
+      "sha256": "03e486281fecf53b2d9677fe7428c02146e7c02a6265ffd16cc03a2defa37e9c"
+    },
+    {
+      "bytes": 6721,
+      "path": "javascript/test/runtime.test.mjs",
+      "sha256": "abebc8a4b30bdf035fde574f2ef6c4964af601ec58bef60e58f5cb4795f7953e"
+    },
+    {
+      "bytes": 401,
+      "path": "pyproject.toml",
+      "sha256": "03811df433179191e78535ee8b505685216759ebc6c5ccfe66e88d816dfc707f"
+    },
+    {
+      "bytes": 1563,
+      "path": "runtimes/PORTING_CHECKLIST.md",
+      "sha256": "66b0e744c6572564b80dc3c25f33e048037d3c771400e32b0db57d005b5c0216"
+    },
+    {
+      "bytes": 956,
+      "path": "runtimes/RUNTIME_IMPLEMENTATIONS.json",
+      "sha256": "473284e4ce1139bedff4bee31a7d43fdb20f84287db0a97fb392d46bbfb0faee"
+    },
+    {
+      "bytes": 6746,
+      "path": "runtimes/csharp/TevScript.BrowserDeterminismGate/Program.cs",
+      "sha256": "9c7a5b7b69d7bde6483232156679b1381e37f43b41f8db9b0fb8b139ffd4ba61"
+    },
+    {
+      "bytes": 1890,
+      "path": "runtimes/csharp/TevScript.BrowserDeterminismGate/TevScript.BrowserDeterminismGate.csproj",
+      "sha256": "dcc0acf75524b05450b59a97b38ae96f1c06616f70c4108254e1c0d47c46b0e4"
+    },
+    {
+      "bytes": 176,
+      "path": "runtimes/csharp/TevScript.BrowserDeterminismGate/index.html",
+      "sha256": "87db5e373219980dbbcc201ab42056448f9d74c95c3e8e9115a1660d2455adce"
+    },
+    {
+      "bytes": 3098,
+      "path": "runtimes/csharp/TevScript.BrowserDeterminismGate/main.mjs",
+      "sha256": "99fa56bafe5231a738cba1dc0242c27c2fad41ba71ec515a0c5bdd0245424fbd"
+    },
+    {
+      "bytes": 3676,
+      "path": "runtimes/csharp/TevScript.BrowserWasmGate/Program.cs",
+      "sha256": "5134257038ba85589392a8220b795c390effd7ecc8e8569079673da06e8ae56f"
+    },
+    {
+      "bytes": 1241,
+      "path": "runtimes/csharp/TevScript.BrowserWasmGate/TevScript.BrowserWasmGate.csproj",
+      "sha256": "b357446b6cbec2e412e86275fb18751179f5973de1183f5dc7ec0dbfb1f0631d"
+    },
+    {
+      "bytes": 210,
+      "path": "runtimes/csharp/TevScript.BrowserWasmGate/index.html",
+      "sha256": "d9f951ef1c9b8c8362ef9cd77f769122b3d6a690d1e5b386e81f1a2becd54bbd"
+    },
+    {
+      "bytes": 1787,
+      "path": "runtimes/csharp/TevScript.BrowserWasmGate/main.mjs",
+      "sha256": "05780ecfd849f2599e1be0ce5bcccb53f17e5e446b7a8cae1f48c277c3caa2bc"
+    },
+    {
+      "bytes": 12640,
+      "path": "runtimes/csharp/TevScript.BrowserWasmUpdateGate/Program.cs",
+      "sha256": "4fa266edb665faea33eb685c3478f92ac0740f9e3b9bee3d61a1878acdeb5308"
+    },
+    {
+      "bytes": 1202,
+      "path": "runtimes/csharp/TevScript.BrowserWasmUpdateGate/TevScript.BrowserWasmUpdateGate.csproj",
+      "sha256": "c836de47e91caf70ca8e4e2e5ea50ca6cc11460507e9e1b2f85a8db14c6c4740"
+    },
+    {
+      "bytes": 185,
+      "path": "runtimes/csharp/TevScript.BrowserWasmUpdateGate/index.html",
+      "sha256": "75ab0987b1abbf027f3096b4094f8ada04d96708fc8345db6675bfab8271e3b5"
+    },
+    {
+      "bytes": 4114,
+      "path": "runtimes/csharp/TevScript.BrowserWasmUpdateGate/main.mjs",
+      "sha256": "b99fb7f15c76f554cd81b423fff23ce74a01e3e6f80b1a703024e3f8439b185d"
+    },
+    {
+      "bytes": 11647,
+      "path": "runtimes/csharp/TevScript.Core.Conformance/Program.cs",
+      "sha256": "7c8c0eabd552112f04911a6546443c6d2b030ff454004af3093d6cde5b3c6d2a"
+    },
+    {
+      "bytes": 469,
+      "path": "runtimes/csharp/TevScript.Core.Conformance/TevScript.Core.Conformance.csproj",
+      "sha256": "2573956b46731ceb18540cc17f4587afcec735f5701a2228330208716c200285"
+    },
+    {
+      "bytes": 2481,
+      "path": "runtimes/csharp/TevScript.Core.Smoke/Program.cs",
+      "sha256": "5e31f2dd7f4a389d83c3de8770b3990495bacda0a9a8e22dd744d4a4c4da67e8"
+    },
+    {
+      "bytes": 413,
+      "path": "runtimes/csharp/TevScript.Core.Smoke/TevScript.Core.Smoke.csproj",
+      "sha256": "2cc9fba0f42309bd09db2cc1bc031feb9ecdc9f1d9926ac933fb17d7fbb56dad"
+    },
+    {
+      "bytes": 1034,
+      "path": "runtimes/csharp/TevScript.Core/README.md",
+      "sha256": "841568b9f4874986501425035d62e1c9b7146b27883bdc0bde1fd137282ec07a"
+    },
+    {
+      "bytes": 378,
+      "path": "runtimes/csharp/TevScript.Core/TevScript.Core.csproj",
+      "sha256": "11c9925b526b3f4b51e24c4776f843995b5819327aabd92958379a2a0e86d169"
+    },
+    {
+      "bytes": 3633,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptCanonicalJson.cs",
+      "sha256": "2351c61a5e7393b73a65a9145ae81fdfffbe1ac92133265af19fdcb845a026ae"
+    },
+    {
+      "bytes": 18322,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptConformance.cs",
+      "sha256": "9e8575b81bfdfda3ea024bfe9fcb5b098b2fbf07f562b17cb56c1edcda041eb8"
+    },
+    {
+      "bytes": 3275,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptContracts.cs",
+      "sha256": "e184c897f9bdd88fc8441c18e5180e6977e8acf518fb831e3dd2ae0e94cf0994"
+    },
+    {
+      "bytes": 17513,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptIrFlowVerifier.cs",
+      "sha256": "8a996fa0896a74fdfa56b6c717adf68b1376597217bad344ebe82f46a2ca9832"
+    },
+    {
+      "bytes": 32710,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptIrValidator.cs",
+      "sha256": "6b5744b035bb2574aa3f1d8c7b126a347ea2914b0d4ee2ad4c32f9135c4ad066"
+    },
+    {
+      "bytes": 27358,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptJson.cs",
+      "sha256": "a50866b4cb8bd3b69ae119ace1438dec1849eb74bd3d01c0912383d376847da0"
+    },
+    {
+      "bytes": 5859,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptPrimitives.cs",
+      "sha256": "9ef1e73e14efeb9e7d3f4d2ea6d062059e786317ce407735e6db0191160667f3"
+    },
+    {
+      "bytes": 15197,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptProgram.cs",
+      "sha256": "04fe56a52d744c3432a40db3ea269b3eb54eb8167156442b5f52f1b45126d3d2"
+    },
+    {
+      "bytes": 26795,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptRuntime.cs",
+      "sha256": "698098d3c18057012b24e36f2166eac774bb716de45e199a91e3dc6e247ab518"
+    },
+    {
+      "bytes": 15340,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptRuntimeCheckpoint.cs",
+      "sha256": "4e2cab6129860b6af32439971c9df584391a8ab3e7609a2e7af454b0eb0c6c14"
+    },
+    {
+      "bytes": 18737,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptRuntimeHotSwap.cs",
+      "sha256": "219f8d24d5f4de8e02126c70938d869b0986edb414dc419becf6a1dff687b6b3"
+    },
+    {
+      "bytes": 27474,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptUpdate.cs",
+      "sha256": "ce92a4141e0eb534630ccffd91720643c1f39546ad6e5d717766f6e449be852e"
+    },
+    {
+      "bytes": 9277,
+      "path": "runtimes/csharp/TevScript.Core/TevScriptValue.cs",
+      "sha256": "56dd6a48d4693acab745caddc420a50497d427eaed6136ddbe72c7176840f559"
+    },
+    {
+      "bytes": 16733,
+      "path": "runtimes/csharp/TevScript.DeterminismGate.Shared/Gate7Shared.cs",
+      "sha256": "763c4336f2b7ba25efd4b6ba2bf8a33f0e0233fceb8eb0f18fa8d25e175bac81"
+    },
+    {
+      "bytes": 4074,
+      "path": "runtimes/csharp/TevScript.DeterminismHostGate/Program.cs",
+      "sha256": "77c336267c4ea2772b16e5f10a36e390ccf40d4f4fc178fa608852c85a87bc6b"
+    },
+    {
+      "bytes": 593,
+      "path": "runtimes/csharp/TevScript.DeterminismHostGate/TevScript.DeterminismHostGate.csproj",
+      "sha256": "c673e4b2c666a68c83c6e1fb48c85a1235390880b40b2670c5d998ec813d1e99"
+    },
+    {
+      "bytes": 15143,
+      "path": "runtimes/csharp/TevScript.HotUpdateBatchGate/Program.cs",
+      "sha256": "78ea91ace91c8b83ffb01f745306d363e9bdb4e3322949ddd6ec24f28294f545"
+    },
+    {
+      "bytes": 461,
+      "path": "runtimes/csharp/TevScript.HotUpdateBatchGate/TevScript.HotUpdateBatchGate.csproj",
+      "sha256": "d1241525c9964daac969f5d0dff70bfd654c03fec9c2dbaea5b18b05bea87508"
+    },
+    {
+      "bytes": 12983,
+      "path": "runtimes/csharp/TevScript.HotUpdateFixtureTool/Program.cs",
+      "sha256": "691b444ac4094410f47c02de8d4c7fbf0d27c01f97cef61a6d52fa52c36c905d"
+    },
+    {
+      "bytes": 382,
+      "path": "runtimes/csharp/TevScript.HotUpdateFixtureTool/TevScript.HotUpdateFixtureTool.csproj",
+      "sha256": "3f8226aca5b2ea92a1d44697f0d0952dddcbdcc1ab9453e7d2f41b20f0694957"
+    },
+    {
+      "bytes": 5425,
+      "path": "runtimes/csharp/TevScript.LanguageClosureGate/Program.cs",
+      "sha256": "7277f0cb05c27d431972a036b697afdc89426278a5caa6390f03df4c09e20555"
+    },
+    {
+      "bytes": 344,
+      "path": "runtimes/csharp/TevScript.LanguageClosureGate/TevScript.LanguageClosureGate.csproj",
+      "sha256": "cb8660858693e52f6a61a167cf8939cf0d64fce35a3979aac79fdd88ea77af94"
+    },
+    {
+      "bytes": 12140,
+      "path": "runtimes/csharp/TevScript.TransactionalSwapGate/Program.cs",
+      "sha256": "3e05bd51c07f6d78db53aa5610d3f18790c7468065f2e614836db59cd788f48c"
+    },
+    {
+      "bytes": 344,
+      "path": "runtimes/csharp/TevScript.TransactionalSwapGate/TevScript.TransactionalSwapGate.csproj",
+      "sha256": "b9afb0beed223f6b94f1615098ef3d54a18a4836a9ecfd30711c513d036fe0c0"
+    },
+    {
+      "bytes": 13250,
+      "path": "runtimes/csharp/TevScript.Update/TevManagedEcdsaP256Sha256Verifier.cs",
+      "sha256": "e59b74f22603f629488fc06fd603125551c8249dcc388c8487603249a5d7a55e"
+    },
+    {
+      "bytes": 356,
+      "path": "runtimes/csharp/TevScript.Update/TevScript.Update.csproj",
+      "sha256": "087c33a92ea1089ef49186ec7b9f31a9f270060d6a6b5f61230bcf5d486cb317"
+    },
+    {
+      "bytes": 11885,
+      "path": "runtimes/csharp/TevScript.Update/TevScriptUpdateSecurity.cs",
+      "sha256": "5dd28038a3f756037b004959e2cf7b8ef4e541e27db5ca50964f055a38a9b72e"
+    },
+    {
+      "bytes": 4464,
+      "path": "runtimes/csharp/TevScript.WasiDeterminismGate/Program.cs",
+      "sha256": "c4d972c483fe0a31ec18dedfaec77360d4432d14df87619373c21e6c093abaf7"
+    },
+    {
+      "bytes": 1473,
+      "path": "runtimes/csharp/TevScript.WasiDeterminismGate/TevScript.WasiDeterminismGate.csproj",
+      "sha256": "77645d88e77704d744ea939f0d49619592b4bd8b065ed9378add10fc5189c2c5"
+    },
+    {
+      "bytes": 3319,
+      "path": "runtimes/csharp/TevScript.WasiGate/Program.cs",
+      "sha256": "5faee05fad3c92a580ff6efbcbe14bbb4edae3f30bca3b9335a7e59c5cf693f6"
+    },
+    {
+      "bytes": 681,
+      "path": "runtimes/csharp/TevScript.WasiGate/TevScript.WasiGate.csproj",
+      "sha256": "0c00d74b150450756191c67f858f3780cfe5f99561ca509af0f37252c5443fe1"
+    },
+    {
+      "bytes": 9683,
+      "path": "runtimes/csharp/TevScript.WasiUpdateGate/Program.cs",
+      "sha256": "a491e12a40dc2bb8278ba2d465e07122c49a4650c1fbad0ef84b3744e1e63c14"
+    },
+    {
+      "bytes": 820,
+      "path": "runtimes/csharp/TevScript.WasiUpdateGate/TevScript.WasiUpdateGate.csproj",
+      "sha256": "0ba10ce3b1d166c43798c3a94843a6786336c97c5f95a4e82834613bab4a7d63"
+    },
+    {
+      "bytes": 1260,
+      "path": "schemas/tev_script_capability_catalog_v1.schema.json",
+      "sha256": "5ac32c87a39a51283f8ad7ef442c89ff09f936919b2a19aed7203f52e0d2731f"
+    },
+    {
+      "bytes": 3941,
+      "path": "schemas/tev_script_conformance_receipt_v1.schema.json",
+      "sha256": "9d63ffb3284f909649d54769d033a6509c318b392fff2e97e21e907ba67598fb"
+    },
+    {
+      "bytes": 3425,
+      "path": "schemas/tev_script_conformance_scenario_v1.schema.json",
+      "sha256": "33cc609a27e7657fecb5a25c2422d11417dd9ba4c178c9bbd58e6fa2046009bd"
+    },
+    {
+      "bytes": 15339,
+      "path": "schemas/tev_script_program_ir_v2.schema.json",
+      "sha256": "b07d64de19000999c10baa648632d374890d96bac40bf385b6a173b5cacdeb08"
+    },
+    {
+      "bytes": 2900,
+      "path": "spec/CANONICAL_JSON_PROFILE_V1.md",
+      "sha256": "9012d7d5b3a3e2db7a4693256029ae5d891a8dc01b4c22ef57ad7f62603d6281"
+    },
+    {
+      "bytes": 1968,
+      "path": "spec/CONFORMANCE_PROTOCOL_V1.md",
+      "sha256": "d4b7bbc3815f6f779bdaa35c8a2a1f6d966730b3af556f5b798ca8fd9672a7c1"
+    },
+    {
+      "bytes": 3001,
+      "path": "spec/IR_OPERATIONAL_SEMANTICS_V1.md",
+      "sha256": "c463e46476e94e7a3f4e10a61adb3c349cf540fd270ba1dc501f2a4826e3879d"
+    },
+    {
+      "bytes": 1025,
+      "path": "spec/PORTABLE_VALUE_MODEL_V1.md",
+      "sha256": "19c77720521eaf81630cc13935aeb0c7ec003bc75780fb645e2284db14fb75e4"
+    },
+    {
+      "bytes": 2177,
+      "path": "spec/RUNTIME_ABI_V1.md",
+      "sha256": "bf31e3c38499f81572e14a75765d5eb0d0c4faf105b06aa29b18e0387dc44605"
+    },
+    {
+      "bytes": 923,
+      "path": "spec/SOURCE_LEXICAL_GRAMMAR_V1.md",
+      "sha256": "9fc26841176479cc20a15474a48c3c3cf6b8ec72833dd8159208576c6fb9e592"
+    },
+    {
+      "bytes": 3072,
+      "path": "spec/STATIC_SEMANTICS_V1.md",
+      "sha256": "df92ff831617373267865a335910cfca8ebd8c407865bd7310e49068b7f8ea2a"
+    },
+    {
+      "bytes": 4731,
+      "path": "spec/TEV_SCRIPT_PORTABLE_ARCHITECTURE_V2.md",
+      "sha256": "5f1ebd2e95a75ed9da09b7b6752d2db04ff5f43d4547a2560ac90f01dd4fae4a"
+    },
+    {
+      "bytes": 3126,
+      "path": "spec/TEV_SCRIPT_V0_2.ebnf",
+      "sha256": "b377f6affe9198dc261fb8dee7fdd6890e77398bd5798b685c971f15db8f4374"
+    },
+    {
+      "bytes": 2880,
+      "path": "tests/test_canonical.py",
+      "sha256": "da2da557e3c6726c8b2d14c9673f233cb3dee58d8c2fa731eae161c9bc3d1d0c"
+    },
+    {
+      "bytes": 6615,
+      "path": "tests/test_compiler.py",
+      "sha256": "7e849a0918dc04b48e277bb16fafa2eebf3564d419b6b233da129bf6ac2c8d68"
+    },
+    {
+      "bytes": 4923,
+      "path": "tests/test_conformance.py",
+      "sha256": "21378fd8ebccf3293f50995a3686a9ddad6f53dae1348116e327726f5ce99ee6"
+    },
+    {
+      "bytes": 829,
+      "path": "tev_script/__init__.py",
+      "sha256": "f9037eefa61acef59f2d434f428ec6e0917583803cf729b785aca6fcb25858eb"
+    },
+    {
+      "bytes": 1875,
+      "path": "tev_script/ast.py",
+      "sha256": "07b849510151b208fae5fad9ee451688d812ab1e176d20e7173fed2e5d95da2a"
+    },
+    {
+      "bytes": 1453,
+      "path": "tev_script/canonical.py",
+      "sha256": "73eb1872ca3033b2aa09f86a230a8c25c931bad3efa0a93fe6e41cc5585a6cfc"
+    },
+    {
+      "bytes": 5006,
+      "path": "tev_script/capability_catalog.py",
+      "sha256": "9f3b0f4eb6b68bb8c92bc4f53b456e2b89e28331e8ee5b794798c2a9f137ee21"
+    },
+    {
+      "bytes": 5977,
+      "path": "tev_script/cli.py",
+      "sha256": "52bcac7a2eb6e20c5e58f0b51292f4f88a099c8ff3589a0e426f7a95449c286d"
+    },
+    {
+      "bytes": 30907,
+      "path": "tev_script/compiler.py",
+      "sha256": "2e1d4599263a722c7424dfeabde3a52729ac76a9d8bceb1ffa606dfb59dcfcc3"
+    },
+    {
+      "bytes": 4748,
+      "path": "tev_script/conformance.py",
+      "sha256": "494950c446cae1886d27bdd8b3fe23703e0b783a2e6403e60333d528efbdf9c6"
+    },
+    {
+      "bytes": 716,
+      "path": "tev_script/contracts.py",
+      "sha256": "b7c847d45e29daf5f57fbe6756e90ee6734a5b17917233bcfa817a00d71a2b52"
+    },
+    {
+      "bytes": 1365,
+      "path": "tev_script/diagnostics.py",
+      "sha256": "61a6fcdd0e3f69f95c97c04d9e0f294ba41000d5372818d60cbf9457c75df7f6"
+    },
+    {
+      "bytes": 7881,
+      "path": "tev_script/ir_flow.py",
+      "sha256": "d54c87a13c60956e1caa87b6387c8d17ee93cb9bb2b3dcbc2c50e3968acaa5cf"
+    },
+    {
+      "bytes": 17410,
+      "path": "tev_script/ir_validation.py",
+      "sha256": "4aeadcb848a8cd92a87c29e4e96a51597df889df1f2dde10f3cbc9e5ec822d20"
+    },
+    {
+      "bytes": 2322,
+      "path": "tev_script/json_io.py",
+      "sha256": "6a437b6cbfb900e920bd54f2372c973f65da4db99cc415537e206c418f4d72b0"
+    },
+    {
+      "bytes": 7041,
+      "path": "tev_script/lexer.py",
+      "sha256": "5d62d148883ebaa4623c48fd5c23b3e2f114c417021f499f2602dce399436810"
+    },
+    {
+      "bytes": 10922,
+      "path": "tev_script/parser.py",
+      "sha256": "080f3732dd18505f5f95c57eee53bb56a76994babeae7611a33be3f5f2e8b92b"
+    },
+    {
+      "bytes": 13567,
+      "path": "tev_script/runtime.py",
+      "sha256": "0ef2f479ee0f363256279ac979cf336405bf974c2b65b0134316f27b99a73e8b"
+    },
+    {
+      "bytes": 384,
+      "path": "tev_script/source.py",
+      "sha256": "71729d594cde6829d866b413ebbee2ebc59953f0e864076bf81fef2570ac1499"
+    },
+    {
+      "bytes": 1772,
+      "path": "tev_script/types.py",
+      "sha256": "af463419e20116ebc5de71b367ad063b55895b9a464464545d3140a05cab4840"
+    },
+    {
+      "bytes": 4353,
+      "path": "tev_script/values.py",
+      "sha256": "eaeca23acdefe758bd5cd46b9ff97070ade73541805c2ac33181cb8e8684be57"
+    },
+    {
+      "bytes": 4697,
+      "path": "tools/gate7_divergence.py",
+      "sha256": "d4acbfdbfccef854611ee55576d631263fe35402817ac6e619e11dddff54c674"
+    },
+    {
+      "bytes": 6676,
+      "path": "tools/generate_transactional_swap_gate5a_fixtures.py",
+      "sha256": "d583359341019fc57ae7894ded6bd1a54e836124c1f8c2d4eee7b58c353b34bf"
+    },
+    {
+      "bytes": 5185,
+      "path": "tools/generate_transactional_swap_gate5b_fixtures.py",
+      "sha256": "06e2b25a2c6e8de4bf3a186097062607ba06fc71096e58940eb4bee245d516ac"
+    },
+    {
+      "bytes": 1705,
+      "path": "tools/refresh_unity_core_identity.py",
+      "sha256": "b0d2ee8440ab79fdb8056cd9ac2be4c1a88c6d2f96b6b6f715eecfeca67e666d"
+    },
+    {
+      "bytes": 1232,
+      "path": "tools/run_gate7_javascript_receipt.mjs",
+      "sha256": "51f5792c8790a73049f6c42f1890ffa0b256b4222616a304299f1e99e498ee0d"
+    },
+    {
+      "bytes": 1305,
+      "path": "tools/run_gate7_python_receipt.py",
+      "sha256": "355126dc2242f2d2f3bc6b7fde7c54181e532c2404ec4ecb7775304f23c8ceb9"
+    },
+    {
+      "bytes": 2469,
+      "path": "tools/run_language_closure_javascript.mjs",
+      "sha256": "c2e1a02bfbcdfde668a36ab16d561fb1a6081b6c51358a81fb84c931fc51c9fc"
+    },
+    {
+      "bytes": 4923,
+      "path": "tools/run_language_closure_python.py",
+      "sha256": "cef6278a1bfc35ef3d14de9dfbf40f8722d8ad2ae593d66429c0cf7e778038bc"
+    },
+    {
+      "bytes": 5789,
+      "path": "tools/serve_gate6d_browser.py",
+      "sha256": "3fb33dbb5215b4c493d56bdbe8906d0f6f24e27c355d7987c3113ec94567f8a0"
+    },
+    {
+      "bytes": 4872,
+      "path": "tools/serve_gate7_browser.py",
+      "sha256": "2039715df5e230cc1450f82801a264d7b77b177c0317248af433f08f2fb26789"
+    },
+    {
+      "bytes": 2249,
+      "path": "tools/serve_hot_update_gate5e.py",
+      "sha256": "248950a695c0c1f830b3b2c4b99fec66c5b2ba4f4abb9cb6fc32565c6044bf01"
+    },
+    {
+      "bytes": 5843,
+      "path": "tools/serve_wasm_static.py",
+      "sha256": "5e1f4e1efc9ca25901ec65e927ff31d7451a57e15a5f8eeb57badc6b60c590a1"
+    },
+    {
+      "bytes": 9480,
+      "path": "tools/validate_distributed_determinism_gate7a_7e.py",
+      "sha256": "132279ccb03cb9ff6f0fdfc12d25f29de896117c1f98a513e3f1dcc3bfbfd1c8"
+    },
+    {
+      "bytes": 5681,
+      "path": "tools/validate_hot_update_batch_5c_5e.py",
+      "sha256": "7a188471b941c87c3577f302ce9b2d5d8743d077dc1c95b49d4a44b5d7cb749e"
+    },
+    {
+      "bytes": 4727,
+      "path": "tools/validate_language_completeness_v1.py",
+      "sha256": "ef48d68cb9b67531d034dd700fd25a31f4422ae7e9d6370a26d1cf2fed9c7702"
+    },
+    {
+      "bytes": 3703,
+      "path": "tools/validate_transactional_swap_gate5a.py",
+      "sha256": "3383027bfdd77f12a8f38af2afe547a0397340f8f9bac62ea565ad4b4d739ed3"
+    },
+    {
+      "bytes": 14346,
+      "path": "tools/validate_wasm_batch_6a_6c.py",
+      "sha256": "00017ad88498acabdb1c3c1e23017c65c3b53fd91e327b75635b0724a304d6be"
+    },
+    {
+      "bytes": 9093,
+      "path": "tools/validate_wasm_signed_update_gate6d.py",
+      "sha256": "9bf3ec803fd57895242aaa0c60bc8fed79d111b90d445e6a0d83294ff5119542"
+    },
+    {
+      "bytes": 3291,
+      "path": "unity/CORE_SOURCE_IDENTITY.json",
+      "sha256": "2c320cbe494749afd045628b81485b8eab77c9764aaa57a5d798bfef2fb44a6b"
+    },
+    {
+      "bytes": 2991,
+      "path": "unity/FIXTURE_IDENTITY.json",
+      "sha256": "1f28a2651df933bf49e267738e658a965aa4241373012bb25697de8d737250bb"
+    },
+    {
+      "bytes": 426,
+      "path": "unity/Package/Editor/Marcbeacve.TevScript.EditorGate.asmdef",
+      "sha256": "8e9c9eb812ea527ec7ca10e805d5857eaa3280a32a6f57139e75051cd718b864"
+    },
+    {
+      "bytes": 6519,
+      "path": "unity/Package/Editor/TevScriptUnityEditorGate.cs",
+      "sha256": "1ca1722da50dc5edb6d1dd55719ed9c7b0f95088b9dcd778bb4c7e5153f7c46c"
+    },
+    {
+      "bytes": 1567,
+      "path": "unity/Package/README.md",
+      "sha256": "9b4878aaf2ad326396defd22de9a6205a00342442ac5aa1e7389b75e07bbe30d"
+    },
+    {
+      "bytes": 360,
+      "path": "unity/Package/Runtime/Core/Marcbeacve.TevScript.Core.asmdef",
+      "sha256": "8541585aaa33ebcb9ccccbb6b309e08c975cbf82eea1a96cd16dc2fe5fe0119e"
+    },
+    {
+      "bytes": 3633,
+      "path": "unity/Package/Runtime/Core/TevScriptCanonicalJson.cs",
+      "sha256": "2351c61a5e7393b73a65a9145ae81fdfffbe1ac92133265af19fdcb845a026ae"
+    },
+    {
+      "bytes": 18322,
+      "path": "unity/Package/Runtime/Core/TevScriptConformance.cs",
+      "sha256": "9e8575b81bfdfda3ea024bfe9fcb5b098b2fbf07f562b17cb56c1edcda041eb8"
+    },
+    {
+      "bytes": 3275,
+      "path": "unity/Package/Runtime/Core/TevScriptContracts.cs",
+      "sha256": "e184c897f9bdd88fc8441c18e5180e6977e8acf518fb831e3dd2ae0e94cf0994"
+    },
+    {
+      "bytes": 17513,
+      "path": "unity/Package/Runtime/Core/TevScriptIrFlowVerifier.cs",
+      "sha256": "8a996fa0896a74fdfa56b6c717adf68b1376597217bad344ebe82f46a2ca9832"
+    },
+    {
+      "bytes": 32710,
+      "path": "unity/Package/Runtime/Core/TevScriptIrValidator.cs",
+      "sha256": "6b5744b035bb2574aa3f1d8c7b126a347ea2914b0d4ee2ad4c32f9135c4ad066"
+    },
+    {
+      "bytes": 27358,
+      "path": "unity/Package/Runtime/Core/TevScriptJson.cs",
+      "sha256": "a50866b4cb8bd3b69ae119ace1438dec1849eb74bd3d01c0912383d376847da0"
+    },
+    {
+      "bytes": 5859,
+      "path": "unity/Package/Runtime/Core/TevScriptPrimitives.cs",
+      "sha256": "9ef1e73e14efeb9e7d3f4d2ea6d062059e786317ce407735e6db0191160667f3"
+    },
+    {
+      "bytes": 15197,
+      "path": "unity/Package/Runtime/Core/TevScriptProgram.cs",
+      "sha256": "04fe56a52d744c3432a40db3ea269b3eb54eb8167156442b5f52f1b45126d3d2"
+    },
+    {
+      "bytes": 26795,
+      "path": "unity/Package/Runtime/Core/TevScriptRuntime.cs",
+      "sha256": "698098d3c18057012b24e36f2166eac774bb716de45e199a91e3dc6e247ab518"
+    },
+    {
+      "bytes": 15340,
+      "path": "unity/Package/Runtime/Core/TevScriptRuntimeCheckpoint.cs",
+      "sha256": "4e2cab6129860b6af32439971c9df584391a8ab3e7609a2e7af454b0eb0c6c14"
+    },
+    {
+      "bytes": 18737,
+      "path": "unity/Package/Runtime/Core/TevScriptRuntimeHotSwap.cs",
+      "sha256": "219f8d24d5f4de8e02126c70938d869b0986edb414dc419becf6a1dff687b6b3"
+    },
+    {
+      "bytes": 27474,
+      "path": "unity/Package/Runtime/Core/TevScriptUpdate.cs",
+      "sha256": "ce92a4141e0eb534630ccffd91720643c1f39546ad6e5d717766f6e449be852e"
+    },
+    {
+      "bytes": 9277,
+      "path": "unity/Package/Runtime/Core/TevScriptValue.cs",
+      "sha256": "56dd6a48d4693acab745caddc420a50497d427eaed6136ddbe72c7176840f559"
+    },
+    {
+      "bytes": 397,
+      "path": "unity/Package/Runtime/Unity/Marcbeacve.TevScript.Unity.asmdef",
+      "sha256": "d342be5484f4d45a61effe3c8835a53bcacea39ea86c2e3edf9fea4abde7262c"
+    },
+    {
+      "bytes": 5094,
+      "path": "unity/Package/Runtime/Unity/TevScriptUnityBoundary.cs",
+      "sha256": "329a67590f86eec99b58450b7010eff76abcad6b1c58cea95b3fbb869d0700a5"
+    },
+    {
+      "bytes": 6776,
+      "path": "unity/Package/Runtime/Unity/TevScriptUnityCapabilities.cs",
+      "sha256": "710d30a750561b026bda3dba374b2ae34bacacabfbaeb6a32ec95f64cceee39b"
+    },
+    {
+      "bytes": 399,
+      "path": "unity/Package/Runtime/Update/Marcbeacve.TevScript.Update.asmdef",
+      "sha256": "821024435c78f06b7ef60f2267ac9255292295190ee7305bb7696de66111f089"
+    },
+    {
+      "bytes": 13250,
+      "path": "unity/Package/Runtime/Update/TevManagedEcdsaP256Sha256Verifier.cs",
+      "sha256": "e59b74f22603f629488fc06fd603125551c8249dcc388c8487603249a5d7a55e"
+    },
+    {
+      "bytes": 11885,
+      "path": "unity/Package/Runtime/Update/TevScriptUpdateSecurity.cs",
+      "sha256": "5dd28038a3f756037b004959e2cf7b8ef4e541e27db5ca50964f055a38a9b72e"
+    },
+    {
+      "bytes": 3619,
+      "path": "unity/Package/Tests/Fixtures/conformance/canonical.vectors.json",
+      "sha256": "a9ac8d0ba6c067be48186be29a19ecd988f1fde92d17b665eda4d3de807a1477"
+    },
+    {
+      "bytes": 620,
+      "path": "unity/Package/Tests/Fixtures/conformance/event-chain.expected.json",
+      "sha256": "3cfa00dea002ed058ca4745695c0539a6db952c795bebc0072502a8112e569af"
+    },
+    {
+      "bytes": 317,
+      "path": "unity/Package/Tests/Fixtures/conformance/event-chain.scenario.json",
+      "sha256": "e680cd67d065ec7fcb69b463e30931ed3efba176ef8929447ccac5c812e8bb37"
+    },
+    {
+      "bytes": 2241,
+      "path": "unity/Package/Tests/Fixtures/conformance/matrix.expected.json",
+      "sha256": "44abea03d9077834294150dbb03878012f6d2b80097c3237d6b505dd03ede729"
+    },
+    {
+      "bytes": 1072,
+      "path": "unity/Package/Tests/Fixtures/conformance/matrix.scenario.json",
+      "sha256": "a6fdb057ecd59e079b79c03e1d8757b23d58e4ee85daba2be0fa85fd3c27bd77"
+    },
+    {
+      "bytes": 699,
+      "path": "unity/Package/Tests/Fixtures/conformance/player-idle.expected.json",
+      "sha256": "b379adfde8cab9e68049558338562a9c9d1be752ad3940e1cb792205eb86a5a1"
+    },
+    {
+      "bytes": 560,
+      "path": "unity/Package/Tests/Fixtures/conformance/player-idle.scenario.json",
+      "sha256": "58ab158794d6819747c244d0680bcfdb97358c8b839542c2bba4b02a77ff1206"
+    },
+    {
+      "bytes": 826,
+      "path": "unity/Package/Tests/Fixtures/conformance/player.expected.json",
+      "sha256": "d5e99dbda29b55a94dea7a801a2bafd5abfbb6dc8eebb3f3844a09c89837b447"
+    },
+    {
+      "bytes": 861,
+      "path": "unity/Package/Tests/Fixtures/conformance/player.scenario.json",
+      "sha256": "5f482c0e60af6075666d282ded912714174b091222af4c3fab213e96e8729423"
+    },
+    {
+      "bytes": 27469,
+      "path": "unity/Package/Tests/Fixtures/examples/ConformanceMatrix.tevs.ir.json",
+      "sha256": "7c48f2115b1debb0a7d470c4a9afd808e5da33ce36790bb2b420058ef3b90141"
+    },
+    {
+      "bytes": 3679,
+      "path": "unity/Package/Tests/Fixtures/examples/EventChain.tevs.ir.json",
+      "sha256": "fe01856a12b6db64ef1cd7c4032144ce9799fa4500c5a90f6bb321924b6760c3"
+    },
+    {
+      "bytes": 8112,
+      "path": "unity/Package/Tests/Fixtures/examples/Player.tevs.ir.json",
+      "sha256": "dc7d75d80d7d1fa0cba3956db25d1504b7a5cab6eaddb3263aa209fc0bb06937"
+    },
+    {
+      "bytes": 536,
+      "path": "unity/Package/Tests/PlayMode/Marcbeacve.TevScript.Tests.PlayMode.asmdef",
+      "sha256": "c3a3f002329bc835c0eee5e03f39a5aa2b2055bb4f4d94732bad730206a339b2"
+    },
+    {
+      "bytes": 8112,
+      "path": "unity/Package/Tests/PlayMode/Resources/TevScriptGate2Player.json",
+      "sha256": "dc7d75d80d7d1fa0cba3956db25d1504b7a5cab6eaddb3263aa209fc0bb06937"
+    },
+    {
+      "bytes": 6445,
+      "path": "unity/Package/Tests/PlayMode/TevScriptUnityPlayModeGateTests.cs",
+      "sha256": "46d6cb39f51ea07609168639ce16d94c1286e5a21b4011d6dfcf7e1f74a3ad0d"
+    },
+    {
+      "bytes": 402,
+      "path": "unity/Package/package.json",
+      "sha256": "6674b921e7843f9ed2d4ea6e191a93a525531d8e8c6457b9be5f65db9d3bdabe"
+    },
+    {
+      "bytes": 468,
+      "path": "unity/PlayerGates/IL2CPP/Editor/Marcbeacve.TevScript.Gate4.Il2CppPlayer.Editor.asmdef",
+      "sha256": "4b42b3d7c5052a2100acfcb30d8875de237664377784b2c4e8a790292d498d71"
+    },
+    {
+      "bytes": 2918,
+      "path": "unity/PlayerGates/IL2CPP/Editor/TevScriptIl2CppPlayerBuildGate.cs",
+      "sha256": "97dcde7829a94711a947ad556d1ff081e50f3db8f1245e11c86dee1279652051"
+    },
+    {
+      "bytes": 458,
+      "path": "unity/PlayerGates/IL2CPP/Runtime/Marcbeacve.TevScript.Gate4.Il2CppPlayer.asmdef",
+      "sha256": "c7f4c897616dd60021fd5fcddd8a0dfa13411203da2bfcee28d5c00272163989"
+    },
+    {
+      "bytes": 8989,
+      "path": "unity/PlayerGates/IL2CPP/Runtime/TevScriptIl2CppPlayerGate.cs",
+      "sha256": "dd76d88febfcb3784000b2ae6240e98add4a58bb25caf5f046ac947d6612fc14"
+    },
+    {
+      "bytes": 504,
+      "path": "unity/PlayerGates/IL2CPPTransactionalSwap/Editor/Marcbeacve.TevScript.Gate5B.Il2CppTransactionalSwap.Editor.asmdef",
+      "sha256": "0724d332d9535ebcfc23ebc897c79c7eb7008ef6d9caab02afef110fbebca7e3"
+    },
+    {
+      "bytes": 3020,
+      "path": "unity/PlayerGates/IL2CPPTransactionalSwap/Editor/TevScriptIl2CppTransactionalSwapBuildGate.cs",
+      "sha256": "6c51f9784695948b539f5c99189911026fe3b0cb037aff8597994448f6a02556"
+    },
+    {
+      "bytes": 448,
+      "path": "unity/PlayerGates/IL2CPPTransactionalSwap/Runtime/Marcbeacve.TevScript.Gate5B.Il2CppTransactionalSwap.asmdef",
+      "sha256": "7596bde31fc0e4f32857587aa5e8b8f1ecf81ec1c8860306f4e68b7bd39fc94c"
+    },
+    {
+      "bytes": 15177,
+      "path": "unity/PlayerGates/IL2CPPTransactionalSwap/Runtime/TevScriptIl2CppTransactionalSwapGate.cs",
+      "sha256": "d19ae5be871e3e33008b8622a89c13db220d4adbbd4bb66bb0ed53337b99c6d9"
+    },
+    {
+      "bytes": 442,
+      "path": "unity/PlayerGates/Mono/Marcbeacve.TevScript.Gate3.MonoPlayer.asmdef",
+      "sha256": "e7c2d16e7c6ba409b56a6a9a7dae6698ff6788b9ffe06bb24c4aa328dd5f1b71"
+    },
+    {
+      "bytes": 2606,
+      "path": "unity/PlayerGates/Mono/TevScriptMonoPlayerBuildGate.cs",
+      "sha256": "5d8e8d59031c8374b04cf7622ad1670d35e50da8487b6be7f1785574f0300371"
+    },
+    {
+      "bytes": 7974,
+      "path": "unity/PlayerGates/Mono/TevScriptMonoPlayerGate.cs",
+      "sha256": "c7ef94e15e0e14e49674aa0e817278eeca5b69821a78a655a8ffcb5a11d6ad19"
+    },
+    {
+      "bytes": 471,
+      "path": "unity/PlayerGates/RemoteUpdate/Editor/Marcbeacve.TevScript.Gate5E.RemoteUpdate.Editor.asmdef",
+      "sha256": "d807e443f88b58ee9c009ef49997a4d2bd4dc1d455a70d07cd5fb95bea60eea8"
+    },
+    {
+      "bytes": 2715,
+      "path": "unity/PlayerGates/RemoteUpdate/Editor/TevScriptRemoteUpdateBuildGate.cs",
+      "sha256": "810136e3ad1f8281a5372a62ca14306681cff7833bfef5dd1ee5407de075139e"
+    },
+    {
+      "bytes": 461,
+      "path": "unity/PlayerGates/RemoteUpdate/Runtime/Marcbeacve.TevScript.Gate5E.RemoteUpdate.asmdef",
+      "sha256": "1037aa9b451f180b572f0e640420cfddd23507784c84e601f79b2acc0b7ca8ff"
+    },
+    {
+      "bytes": 13640,
+      "path": "unity/PlayerGates/RemoteUpdate/Runtime/TevScriptRemoteUpdateGate.cs",
+      "sha256": "f4db6b814ad3c28662883b87c0c1afc3d71a69386a16bc9d3a6c47952581f625"
+    },
+    {
+      "bytes": 444,
+      "path": "unity/PlayerGates/Web/Editor/Marcbeacve.TevScript.Gate6A.Web.Editor.asmdef",
+      "sha256": "2a96d88673543e2a51589886a1c09f70d734b30a5c10af6528acf4d6d52de98f"
+    },
+    {
+      "bytes": 2411,
+      "path": "unity/PlayerGates/Web/Editor/TevScriptUnityWebBuildGate.cs",
+      "sha256": "8aa3713a13b70a445539b4800deb1bf05f1d3173aec3a11a76b49e7178f6fcb1"
+    },
+    {
+      "bytes": 529,
+      "path": "unity/PlayerGates/Web/Plugins/WebGL/TevScriptGate6A.jslib",
+      "sha256": "74ae9244d7bef486fffdc04570dd8aaeaada7f5c5ee127b3bdacd0bb52cb38ba"
+    },
+    {
+      "bytes": 408,
+      "path": "unity/PlayerGates/Web/Runtime/Marcbeacve.TevScript.Gate6A.Web.asmdef",
+      "sha256": "da91472aa865289a0245080815db3888eef31c9c4431d76fd880df7e3de29853"
+    },
+    {
+      "bytes": 4145,
+      "path": "unity/PlayerGates/Web/Runtime/TevScriptUnityWebGate.cs",
+      "sha256": "bbecc89766d66a338cc60c5656427b0d69aa2ee4f434e326cc7523dbb174f6a9"
+    },
+    {
+      "bytes": 4874,
+      "path": "unity/VALIDATE_UNITY_IL2CPP_PLAYER_GATE4.py",
+      "sha256": "c9ac49f61172e80876a1ee1abe3d2ac3a593c004b017b9ebc3c52d4aa3aa50aa"
+    },
+    {
+      "bytes": 6212,
+      "path": "unity/VALIDATE_UNITY_IL2CPP_TRANSACTIONAL_SWAP_GATE5B.py",
+      "sha256": "ac3ff01860d3990a3f6f727112bc5cac8c87102fb48b5ebf312eccb1efa8913a"
+    },
+    {
+      "bytes": 4654,
+      "path": "unity/VALIDATE_UNITY_MONO_PLAYER_GATE3.py",
+      "sha256": "a98a9082f808fa854a16fabf4550a2c821ce8d9cef34a175519dae9eb7776e76"
+    },
+    {
+      "bytes": 6385,
+      "path": "unity/VALIDATE_UNITY_PACKAGE.py",
+      "sha256": "234373bfa6d73b617848e56e448e3b4f47484b17c86caf5566677c577a263b81"
+    },
+    {
+      "bytes": 6316,
+      "path": "unity/VALIDATE_UNITY_PLAYMODE_GATE2.py",
+      "sha256": "3bf7d544e2ac65483baf639efd25cb8a0ab4acc122dc442ee24a7eb0f22bdc39"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://tev-script.local/schemas/tev_script_ir_v3_conformance_receipt_v1.schema.json",
+  "title":"TEV Script IR V3 cross-runtime conformance receipt V1",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["schema","scenario_id","scenario_hash","program_semantic_hash","source_semantic_hash","initial_state_hash","steps","capability_calls","final_state","final_state_hash","receipt_hash"],
+  "properties":{
+    "schema":{"const":"TEV_SCRIPT_IR_V3_CONFORMANCE_RECEIPT_V1"},
+    "scenario_id":{"$ref":"#/$defs/id"},
+    "scenario_hash":{"$ref":"#/$defs/hash"},
+    "program_semantic_hash":{"$ref":"#/$defs/hash"},
+    "source_semantic_hash":{"$ref":"#/$defs/hash"},
+    "initial_state_hash":{"$ref":"#/$defs/hash"},
+    "steps":{"type":"array","maxItems":1024,"items":{"$ref":"#/$defs/step"}},
+    "capability_calls":{"type":"array","maxItems":32768,"items":{"$ref":"#/$defs/capabilityCall"}},
+    "final_state":{"$ref":"#/$defs/stateWitness"},
+    "final_state_hash":{"$ref":"#/$defs/hash"},
+    "receipt_hash":{"$ref":"#/$defs/hash"}
+  },
+  "$defs":{
+    "id":{"type":"string","pattern":"^[A-Za-z_][A-Za-z0-9_.:/-]*$"},
+    "local":{"type":"string","pattern":"^[A-Za-z_][A-Za-z0-9_]*$"},
+    "typeId":{"type":"string","minLength":1,"maxLength":1024},
+    "hash":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "typedValue":{"type":"object","additionalProperties":false,"required":["type","value"],"properties":{"type":{"$ref":"#/$defs/typeId"},"value":{}}},
+    "stateEntity":{"type":"object","additionalProperties":false,"required":["entity_id","state"],"properties":{"entity_id":{"$ref":"#/$defs/local"},"state":{"type":"object","maxProperties":256,"additionalProperties":{"$ref":"#/$defs/typedValue"}}}},
+    "stateWitness":{"type":"array","maxItems":128,"items":{"$ref":"#/$defs/stateEntity"}},
+    "event":{"type":"object","additionalProperties":false,"required":["entity_id","event_id","arguments"],"properties":{"entity_id":{"$ref":"#/$defs/local"},"event_id":{"$ref":"#/$defs/local"},"arguments":{"type":"array","maxItems":64,"items":{"$ref":"#/$defs/typedValue"}}}},
+    "step":{"type":"object","additionalProperties":false,"required":["index","entity_id","event_id","emitted","state_hash"],"properties":{"index":{"type":"integer","minimum":0,"maximum":1023},"entity_id":{"$ref":"#/$defs/local"},"event_id":{"$ref":"#/$defs/local"},"emitted":{"type":"array","items":{"$ref":"#/$defs/event"}},"state_hash":{"$ref":"#/$defs/hash"}}},
+    "capabilityCall":{"type":"object","additionalProperties":false,"required":["index","capability_id","arguments"],"properties":{"index":{"type":"integer","minimum":0},"capability_id":{"$ref":"#/$defs/id"},"arguments":{"type":"array","maxItems":64,"items":{"$ref":"#/$defs/typedValue"}},"return":{"$ref":"#/$defs/typedValue"}}}
+  }
+}

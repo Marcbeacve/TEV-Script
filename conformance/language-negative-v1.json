@@ -1,0 +1,85 @@
+{
+  "schema": "TEV_SCRIPT_LANGUAGE_NEGATIVE_CORPUS_V1",
+  "base_program": "examples/Player.tevs.ir.json",
+  "entity_id": "Player",
+  "handler_event_id": "start",
+  "expected_code": "TEVS_IR_FLOW_INVALID",
+  "cases": [
+    {
+      "id": "stack-underflow-store-state",
+      "locals": [],
+      "instructions": [
+        {"op": "STORE_STATE", "name": "health", "type": "Int"},
+        {"op": "RETURN"}
+      ]
+    },
+    {
+      "id": "local-definite-initialization",
+      "locals": [{"name": "x", "type": "Int"}],
+      "instructions": [
+        {"op": "LOAD_LOCAL", "name": "x", "type": "Int"},
+        {"op": "STORE_STATE", "name": "health", "type": "Int"},
+        {"op": "RETURN"}
+      ]
+    },
+    {
+      "id": "binary-operator-type-contract",
+      "locals": [],
+      "instructions": [
+        {"op": "CONST", "type": "Bool", "value": true},
+        {"op": "CONST", "type": "Bool", "value": false},
+        {"op": "BINARY", "operator": "PLUS", "left_type": "Bool", "right_type": "Bool", "result_type": "Bool"},
+        {"op": "RETURN"}
+      ]
+    },
+    {
+      "id": "cfg-merge-stack-shape",
+      "locals": [],
+      "instructions": [
+        {"op": "CONST", "type": "Bool", "value": true},
+        {"op": "JUMP_IF_FALSE", "target": 4},
+        {"op": "CONST", "type": "Int", "value": {"$int": "1"}},
+        {"op": "JUMP", "target": 4},
+        {"op": "RETURN"}
+      ]
+    },
+    {
+      "id": "capability-argument-stack-type",
+      "locals": [],
+      "instructions": [
+        {"op": "CONST", "type": "Int", "value": {"$int": "1"}},
+        {"op": "CALL_CAPABILITY", "capability_id": "debug.log", "argc": 1, "return_type": "Unit", "kind": "effect"},
+        {"op": "RETURN"}
+      ]
+    },
+    {
+      "id": "conversion-input-type",
+      "locals": [],
+      "instructions": [
+        {"op": "CONST", "type": "Text", "value": "x"},
+        {"op": "CONVERT_INT_TO_RAT"},
+        {"op": "STORE_STATE", "name": "speed", "type": "Rat"},
+        {"op": "RETURN"}
+      ]
+    },
+    {
+      "id": "pure-call-argument-types",
+      "locals": [],
+      "instructions": [
+        {"op": "CONST", "type": "Text", "value": "a"},
+        {"op": "CONST", "type": "Text", "value": "b"},
+        {"op": "CALL_PURE", "function_id": "max", "argc": 2, "return_type": "Int"},
+        {"op": "STORE_STATE", "name": "health", "type": "Int"},
+        {"op": "RETURN"}
+      ]
+    },
+    {
+      "id": "return-stack-leak",
+      "locals": [],
+      "instructions": [
+        {"op": "CONST", "type": "Int", "value": {"$int": "1"}},
+        {"op": "RETURN"}
+      ]
+    }
+  ]
+}

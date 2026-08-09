@@ -1,0 +1,4 @@
+module ecosystem.rules version "1.0.0";
+
+export fn normalize(value: Rat) -> Rat = min(max(value, 0), 1);
+export fn transferLoss(amount: Rat, efficiency: Rat) -> Rat = amount * (1 - efficiency);

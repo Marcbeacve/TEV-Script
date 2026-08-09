@@ -1,0 +1,22 @@
+{
+  "name": "Marcbeacve.TevScript.Tests.PlayMode",
+  "rootNamespace": "Marcbeacve.TevScript.Tests.PlayMode",
+  "references": [
+    "Marcbeacve.TevScript.Core",
+    "Marcbeacve.TevScript.Unity"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

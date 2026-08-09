@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../TevScript.Core/GlobalUsings.V3.cs" Link="GlobalUsings.V3.cs" />
+    <Compile Include="../TevScript.Core/TevScriptV3Lexical.cs" Link="TevScriptV3Lexical.cs" />
+    <Compile Include="../TevScript.Core/TevScriptV3Values.cs" Link="TevScriptV3Values.cs" />
+    <Compile Include="../TevScript.Core/TevScriptV3Canonical.cs" Link="TevScriptV3Canonical.cs" />
+    <Compile Include="../TevScript.Core/TevScriptV3ObjectTreeJson.cs" Link="TevScriptV3ObjectTreeJson.cs" />
+    <Compile Include="../TevScript.Core/TevScriptV3StrictJson.cs" Link="TevScriptV3StrictJson.cs" />
+    <Compile Include="../TevScript.Core/TevScriptV3Flow.cs" Link="TevScriptV3Flow.cs" />
+    <Compile Include="../TevScript.Core/TevScriptV3Validation.cs" Link="TevScriptV3Validation.cs" />
+    <Compile Include="../TevScript.Core/TevScriptRuntimeV3.cs" Link="TevScriptRuntimeV3.cs" />
+    <Compile Include="../TevScript.Core/TevScriptRuntimeCheckpointV2.cs" Link="TevScriptRuntimeCheckpointV2.cs" />
+    <Compile Include="../TevScript.Core/TevScriptRuntimeHotSwapV3.cs" Link="TevScriptRuntimeHotSwapV3.cs" />
+    <Compile Include="../TevScript.Core/TevScriptUpdateV3.cs" Link="TevScriptUpdateV3.cs" />
+    <Compile Include="../TevScript.Core/TevScriptV3Conformance.cs" Link="TevScriptV3Conformance.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,29 @@
+{
+  "implementations": [
+    {
+      "conformance_scenarios": 4,
+      "language": "Python",
+      "path": "tev_script/runtime.py",
+      "status": "CONFORMANT_REFERENCE",
+      "strict_json_loader": "tev_script/json_io.py"
+    },
+    {
+      "conformance_scenarios": 4,
+      "language": "JavaScript",
+      "path": "javascript/src/runtime.mjs",
+      "status": "CONFORMANT_ES2022_REFERENCE",
+      "strict_json_loader": "javascript/src/strict-json.mjs"
+    },
+    {
+      "compilation_evidence": "evidence/reference-v0.2/csharp-conformance-windows-dotnet10.json",
+      "conformance_scenarios": 4,
+      "language": "C#",
+      "path": "runtimes/csharp/TevScript.Core",
+      "status": "CONFORMANT_DOTNET_REFERENCE_OBSERVED_WINDOWS_NET10",
+      "strict_json_loader": "TevScriptCanonicalJson/TevJson strict parser"
+    }
+  ],
+  "ir_schema": "TEV_SCRIPT_PROGRAM_IR_V2",
+  "language_version": "0.2.0",
+  "schema": "TEV_SCRIPT_RUNTIME_IMPLEMENTATIONS_V1"
+}

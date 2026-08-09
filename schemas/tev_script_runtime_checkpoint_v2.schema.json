@@ -1,0 +1,36 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://tev-script.local/schemas/tev_script_runtime_checkpoint_v2.schema.json",
+  "title":"TEV Script Runtime Checkpoint V2",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["schema","program_id","ir_schema","semantic_hash","source_schema","source_semantic_hash","entities"],
+  "properties":{
+    "schema":{"const":"TEV_SCRIPT_RUNTIME_CHECKPOINT_V2"},
+    "program_id":{"$ref":"#/$defs/id"},
+    "ir_schema":{"const":"TEV_SCRIPT_PROGRAM_IR_V3"},
+    "semantic_hash":{"$ref":"#/$defs/hash"},
+    "source_schema":{"enum":["TEV_SCRIPT_LINKED_PROGRAM_V1","TEV_SCRIPT_PROGRAM_IR_V2"]},
+    "source_semantic_hash":{"$ref":"#/$defs/hash"},
+    "entities":{"type":"array","maxItems":128,"items":{"$ref":"#/$defs/entity"}}
+  },
+  "$defs":{
+    "id":{"type":"string","pattern":"^[A-Za-z_][A-Za-z0-9_]*$"},
+    "typeId":{"type":"string","minLength":1,"maxLength":1024},
+    "hash":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "decimalInteger":{"allOf":[{"type":"string","pattern":"^-?(0|[1-9][0-9]*)$"},{"not":{"const":"-0"}}]},
+    "positiveInteger":{"type":"string","pattern":"^[1-9][0-9]*$"},
+    "intValue":{"type":"object","additionalProperties":false,"required":["$int"],"properties":{"$int":{"$ref":"#/$defs/decimalInteger"}}},
+    "ratValue":{"type":"object","additionalProperties":false,"required":["$rat"],"properties":{"$rat":{"type":"array","prefixItems":[{"$ref":"#/$defs/decimalInteger"},{"$ref":"#/$defs/positiveInteger"}],"items":false,"minItems":2,"maxItems":2}}},
+    "vec2Value":{"type":"array","prefixItems":[{"$ref":"#/$defs/ratValue"},{"$ref":"#/$defs/ratValue"}],"items":false,"minItems":2,"maxItems":2},
+    "vec3Value":{"type":"array","prefixItems":[{"$ref":"#/$defs/ratValue"},{"$ref":"#/$defs/ratValue"},{"$ref":"#/$defs/ratValue"}],"items":false,"minItems":3,"maxItems":3},
+    "recordValue":{"type":"object","additionalProperties":false,"required":["$record"],"properties":{"$record":{"type":"object","additionalProperties":false,"required":["type","fields"],"properties":{"type":{"$ref":"#/$defs/typeId"},"fields":{"type":"array","minItems":1,"maxItems":256,"items":{"type":"object","additionalProperties":false,"required":["name","value"],"properties":{"name":{"$ref":"#/$defs/id"},"value":{"$ref":"#/$defs/value"}}}}}}}},
+    "enumValue":{"type":"object","additionalProperties":false,"required":["$enum"],"properties":{"$enum":{"type":"object","additionalProperties":false,"required":["type","variant"],"properties":{"type":{"$ref":"#/$defs/typeId"},"variant":{"$ref":"#/$defs/id"}}}}},
+    "optionValue":{"type":"object","additionalProperties":false,"required":["$option"],"properties":{"$option":{"oneOf":[{"type":"object","additionalProperties":false,"required":["type","variant"],"properties":{"type":{"$ref":"#/$defs/typeId"},"variant":{"const":"None"}}},{"type":"object","additionalProperties":false,"required":["type","variant","value"],"properties":{"type":{"$ref":"#/$defs/typeId"},"variant":{"const":"Some"},"value":{"$ref":"#/$defs/value"}}}]}}},
+    "resultValue":{"type":"object","additionalProperties":false,"required":["$result"],"properties":{"$result":{"type":"object","additionalProperties":false,"required":["type","variant","value"],"properties":{"type":{"$ref":"#/$defs/typeId"},"variant":{"enum":["Ok","Err"]},"value":{"$ref":"#/$defs/value"}}}}},
+    "value":{"oneOf":[{"type":"boolean"},{"type":"string"},{"$ref":"#/$defs/intValue"},{"$ref":"#/$defs/ratValue"},{"$ref":"#/$defs/vec2Value"},{"$ref":"#/$defs/vec3Value"},{"$ref":"#/$defs/recordValue"},{"$ref":"#/$defs/enumValue"},{"$ref":"#/$defs/optionValue"},{"$ref":"#/$defs/resultValue"}]},
+    "typedState":{"type":"object","additionalProperties":false,"required":["type","value"],"properties":{"type":{"$ref":"#/$defs/typeId"},"value":{"$ref":"#/$defs/value"}}},
+    "state":{"type":"object","maxProperties":256,"propertyNames":{"$ref":"#/$defs/id"},"additionalProperties":{"$ref":"#/$defs/typedState"}},
+    "entity":{"type":"object","additionalProperties":false,"required":["entity_id","state"],"properties":{"entity_id":{"$ref":"#/$defs/id"},"state":{"$ref":"#/$defs/state"}}}
+  }
+}

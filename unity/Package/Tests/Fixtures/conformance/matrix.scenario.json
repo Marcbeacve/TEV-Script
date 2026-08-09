@@ -1,0 +1,42 @@
+{
+  "schema": "TEV_SCRIPT_CONFORMANCE_SCENARIO_V1",
+  "scenario_id": "matrix.full.v1",
+  "program": "../examples/ConformanceMatrix.tevs.ir.json",
+  "entity_id": "Matrix",
+  "capabilities": {
+    "time.delta": {
+      "mode": "constant",
+      "value_type": "Rat",
+      "value": {"$rat": ["1", "60"]}
+    }
+  },
+  "invocations": [
+    {
+      "entity_id": "Matrix",
+      "event_id": "exercise",
+      "arguments": [
+        {"type": "Int", "value": {"$int": "7"}},
+        {"type": "Int", "value": {"$int": "3"}},
+        {"type": "Rat", "value": {"$rat": ["5", "2"]}},
+        {"type": "Rat", "value": {"$rat": ["2", "3"]}},
+        {"type": "Bool", "value": false},
+        {"type": "Text", "value": "frontera Ω 😀"},
+        {
+          "type": "Vec2",
+          "value": [
+            {"$rat": ["1", "2"]},
+            {"$rat": ["-3", "4"]}
+          ]
+        },
+        {
+          "type": "Vec3",
+          "value": [
+            {"$rat": ["1", "1"]},
+            {"$rat": ["2", "1"]},
+            {"$rat": ["3", "1"]}
+          ]
+        }
+      ]
+    }
+  ]
+}

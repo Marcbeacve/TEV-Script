@@ -1,0 +1,103 @@
+{
+  "schema": "TEV_SCRIPT_V1_BEHAVIOR_COMPOSITION_CASES_V1",
+  "language_version": "1.0.0",
+  "positive": [
+    {
+      "id": "dependency-state-visible-to-child-and-entity",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior Base { state alive: Bool = true; on update { if alive { log \"base\"; } } } behavior Child { use Base; state speed: Rat = 1; on update { if alive { speed = speed + 1; } } } entity E { use Child; on update { alive = false; speed = 2; } }"}
+      ]
+    },
+    {
+      "id": "imported-behavior-chain",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; import child; entity E { use Child; on update { alive = false; speed = 3; } }"},
+        {"path":"child.tevs","source":"module child version \"1.0.0\"; import base; export behavior Child { use Base; state speed: Rat = 1; on update { if alive { speed = speed + 1; } } }"},
+        {"path":"base.tevs","source":"module base version \"1.0.0\"; export behavior Base { state alive: Bool = true; on update { if alive { log \"alive\"; } } }"}
+      ]
+    },
+    {
+      "id": "handler-parameter-names-may-differ",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior A { on pulse(x: Int) { log \"a\"; } } behavior B { use A; on pulse(y: Int) { log \"b\"; } } entity E { use B; on pulse(z: Int) { log \"e\"; } }"}
+      ]
+    },
+    {
+      "id": "sibling-emission-widens-to-composed-handler",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior Producer { on start { emit pulse(1); } } behavior Consumer { on pulse(value: Rat) { log \"pulse\"; } } entity E { use Producer; use Consumer; on update { return; } }"}
+      ]
+    },
+    {
+      "id": "capability-summary-unions-fragments",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior A { on update { log \"a\"; } } behavior B { on update { animate \"Walk\"; } } entity E { use A; use B; on update { move vec2(1, 0); } }"}
+      ]
+    }
+  ],
+  "negative": [
+    {
+      "id": "direct-cycle",
+      "code": "TEVS_V1_BEHAVIOR_CYCLE",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior A { use B; } behavior B { use A; } entity E { use A; on start { return; } }"}
+      ]
+    },
+    {
+      "id": "diamond-duplicate-inclusion",
+      "code": "TEVS_V1_BEHAVIOR_DUPLICATE_INCLUSION",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior A { state a: Int = 0; } behavior B { use A; } behavior C { use A; } entity E { use B; use C; on start { return; } }"}
+      ]
+    },
+    {
+      "id": "state-conflict-between-behaviors",
+      "code": "TEVS_V1_BEHAVIOR_STATE_CONFLICT",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior A { state x: Int = 0; } behavior B { state x: Int = 1; } entity E { use A; use B; on start { return; } }"}
+      ]
+    },
+    {
+      "id": "state-conflict-behavior-vs-entity",
+      "code": "TEVS_V1_BEHAVIOR_STATE_CONFLICT",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior A { state x: Int = 0; } entity E { use A; state x: Int = 1; on start { return; } }"}
+      ]
+    },
+    {
+      "id": "handler-signature-conflict",
+      "code": "TEVS_V1_BEHAVIOR_HANDLER_SIGNATURE_CONFLICT",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior A { on pulse(x: Int) { log \"a\"; } } behavior B { on pulse(x: Rat) { log \"b\"; } } entity E { use A; use B; on start { return; } }"}
+      ]
+    },
+    {
+      "id": "inherited-state-shadows-handler-parameter",
+      "code": "TEVS_V1_SCOPE_SHADOWING",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior Base { state value: Int = 0; } behavior Child { use Base; on pulse(value: Int) { log \"x\"; } } entity E { use Child; on start { return; } }"}
+      ]
+    },
+    {
+      "id": "sibling-state-not-visible-inside-behavior",
+      "code": "TEVS_V1_TYPE_STATE_UNKNOWN",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior Left { on update { right = 1; } } behavior Right { state right: Int = 0; } entity E { use Left; use Right; on start { return; } }"}
+      ]
+    },
+    {
+      "id": "sibling-emission-signature-conflict",
+      "code": "TEVS_V1_TYPE_EVENT_SIGNATURE_CONFLICT",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior A { on a { emit ping(1); } } behavior B { on b { emit ping(\"x\"); } } entity E { use A; use B; on start { return; } }"}
+      ]
+    },
+    {
+      "id": "sibling-emission-vs-handler-conflict",
+      "code": "TEVS_V1_TYPE_EVENT_HANDLER_SIGNATURE",
+      "sources": [
+        {"path":"root.tevs","source":"script Root version \"1.0.0\"; behavior Producer { on start { emit pulse(\"bad\"); } } behavior Consumer { on pulse(value: Rat) { log \"pulse\"; } } entity E { use Producer; use Consumer; on update { return; } }"}
+      ]
+    }
+  ]
+}

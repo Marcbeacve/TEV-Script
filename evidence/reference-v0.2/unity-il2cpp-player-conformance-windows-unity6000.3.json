@@ -1,0 +1,77 @@
+{
+  "schema": "TEV_SCRIPT_UNITY_IL2CPP_PLAYER_CONFORMANCE_EVIDENCE_V1",
+  "status": "PASS_OBSERVED_LOCAL_PRECOMMIT",
+  "date": "2026-08-07",
+  "branch": "agent/tev-script-unity-il2cpp-player-v1",
+  "base_head": "79fe95c8847f1d41be18b55d2e386919ffe57e56",
+  "base_tree": "5511b90e3b633bd53ed1a5520186fe2e1c00879c",
+  "environment": {
+    "unity_editor": "6000.3.10f1",
+    "platform": "Windows",
+    "build_target": "StandaloneWindows64",
+    "scripting_backend": "IL2CPP",
+    "execution_model": "AOT_NATIVE"
+  },
+  "gate3_regression": {
+    "status": "PASS",
+    "isolation": "CERTIFIED_BASE_NAMED_BRANCH_CLONE",
+    "head": "79fe95c8847f1d41be18b55d2e386919ffe57e56"
+  },
+  "build": {
+    "status": "PASS",
+    "process_exit_code": 0,
+    "backend": "IL2CPP",
+    "aot": "PASS",
+    "gameassembly_dll": "PASS",
+    "global_metadata": "PASS",
+    "mono_runtime": "ABSENT_PASS",
+    "player_exe_sha256": "c05ef2b9ae780cac8fc66d81eef3179cb52b49694235b5ba38c863b26b22f180",
+    "gameassembly_sha256": "23c33fbef43dcc8fecba7b9924f1ade393091e62dd0d511d13adc91452885566",
+    "global_metadata_sha256": "f109b30dec9b602852565f9a507c82cda67d2f5773192896af219959c55f8390"
+  },
+  "player_execution": {
+    "status": "PASS",
+    "process_exit_code": 0,
+    "platform": "WINDOWS_PLAYER_PASS",
+    "core_parse": "PASS",
+    "runtime_state": "PASS"
+  },
+  "capability_abi": {
+    "input.move2d": "PASS",
+    "motion.move2d": "PASS_TRANSFORM2D",
+    "animation.play": "PASS_EXPLICIT_UNITY_SINK",
+    "time.delta": "PASS",
+    "debug.log": "PASS"
+  },
+  "numeric_boundary": {
+    "float_to_rat_exact": "PASS",
+    "rat_to_float_boundary_witness": "PASS",
+    "time_delta_boundary_witness": "PASS",
+    "rat_to_float_rounding_exposed": "PASS",
+    "nonfinite_float_fail_closed": "PASS"
+  },
+  "authority": {
+    "provider_selection": "EXPLICIT_PASS",
+    "core_modified": false,
+    "adapter_modified": false,
+    "backend": "IL2CPP",
+    "aot_artifacts": "EXPLICIT_PASS"
+  },
+  "observed_receipts": {
+    "unity_il2cpp_build_log_sha256": "a121774eb9d7457a0a507d8234a848402a5012aa83f219529312a18148a65c36",
+    "unity_il2cpp_player_log_sha256": "58621ea619dccea1fbe8c62629d2e0851f5b52f7d4802617300895186e94b7f1"
+  },
+  "remaining_boundaries": {
+    "input_system_device": "NOT_PROBED",
+    "animator_controller": "NOT_PROBED",
+    "browser_execution": "PENDING",
+    "stable_release": "NO"
+  },
+  "provenance": {
+    "commit_created": false,
+    "remote_push": false,
+    "pr_modified": false,
+    "merge": false,
+    "note": "Historical precommit observation. Exact commit authority is established only by a subsequent clean-tree rerun."
+  }
+}

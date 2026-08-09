@@ -1,0 +1,135 @@
+source_file          = script_unit | module_unit ;
+
+script_unit          = "script" IDENT "version" STRING ";"
+                       import_decl*
+                       script_top_decl*
+                       entity_decl+
+                       EOF ;
+
+module_unit          = "module" qualified_name "version" STRING ";"
+                       import_decl*
+                       module_top_decl*
+                       EOF ;
+
+import_decl          = "import" qualified_name ";" ;
+
+script_top_decl      = top_decl ;
+module_top_decl      = [ "export" ] top_decl ;
+top_decl             = capability_decl
+                     | record_decl
+                     | enum_decl
+                     | function_decl
+                     | behavior_decl ;
+
+capability_decl      = "capability" qualified_name
+                       "(" [ type_list ] ")"
+                       "->" type capability_kind ";" ;
+capability_kind      = "observation" | "effect" ;
+type_list            = type ( "," type )* ;
+
+record_decl          = "record" IDENT "{" record_field+ "}" ;
+record_field         = IDENT ":" type ";" ;
+
+enum_decl            = "enum" IDENT "{" enum_variant+ "}" ;
+enum_variant         = IDENT ";" ;
+
+function_decl        = "fn" IDENT
+                       "(" [ parameters ] ")"
+                       "->" type
+                       "=" expression ";" ;
+
+behavior_decl        = "behavior" IDENT "{" behavior_member* "}" ;
+behavior_member      = use_decl | state_decl | handler_decl ;
+
+entity_decl          = "entity" IDENT "{" entity_member* "}" ;
+entity_member        = use_decl | state_decl | handler_decl ;
+use_decl             = "use" qualified_name ";" ;
+
+state_decl           = "state" IDENT ":" type "=" expression ";" ;
+handler_decl         = "on" IDENT [ "(" parameters ")" ] block ;
+parameters           = parameter ( "," parameter )* ;
+parameter            = IDENT ":" type ;
+
+type                 = primitive_type
+                     | qualified_name
+                     | "Option" "<" type ">"
+                     | "Result" "<" type "," type ">" ;
+primitive_type       = "Bool" | "Int" | "Rat" | "Text" | "Vec2" | "Vec3" | "Unit" ;
+
+block                = "{" statement* "}" ;
+statement            = let_statement
+                     | assignment
+                     | if_statement
+                     | call_statement
+                     | emit_statement
+                     | log_statement
+                     | move_statement
+                     | animate_statement
+                     | match_statement
+                     | for_statement
+                     | return_statement ;
+
+let_statement        = "let" IDENT [ ":" type ] "=" expression ";" ;
+assignment           = IDENT "=" expression ";" ;
+if_statement         = "if" expression block [ "else" block ] ;
+call_statement       = "call" qualified_name arguments ";" ;
+emit_statement       = "emit" IDENT arguments ";" ;
+log_statement        = "log" expression ";" ;
+move_statement       = "move" expression ";" ;
+animate_statement    = "animate" expression ";" ;
+return_statement     = "return" ";" ;
+
+for_statement        = "for" IDENT "in" const_int ".." const_int block ;
+const_int            = [ "-" ] INT ;
+
+match_statement      = "match" expression "{" match_arm+ "}" ;
+match_arm            = pattern "=>" block ;
+pattern              = enum_pattern
+                     | some_pattern
+                     | none_pattern
+                     | ok_pattern
+                     | err_pattern ;
+enum_pattern         = qualified_name "::" IDENT ;
+some_pattern         = "Some" "(" IDENT ")" ;
+none_pattern         = "None" ;
+ok_pattern           = "Ok" "(" IDENT ")" ;
+err_pattern          = "Err" "(" IDENT ")" ;
+
+expression           = logical_or ;
+logical_or           = logical_and ( "or" logical_and )* ;
+logical_and          = equality ( "and" equality )* ;
+equality             = comparison ( ( "==" | "!=" ) comparison )* ;
+comparison           = additive ( ( "<" | "<=" | ">" | ">=" ) additive )* ;
+additive             = multiplicative ( ( "+" | "-" ) multiplicative )* ;
+multiplicative       = unary ( ( "*" | "/" ) unary )* ;
+unary                = ( "not" | "-" ) unary | postfix ;
+postfix              = primary ( field_suffix | call_suffix )* ;
+field_suffix         = "." IDENT ;
+call_suffix          = arguments ;
+
+primary              = BOOL
+                     | INT
+                     | DECIMAL
+                     | STRING
+                     | qualified_name
+                     | enum_value
+                     | record_value
+                     | option_value
+                     | result_value
+                     | "(" expression ")" ;
+
+enum_value           = qualified_name "::" IDENT ;
+record_value         = qualified_name "(" field_init ( "," field_init )* [ "," ] ")" ;
+field_init           = IDENT "=" expression ;
+option_value         = "Some" "(" expression ")" | "None" ;
+result_value         = "Ok" "(" expression ")" | "Err" "(" expression ")" ;
+
+arguments            = "(" [ expression ( "," expression )* ] ")" ;
+qualified_name       = IDENT ( "." IDENT )* ;
+
+BOOL                 = "true" | "false" ;
+INT                  = ASCII_DIGIT+ ;
+DECIMAL              = ASCII_DIGIT+ "." ASCII_DIGIT+ ;
+IDENT                = ASCII_LETTER_OR_UNDERSCORE ASCII_LETTER_DIGIT_OR_UNDERSCORE* ;
+STRING               = DQUOTE string_char* DQUOTE ;
+EOF                  = end of decoded source unit ;

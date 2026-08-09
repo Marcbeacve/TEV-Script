@@ -1,0 +1,17 @@
+{
+  "name": "Marcbeacve.TevScript.Gate3.MonoPlayer",
+  "rootNamespace": "Marcbeacve.TevScript.Gate3",
+  "references": [
+    "Marcbeacve.TevScript.Core",
+    "Marcbeacve.TevScript.Unity"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

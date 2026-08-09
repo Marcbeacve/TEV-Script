@@ -1,0 +1,39 @@
+{
+  "base_head": "39060bfc80bb0b7cc88515261d4f18d9c462a2b6",
+  "base_tree": "11adc8059f844743920382c96154994cce738fb8",
+  "boundaries": {
+    "anti_replay": "NOT_IN_SCOPE",
+    "network": "NOT_IN_SCOPE",
+    "signature_authority": "NOT_IN_SCOPE",
+    "stable_release": false,
+    "wasm": "NOT_IN_SCOPE"
+  },
+  "branch": "agent/tev-script-transactional-swap-v1",
+  "certification": {
+    "clean_tree_rerun": "REQUIRED",
+    "commit": "NOT_YET_CREATED",
+    "merge": false,
+    "pr_modified": false,
+    "remote_push": false
+  },
+  "claims": {
+    "additive_state_initialization": true,
+    "atomic_reference_swap": true,
+    "capability_ceiling_fail_closed": true,
+    "dynamic_code_absent": true,
+    "existing_state_migration_exact_types": true,
+    "plan_reuse_fail_closed": true,
+    "prepare_non_authoritative": true,
+    "program_id_continuity_fail_closed": true,
+    "rollback_exact_previous_runtime": true,
+    "stale_plan_fail_closed": true,
+    "state_removal_fail_closed": true,
+    "state_removal_valid_ir_reaches_host": true
+  },
+  "gate": "5A",
+  "gate_source_sha256": "3e05bd51c07f6d78db53aa5610d3f18790c7468065f2e614836db59cd788f48c",
+  "implementation_binary_version": "V4",
+  "precommit_evidence_sha256": "794297c539d4f9c2a891d7952cdea080b6f109617c8e1687d30cf7a8c28b6d8a",
+  "schema": "TEV_SCRIPT_TRANSACTIONAL_PROGRAM_SWAP_GATE5A_EVIDENCE_V1",
+  "status": "PASS_OBSERVED_LOCAL_PRECOMMIT"
+}
