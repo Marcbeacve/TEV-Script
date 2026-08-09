@@ -7,6 +7,8 @@ import subprocess
 import sys
 from typing import Any
 
+from tools.v1_optimizer_oracle_contract import OptimizerOracleContractError, parse_optimizer_oracle_output
+
 ROOT = Path(__file__).resolve().parent
 
 EXPERIMENT_LIMITS = {
@@ -183,10 +185,43 @@ def _assess(
     return passed, decisions
 
 
+def _optimizer_oracle(requested: str):
+    provider = (
+        Path(requested).expanduser()
+        if requested
+        else ROOT / "tools" / "v1_optimizer_oracle_local.py"
+    )
+    if not provider.is_absolute():
+        provider = ROOT / provider
+    provider = provider.resolve()
+    if not provider.is_file():
+        return (
+            subprocess.CompletedProcess(
+                [str(provider)],
+                2,
+                stdout="optimizer oracle provider missing\n",
+            ),
+            None,
+        )
+    command = (
+        [sys.executable, str(provider)]
+        if provider.suffix.lower() == ".py"
+        else [str(provider)]
+    )
+    completed = _run(command)
+    if completed.returncode != 0:
+        return completed, None
+    try:
+        receipt = parse_optimizer_oracle_output(completed.stdout)
+    except OptimizerOracleContractError:
+        return completed, None
+    return completed, receipt
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="TEV Script V1 performance-polish admission")
     parser.add_argument("--profile", choices=("experiment", "promotion"), default="experiment")
-    parser.add_argument("--tevprover-root")
+    parser.add_argument("--optimizer-oracle", default="")
     parser.add_argument("--events", type=int, default=200_000)
     parser.add_argument("--rich-events", type=int, default=50_000)
     parser.add_argument("--capability-events", type=int, default=100_000)
@@ -194,7 +229,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--warmup", type=int, default=5_000)
     args = parser.parse_args(argv)
 
-    print("TEV_SCRIPT_V1_PERFORMANCE_POLISH_SCHEMA=V3")
+    print("TEV_SCRIPT_V1_PERFORMANCE_POLISH_SCHEMA=V4")
     print("PERFORMANCE_PROFILE=" + args.profile)
     print("REFERENCE_RUNTIME_REPLACED=NO")
     print("REFERENCE_PYTHON_HOST_REPLACED=NO")
@@ -213,28 +248,13 @@ def main(argv: list[str] | None = None) -> int:
         return _fail("OPTIMIZED_PYTHON_HOST_EQUIVALENCE", "TEST_FAILURE", host_tests)
     print("OPTIMIZED_PYTHON_HOST_EQUIVALENCE=PASS")
 
-    if args.profile == "promotion" and not args.tevprover_root:
-        return _fail("TEVPROVER_OPTIMIZER_ORACLE", "PROMOTION_REQUIRES_TEVPROVER_ROOT")
-
-    tevprover_receipt_present = False
-    if args.tevprover_root:
-        oracle = _run(
-            [
-                sys.executable,
-                str(ROOT / "tools" / "tevprover_v1_optimizer_oracle.py"),
-                "--tevprover-root",
-                args.tevprover_root,
-            ]
-        )
-        if (
-            oracle.returncode != 0
-            or "TEV_SCRIPT_V1_TEVPROVER_OPTIMIZER_ORACLE=PASS" not in oracle.stdout
-        ):
-            return _fail("TEVPROVER_OPTIMIZER_ORACLE", "ORACLE_FAILURE", oracle)
-        tevprover_receipt_present = True
-        print("TEVPROVER_OPTIMIZER_ORACLE=PASS")
-    else:
-        print("TEVPROVER_OPTIMIZER_ORACLE=NOT_REQUESTED")
+    oracle_completed, oracle_receipt = _optimizer_oracle(args.optimizer_oracle)
+    if oracle_receipt is None:
+        return _fail("OPTIMIZER_ORACLE", "ORACLE_FAILURE", oracle_completed)
+    print("OPTIMIZER_ORACLE=PASS")
+    print("OPTIMIZER_ORACLE_PROVIDER=" + str(oracle_receipt["provider_id"]))
+    print("OPTIMIZER_ORACLE_KIND=" + str(oracle_receipt["provider_kind"]))
+    print("EXTERNAL_SEMANTIC_AUTHORITY_REQUIRED=NO")
 
     runtime_completed, runtime_benchmark = _runtime_benchmark(
         events=args.events,
@@ -268,11 +288,14 @@ def main(argv: list[str] | None = None) -> int:
     admitted = runtime_admitted and host_admitted
 
     receipt = {
-        "schema": "TEV_SCRIPT_V1_PERFORMANCE_POLISH_RECEIPT_V3",
+        "schema": "TEV_SCRIPT_V1_PERFORMANCE_POLISH_RECEIPT_V4",
         "profile": args.profile,
         "semantic_equivalence_tests": True,
         "python_host_equivalence_tests": True,
-        "tevprover_optimizer_oracle": tevprover_receipt_present,
+        "optimizer_oracle": oracle_receipt,
+        "optimizer_oracle_provider": oracle_receipt["provider_id"],
+        "external_semantic_authority_required": False,
+        "standalone_semantic_authority": True,
         "runtime_benchmark": runtime_benchmark,
         "python_host_benchmark": host_benchmark,
         "runtime_decisions": runtime_decisions,

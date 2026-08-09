@@ -287,7 +287,7 @@ simple surface syntax
 deep explicit semantics
 ```
 
-not a verbose CUOFC notation for every arithmetic function.
+not a verbose metatheory notation for every arithmetic function.
 
 ## 19. Open proof obligations
 

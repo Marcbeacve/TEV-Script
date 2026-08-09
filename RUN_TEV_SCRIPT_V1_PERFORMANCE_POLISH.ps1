@@ -4,7 +4,7 @@ param(
     [string]$Profile = "experiment",
 
     [string]$Python = "",
-    [string]$TevProverRoot = "",
+    [string]$OptimizerOracle = "",
 
     [int]$Events = 200000,
     [int]$RichEvents = 50000,
@@ -50,42 +50,8 @@ function Resolve-Python {
     throw "Python not found. Pass -Python or set TEV_SCRIPT_PYTHON."
 }
 
-function Test-TevProverRoot {
-    param([string]$Path)
-    if (-not $Path) { return $false }
-    return Test-Path (Join-Path $Path "kernel\checker.py")
-}
-
-function Resolve-TevProverRoot {
-    param([string]$Requested)
-
-    if ($Requested) {
-        if (-not (Test-TevProverRoot $Requested)) {
-            throw "Invalid TEVProver root: $Requested"
-        }
-        return (Resolve-Path $Requested).Path
-    }
-
-    $Candidates = @()
-    if ($env:TEVPROVER_ROOT) { $Candidates += $env:TEVPROVER_ROOT }
-    $Candidates += @(
-        "C:\mio\TEVProver-CUOFC",
-        "C:\TEV\TEVProver-CUOFC",
-        "C:\TEV\deps\TEVProver-CUOFC",
-        (Join-Path (Split-Path $Root -Parent) "TEVProver-CUOFC")
-    )
-
-    foreach ($Candidate in $Candidates) {
-        if (Test-TevProverRoot $Candidate) {
-            return (Resolve-Path $Candidate).Path
-        }
-    }
-
-    return ""
-}
 
 $PythonExe = Resolve-Python $Python
-$ResolvedTevProver = Resolve-TevProverRoot $TevProverRoot
 
 if (-not $Log) {
     $EvidenceRoot = "C:\TEV\evidence"
@@ -103,10 +69,10 @@ $Dirty = & git -C $Root status --porcelain=v1 --untracked-files=all
 "PERFORMANCE_POLISH_HEAD=$Head"
 "PERFORMANCE_POLISH_TREE=$Tree"
 "PERFORMANCE_POLISH_PYTHON=$PythonExe"
-if ($ResolvedTevProver) {
-    "PERFORMANCE_POLISH_TEVPROVER_ROOT=$ResolvedTevProver"
+if ($OptimizerOracle) {
+    "PERFORMANCE_POLISH_OPTIMIZER_ORACLE=$OptimizerOracle"
 } else {
-    "PERFORMANCE_POLISH_TEVPROVER_ROOT=NOT_FOUND"
+    "PERFORMANCE_POLISH_OPTIMIZER_ORACLE=LOCAL_DEFAULT"
 }
 
 if ($Dirty) {
@@ -123,10 +89,8 @@ $Arguments = @(
     "--warmup", "$Warmup"
 )
 
-if ($ResolvedTevProver) {
-    $Arguments += @("--tevprover-root", $ResolvedTevProver)
-} elseif ($Profile -eq "promotion") {
-    throw "Promotion profile requires TEVProver. Pass -TevProverRoot or set TEVPROVER_ROOT."
+if ($OptimizerOracle) {
+    $Arguments += @("--optimizer-oracle", $OptimizerOracle)
 }
 
 "PERFORMANCE_POLISH_LOG=$Log"

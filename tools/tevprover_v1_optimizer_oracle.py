@@ -9,6 +9,19 @@ from pathlib import Path
 import sys
 from typing import Any, Iterable
 
+try:
+    from tools.v1_optimizer_oracle_contract import (
+        OPTIMIZER_ORACLE_PASS_MARKER,
+        OPTIMIZER_ORACLE_SCHEMA_V1,
+        optimizer_oracle_receipt_line,
+    )
+except ModuleNotFoundError:
+    from v1_optimizer_oracle_contract import (
+        OPTIMIZER_ORACLE_PASS_MARKER,
+        OPTIMIZER_ORACLE_SCHEMA_V1,
+        optimizer_oracle_receipt_line,
+    )
+
 # Every carrier is strictly larger than the largest logical-cost witness (5),
 # so cost components are represented exactly instead of only modulo p.
 DEFAULT_MODULI = (7, 11, 13, 17, 19, 23, 29, 31)
@@ -261,7 +274,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser.add_argument(
         "--tevprover-root",
         default=os.environ.get("TEVPROVER_ROOT", ""),
-        help="Path to the TEVProver-CUOFC checkout (or set TEVPROVER_ROOT)",
+        help="Path to an optional TEVProver checkout (or set TEVPROVER_ROOT)",
     )
     parser.add_argument(
         "--moduli",
@@ -336,6 +349,31 @@ def main(argv: Iterable[str] | None = None) -> int:
     }
     print(json.dumps(receipt, indent=2, sort_keys=True))
     print("TEV_SCRIPT_V1_TEVPROVER_OPTIMIZER_ORACLE=PASS")
+    generic_receipt = {
+        "schema": OPTIMIZER_ORACLE_SCHEMA_V1,
+        "provider_id": "external.tevprover.finite-oracle.v1",
+        "provider_kind": "external",
+        "evidence_scope": "finite_selected_carriers",
+        "semantic_claim": receipt["semantic_claim"],
+        "transformation_families": receipt["transformation_families"],
+        "moduli": receipt["moduli"],
+        "finite_program_points_verified": receipt["finite_program_points_verified"],
+        "all_agree": receipt["all_agree"],
+        "negative_controls_detected": receipt["negative_controls_detected"],
+        "provider_receipt_sha256": hashlib.sha256(
+            json.dumps(
+                receipt,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+        "runtime_implementation_equivalence_proved": False,
+        "universal_integer_equivalence_proved": False,
+        "write_authority": False,
+        "promotion_authority": False,
+    }
+    print(optimizer_oracle_receipt_line(generic_receipt))
+    print(OPTIMIZER_ORACLE_PASS_MARKER)
     return 0
 
 
