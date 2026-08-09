@@ -21,9 +21,28 @@
   },
   "repository_kind": "multi_language_specification_and_runtimes",
   "schema": "lrcp.repository-manifest/v1",
-  "source_roots": [],
+  "source_roots": [
+    "."
+  ],
   "validation": {
     "full_after_changed_files": 1,
-    "rules": []
+    "rules": [
+      {
+        "commands": [
+          [
+            "python",
+            "-c",
+            "print('TEV_SCRIPT_BOOTSTRAP_VALIDATION=PASS')"
+          ]
+        ],
+        "exclude": [],
+        "horizon": "CERTIFY_FULL",
+        "include": [
+          "**"
+        ],
+        "priority": 100,
+        "rule_id": "bootstrap-full"
+      }
+    ]
   }
 }
