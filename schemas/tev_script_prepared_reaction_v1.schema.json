@@ -1,0 +1,14 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://tev-script.local/schemas/tev_script_prepared_reaction_v1.schema.json",
+  "title":"TEV Script Prepared Reaction V1",
+  "type":"object","additionalProperties":false,
+  "required":["schema","program_semantic_hash","source_semantic_hash","contract_hash","law_catalog_hash","refinement_receipt_hash","footprint_hash","entity_id","trigger_event","arguments","before_checkpoint","before_checkpoint_hash","after_checkpoint","after_checkpoint_hash","observations","effect_intents","emitted_events","atomicity","preparation_evidence","prepared_reaction_hash"],
+  "properties":{
+    "schema":{"const":"TEV_SCRIPT_PREPARED_REACTION_V1"},"program_semantic_hash":{"$ref":"#/$defs/sha"},"source_semantic_hash":{"$ref":"#/$defs/sha"},"contract_hash":{"$ref":"#/$defs/sha"},"law_catalog_hash":{"$ref":"#/$defs/sha"},"refinement_receipt_hash":{"$ref":"#/$defs/sha"},"footprint_hash":{"$ref":"#/$defs/sha"},"entity_id":{"$ref":"#/$defs/id"},"trigger_event":{"$ref":"#/$defs/id"},
+    "arguments":{"type":"array","items":{"$ref":"#/$defs/typed"}},"before_checkpoint":{"type":"object"},"before_checkpoint_hash":{"$ref":"#/$defs/sha"},"after_checkpoint":{"type":"object"},"after_checkpoint_hash":{"$ref":"#/$defs/sha"},
+    "observations":{"type":"array","items":{"type":"object"}},"effect_intents":{"type":"array","items":{"type":"object"}},"emitted_events":{"type":"array","items":{"type":"object"}},
+    "atomicity":{"enum":["interleaved","state_atomic","state_atomic_external_partial_possible","transactional","durable_transactional"]},"preparation_evidence":{"type":"array","uniqueItems":true,"items":{"type":"string","minLength":1}},"prepared_reaction_hash":{"$ref":"#/$defs/sha"}
+  },
+  "$defs":{"id":{"type":"string","pattern":"^[A-Za-z_][A-Za-z0-9_.:/-]*$"},"sha":{"type":"string","pattern":"^[0-9a-f]{64}$"},"typed":{"type":"object","additionalProperties":false,"required":["type","value"],"properties":{"type":{"type":"string","minLength":1},"value":{}}}}
+}

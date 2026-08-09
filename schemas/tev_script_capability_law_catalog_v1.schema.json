@@ -1,0 +1,23 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://tev-script.local/schemas/tev_script_capability_law_catalog_v1.schema.json",
+  "title":"TEV Script Capability Law Catalog V1",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["schema","deployment_id","complete","resources","capabilities","catalog_hash"],
+  "properties":{
+    "schema":{"const":"TEV_SCRIPT_CAPABILITY_LAW_CATALOG_V1"},
+    "deployment_id":{"$ref":"#/$defs/id"},
+    "complete":{"type":"boolean"},
+    "resources":{"type":"array","maxItems":4096,"items":{"$ref":"#/$defs/resource"}},
+    "capabilities":{"type":"array","maxItems":4096,"items":{"$ref":"#/$defs/capability"}},
+    "catalog_hash":{"$ref":"#/$defs/sha"}
+  },
+  "$defs":{
+    "id":{"type":"string","pattern":"^[A-Za-z_][A-Za-z0-9_.:/-]*$"},
+    "sha":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "access":{"type":"object","additionalProperties":false,"required":["resource_id","mode"],"properties":{"resource_id":{"$ref":"#/$defs/id"},"mode":{"enum":["read","write","consume","reserve"]}}},
+    "resource":{"type":"object","additionalProperties":false,"required":["resource_id","kind","aliases","capacity"],"properties":{"resource_id":{"$ref":"#/$defs/id"},"kind":{"enum":["external","authority","logical"]},"aliases":{"type":"array","uniqueItems":true,"items":{"$ref":"#/$defs/id"}},"capacity":{"type":["integer","null"],"minimum":1}}},
+    "capability":{"type":"object","additionalProperties":false,"required":["capability_id","kind","accesses","observation_semantics","effect_protocol","commutes_with","commit_total_after_prepare","durable_recovery"],"properties":{"capability_id":{"$ref":"#/$defs/id"},"kind":{"enum":["observation","effect"]},"accesses":{"type":"array","uniqueItems":true,"items":{"$ref":"#/$defs/access"}},"observation_semantics":{"enum":["none","snapshot","stable","sequence_sensitive","unknown"]},"effect_protocol":{"enum":["none","immediate","prepare_commit_abort"]},"commutes_with":{"type":"array","uniqueItems":true,"items":{"$ref":"#/$defs/id"}},"commit_total_after_prepare":{"type":"boolean"},"durable_recovery":{"type":"boolean"}}}
+  }
+}
