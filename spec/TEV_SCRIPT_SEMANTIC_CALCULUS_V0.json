@@ -1,0 +1,46 @@
+{
+  "schema": "TEV_SCRIPT_SEMANTIC_CALCULUS_MANIFEST_V0",
+  "status": "experimental",
+  "base_semantics": "TEV Script post-V1 additive semantic research; V1 source/IR/runtime remain unchanged",
+  "core_relation": "Gamma,L |- F ==[T,H]=> OutcomeField",
+  "effect_model": "one indexed effect family with domain-specific laws and multidomain commitment profiles",
+  "closed_focal": [
+    "canonical_field_identity",
+    "identity_not_state",
+    "project_non_committing",
+    "prepared_commit_boundary",
+    "unknown_commit",
+    "destructive_observation",
+    "indexed_effect_domains",
+    "argument_indexed_resources",
+    "epistemic_conflict_storage",
+    "provenance_invalidation",
+    "bitemporal_evidence",
+    "partial_order_trace",
+    "bounded_liveness",
+    "resumable_quanta",
+    "decision_sufficient_abstraction",
+    "information_flow",
+    "authority_attenuation",
+    "stratified_self_change",
+    "ir_v3_projection"
+  ],
+  "open_proof_obligations": [
+    "full_paraconsistent_inference",
+    "belief_revision_policy",
+    "general_fairness",
+    "general_actual_causality",
+    "trace_level_computational_universality",
+    "full_protocol_composition",
+    "hard_real_time_soundness",
+    "complete_distributed_consistency_semantics"
+  ],
+  "non_goals": [
+    "no V1 reinterpretation",
+    "no new V1 keywords",
+    "no ambient authority",
+    "no runtime eval",
+    "no unrestricted self-modification",
+    "no claim LANGUAGE_STABLE=YES"
+  ]
+}
