@@ -199,7 +199,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if shutil.which("git") is None:
         fail("STABLE_TOOL_GIT", "MISSING")
-    if shutil.which("npm") is None:
+    npm = shutil.which("npm")
+    if npm is None:
         fail("STABLE_TOOL_NPM", "MISSING")
 
     artifact_root = prepare_artifact_root(args.artifact_out_dir)
@@ -303,14 +304,14 @@ def main(argv: list[str] | None = None) -> int:
     require_equal("STABLE_PYTHON_ARTIFACT_HASH", wheel_hash, python_receipt.get("wheel_sha256"))
     require_equal("STABLE_PYTHON_ARTIFACT_NAME", wheel.name, python_receipt.get("wheel_filename"))
 
-    npm_test = run(["npm", "test"], cwd=ROOT / "javascript")
+    npm_test = run([npm, "test"], cwd=ROOT / "javascript")
     if npm_test.returncode != 0:
         fail("STABLE_JAVASCRIPT_TEST", "COMMAND_FAILED", npm_test)
     print("STABLE_JAVASCRIPT_TEST=PASS")
 
     npm_pack = run(
         [
-            "npm",
+            npm,
             "pack",
             "--json",
             "--pack-destination",

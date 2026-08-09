@@ -431,6 +431,7 @@ def main() -> int:
     require_tokens(stable_admission_text, (
         EXPECTED_STABLE_RECEIPT, 'parser.add_argument("--technical-parent-certificate", required=True)',
         "ALLOWED_RELEASE_PATHS", "STABLE_PARENT_CERTIFICATE_HASH", "validate_release_diff",
+        'npm = shutil.which("npm")', 'npm_test = run([npm, "test"]',
         'str(ROOT / "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py")', 'str(ROOT / "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py")',
         "STABLE_JAVASCRIPT_PACK=PASS", "STABLE_ADMISSION=PASS", "LANGUAGE_STABLE=YES",
     ), "V1_GOVERNANCE_STABLE_ADMISSION_GATE")

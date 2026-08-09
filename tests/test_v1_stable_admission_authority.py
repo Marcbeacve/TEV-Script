@@ -95,6 +95,14 @@ class V1StableAdmissionAuthorityTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, required_block)
 
+    def test_stable_admission_executes_resolved_npm_path(self) -> None:
+        stable = (ROOT / "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py").read_text(encoding="utf-8")
+        self.assertIn('npm = shutil.which("npm")', stable)
+        self.assertIn('if npm is None:', stable)
+        self.assertIn('npm_test = run([npm, "test"]', stable)
+        self.assertIn('            npm,\n            "pack",', stable)
+        self.assertNotIn('run(["npm", "test"]', stable)
+
     def test_stable_recertifies_global_and_python_profiles(self) -> None:
         stable = (ROOT / "RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py").read_text(encoding="utf-8")
         self.assertIn('str(ROOT / "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py")', stable)
