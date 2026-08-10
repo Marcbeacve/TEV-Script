@@ -11,6 +11,7 @@ from .causal_model_v1 import (
     ReactionFootprintV1,
     RefinementReceiptV1,
 )
+from .causal_refinement_v1 import verify_structural_refinement
 from .semantic_evidence_v0 import EvidenceItemV0, EvidencePolicyV0, evaluate_evidence
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
 from .semantic_realization_v0 import RealizationAdmissionReceiptV0
@@ -21,7 +22,8 @@ TRANSFORMATION_PROGRAM_BINDING_SCHEMA_V0 = "TEV_SCRIPT_TRANSFORMATION_PROGRAM_BI
 EXECUTION_AUTHORITY_RECORD_SCHEMA_V0 = "TEV_SCRIPT_EXECUTION_AUTHORITY_RECORD_V0"
 EXECUTION_AUTHORITY_POLICY_SCHEMA_V0 = "TEV_SCRIPT_EXECUTION_AUTHORITY_POLICY_V0"
 EXECUTION_AUTHORITY_RECEIPT_SCHEMA_V0 = "TEV_SCRIPT_EXECUTION_AUTHORITY_RECEIPT_V0"
-_RELATIONS = frozenset({"EXACT_EQUIVALENT", "REFINEMENT", "PROJECTION"})
+_BINDING_RELATIONS = frozenset({"EXACT_EQUIVALENT", "REFINEMENT", "PROJECTION"})
+_REALIZATION_RELATIONS = frozenset({"EXACT_EQUIVALENT", "REFINEMENT", "APPROXIMATION", "SIMULATION", "PROJECTION"})
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _HEX = frozenset("0123456789abcdef")
 
@@ -59,7 +61,7 @@ class TransformationProgramBindingClaimV0:
     def __post_init__(self) -> None:
         object.__setattr__(self, "transformation_semantic_hash", _hash64(self.transformation_semantic_hash, "transformation_semantic_hash"))
         object.__setattr__(self, "program_semantic_hash", _hash64(self.program_semantic_hash, "program_semantic_hash"))
-        if self.relation not in _RELATIONS:
+        if self.relation not in _BINDING_RELATIONS:
             raise ExecutionAuthorityError("unsupported transformation/program relation")
         object.__setattr__(self, "scope_hash", _hash64(self.scope_hash, "scope_hash"))
         object.__setattr__(self, "assumption_hashes", _hashes(self.assumption_hashes, "authority binding assumption hash"))
@@ -141,13 +143,18 @@ class ExecutionAuthorityPolicyV0:
     allowed_relations: tuple[str, ...] = ("EXACT_EQUIVALENT",)
     accepted_assumption_hashes: tuple[str, ...] = ()
     require_complete_law_catalog: bool = True
+    allowed_effectful_realization_relations: tuple[str, ...] = ("EXACT_EQUIVALENT", "REFINEMENT")
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "binding_evidence_policy_hash", _hash64(self.binding_evidence_policy_hash, "binding_evidence_policy_hash"))
         relations = tuple(sorted(set(str(item) for item in self.allowed_relations)))
-        if not relations or any(item not in _RELATIONS for item in relations):
+        if not relations or any(item not in _BINDING_RELATIONS for item in relations):
             raise ExecutionAuthorityError("allowed_relations")
         object.__setattr__(self, "allowed_relations", relations)
+        effectful_relations = tuple(sorted(set(str(item) for item in self.allowed_effectful_realization_relations)))
+        if not effectful_relations or any(item not in _REALIZATION_RELATIONS for item in effectful_relations):
+            raise ExecutionAuthorityError("allowed_effectful_realization_relations")
+        object.__setattr__(self, "allowed_effectful_realization_relations", effectful_relations)
         object.__setattr__(self, "accepted_assumption_hashes", _hashes(self.accepted_assumption_hashes, "accepted authority assumption hash"))
         if not isinstance(self.require_complete_law_catalog, bool):
             raise ExecutionAuthorityError("require_complete_law_catalog must be bool")
@@ -159,6 +166,7 @@ class ExecutionAuthorityPolicyV0:
             "allowed_relations": list(self.allowed_relations),
             "accepted_assumption_hashes": list(self.accepted_assumption_hashes),
             "require_complete_law_catalog": self.require_complete_law_catalog,
+            "allowed_effectful_realization_relations": list(self.allowed_effectful_realization_relations),
         }
 
     @property
@@ -305,6 +313,17 @@ def evaluate_execution_authority(
     if binding.program_semantic_hash != reaction_footprint.program_semantic_hash:
         issues.append(ExecutionAuthorityIssueV0("authority.program_footprint_mismatch", "REJECT", binding.program_semantic_hash, {"footprint": reaction_footprint.program_semantic_hash}))
 
+    structural_refinement = verify_structural_refinement(reaction_contract, reaction_footprint, law_catalog)
+    if structural_refinement.status != "PASS":
+        issues.append(
+            ExecutionAuthorityIssueV0(
+                "authority.structural_refinement_not_admitted",
+                "REJECT" if structural_refinement.status == "REJECT" else "PROOF_REQUIRED",
+                structural_refinement.receipt_hash,
+                {"status": structural_refinement.status},
+            )
+        )
+
     refinement_bindings = (
         ("authority.refinement_program_mismatch", refinement_receipt.candidate_program_semantic_hash, binding.program_semantic_hash),
         ("authority.refinement_contract_mismatch", refinement_receipt.contract_hash, reaction_contract.contract_hash),
@@ -316,6 +335,21 @@ def evaluate_execution_authority(
             issues.append(ExecutionAuthorityIssueV0(kind, "REJECT", observed, {"expected": expected}))
     if refinement_receipt.status != "PASS":
         issues.append(ExecutionAuthorityIssueV0("authority.refinement_not_admitted", "REJECT" if refinement_receipt.status == "REJECT" else "PROOF_REQUIRED", refinement_receipt.receipt_hash, {"status": refinement_receipt.status}))
+
+    effectful = bool(
+        reaction_footprint.state_writes
+        or reaction_footprint.effects
+        or reaction_footprint.emitted_events
+    )
+    if effectful and realization_receipt.semantic_relation not in policy.allowed_effectful_realization_relations:
+        issues.append(
+            ExecutionAuthorityIssueV0(
+                "authority.effectful_realization_relation_not_allowed",
+                "REJECT",
+                realization_receipt.semantic_relation,
+                {"allowed": list(policy.allowed_effectful_realization_relations)},
+            )
+        )
 
     if policy.require_complete_law_catalog and not law_catalog.complete:
         issues.append(ExecutionAuthorityIssueV0("authority.law_catalog_incomplete", "PROOF_REQUIRED", law_catalog.catalog_hash, {}))
