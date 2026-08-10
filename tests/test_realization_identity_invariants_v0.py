@@ -43,6 +43,8 @@ class MachineProfileIdentityV0Tests(unittest.TestCase):
         operation_hash: str | None = None,
         numeric_semantics: str | None = None,
         format_semantics: str | None = None,
+        semantic_properties=None,
+        metadata=None,
     ) -> MachineFieldV0:
         numeric = NumericModelV0(numeric_id, numeric_semantics or h("exact-int"), True)
         fmt = ExecutableFormatV0(format_id, format_semantics or h("binary-abi"))
@@ -59,7 +61,12 @@ class MachineProfileIdentityV0Tests(unittest.TestCase):
             memory_spaces=(MemorySpaceV0(memory_id, "byte", 4096),),
             executable_formats=(fmt,),
             topology_hash=h("topology"),
-            properties={"parallelism_profile": "bounded"},
+            semantic_properties=(
+                {"parallelism_profile": "bounded"}
+                if semantic_properties is None
+                else semantic_properties
+            ),
+            metadata={} if metadata is None else metadata,
         )
 
     def test_all_local_aliases_are_record_metadata_not_profile_identity(self):
@@ -101,6 +108,17 @@ class MachineProfileIdentityV0Tests(unittest.TestCase):
         )
         self.assertEqual(machine.machine_hash, canonical.machine_hash)
         self.assertNotEqual(machine.record_hash, canonical.record_hash)
+
+    def test_record_metadata_does_not_change_profile(self):
+        left = self._profile("machine.a", metadata={"driver_label": "alpha"})
+        right = self._profile("machine.a", metadata={"driver_label": "beta"})
+        self.assertEqual(left.machine_hash, right.machine_hash)
+        self.assertNotEqual(left.record_hash, right.record_hash)
+
+    def test_semantic_properties_do_change_profile(self):
+        left = self._profile("machine.a", semantic_properties={"parallelism": "bounded"})
+        right = self._profile("machine.a", semantic_properties={"parallelism": "unbounded-model"})
+        self.assertNotEqual(left.machine_hash, right.machine_hash)
 
     def test_numeric_semantics_change_changes_profile(self):
         left = self._profile("machine.a", numeric_semantics=h("numeric-a"))
@@ -164,12 +182,8 @@ class EvidenceIdentityBoundaryV0Tests(unittest.TestCase):
         self.assertNotEqual(base.evidence_hash, assumption_changed.evidence_hash)
 
     def test_requirement_label_does_not_change_policy_semantics(self):
-        left = EvidencePolicyV0(
-            (EvidenceRequirementV0("human.name.a", ("PROOF",), scope_hash=h("scope")),)
-        )
-        right = EvidencePolicyV0(
-            (EvidenceRequirementV0("human.name.b", ("PROOF",), scope_hash=h("scope")),)
-        )
+        left = EvidencePolicyV0((EvidenceRequirementV0("human.name.a", ("PROOF",), scope_hash=h("scope")),))
+        right = EvidencePolicyV0((EvidenceRequirementV0("human.name.b", ("PROOF",), scope_hash=h("scope")),))
         self.assertEqual(left.policy_hash, right.policy_hash)
         self.assertNotEqual(left.record_hash, right.record_hash)
 
@@ -196,10 +210,7 @@ class RealizationIdentityBoundaryV0Tests(unittest.TestCase):
         )
 
     def test_realization_kind_is_classification_not_identity(self):
-        self.assertEqual(
-            self._identity("tev.realization.native"),
-            self._identity("tev.realization.aot_optimized"),
-        )
+        self.assertEqual(self._identity("tev.realization.native"), self._identity("tev.realization.aot_optimized"))
 
     def test_semantic_claim_and_realization_identity_share_semantic_payload(self):
         claim = realization_semantic_claim_hash(
@@ -236,26 +247,14 @@ class StructuralLawIdentityBoundaryV0Tests(unittest.TestCase):
 
     def test_validity_boundary_remains_semantic(self):
         policy = EvidencePolicyV0(()).policy_hash
-        left = StructuralLawClaimV0(
-            "law.a", h("regime"), h("transformation"), h("boundary-a"),
-            h("falsifier"), policy, assumption_hashes=(h("assumption"),)
-        )
-        right = StructuralLawClaimV0(
-            "law.b", h("regime"), h("transformation"), h("boundary-b"),
-            h("falsifier"), policy, assumption_hashes=(h("assumption"),)
-        )
+        left = StructuralLawClaimV0("law.a", h("regime"), h("transformation"), h("boundary-a"), h("falsifier"), policy, assumption_hashes=(h("assumption"),))
+        right = StructuralLawClaimV0("law.b", h("regime"), h("transformation"), h("boundary-b"), h("falsifier"), policy, assumption_hashes=(h("assumption"),))
         self.assertNotEqual(left.law_semantic_hash, right.law_semantic_hash)
 
     def test_assumptions_remain_semantic_to_law(self):
         policy = EvidencePolicyV0(()).policy_hash
-        left = StructuralLawClaimV0(
-            "law.a", h("regime"), h("transformation"), h("boundary"),
-            h("falsifier"), policy, assumption_hashes=(h("assumption-a"),)
-        )
-        right = StructuralLawClaimV0(
-            "law.b", h("regime"), h("transformation"), h("boundary"),
-            h("falsifier"), policy, assumption_hashes=(h("assumption-b"),)
-        )
+        left = StructuralLawClaimV0("law.a", h("regime"), h("transformation"), h("boundary"), h("falsifier"), policy, assumption_hashes=(h("assumption-a"),))
+        right = StructuralLawClaimV0("law.b", h("regime"), h("transformation"), h("boundary"), h("falsifier"), policy, assumption_hashes=(h("assumption-b"),))
         self.assertNotEqual(left.law_semantic_hash, right.law_semantic_hash)
 
 
@@ -263,16 +262,9 @@ class RegimeAssumptionBoundaryV0Tests(unittest.TestCase):
     def test_constitutive_regime_assumption_cannot_be_omitted(self):
         assumption = h("regime-assumption")
         transformation = h("transformation")
-        regime = RegimeContractV0(
-            "regime.test",
-            h("possibility"),
-            h("history"),
-            assumption_hashes=(assumption,),
-        )
+        regime = RegimeContractV0("regime.test", h("possibility"), h("history"), assumption_hashes=(assumption,))
         binding = TransformationRegimeBindingV0(transformation, regime.regime_hash, h("scope"))
-        claim = RegimePreservationClaimV0(
-            h("realization-claim"), binding.binding_hash, regime.regime_hash, "EXACT_EQUIVALENT"
-        )
+        claim = RegimePreservationClaimV0(h("realization-claim"), binding.binding_hash, regime.regime_hash, "EXACT_EQUIVALENT")
         evaluation = evaluate_regime_preservation(
             regime,
             binding,
@@ -286,14 +278,7 @@ class RegimeAssumptionBoundaryV0Tests(unittest.TestCase):
 
 
 class ResourceBoundClaimIdentityV0Tests(unittest.TestCase):
-    def _claim(
-        self,
-        *,
-        estimate_kind: str = "ANALYTIC_BOUND",
-        estimator: str = "estimator-a",
-        assumptions=("assumption",),
-        detail=None,
-    ) -> ResourceEstimateClaimV0:
+    def _claim(self, *, estimate_kind: str = "ANALYTIC_BOUND", estimator: str = "estimator-a", assumptions=("assumption",), detail=None) -> ResourceEstimateClaimV0:
         return ResourceEstimateClaimV0(
             h("realization"), h("context"), h("vector"), h("catalog"),
             estimate_kind, h(estimator), h("scope"),
