@@ -12,6 +12,7 @@ TEST_MODULES = (
     "tests.test_realization_identity_invariants_v0",
     "tests.test_discovery_realization_v0",
     "tests.test_realization_composition_v0",
+    "tests.test_realization_placement_v0",
 )
 
 
