@@ -14,6 +14,7 @@ from .causal_model_v1 import (
 from .semantic_evidence_v0 import EvidenceItemV0, EvidencePolicyV0, evaluate_evidence
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
 from .semantic_realization_v0 import RealizationAdmissionReceiptV0
+from .semantic_regime_v0 import TransformationRegimeBindingV0
 from .semantic_residual_v0 import ResidualObstructionV0, residual_from_obstructions
 
 TRANSFORMATION_PROGRAM_BINDING_SCHEMA_V0 = "TEV_SCRIPT_TRANSFORMATION_PROGRAM_BINDING_CLAIM_V0"
@@ -195,6 +196,8 @@ class ExecutionAuthorityReceiptV0:
     realization_receipt_hash: str
     realization_hash: str
     transformation_semantic_hash: str
+    transformation_regime_binding_hash: str
+    semantic_scope_hash: str
     program_semantic_hash: str
     reaction_contract_hash: str
     reaction_footprint_hash: str
@@ -211,6 +214,8 @@ class ExecutionAuthorityReceiptV0:
             "realization_receipt_hash",
             "realization_hash",
             "transformation_semantic_hash",
+            "transformation_regime_binding_hash",
+            "semantic_scope_hash",
             "program_semantic_hash",
             "reaction_contract_hash",
             "reaction_footprint_hash",
@@ -237,6 +242,8 @@ class ExecutionAuthorityReceiptV0:
             "realization_receipt_hash": self.realization_receipt_hash,
             "realization_hash": self.realization_hash,
             "transformation_semantic_hash": self.transformation_semantic_hash,
+            "transformation_regime_binding_hash": self.transformation_regime_binding_hash,
+            "semantic_scope_hash": self.semantic_scope_hash,
             "program_semantic_hash": self.program_semantic_hash,
             "reaction_contract_hash": self.reaction_contract_hash,
             "reaction_footprint_hash": self.reaction_footprint_hash,
@@ -259,6 +266,7 @@ def evaluate_execution_authority(
     record: ExecutionAuthorityRecordV0,
     *,
     realization_receipt: RealizationAdmissionReceiptV0,
+    transformation_regime_binding: TransformationRegimeBindingV0,
     reaction_contract: ReactionContractV1,
     reaction_footprint: ReactionFootprintV1,
     law_catalog: CapabilityLawCatalogV1,
@@ -283,8 +291,17 @@ def evaluate_execution_authority(
 
     if realization_receipt.status != "PASS":
         issues.append(ExecutionAuthorityIssueV0("authority.realization_not_admitted", "REJECT" if realization_receipt.status == "REJECT" else "PROOF_REQUIRED", realization_receipt.receipt_hash, {"status": realization_receipt.status}))
+
+    if realization_receipt.transformation_regime_binding_hash != transformation_regime_binding.binding_hash:
+        issues.append(ExecutionAuthorityIssueV0("authority.regime_binding_mismatch", "REJECT", realization_receipt.transformation_regime_binding_hash, {"observed": transformation_regime_binding.binding_hash}))
+    if transformation_regime_binding.transformation_semantic_hash != realization_receipt.transformation_semantic_hash:
+        issues.append(ExecutionAuthorityIssueV0("authority.regime_binding_transformation_mismatch", "REJECT", transformation_regime_binding.transformation_semantic_hash, {"realization": realization_receipt.transformation_semantic_hash}))
     if binding.transformation_semantic_hash != realization_receipt.transformation_semantic_hash:
         issues.append(ExecutionAuthorityIssueV0("authority.transformation_binding_mismatch", "REJECT", binding.transformation_semantic_hash, {"realization": realization_receipt.transformation_semantic_hash}))
+    if binding.transformation_semantic_hash != transformation_regime_binding.transformation_semantic_hash:
+        issues.append(ExecutionAuthorityIssueV0("authority.binding_regime_transformation_mismatch", "REJECT", binding.transformation_semantic_hash, {"regime_binding": transformation_regime_binding.transformation_semantic_hash}))
+    if binding.scope_hash != transformation_regime_binding.semantic_scope_hash:
+        issues.append(ExecutionAuthorityIssueV0("authority.binding_scope_mismatch", "REJECT", binding.scope_hash, {"regime_scope": transformation_regime_binding.semantic_scope_hash}))
     if binding.program_semantic_hash != reaction_footprint.program_semantic_hash:
         issues.append(ExecutionAuthorityIssueV0("authority.program_footprint_mismatch", "REJECT", binding.program_semantic_hash, {"footprint": reaction_footprint.program_semantic_hash}))
 
@@ -336,6 +353,8 @@ def evaluate_execution_authority(
         realization_receipt.receipt_hash,
         realization_receipt.realization_hash,
         realization_receipt.transformation_semantic_hash,
+        transformation_regime_binding.binding_hash,
+        transformation_regime_binding.semantic_scope_hash,
         binding.program_semantic_hash,
         reaction_contract.contract_hash,
         reaction_footprint.footprint_hash,
@@ -360,7 +379,7 @@ def residual_from_execution_authority(receipt: ExecutionAuthorityReceiptV0) -> S
                 "resolved",
                 item.severity,
                 dict(item.detail),
-                dependency_refs=(receipt.authority_claim_hash, receipt.realization_receipt_hash, receipt.reaction_contract_hash, receipt.reaction_footprint_hash, receipt.law_catalog_hash, receipt.refinement_receipt_hash),
+                dependency_refs=(receipt.authority_claim_hash, receipt.realization_receipt_hash, receipt.transformation_regime_binding_hash, receipt.reaction_contract_hash, receipt.reaction_footprint_hash, receipt.law_catalog_hash, receipt.refinement_receipt_hash),
             )
             for item in receipt.issues
         ),
