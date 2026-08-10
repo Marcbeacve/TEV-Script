@@ -171,9 +171,7 @@ class ApproximationPolicyV0:
             "maximum_error": _fraction_object(self.maximum_error),
             "accepted_guarantee_kinds": list(self.accepted_guarantee_kinds),
             "minimum_confidence": (
-                None
-                if self.minimum_confidence is None
-                else _fraction_object(self.minimum_confidence)
+                None if self.minimum_confidence is None else _fraction_object(self.minimum_confidence)
             ),
         }
 
@@ -446,8 +444,9 @@ class RealizationCandidateV0:
             ),
         )
 
-    def _semantic_claim_object(self) -> dict[str, object]:
-        return realization_semantic_claim_object(
+    @property
+    def semantic_claim_hash(self) -> str:
+        return realization_semantic_claim_hash(
             transformation_semantic_hash=self.transformation_semantic_hash,
             transformation_regime_binding_hash=self.transformation_regime_binding_hash,
             machine_hash=self.machine_hash,
@@ -457,10 +456,6 @@ class RealizationCandidateV0:
             approximation_contract=self.approximation_contract,
             assumption_hashes=self.assumption_hashes,
         )
-
-    @property
-    def semantic_claim_hash(self) -> str:
-        return canonical_hash(self._semantic_claim_object())
 
     @property
     def realization_hash(self) -> str:
@@ -823,6 +818,17 @@ def _issues_from_resources(
     return tuple(result)
 
 
+def _reject_unaccepted_assumptions(
+    issues: list[RealizationIssueV0],
+    values: Iterable[str],
+    accepted: set[str],
+    *,
+    kind: str,
+) -> None:
+    for assumption_hash in sorted(set(values) - accepted):
+        issues.append(_issue(kind, "REJECT", assumption_hash))
+
+
 def admit_realization(
     problem: RealizationProblemV0,
     candidate: RealizationCandidateV0,
@@ -977,9 +983,25 @@ def admit_realization(
             )
         )
 
-    missing_assumptions = set(candidate.assumption_hashes) - set(policy.accepted_assumption_hashes)
-    for assumption_hash in sorted(missing_assumptions):
-        issues.append(_issue("assumption.not_accepted", "REJECT", assumption_hash))
+    accepted_assumptions = set(policy.accepted_assumption_hashes)
+    _reject_unaccepted_assumptions(
+        issues,
+        candidate.assumption_hashes,
+        accepted_assumptions,
+        kind="assumption.not_accepted",
+    )
+    _reject_unaccepted_assumptions(
+        issues,
+        preservation_claim.assumption_hashes,
+        accepted_assumptions,
+        kind="regime.assumption_not_accepted_by_policy",
+    )
+    _reject_unaccepted_assumptions(
+        issues,
+        resource_estimate_claim.assumption_hashes,
+        accepted_assumptions,
+        kind="resource.estimate_assumption_not_accepted",
+    )
 
     issues.extend(_evaluate_approximation(candidate, policy))
 
@@ -1044,13 +1066,23 @@ def admit_realization(
         resource_evidence_policy,
         evidence_items,
     )
-    for accepted_hash in (
+    accepted_support = (
         set(realization_evaluation.accepted_evidence_hashes)
         | set(regime_evaluation_evidence.accepted_evidence_hashes)
         | set(resource_evaluation.accepted_evidence_hashes)
-    ):
+    )
+    for accepted_hash in sorted(accepted_support):
         if accepted_hash not in candidate.evidence_hashes:
             issues.append(_issue("evidence.unbound_support", "REJECT", accepted_hash))
+        item = evidence_by_hash.get(accepted_hash)
+        if item is not None:
+            _reject_unaccepted_assumptions(
+                issues,
+                item.assumption_hashes,
+                accepted_assumptions,
+                kind="evidence.assumption_not_accepted",
+            )
+
     issues.extend(_issues_from_evidence(realization_evaluation, prefix="realization"))
     issues.extend(_issues_from_evidence(regime_evaluation_evidence, prefix="regime"))
     issues.extend(_issues_from_evidence(resource_evaluation, prefix="resource"))
