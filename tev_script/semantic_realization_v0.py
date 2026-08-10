@@ -27,6 +27,8 @@ from .semantic_regime_v0 import (
     evaluate_regime_preservation,
 )
 from .semantic_resource_algebra_v0 import (
+    ResourceAlgebraError,
+    ResourceCatalogV0,
     ResourceCeilingIssueV0,
     ResourceCeilingV0,
     ResourceVectorV0,
@@ -179,6 +181,7 @@ class RealizationPolicyV0:
     allowed_relations: tuple[str, ...]
     realization_evidence_policy_hash: str
     regime_evidence_policy_hash: str
+    resource_catalog_hash: str
     accepted_assumption_hashes: tuple[str, ...] = ()
     resource_ceilings: tuple[ResourceCeilingV0, ...] = ()
     approximation_policy: ApproximationPolicyV0 | None = None
@@ -203,12 +206,19 @@ class RealizationPolicyV0:
         )
         object.__setattr__(
             self,
+            "resource_catalog_hash",
+            _hash64(self.resource_catalog_hash, "resource_catalog_hash"),
+        )
+        object.__setattr__(
+            self,
             "accepted_assumption_hashes",
             _hashes(self.accepted_assumption_hashes, "accepted assumption hash"),
         )
         ceilings = tuple(sorted(self.resource_ceilings, key=lambda item: item.dimension_id))
         if len({item.dimension_id for item in ceilings}) != len(ceilings):
             raise RealizationSemanticsError("duplicate resource ceiling")
+        if any(item.catalog_hash != self.resource_catalog_hash for item in ceilings):
+            raise RealizationSemanticsError("resource ceiling catalog does not match policy")
         object.__setattr__(self, "resource_ceilings", ceilings)
         if "APPROXIMATION" in relations and self.approximation_policy is None:
             raise RealizationSemanticsError(
@@ -225,6 +235,7 @@ class RealizationPolicyV0:
             "allowed_relations": list(self.allowed_relations),
             "realization_evidence_policy_hash": self.realization_evidence_policy_hash,
             "regime_evidence_policy_hash": self.regime_evidence_policy_hash,
+            "resource_catalog_hash": self.resource_catalog_hash,
             "accepted_assumption_hashes": list(self.accepted_assumption_hashes),
             "resource_ceilings": [item.to_object() for item in self.resource_ceilings],
             "approximation_policy": (
@@ -499,6 +510,7 @@ class RealizationAdmissionReceiptV0:
     machine_hash: str
     policy_hash: str
     regime_hash: str
+    resource_catalog_hash: str
     machine_compatibility_hash: str
     regime_evaluation_hash: str
     realization_evidence_evaluation_hash: str
@@ -514,6 +526,7 @@ class RealizationAdmissionReceiptV0:
             "machine_hash",
             "policy_hash",
             "regime_hash",
+            "resource_catalog_hash",
             "machine_compatibility_hash",
             "regime_evaluation_hash",
             "realization_evidence_evaluation_hash",
@@ -545,6 +558,7 @@ class RealizationAdmissionReceiptV0:
             "machine_hash": self.machine_hash,
             "policy_hash": self.policy_hash,
             "regime_hash": self.regime_hash,
+            "resource_catalog_hash": self.resource_catalog_hash,
             "machine_compatibility_hash": self.machine_compatibility_hash,
             "regime_evaluation_hash": self.regime_evaluation_hash,
             "realization_evidence_evaluation_hash": self.realization_evidence_evaluation_hash,
@@ -762,6 +776,7 @@ def admit_realization(
     *,
     machine: MachineFieldV0,
     policy: RealizationPolicyV0,
+    resource_catalog: ResourceCatalogV0,
     regime: RegimeContractV0,
     binding: TransformationRegimeBindingV0,
     preservation_claim: RegimePreservationClaimV0,
@@ -862,12 +877,19 @@ def admit_realization(
                 expected=policy.regime_evidence_policy_hash,
             )
         )
+    if policy.resource_catalog_hash != resource_catalog.catalog_hash:
+        issues.append(
+            _issue(
+                "resource.catalog_policy_mismatch",
+                "REJECT",
+                resource_catalog.catalog_hash,
+                expected=policy.resource_catalog_hash,
+            )
+        )
 
     missing_assumptions = set(candidate.assumption_hashes) - set(policy.accepted_assumption_hashes)
     for assumption_hash in sorted(missing_assumptions):
-        issues.append(
-            _issue("assumption.not_accepted", "REJECT", assumption_hash)
-        )
+        issues.append(_issue("assumption.not_accepted", "REJECT", assumption_hash))
 
     issues.extend(_evaluate_approximation(candidate, policy))
 
@@ -888,9 +910,7 @@ def admit_realization(
     evidence_by_hash = {item.evidence_hash: item for item in evidence_items}
     for evidence_hash in candidate.evidence_hashes:
         if evidence_hash not in evidence_by_hash:
-            issues.append(
-                _issue("evidence.reference_missing", "PROOF_REQUIRED", evidence_hash)
-            )
+            issues.append(_issue("evidence.reference_missing", "PROOF_REQUIRED", evidence_hash))
 
     realization_evaluation = evaluate_evidence(
         candidate.semantic_claim_hash,
@@ -907,21 +927,29 @@ def admit_realization(
         | set(regime_evaluation_evidence.accepted_evidence_hashes)
     ):
         if accepted_hash not in candidate.evidence_hashes:
-            issues.append(
-                _issue("evidence.unbound_support", "REJECT", accepted_hash)
-            )
-    issues.extend(
-        _issues_from_evidence(realization_evaluation, prefix="realization")
-    )
-    issues.extend(
-        _issues_from_evidence(regime_evaluation_evidence, prefix="regime")
-    )
+            issues.append(_issue("evidence.unbound_support", "REJECT", accepted_hash))
+    issues.extend(_issues_from_evidence(realization_evaluation, prefix="realization"))
+    issues.extend(_issues_from_evidence(regime_evaluation_evidence, prefix="regime"))
 
-    resource_issues = evaluate_resource_ceilings(
-        candidate.predicted_resources,
-        policy.resource_ceilings,
-    )
-    issues.extend(_issues_from_resources(resource_issues))
+    resource_vector_valid = True
+    try:
+        candidate.predicted_resources.validate_against(resource_catalog)
+    except ResourceAlgebraError as error:
+        resource_vector_valid = False
+        issues.append(
+            _issue(
+                "resource.vector_invalid",
+                "REJECT",
+                candidate.predicted_resources.vector_hash,
+                detail=str(error),
+            )
+        )
+    if resource_vector_valid:
+        resource_issues = evaluate_resource_ceilings(
+            candidate.predicted_resources,
+            policy.resource_ceilings,
+        )
+        issues.extend(_issues_from_resources(resource_issues))
 
     return RealizationAdmissionReceiptV0(
         problem.problem_hash,
@@ -931,6 +959,7 @@ def admit_realization(
         machine.machine_hash,
         policy.policy_hash,
         regime.regime_hash,
+        resource_catalog.catalog_hash,
         machine_evaluation.compatibility_hash,
         regime_evaluation.evaluation_hash,
         realization_evaluation.evaluation_hash,
@@ -954,6 +983,7 @@ def residual_from_realization_admission(
                 receipt.candidate_hash,
                 receipt.policy_hash,
                 receipt.regime_hash,
+                receipt.resource_catalog_hash,
             ),
         )
         for item in receipt.issues
@@ -1001,6 +1031,8 @@ def _dominates(
     right: ResourceVectorV0,
     dimensions: Sequence[str],
 ) -> bool:
+    if left.catalog_hash != right.catalog_hash:
+        return False
     strictly_better = False
     for dimension_id in dimensions:
         left_bound = left.effective_bound(dimension_id)
@@ -1030,6 +1062,8 @@ def pareto_front(
         if receipt.candidate_hash != candidate.candidate_hash:
             raise RealizationSemanticsError("candidate/receipt mismatch")
         if receipt.status == "PASS":
+            if receipt.resource_catalog_hash != candidate.predicted_resources.catalog_hash:
+                raise RealizationSemanticsError("candidate/receipt resource catalog mismatch")
             eligible.append(candidate)
 
     front: list[RealizationCandidateV0] = []
