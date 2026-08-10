@@ -11,6 +11,10 @@ from .semantic_execution_authority_v0 import (
     ExecutionAuthorityReceiptV0,
 )
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
+from .semantic_prepared_execution_v0 import (
+    PREPARED_EXECUTION_RECEIPT_SCHEMA_V0,
+    PreparedExecutionReceiptV0,
+)
 from .semantic_receipt_validity_v0 import ReceiptValidityEvaluationV0
 from .semantic_residual_v0 import ResidualObstructionV0, residual_from_obstructions
 
@@ -22,6 +26,9 @@ ACTIVATION_RECEIPT_CONTRACT_HASH_V0 = canonical_hash(
 )
 AUTHORITY_RECEIPT_CONTRACT_HASH_V0 = canonical_hash(
     {"schema": "TEV_SCRIPT_CONTRACT_IDENTITY_V0", "contract_schema": EXECUTION_AUTHORITY_RECEIPT_SCHEMA_V0}
+)
+PREPARED_EXECUTION_RECEIPT_CONTRACT_HASH_V0 = canonical_hash(
+    {"schema": "TEV_SCRIPT_CONTRACT_IDENTITY_V0", "contract_schema": PREPARED_EXECUTION_RECEIPT_SCHEMA_V0}
 )
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _HEX = frozenset("0123456789abcdef")
@@ -49,10 +56,7 @@ def dispatch_consumption_domain_hash(dispatch_request_hash: str) -> str:
     return canonical_hash(
         {
             "schema": DISPATCH_CONSUMPTION_DOMAIN_SCHEMA_V0,
-            "dispatch_request_hash": _hash64(
-                dispatch_request_hash,
-                "dispatch_request_hash",
-            ),
+            "dispatch_request_hash": _hash64(dispatch_request_hash, "dispatch_request_hash"),
         }
     )
 
@@ -64,6 +68,8 @@ class ExecutionDispatchCandidateV0:
     activation_validity_evaluation_hash: str
     execution_authority_receipt_hash: str
     execution_authority_validity_evaluation_hash: str
+    prepared_execution_receipt_hash: str
+    prepared_execution_validity_evaluation_hash: str
     dispatch_epoch_hash: str
     provenance: Mapping[str, Any] | None = None
 
@@ -74,6 +80,8 @@ class ExecutionDispatchCandidateV0:
             "activation_validity_evaluation_hash",
             "execution_authority_receipt_hash",
             "execution_authority_validity_evaluation_hash",
+            "prepared_execution_receipt_hash",
+            "prepared_execution_validity_evaluation_hash",
             "dispatch_epoch_hash",
         ):
             object.__setattr__(self, name, _hash64(getattr(self, name), name))
@@ -89,6 +97,8 @@ class ExecutionDispatchCandidateV0:
             "activation_validity_evaluation_hash": self.activation_validity_evaluation_hash,
             "execution_authority_receipt_hash": self.execution_authority_receipt_hash,
             "execution_authority_validity_evaluation_hash": self.execution_authority_validity_evaluation_hash,
+            "prepared_execution_receipt_hash": self.prepared_execution_receipt_hash,
+            "prepared_execution_validity_evaluation_hash": self.prepared_execution_validity_evaluation_hash,
             "dispatch_epoch_hash": self.dispatch_epoch_hash,
         }
 
@@ -145,6 +155,13 @@ class ExecutionDispatchReceiptV0:
     execution_authority_claim_hash: str
     execution_authority_validity_evaluation_hash: str
     execution_authority_state_hash: str
+    prepared_execution_receipt_hash: str
+    prepared_execution_claim_hash: str
+    prepared_execution_validity_evaluation_hash: str
+    prepared_execution_authority_state_hash: str
+    invocation_workload_hash: str
+    before_checkpoint_hash: str
+    after_checkpoint_hash: str
     dispatch_consumption_domain_hash: str
     realization_receipt_hash: str
     realization_hash: str
@@ -167,6 +184,13 @@ class ExecutionDispatchReceiptV0:
             "execution_authority_claim_hash",
             "execution_authority_validity_evaluation_hash",
             "execution_authority_state_hash",
+            "prepared_execution_receipt_hash",
+            "prepared_execution_claim_hash",
+            "prepared_execution_validity_evaluation_hash",
+            "prepared_execution_authority_state_hash",
+            "invocation_workload_hash",
+            "before_checkpoint_hash",
+            "after_checkpoint_hash",
             "dispatch_consumption_domain_hash",
             "realization_receipt_hash",
             "realization_hash",
@@ -189,15 +213,21 @@ class ExecutionDispatchReceiptV0:
 
     @property
     def authority_state_hash(self) -> str:
-        if self.activation_authority_state_hash != self.execution_authority_state_hash:
-            return canonical_hash(
-                {
-                    "schema": "TEV_SCRIPT_DISPATCH_COMBINED_AUTHORITY_STATE_V0",
-                    "activation": self.activation_authority_state_hash,
-                    "execution_authority": self.execution_authority_state_hash,
-                }
-            )
-        return self.activation_authority_state_hash
+        states = (
+            self.activation_authority_state_hash,
+            self.execution_authority_state_hash,
+            self.prepared_execution_authority_state_hash,
+        )
+        if len(set(states)) == 1:
+            return states[0]
+        return canonical_hash(
+            {
+                "schema": "TEV_SCRIPT_DISPATCH_COMBINED_AUTHORITY_STATE_V0",
+                "activation": self.activation_authority_state_hash,
+                "execution_authority": self.execution_authority_state_hash,
+                "prepared_execution": self.prepared_execution_authority_state_hash,
+            }
+        )
 
     def to_object(self) -> dict[str, object]:
         return {
@@ -214,6 +244,13 @@ class ExecutionDispatchReceiptV0:
             "execution_authority_claim_hash": self.execution_authority_claim_hash,
             "execution_authority_validity_evaluation_hash": self.execution_authority_validity_evaluation_hash,
             "execution_authority_state_hash": self.execution_authority_state_hash,
+            "prepared_execution_receipt_hash": self.prepared_execution_receipt_hash,
+            "prepared_execution_claim_hash": self.prepared_execution_claim_hash,
+            "prepared_execution_validity_evaluation_hash": self.prepared_execution_validity_evaluation_hash,
+            "prepared_execution_authority_state_hash": self.prepared_execution_authority_state_hash,
+            "invocation_workload_hash": self.invocation_workload_hash,
+            "before_checkpoint_hash": self.before_checkpoint_hash,
+            "after_checkpoint_hash": self.after_checkpoint_hash,
             "dispatch_consumption_domain_hash": self.dispatch_consumption_domain_hash,
             "realization_receipt_hash": self.realization_receipt_hash,
             "realization_hash": self.realization_hash,
@@ -238,6 +275,26 @@ def _upstream(kind: str, subject: str, status: str) -> DispatchIssueV0 | None:
     return DispatchIssueV0(kind, "REJECT" if status == "REJECT" else "PROOF_REQUIRED", subject, {"status": status})
 
 
+def _validate_current_receipt(
+    issues: list[DispatchIssueV0],
+    *,
+    prefix: str,
+    subject_receipt_hash: str,
+    subject_contract_hash: str,
+    candidate_evaluation_hash: str,
+    candidate_epoch_hash: str,
+    validity: ReceiptValidityEvaluationV0,
+) -> None:
+    if candidate_evaluation_hash != validity.evaluation_hash:
+        issues.append(DispatchIssueV0(f"dispatch.{prefix}_validity_evaluation_mismatch", "REJECT", candidate_evaluation_hash, {"observed": validity.evaluation_hash}))
+    if validity.subject_receipt_hash != subject_receipt_hash:
+        issues.append(DispatchIssueV0(f"dispatch.{prefix}_validity_subject_mismatch", "REJECT", validity.subject_receipt_hash, {"observed": subject_receipt_hash}))
+    if validity.subject_contract_hash != subject_contract_hash:
+        issues.append(DispatchIssueV0(f"dispatch.{prefix}_validity_contract_mismatch", "REJECT", validity.subject_contract_hash, {"expected": subject_contract_hash}))
+    if validity.validation_epoch_hash != candidate_epoch_hash:
+        issues.append(DispatchIssueV0(f"dispatch.{prefix}_validity_epoch_mismatch", "REJECT", validity.validation_epoch_hash, {"dispatch_epoch_hash": candidate_epoch_hash}))
+
+
 def evaluate_execution_dispatch(
     candidate: ExecutionDispatchCandidateV0,
     *,
@@ -245,38 +302,55 @@ def evaluate_execution_dispatch(
     activation_validity: ReceiptValidityEvaluationV0,
     execution_authority_receipt: ExecutionAuthorityReceiptV0,
     execution_authority_validity: ReceiptValidityEvaluationV0,
+    prepared_execution_receipt: PreparedExecutionReceiptV0,
+    prepared_execution_validity: ReceiptValidityEvaluationV0,
 ) -> ExecutionDispatchReceiptV0:
     issues: list[DispatchIssueV0] = []
 
     bindings = (
         ("dispatch.activation_receipt_mismatch", candidate.activation_receipt_hash, activation_receipt.receipt_hash),
-        ("dispatch.activation_validity_evaluation_mismatch", candidate.activation_validity_evaluation_hash, activation_validity.evaluation_hash),
         ("dispatch.execution_authority_receipt_mismatch", candidate.execution_authority_receipt_hash, execution_authority_receipt.receipt_hash),
-        ("dispatch.execution_authority_validity_evaluation_mismatch", candidate.execution_authority_validity_evaluation_hash, execution_authority_validity.evaluation_hash),
+        ("dispatch.prepared_execution_receipt_mismatch", candidate.prepared_execution_receipt_hash, prepared_execution_receipt.receipt_hash),
     )
     for kind, expected, observed in bindings:
         if expected != observed:
             issues.append(DispatchIssueV0(kind, "REJECT", expected, {"observed": observed}))
 
-    if activation_validity.subject_receipt_hash != activation_receipt.receipt_hash:
-        issues.append(DispatchIssueV0("dispatch.activation_validity_subject_mismatch", "REJECT", activation_validity.subject_receipt_hash, {"observed": activation_receipt.receipt_hash}))
-    if activation_validity.subject_contract_hash != ACTIVATION_RECEIPT_CONTRACT_HASH_V0:
-        issues.append(DispatchIssueV0("dispatch.activation_validity_contract_mismatch", "REJECT", activation_validity.subject_contract_hash, {"expected": ACTIVATION_RECEIPT_CONTRACT_HASH_V0}))
-    if activation_validity.validation_epoch_hash != candidate.dispatch_epoch_hash:
-        issues.append(DispatchIssueV0("dispatch.activation_validity_epoch_mismatch", "REJECT", activation_validity.validation_epoch_hash, {"dispatch_epoch_hash": candidate.dispatch_epoch_hash}))
-
-    if execution_authority_validity.subject_receipt_hash != execution_authority_receipt.receipt_hash:
-        issues.append(DispatchIssueV0("dispatch.execution_authority_validity_subject_mismatch", "REJECT", execution_authority_validity.subject_receipt_hash, {"observed": execution_authority_receipt.receipt_hash}))
-    if execution_authority_validity.subject_contract_hash != AUTHORITY_RECEIPT_CONTRACT_HASH_V0:
-        issues.append(DispatchIssueV0("dispatch.execution_authority_validity_contract_mismatch", "REJECT", execution_authority_validity.subject_contract_hash, {"expected": AUTHORITY_RECEIPT_CONTRACT_HASH_V0}))
-    if execution_authority_validity.validation_epoch_hash != candidate.dispatch_epoch_hash:
-        issues.append(DispatchIssueV0("dispatch.execution_authority_validity_epoch_mismatch", "REJECT", execution_authority_validity.validation_epoch_hash, {"dispatch_epoch_hash": candidate.dispatch_epoch_hash}))
+    _validate_current_receipt(
+        issues,
+        prefix="activation",
+        subject_receipt_hash=activation_receipt.receipt_hash,
+        subject_contract_hash=ACTIVATION_RECEIPT_CONTRACT_HASH_V0,
+        candidate_evaluation_hash=candidate.activation_validity_evaluation_hash,
+        candidate_epoch_hash=candidate.dispatch_epoch_hash,
+        validity=activation_validity,
+    )
+    _validate_current_receipt(
+        issues,
+        prefix="execution_authority",
+        subject_receipt_hash=execution_authority_receipt.receipt_hash,
+        subject_contract_hash=AUTHORITY_RECEIPT_CONTRACT_HASH_V0,
+        candidate_evaluation_hash=candidate.execution_authority_validity_evaluation_hash,
+        candidate_epoch_hash=candidate.dispatch_epoch_hash,
+        validity=execution_authority_validity,
+    )
+    _validate_current_receipt(
+        issues,
+        prefix="prepared_execution",
+        subject_receipt_hash=prepared_execution_receipt.receipt_hash,
+        subject_contract_hash=PREPARED_EXECUTION_RECEIPT_CONTRACT_HASH_V0,
+        candidate_evaluation_hash=candidate.prepared_execution_validity_evaluation_hash,
+        candidate_epoch_hash=candidate.dispatch_epoch_hash,
+        validity=prepared_execution_validity,
+    )
 
     for kind, subject, status in (
         ("dispatch.activation_not_admitted", activation_receipt.receipt_hash, activation_receipt.status),
         ("dispatch.activation_not_current", activation_validity.evaluation_hash, activation_validity.status),
         ("dispatch.execution_authority_not_admitted", execution_authority_receipt.receipt_hash, execution_authority_receipt.status),
         ("dispatch.execution_authority_not_current", execution_authority_validity.evaluation_hash, execution_authority_validity.status),
+        ("dispatch.prepared_execution_not_admitted", prepared_execution_receipt.receipt_hash, prepared_execution_receipt.status),
+        ("dispatch.prepared_execution_not_current", prepared_execution_validity.evaluation_hash, prepared_execution_validity.status),
     ):
         issue = _upstream(kind, subject, status)
         if issue is not None:
@@ -287,7 +361,17 @@ def evaluate_execution_dispatch(
     if execution_authority_receipt.realization_hash != activation_receipt.realization_hash:
         issues.append(DispatchIssueV0("dispatch.execution_authority_realization_mismatch", "REJECT", execution_authority_receipt.realization_hash, {"activation": activation_receipt.realization_hash}))
 
-    authority_claim_hash = execution_authority_receipt.authority_claim_hash
+    prepared_bindings = (
+        ("dispatch.prepared_activation_mismatch", prepared_execution_receipt.activation_receipt_hash, activation_receipt.receipt_hash),
+        ("dispatch.prepared_authority_mismatch", prepared_execution_receipt.execution_authority_receipt_hash, execution_authority_receipt.receipt_hash),
+        ("dispatch.prepared_realization_receipt_mismatch", prepared_execution_receipt.realization_receipt_hash, activation_receipt.realization_receipt_hash),
+        ("dispatch.prepared_realization_mismatch", prepared_execution_receipt.realization_hash, activation_receipt.realization_hash),
+        ("dispatch.prepared_execution_context_mismatch", prepared_execution_receipt.execution_context_hash, activation_receipt.execution_context_hash),
+    )
+    for kind, observed, expected in prepared_bindings:
+        if observed != expected:
+            issues.append(DispatchIssueV0(kind, "REJECT", observed, {"expected": expected}))
+
     consumption_domain_hash = dispatch_consumption_domain_hash(candidate.dispatch_request_hash)
     return ExecutionDispatchReceiptV0(
         candidate.dispatch_candidate_hash,
@@ -298,9 +382,16 @@ def evaluate_execution_dispatch(
         activation_validity.evaluation_hash,
         activation_validity.authority_state_hash,
         execution_authority_receipt.receipt_hash,
-        authority_claim_hash,
+        execution_authority_receipt.authority_claim_hash,
         execution_authority_validity.evaluation_hash,
         execution_authority_validity.authority_state_hash,
+        prepared_execution_receipt.receipt_hash,
+        prepared_execution_receipt.prepared_execution_claim_hash,
+        prepared_execution_validity.evaluation_hash,
+        prepared_execution_validity.authority_state_hash,
+        prepared_execution_receipt.invocation_workload_hash,
+        prepared_execution_receipt.before_checkpoint_hash,
+        prepared_execution_receipt.after_checkpoint_hash,
         consumption_domain_hash,
         activation_receipt.realization_receipt_hash,
         activation_receipt.realization_hash,
@@ -316,7 +407,7 @@ def residual_from_execution_dispatch(receipt: ExecutionDispatchReceiptV0) -> Sem
     return residual_from_obstructions(
         domain="realization_dispatch",
         judgment_id="execution_dispatch",
-        judgment={"kind": "execution_may_dispatch_now", "dispatch_request_hash": receipt.dispatch_request_hash, "status": receipt.status},
+        judgment={"kind": "prepared_execution_may_dispatch_now", "dispatch_request_hash": receipt.dispatch_request_hash, "status": receipt.status},
         source={"kind": "execution_dispatch_receipt", "receipt_hash": receipt.receipt_hash},
         obstructions=(
             ResidualObstructionV0(
@@ -334,9 +425,10 @@ def residual_from_execution_dispatch(receipt: ExecutionDispatchReceiptV0) -> Sem
                     receipt.execution_authority_receipt_hash,
                     receipt.execution_authority_claim_hash,
                     receipt.execution_authority_validity_evaluation_hash,
+                    receipt.prepared_execution_receipt_hash,
+                    receipt.prepared_execution_claim_hash,
+                    receipt.prepared_execution_validity_evaluation_hash,
                     receipt.dispatch_epoch_hash,
-                    receipt.activation_authority_state_hash,
-                    receipt.execution_authority_state_hash,
                 ),
             )
             for item in receipt.issues
@@ -350,6 +442,7 @@ __all__ = [
     "DISPATCH_CONSUMPTION_DOMAIN_SCHEMA_V0",
     "ACTIVATION_RECEIPT_CONTRACT_HASH_V0",
     "AUTHORITY_RECEIPT_CONTRACT_HASH_V0",
+    "PREPARED_EXECUTION_RECEIPT_CONTRACT_HASH_V0",
     "dispatch_consumption_domain_hash",
     "DispatchSemanticsError",
     "ExecutionDispatchCandidateV0",
