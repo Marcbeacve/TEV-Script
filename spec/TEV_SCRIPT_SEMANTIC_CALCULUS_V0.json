@@ -23,7 +23,8 @@
     "information_flow",
     "authority_attenuation",
     "stratified_self_change",
-    "ir_v3_projection"
+    "ir_v3_projection",
+    "judgment_scoped_residual_field"
   ],
   "open_proof_obligations": [
     "full_paraconsistent_inference",

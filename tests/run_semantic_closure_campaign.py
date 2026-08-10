@@ -10,6 +10,7 @@ MODULES = (
     "tests.test_semantic_universality_closure_v0",
     "tests.test_semantic_composition_theorem_v0",
     "tests.test_semantic_proof_boundary_v0",
+    "tests.test_semantic_residual_v0",
 )
 
 
