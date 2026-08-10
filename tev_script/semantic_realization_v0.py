@@ -33,6 +33,7 @@ from .semantic_resource_algebra_v0 import (
     ResourceCeilingV0,
     ResourceVectorV0,
     evaluate_resource_ceilings,
+    validate_resource_ceilings,
 )
 from .semantic_residual_v0 import ResidualObstructionV0, residual_from_obstructions
 
@@ -507,6 +508,10 @@ class RealizationAdmissionReceiptV0:
     candidate_hash: str
     realization_hash: str
     semantic_claim_hash: str
+    transformation_semantic_hash: str
+    transformation_regime_binding_hash: str
+    semantic_relation: str
+    regime_preservation_claim_hash: str
     machine_hash: str
     policy_hash: str
     regime_hash: str
@@ -523,6 +528,9 @@ class RealizationAdmissionReceiptV0:
             "candidate_hash",
             "realization_hash",
             "semantic_claim_hash",
+            "transformation_semantic_hash",
+            "transformation_regime_binding_hash",
+            "regime_preservation_claim_hash",
             "machine_hash",
             "policy_hash",
             "regime_hash",
@@ -533,6 +541,8 @@ class RealizationAdmissionReceiptV0:
             "regime_evidence_evaluation_hash",
         ):
             object.__setattr__(self, name, _hash64(getattr(self, name), name))
+        if self.semantic_relation not in _RELATIONS:
+            raise RealizationSemanticsError("receipt semantic relation")
         object.__setattr__(
             self,
             "issues",
@@ -555,6 +565,10 @@ class RealizationAdmissionReceiptV0:
             "candidate_hash": self.candidate_hash,
             "realization_hash": self.realization_hash,
             "semantic_claim_hash": self.semantic_claim_hash,
+            "transformation_semantic_hash": self.transformation_semantic_hash,
+            "transformation_regime_binding_hash": self.transformation_regime_binding_hash,
+            "semantic_relation": self.semantic_relation,
+            "regime_preservation_claim_hash": self.regime_preservation_claim_hash,
             "machine_hash": self.machine_hash,
             "policy_hash": self.policy_hash,
             "regime_hash": self.regime_hash,
@@ -877,13 +891,28 @@ def admit_realization(
                 expected=policy.regime_evidence_policy_hash,
             )
         )
+
+    resource_policy_valid = True
     if policy.resource_catalog_hash != resource_catalog.catalog_hash:
+        resource_policy_valid = False
         issues.append(
             _issue(
                 "resource.catalog_policy_mismatch",
                 "REJECT",
                 resource_catalog.catalog_hash,
                 expected=policy.resource_catalog_hash,
+            )
+        )
+    try:
+        validate_resource_ceilings(policy.resource_ceilings, resource_catalog)
+    except ResourceAlgebraError as error:
+        resource_policy_valid = False
+        issues.append(
+            _issue(
+                "resource.policy_invalid",
+                "REJECT",
+                policy.policy_hash,
+                detail=str(error),
             )
         )
 
@@ -944,7 +973,7 @@ def admit_realization(
                 detail=str(error),
             )
         )
-    if resource_vector_valid:
+    if resource_policy_valid and resource_vector_valid:
         resource_issues = evaluate_resource_ceilings(
             candidate.predicted_resources,
             policy.resource_ceilings,
@@ -956,6 +985,10 @@ def admit_realization(
         candidate.candidate_hash,
         candidate.realization_hash,
         candidate.semantic_claim_hash,
+        candidate.transformation_semantic_hash,
+        candidate.transformation_regime_binding_hash,
+        candidate.semantic_relation,
+        candidate.regime_preservation_claim_hash,
         machine.machine_hash,
         policy.policy_hash,
         regime.regime_hash,
@@ -996,6 +1029,8 @@ def residual_from_realization_admission(
             "problem_hash": receipt.problem_hash,
             "candidate_hash": receipt.candidate_hash,
             "realization_hash": receipt.realization_hash,
+            "transformation_semantic_hash": receipt.transformation_semantic_hash,
+            "semantic_relation": receipt.semantic_relation,
             "status": receipt.status,
         },
         source={
