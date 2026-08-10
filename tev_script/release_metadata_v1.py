@@ -1,20 +1,19 @@
 from __future__ import annotations
 
 # Release metadata is deliberately separate from language semantics.
-# The certified Stage-C candidate keeps this file in candidate mode. A later
-# release-shaped commit may change only these metadata values (plus the governed
-# distribution/documentation files) before STABLE_ADMISSION re-certifies that
-# exact Git identity.
-RELEASE_PROFILE = "candidate"
-RELEASE_STATUS = "IMPLEMENTATION_CANDIDATE_UNCERTIFIED"
-STABLE = False
-CURRENT_V1_CERTIFY_FULL_CLAIM = False
-CURRENT_V1_LANGUAGE_STABLE_CLAIM = False
+# This stable-shaped commit is a claim awaiting STABLE_ADMISSION on this exact
+# Git identity. Only a successful stable-admission receipt authorizes the claim
+# for tagging/publication.
+RELEASE_PROFILE = "stable"
+RELEASE_STATUS = "STABLE_1_0_0"
+STABLE = True
+CURRENT_V1_CERTIFY_FULL_CLAIM = True
+CURRENT_V1_LANGUAGE_STABLE_CLAIM = True
 
-# Populated only by a release-shaped stable commit. Empty values are required in
-# candidate mode so no technical certificate is inherited implicitly.
-TECHNICAL_PARENT_COMMIT = ""
-TECHNICAL_PARENT_CERTIFICATE_SHA256 = ""
+# Exact technically certified parent P6. The certificate SHA is the canonical
+# JSON receipt SHA-256 emitted by CERTIFY_FULL V2, not the physical file SHA.
+TECHNICAL_PARENT_COMMIT = "9c79d43a082e8c609d4b85d2cadd5b462f488252"
+TECHNICAL_PARENT_CERTIFICATE_SHA256 = "6c5b8e1ab243d4ccd2108c816c83542c6e3fec1b2a69efc0c09e4a85327c0e07"
 
 STABLE_LANGUAGE_VERSION = "1.0.0"
 

@@ -35,8 +35,8 @@
   "candidate_language_targets": [
     {
       "language_version": "1.0.0",
-      "status": "FULL_IMPLEMENTATION_CANDIDATE_PRECERTIFY_REQUIRED",
-      "stable": false,
+      "status": "STABLE_ADMISSION_REQUESTED",
+      "stable": true,
       "authority_files": [
         "spec/TEV_SCRIPT_V1_LEXICAL_PROFILE.md",
         "spec/TEV_SCRIPT_V1.ebnf",
@@ -70,7 +70,7 @@
         "module_cli": "tev_script/describe_v1.py",
         "installed_cli": "tev-script-v1-describe",
         "descriptor_is_generated_from_v1_contract_constants": true,
-        "stable_claim": false
+        "stable_claim": true
       },
       "language_server_surface": {
         "implementation": "tev_script/lsp_v1.py",
@@ -107,7 +107,7 @@
         "test": "tests/test_v1_python_host.py",
         "production_gate": "RUN_TEV_SCRIPT_V1_PYTHON_PRODUCTION.py",
         "certify_full_gate": "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py",
-        "stable_claim": false
+        "stable_claim": true
       },
       "stable_release_surface": {
         "release_metadata": "tev_script/release_metadata_v1.py",
@@ -117,7 +117,7 @@
         "exact_parent_certificate_required": true,
         "release_diff_whitelist_required": true,
         "published_artifact_byte_identity_required": true,
-        "stable_claim": false
+        "stable_claim": true
       },
       "portable_conformance_assets": [
         "conformance/v1-source-syntax-cases.json",

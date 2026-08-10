@@ -1,7 +1,7 @@
 {
   "name": "@tev-script/runtime",
-  "version": "0.2.0",
-  "description": "Portable TEV Script runtime: certified IR V2 surface plus additive IR V3 candidate modules",
+  "version": "1.0.0",
+  "description": "TEV Script V1.0 portable runtime with certified IR V2 compatibility and IR V3 algebraic runtime support",
   "type": "module",
   "exports": {
     ".": {

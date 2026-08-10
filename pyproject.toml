@@ -5,8 +5,8 @@ backend-path = ["tools"]
 
 [project]
 name = "tev-script-portable-reference"
-version = "0.2.0"
-description = "Portable TEV Script compiler and Python conformance runtime"
+version = "1.0.0"
+description = "TEV Script V1.0 portable reference compiler and Python conformance runtime"
 requires-python = ">=3.11"
 dependencies = []
 
