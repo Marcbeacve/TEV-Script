@@ -7,6 +7,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class BrowserWitnessAuthorityTests(unittest.TestCase):
+    def test_ir_v3_browser_aot_artifacts_are_external_to_checkout(self) -> None:
+        validator = (ROOT / "tools" / "validate_ir_v3_browser_wasm.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('artifacts = temp / "artifacts"', validator)
+        self.assertIn('"--artifacts-path",', validator)
+        self.assertIn("str(artifacts),", validator)
+
     def _assert_managed_authority(
         self,
         *,

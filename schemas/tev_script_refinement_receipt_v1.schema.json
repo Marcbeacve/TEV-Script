@@ -1,0 +1,9 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://tev-script.local/schemas/tev_script_refinement_receipt_v1.schema.json",
+  "title":"TEV Script Refinement Receipt V1",
+  "type":"object","additionalProperties":false,
+  "required":["schema","contract_hash","candidate_program_semantic_hash","footprint_hash","law_catalog_hash","status","failures","pending_obligations","receipt_hash"],
+  "properties":{"schema":{"const":"TEV_SCRIPT_REFINEMENT_RECEIPT_V1"},"contract_hash":{"$ref":"#/$defs/sha"},"candidate_program_semantic_hash":{"$ref":"#/$defs/sha"},"footprint_hash":{"$ref":"#/$defs/sha"},"law_catalog_hash":{"$ref":"#/$defs/sha"},"status":{"enum":["PASS","REJECT","PROOF_REQUIRED"]},"failures":{"type":"array","items":{"type":"object"}},"pending_obligations":{"type":"array","uniqueItems":true,"items":{"type":"string","minLength":1}},"receipt_hash":{"$ref":"#/$defs/sha"}},
+  "$defs":{"sha":{"type":"string","pattern":"^[0-9a-f]{64}$"}}
+}
