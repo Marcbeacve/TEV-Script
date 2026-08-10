@@ -4,6 +4,12 @@ from fractions import Fraction
 import unittest
 
 from tev_script.canonical import canonical_hash
+from tev_script.semantic_artifact_v0 import (
+    ArtifactDescriptorV0,
+    ArtifactManifestV0,
+    ArtifactSemanticsError,
+    manifest_from_single_artifact,
+)
 from tev_script.semantic_evidence_v0 import (
     EvidenceItemV0,
     EvidencePolicyV0,
@@ -155,6 +161,75 @@ class ResourceAlgebraV0Tests(unittest.TestCase):
             {(x.kind, x.dimension_id) for x in issues},
             {("UNKNOWN", "latency"), ("EXCEEDED", "energy")},
         )
+
+
+class ArtifactManifestV0Tests(unittest.TestCase):
+    def test_paths_and_filenames_are_not_part_of_artifact_identity(self):
+        artifact = ArtifactDescriptorV0(
+            "entry.program",
+            "tev.binary",
+            h("bytes"),
+            interface_hash=h("abi"),
+            entrypoint=True,
+        )
+        self.assertNotIn("path", artifact.to_object())
+        self.assertNotIn("filename", artifact.to_object())
+
+    def test_entrypoint_requires_explicit_interface(self):
+        with self.assertRaises(ArtifactSemanticsError):
+            ArtifactDescriptorV0("entry.program", "tev.binary", h("bytes"), entrypoint=True)
+
+    def test_dependency_closure_is_fail_closed(self):
+        with self.assertRaises(ArtifactSemanticsError):
+            ArtifactManifestV0(
+                (
+                    ArtifactDescriptorV0(
+                        "entry.program",
+                        "tev.binary",
+                        h("program"),
+                        interface_hash=h("abi"),
+                        entrypoint=True,
+                        dependency_descriptor_hashes=(h("missing-descriptor"),),
+                    ),
+                )
+            )
+
+    def test_manifest_derives_machine_requirements_from_artifacts(self):
+        op = h("operation")
+        manifest = manifest_from_single_artifact(
+            role_id="entry.program",
+            format_id="tev.binary",
+            content_hash=h("program"),
+            interface_hash=h("abi"),
+            required_machine_capability_semantic_hashes=(op,),
+            required_numeric_model_ids=("exact.int",),
+        )
+        requirement = manifest.machine_requirement
+        self.assertEqual(requirement.required_capability_semantic_hashes, (op,))
+        self.assertEqual(requirement.required_numeric_model_ids, ("exact.int",))
+        self.assertEqual(requirement.required_executable_formats, ("tev.binary",))
+
+    def test_role_or_interface_change_changes_manifest_identity(self):
+        a = manifest_from_single_artifact(
+            role_id="entry.program",
+            format_id="tev.binary",
+            content_hash=h("same-bytes"),
+            interface_hash=h("abi-a"),
+        )
+        b = manifest_from_single_artifact(
+            role_id="entry.kernel",
+            format_id="tev.binary",
+            content_hash=h("same-bytes"),
+            interface_hash=h("abi-a"),
+        )
+        c = manifest_from_single_artifact(
+            role_id="entry.program",
+            format_id="tev.binary",
+            content_hash=h("same-bytes"),
+            interface_hash=h("abi-b"),
+        )
+        self.assertNotEqual(a.manifest_hash, b.manifest_hash)
+        self.assertNotEqual(a.manifest_hash, c.manifest_hash)
 
 
 class MachineAndEvidenceV0Tests(unittest.TestCase):
@@ -397,8 +472,14 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             capabilities=(MachineCapabilityV0("opaque.compute", operation_hash, "compute"),),
             executable_formats=("tev.binary",),
         )
-        requirement = MachineRequirementV0((operation_hash,), (), ("tev.binary",))
-        artifact_hash = h("artifact")
+        artifact_manifest = manifest_from_single_artifact(
+            role_id="entry.program",
+            format_id="tev.binary",
+            content_hash=h("artifact"),
+            interface_hash=h("entry-interface"),
+            required_machine_capability_semantic_hashes=(operation_hash,),
+        )
+        requirement = artifact_manifest.machine_requirement
         problem = RealizationProblemV0(
             transformation, binding.binding_hash, context, policy.policy_hash,
             (machine.machine_hash,),
@@ -407,7 +488,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             transformation_semantic_hash=transformation,
             transformation_regime_binding_hash=binding.binding_hash,
             machine_hash=machine.machine_hash,
-            artifact_hashes=(artifact_hash,),
+            artifact_manifest_hash=artifact_manifest.manifest_hash,
             machine_requirement=requirement,
             semantic_relation=relation,
             approximation_contract=approximation,
@@ -418,7 +499,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             transformation_semantic_hash=transformation,
             transformation_regime_binding_hash=binding.binding_hash,
             machine_hash=machine.machine_hash,
-            artifact_hashes=(artifact_hash,),
+            artifact_manifest_hash=artifact_manifest.manifest_hash,
             machine_requirement=requirement,
             semantic_relation=relation,
             approximation_contract=approximation,
@@ -470,7 +551,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             binding.binding_hash,
             "tev.realization.test",
             machine.machine_hash,
-            (artifact_hash,),
+            artifact_manifest.manifest_hash,
             requirement,
             relation,
             approximation_contract=approximation,
@@ -487,6 +568,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         return {
             "problem": problem,
             "candidate": candidate,
+            "artifact_manifest": artifact_manifest,
             "machine": machine,
             "policy": policy,
             "resource_catalog": resource_catalog,
@@ -535,11 +617,46 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         receipt = self._admit(f)
         self.assertEqual(receipt.status, "PASS")
         self.assertEqual(receipt.regime_hash, f["regime"].regime_hash)
+        self.assertEqual(receipt.artifact_manifest_hash, f["artifact_manifest"].manifest_hash)
         self.assertEqual(receipt.resource_catalog_hash, f["resource_catalog"].catalog_hash)
         self.assertEqual(
             parse_residual(residual_from_realization_admission(receipt)).status,
             "CLOSED",
         )
+
+    def test_artifact_manifest_mismatch_rejects_candidate(self):
+        f = self._fixture()
+        other = manifest_from_single_artifact(
+            role_id="entry.program",
+            format_id="tev.binary",
+            content_hash=h("other-artifact"),
+            interface_hash=h("entry-interface"),
+            required_machine_capability_semantic_hashes=(h("machine-operation"),),
+        )
+        receipt = self._admit(f, artifact_manifest=other)
+        self.assertEqual(receipt.status, "REJECT")
+        self.assertIn("artifact.manifest_mismatch", {x.kind for x in receipt.issues})
+
+    def test_candidate_cannot_hide_manifest_machine_requirement(self):
+        f = self._fixture()
+        base = f["candidate"]
+        weakened = RealizationCandidateV0(
+            base.transformation_semantic_hash,
+            base.transformation_regime_binding_hash,
+            base.realization_kind,
+            base.machine_hash,
+            base.artifact_manifest_hash,
+            MachineRequirementV0((), (), ("tev.binary",)),
+            base.semantic_relation,
+            assumption_hashes=base.assumption_hashes,
+            predicted_resources=base.predicted_resources,
+            resource_estimate_claim_hash=base.resource_estimate_claim_hash,
+            evidence_hashes=base.evidence_hashes,
+            regime_preservation_claim_hash=base.regime_preservation_claim_hash,
+        )
+        receipt = self._admit(f, candidate=weakened)
+        self.assertEqual(receipt.status, "REJECT")
+        self.assertIn("artifact.machine_requirement_mismatch", {x.kind for x in receipt.issues})
 
     def test_missing_machine_operation_rejects_candidate(self):
         f = self._fixture()
@@ -591,23 +708,24 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             witness_hash=h("translation-witness-2"),
             assumption_hashes=(h("hidden-assumption"),),
         )
+        base = f["candidate"]
         candidate = RealizationCandidateV0(
-            f["candidate"].transformation_semantic_hash,
-            f["candidate"].transformation_regime_binding_hash,
-            f["candidate"].realization_kind,
-            f["candidate"].machine_hash,
-            f["candidate"].artifact_hashes,
-            f["candidate"].machine_requirement,
-            f["candidate"].semantic_relation,
-            assumption_hashes=f["candidate"].assumption_hashes,
-            predicted_resources=f["candidate"].predicted_resources,
-            resource_estimate_claim_hash=f["candidate"].resource_estimate_claim_hash,
+            base.transformation_semantic_hash,
+            base.transformation_regime_binding_hash,
+            base.realization_kind,
+            base.machine_hash,
+            base.artifact_manifest_hash,
+            base.machine_requirement,
+            base.semantic_relation,
+            assumption_hashes=base.assumption_hashes,
+            predicted_resources=base.predicted_resources,
+            resource_estimate_claim_hash=base.resource_estimate_claim_hash,
             evidence_hashes=(
                 bad.evidence_hash,
                 f["evidence"][1].evidence_hash,
                 f["evidence"][2].evidence_hash,
             ),
-            regime_preservation_claim_hash=f["candidate"].regime_preservation_claim_hash,
+            regime_preservation_claim_hash=base.regime_preservation_claim_hash,
         )
         receipt = self._admit(
             f, candidate=candidate, evidence=(bad, f["evidence"][1], f["evidence"][2])
@@ -667,7 +785,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             base.transformation_regime_binding_hash,
             base.realization_kind,
             base.machine_hash,
-            base.artifact_hashes,
+            base.artifact_manifest_hash,
             base.machine_requirement,
             base.semantic_relation,
             assumption_hashes=base.assumption_hashes,
@@ -725,7 +843,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             base.transformation_regime_binding_hash,
             base.realization_kind,
             base.machine_hash,
-            base.artifact_hashes,
+            base.artifact_manifest_hash,
             base.machine_requirement,
             base.semantic_relation,
             assumption_hashes=base.assumption_hashes,
