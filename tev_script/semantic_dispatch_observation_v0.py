@@ -5,6 +5,7 @@ import re
 from typing import Any, Mapping
 
 from .canonical import canonical_hash, canonical_json
+from .semantic_dispatch_consumption_v0 import DispatchConsumptionCommitReceiptV0
 from .semantic_dispatch_v0 import ExecutionDispatchReceiptV0
 from .semantic_execution_observation_v0 import ExecutionObservationReceiptV0
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
@@ -37,16 +38,19 @@ def _hash64(value: str, what: str) -> str:
 @dataclass(frozen=True, slots=True)
 class DispatchedExecutionObservationBindingV0:
     dispatch_receipt_hash: str
+    dispatch_consumption_commit_receipt_hash: str
     execution_observation_receipt_hash: str
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "dispatch_receipt_hash", _hash64(self.dispatch_receipt_hash, "dispatch_receipt_hash"))
+        object.__setattr__(self, "dispatch_consumption_commit_receipt_hash", _hash64(self.dispatch_consumption_commit_receipt_hash, "dispatch_consumption_commit_receipt_hash"))
         object.__setattr__(self, "execution_observation_receipt_hash", _hash64(self.execution_observation_receipt_hash, "execution_observation_receipt_hash"))
 
     def to_object(self) -> dict[str, object]:
         return {
             "schema": DISPATCHED_OBSERVATION_BINDING_SCHEMA_V0,
             "dispatch_receipt_hash": self.dispatch_receipt_hash,
+            "dispatch_consumption_commit_receipt_hash": self.dispatch_consumption_commit_receipt_hash,
             "execution_observation_receipt_hash": self.execution_observation_receipt_hash,
         }
 
@@ -82,8 +86,11 @@ class DispatchObservationIssueV0:
 class DispatchedExecutionObservationReceiptV0:
     binding_hash: str
     dispatch_receipt_hash: str
+    dispatch_consumption_commit_receipt_hash: str
     dispatch_request_hash: str
     dispatch_epoch_hash: str
+    consumption_after_state_hash: str
+    consumption_storage_authority_hash: str
     execution_observation_receipt_hash: str
     activation_receipt_hash: str
     realization_receipt_hash: str
@@ -96,8 +103,11 @@ class DispatchedExecutionObservationReceiptV0:
         for name in (
             "binding_hash",
             "dispatch_receipt_hash",
+            "dispatch_consumption_commit_receipt_hash",
             "dispatch_request_hash",
             "dispatch_epoch_hash",
+            "consumption_after_state_hash",
+            "consumption_storage_authority_hash",
             "execution_observation_receipt_hash",
             "activation_receipt_hash",
             "realization_receipt_hash",
@@ -120,8 +130,11 @@ class DispatchedExecutionObservationReceiptV0:
             "status": self.status,
             "binding_hash": self.binding_hash,
             "dispatch_receipt_hash": self.dispatch_receipt_hash,
+            "dispatch_consumption_commit_receipt_hash": self.dispatch_consumption_commit_receipt_hash,
             "dispatch_request_hash": self.dispatch_request_hash,
             "dispatch_epoch_hash": self.dispatch_epoch_hash,
+            "consumption_after_state_hash": self.consumption_after_state_hash,
+            "consumption_storage_authority_hash": self.consumption_storage_authority_hash,
             "execution_observation_receipt_hash": self.execution_observation_receipt_hash,
             "activation_receipt_hash": self.activation_receipt_hash,
             "realization_receipt_hash": self.realization_receipt_hash,
@@ -149,23 +162,33 @@ def evaluate_dispatched_execution_observation(
     binding: DispatchedExecutionObservationBindingV0,
     *,
     dispatch_receipt: ExecutionDispatchReceiptV0,
+    dispatch_consumption_commit_receipt: DispatchConsumptionCommitReceiptV0,
     execution_observation_receipt: ExecutionObservationReceiptV0,
 ) -> DispatchedExecutionObservationReceiptV0:
     issues: list[DispatchObservationIssueV0] = []
 
-    if binding.dispatch_receipt_hash != dispatch_receipt.receipt_hash:
-        issues.append(DispatchObservationIssueV0("dispatch_observation.dispatch_receipt_mismatch", "REJECT", binding.dispatch_receipt_hash, {"observed": dispatch_receipt.receipt_hash}))
-    if binding.execution_observation_receipt_hash != execution_observation_receipt.receipt_hash:
-        issues.append(DispatchObservationIssueV0("dispatch_observation.observation_receipt_mismatch", "REJECT", binding.execution_observation_receipt_hash, {"observed": execution_observation_receipt.receipt_hash}))
+    binding_checks = (
+        ("dispatch_observation.dispatch_receipt_mismatch", binding.dispatch_receipt_hash, dispatch_receipt.receipt_hash),
+        ("dispatch_observation.consumption_commit_receipt_mismatch", binding.dispatch_consumption_commit_receipt_hash, dispatch_consumption_commit_receipt.receipt_hash),
+        ("dispatch_observation.observation_receipt_mismatch", binding.execution_observation_receipt_hash, execution_observation_receipt.receipt_hash),
+    )
+    for kind, expected, observed in binding_checks:
+        if expected != observed:
+            issues.append(DispatchObservationIssueV0(kind, "REJECT", expected, {"observed": observed}))
 
     for kind, subject, status in (
         ("dispatch_observation.dispatch_not_admitted", dispatch_receipt.receipt_hash, dispatch_receipt.status),
+        ("dispatch_observation.consumption_not_committed", dispatch_consumption_commit_receipt.receipt_hash, dispatch_consumption_commit_receipt.status),
         ("dispatch_observation.observation_not_admitted", execution_observation_receipt.receipt_hash, execution_observation_receipt.status),
     ):
         issue = _upstream(kind, subject, status)
         if issue is not None:
             issues.append(issue)
 
+    if dispatch_consumption_commit_receipt.dispatch_receipt_hash != dispatch_receipt.receipt_hash:
+        issues.append(DispatchObservationIssueV0("dispatch_observation.consumption_dispatch_mismatch", "REJECT", dispatch_consumption_commit_receipt.dispatch_receipt_hash, {"observed": dispatch_receipt.receipt_hash}))
+    if dispatch_consumption_commit_receipt.dispatch_request_hash != dispatch_receipt.dispatch_request_hash:
+        issues.append(DispatchObservationIssueV0("dispatch_observation.consumption_request_mismatch", "REJECT", dispatch_consumption_commit_receipt.dispatch_request_hash, {"observed": dispatch_receipt.dispatch_request_hash}))
     if dispatch_receipt.activation_receipt_hash != execution_observation_receipt.activation_receipt_hash:
         issues.append(DispatchObservationIssueV0("dispatch_observation.activation_mismatch", "REJECT", dispatch_receipt.activation_receipt_hash, {"observed": execution_observation_receipt.activation_receipt_hash}))
     if dispatch_receipt.execution_context_hash != execution_observation_receipt.execution_context_hash:
@@ -174,8 +197,11 @@ def evaluate_dispatched_execution_observation(
     return DispatchedExecutionObservationReceiptV0(
         binding.binding_hash,
         dispatch_receipt.receipt_hash,
+        dispatch_consumption_commit_receipt.receipt_hash,
         dispatch_receipt.dispatch_request_hash,
         dispatch_receipt.dispatch_epoch_hash,
+        dispatch_consumption_commit_receipt.after_state_hash,
+        dispatch_consumption_commit_receipt.storage_authority_hash,
         execution_observation_receipt.receipt_hash,
         dispatch_receipt.activation_receipt_hash,
         dispatch_receipt.realization_receipt_hash,
@@ -190,7 +216,7 @@ def residual_from_dispatched_execution_observation(receipt: DispatchedExecutionO
     return residual_from_obstructions(
         domain="dispatch_execution_observation",
         judgment_id="dispatch_execution_observation_binding",
-        judgment={"kind": "dispatch_produced_observation", "dispatch_request_hash": receipt.dispatch_request_hash, "status": receipt.status},
+        judgment={"kind": "consumed_dispatch_produced_observation", "dispatch_request_hash": receipt.dispatch_request_hash, "status": receipt.status},
         source={"kind": "dispatched_execution_observation_receipt", "receipt_hash": receipt.receipt_hash},
         obstructions=(
             ResidualObstructionV0(
@@ -199,7 +225,14 @@ def residual_from_dispatched_execution_observation(receipt: DispatchedExecutionO
                 "resolved",
                 item.severity,
                 dict(item.detail),
-                dependency_refs=(receipt.binding_hash, receipt.dispatch_receipt_hash, receipt.execution_observation_receipt_hash, receipt.execution_context_hash, receipt.observed_history_hash),
+                dependency_refs=(
+                    receipt.binding_hash,
+                    receipt.dispatch_receipt_hash,
+                    receipt.dispatch_consumption_commit_receipt_hash,
+                    receipt.execution_observation_receipt_hash,
+                    receipt.execution_context_hash,
+                    receipt.observed_history_hash,
+                ),
             )
             for item in receipt.issues
         ),
