@@ -6,10 +6,11 @@ import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+TEST_ROOT = ROOT / "tests"
 
-ACTION_LOOP_TESTS = (
-    "tests.test_realization_execution_observation_v0",
-    "tests.test_execution_grounded_discovery_v0",
+ACTION_LOOP_TEST_FILES = (
+    "test_realization_execution_observation_v0.py",
+    "test_execution_grounded_discovery_v0.py",
 )
 
 
@@ -21,8 +22,8 @@ def run(command: list[str]) -> int:
 def run_tests() -> tuple[bool, int]:
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
-    for module in ACTION_LOOP_TESTS:
-        suite.addTests(loader.loadTestsFromName(module))
+    for file_name in ACTION_LOOP_TEST_FILES:
+        suite.addTests(loader.discover(str(TEST_ROOT), pattern=file_name))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful(), result.testsRun
 
