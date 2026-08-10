@@ -38,8 +38,11 @@ def dispatch(*, issues=(), activation=None, context=None) -> ExecutionDispatchRe
         h("dispatch-request"),
         h("dispatch-epoch"),
         activation or h("activation"),
-        h("validity-evaluation"),
-        h("authority-state"),
+        h("activation-validity-evaluation"),
+        h("activation-authority-state"),
+        h("execution-authority-receipt"),
+        h("execution-authority-validity-evaluation"),
+        h("execution-authority-state"),
         h("realization-receipt"),
         h("realization"),
         context or h("execution-context"),
@@ -103,7 +106,7 @@ class DispatchObservationBindingV0Tests(unittest.TestCase):
 
     def test_open_dispatch_propagates_proof_required(self):
         d = dispatch(
-            issues=(DispatchIssueV0("dispatch.activation_not_current", "PROOF_REQUIRED", h("validity"), {}),)
+            issues=(DispatchIssueV0("dispatch.execution_authority_not_current", "PROOF_REQUIRED", h("authority-validity"), {}),)
         )
         o = observation()
         binding = DispatchedExecutionObservationBindingV0(d.receipt_hash, o.receipt_hash)
