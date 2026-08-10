@@ -9,6 +9,7 @@ from .canonical import canonical_hash, canonical_json
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
 
 MACHINE_SCHEMA_V0 = "TEV_SCRIPT_MACHINE_FIELD_V0"
+MACHINE_PROFILE_SCHEMA_V0 = "TEV_SCRIPT_MACHINE_PROFILE_V0"
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _HEX = frozenset("0123456789abcdef")
 
@@ -55,9 +56,7 @@ class MachineCapabilityV0:
         object.__setattr__(self, "capability_id", _stable(self.capability_id, "capability_id"))
         object.__setattr__(self, "semantic_hash", _hash64(self.semantic_hash, "semantic_hash"))
         object.__setattr__(
-            self,
-            "capability_class",
-            _stable(self.capability_class, "capability_class"),
+            self, "capability_class", _stable(self.capability_class, "capability_class")
         )
         object.__setattr__(
             self,
@@ -117,9 +116,7 @@ class MemorySpaceV0:
     def __post_init__(self) -> None:
         object.__setattr__(self, "space_id", _stable(self.space_id, "space_id"))
         object.__setattr__(
-            self,
-            "addressability",
-            _stable(self.addressability, "addressability"),
+            self, "addressability", _stable(self.addressability, "addressability")
         )
         if self.capacity_bytes is not None:
             capacity = (
@@ -139,9 +136,7 @@ class MemorySpaceV0:
             "space_id": self.space_id,
             "addressability": self.addressability,
             "capacity_bytes": (
-                None
-                if self.capacity_bytes is None
-                else _fraction_object(self.capacity_bytes)
+                None if self.capacity_bytes is None else _fraction_object(self.capacity_bytes)
             ),
             "properties": dict(self.properties or {}),
         }
@@ -149,6 +144,14 @@ class MemorySpaceV0:
 
 @dataclass(frozen=True, slots=True)
 class MachineFieldV0:
+    """A content-addressed realization target profile plus non-semantic record id.
+
+    `machine_hash` is the semantic/profile identity used by Realization. `machine_id`
+    is a record/display identifier and therefore does not alter that hash. Runtime
+    placement onto a concrete physical instance belongs in execution context and
+    resource observations, not in the target-profile semantic identity.
+    """
+
     machine_id: str
     capabilities: tuple[MachineCapabilityV0, ...] = ()
     numeric_models: tuple[NumericModelV0, ...] = ()
@@ -213,9 +216,29 @@ class MachineFieldV0:
     def supports_numeric_model(self, model_id: str) -> bool:
         return _stable(model_id, "numeric_model_id") in self.numeric_model_ids
 
+    def profile_object(self) -> dict[str, object]:
+        return {
+            "schema": MACHINE_PROFILE_SCHEMA_V0,
+            "capabilities": [item.to_object() for item in self.capabilities],
+            "numeric_models": [item.to_object() for item in self.numeric_models],
+            "memory_spaces": [item.to_object() for item in self.memory_spaces],
+            "executable_formats": list(self.executable_formats),
+            "topology_hash": self.topology_hash,
+            "properties": dict(self.properties or {}),
+        }
+
+    @property
+    def machine_profile_hash(self) -> str:
+        return canonical_hash(self.profile_object())
+
+    @property
+    def machine_hash(self) -> str:
+        return self.machine_profile_hash
+
     def to_object(self) -> dict[str, object]:
         return {
             "schema": MACHINE_SCHEMA_V0,
+            "machine_profile_hash": self.machine_profile_hash,
             "machine_id": self.machine_id,
             "capabilities": [item.to_object() for item in self.capabilities],
             "numeric_models": [item.to_object() for item in self.numeric_models],
@@ -226,7 +249,7 @@ class MachineFieldV0:
         }
 
     @property
-    def machine_hash(self) -> str:
+    def record_hash(self) -> str:
         return canonical_hash(self.to_object())
 
     def to_field(self) -> SemanticFieldV0:
@@ -347,6 +370,7 @@ def evaluate_machine_compatibility(
 
 __all__ = [
     "MACHINE_SCHEMA_V0",
+    "MACHINE_PROFILE_SCHEMA_V0",
     "MachineSemanticsError",
     "MachineCapabilityV0",
     "NumericModelV0",
