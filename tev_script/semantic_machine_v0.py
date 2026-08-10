@@ -10,6 +10,7 @@ from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
 
 MACHINE_SCHEMA_V0 = "TEV_SCRIPT_MACHINE_FIELD_V0"
 MACHINE_PROFILE_SCHEMA_V0 = "TEV_SCRIPT_MACHINE_PROFILE_V0"
+MACHINE_CAPABILITY_PROFILE_SCHEMA_V0 = "TEV_SCRIPT_MACHINE_CAPABILITY_PROFILE_V0"
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _HEX = frozenset("0123456789abcdef")
 
@@ -67,9 +68,23 @@ class MachineCapabilityV0:
         canonical_json(properties)
         object.__setattr__(self, "properties", properties)
 
+    def profile_object(self) -> dict[str, object]:
+        return {
+            "schema": MACHINE_CAPABILITY_PROFILE_SCHEMA_V0,
+            "semantic_hash": self.semantic_hash,
+            "capability_class": self.capability_class,
+            "numeric_model_ids": list(self.numeric_model_ids),
+            "properties": dict(self.properties or {}),
+        }
+
+    @property
+    def capability_profile_hash(self) -> str:
+        return canonical_hash(self.profile_object())
+
     def to_object(self) -> dict[str, object]:
         return {
             "capability_id": self.capability_id,
+            "capability_profile_hash": self.capability_profile_hash,
             "semantic_hash": self.semantic_hash,
             "capability_class": self.capability_class,
             "numeric_model_ids": list(self.numeric_model_ids),
@@ -144,12 +159,12 @@ class MemorySpaceV0:
 
 @dataclass(frozen=True, slots=True)
 class MachineFieldV0:
-    """A content-addressed realization target profile plus non-semantic record id.
+    """Content-addressed realization target profile plus a non-semantic record id.
 
-    `machine_hash` is the semantic/profile identity used by Realization. `machine_id`
-    is a record/display identifier and therefore does not alter that hash. Runtime
-    placement onto a concrete physical instance belongs in execution context and
-    resource observations, not in the target-profile semantic identity.
+    `machine_hash` identifies the target profile used by Realization. `machine_id`
+    and individual capability labels are record/adapter names. Numeric-model ids,
+    executable-format ids, topology and declared profile properties remain part of
+    the target contract because a Realization can explicitly depend on them.
     """
 
     machine_id: str
@@ -162,7 +177,6 @@ class MachineFieldV0:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "machine_id", _stable(self.machine_id, "machine_id"))
-
         capabilities = tuple(sorted(self.capabilities, key=lambda item: item.capability_id))
         if len({item.capability_id for item in capabilities}) != len(capabilities):
             raise MachineSemanticsError("duplicate machine capability id")
@@ -217,9 +231,13 @@ class MachineFieldV0:
         return _stable(model_id, "numeric_model_id") in self.numeric_model_ids
 
     def profile_object(self) -> dict[str, object]:
+        capability_profiles = {
+            canonical_json(item.profile_object()): item.profile_object()
+            for item in self.capabilities
+        }
         return {
             "schema": MACHINE_PROFILE_SCHEMA_V0,
-            "capabilities": [item.to_object() for item in self.capabilities],
+            "capabilities": [capability_profiles[key] for key in sorted(capability_profiles)],
             "numeric_models": [item.to_object() for item in self.numeric_models],
             "memory_spaces": [item.to_object() for item in self.memory_spaces],
             "executable_formats": list(self.executable_formats),
@@ -371,6 +389,7 @@ def evaluate_machine_compatibility(
 __all__ = [
     "MACHINE_SCHEMA_V0",
     "MACHINE_PROFILE_SCHEMA_V0",
+    "MACHINE_CAPABILITY_PROFILE_SCHEMA_V0",
     "MachineSemanticsError",
     "MachineCapabilityV0",
     "NumericModelV0",
