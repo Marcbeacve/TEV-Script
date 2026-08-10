@@ -9,6 +9,7 @@ MODULES = (
     "tev_script/semantic_cost_model_v0.py",
     "tev_script/semantic_cost_model_update_v0.py",
     "tev_script/semantic_cost_prediction_v0.py",
+    "tev_script/semantic_dispatch_consumption_v0.py",
     "tev_script/semantic_dispatch_v0.py",
     "tev_script/semantic_dispatch_observation_v0.py",
     "tev_script/semantic_dispatched_grounded_discovery_v0.py",
@@ -20,6 +21,7 @@ MODULES = (
     "tev_script/semantic_resource_measurement_v0.py",
 )
 TESTS = (
+    "tests/test_dispatch_consumption_v0.py",
     "tests/test_realization_cost_model_v0.py",
     "tests/test_realization_cost_model_update_v0.py",
     "tests/test_realization_cost_prediction_v0.py",
@@ -83,6 +85,7 @@ def main() -> int:
 
     validity = (ROOT / "tev_script" / "semantic_receipt_validity_v0.py").read_text(encoding="utf-8")
     dispatch = (ROOT / "tev_script" / "semantic_dispatch_v0.py").read_text(encoding="utf-8")
+    consumption = (ROOT / "tev_script" / "semantic_dispatch_consumption_v0.py").read_text(encoding="utf-8")
     execution_authority = (ROOT / "tev_script" / "semantic_execution_authority_v0.py").read_text(encoding="utf-8")
     search = (ROOT / "tev_script" / "semantic_realization_search_v0.py").read_text(encoding="utf-8")
     dispatched_observation = (ROOT / "tev_script" / "semantic_dispatch_observation_v0.py").read_text(encoding="utf-8")
@@ -113,14 +116,33 @@ def main() -> int:
         return fail("just-in-time dual-authority dispatch surface incomplete")
     print("R0_JIT_DISPATCH_DUAL_AUTHORITY=PASS")
 
+    required_consumption = (
+        "DispatchConsumptionStateV0",
+        "DispatchConsumptionAttemptV0",
+        "dispatch_consumption.replay",
+        "before_state_hash",
+        "after_state_hash",
+        "trusted_storage_authority_hashes",
+        "dispatch_consumption.storage_authority_untrusted",
+        "dispatch_consumption.evidence_policy_empty",
+    )
+    if any(token not in consumption for token in required_consumption):
+        return fail("one-shot dispatch consumption/CAS surface incomplete")
+    print("R0_DISPATCH_CONSUMPTION_CAS_CONTRACT=PASS")
+
     required_execution_authority = (
         "TransformationProgramBindingClaimV0",
         "ReactionContractV1",
         "ReactionFootprintV1",
         "CapabilityLawCatalogV1",
         "RefinementReceiptV1",
+        "verify_structural_refinement",
+        "authority.structural_refinement_not_admitted",
         "authority.refinement_not_admitted",
         "authority.law_catalog_incomplete",
+        "authority.binding_scope_mismatch",
+        "allowed_effectful_realization_relations",
+        "authority.effectful_realization_relation_not_allowed",
         "binding_evidence_policy",
     )
     if any(token not in execution_authority for token in required_execution_authority):
@@ -141,11 +163,18 @@ def main() -> int:
         return fail("search coverage/planning scope surface incomplete")
     print("R0_SEARCH_COVERAGE_SCOPE=PASS")
 
-    if "dispatch_request_hash" not in dispatched_observation or "execution_observation_receipt_hash" not in dispatched_observation:
-        return fail("dispatch-to-observation binding incomplete")
+    required_dispatch_observation = (
+        "dispatch_consumption_commit_receipt_hash",
+        "consumption_after_state_hash",
+        "consumption_storage_authority_hash",
+        "dispatch_observation.consumption_not_committed",
+        "dispatch_observation.consumption_request_mismatch",
+    )
+    if any(token not in dispatched_observation for token in required_dispatch_observation):
+        return fail("consumed dispatch-to-observation binding incomplete")
     if "dispatch_request_hash" not in dispatched_grounded or "observed_history_hash" not in dispatched_grounded:
         return fail("dispatch-to-grounded-discovery chain incomplete")
-    print("R0_DISPATCH_TO_DISCOVERY_CHAIN=PASS")
+    print("R0_CONSUMED_DISPATCH_TO_DISCOVERY_CHAIN=PASS")
 
     required_measurement = ("measurement_epoch_hash", "execution_context_hash", "observed_resource_vector_hash", "evidence_policy_hash")
     if any(token not in measurement for token in required_measurement):
