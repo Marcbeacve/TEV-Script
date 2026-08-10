@@ -3,6 +3,8 @@ from __future__ import annotations
 import unittest
 
 from tev_script.canonical import canonical_hash
+from tev_script.semantic_discovery_realization_v0 import StructuralLawClaimV0
+from tev_script.semantic_evidence_v0 import EvidencePolicyV0
 from tev_script.semantic_machine_v0 import (
     MachineCapabilityV0,
     MachineFieldV0,
@@ -74,6 +76,39 @@ class MachineProfileIdentityV0Tests(unittest.TestCase):
         )
         self.assertEqual(first.machine_hash, second.machine_hash)
         self.assertEqual(first.record_hash, second.record_hash)
+
+
+class StructuralLawIdentityBoundaryV0Tests(unittest.TestCase):
+    def _law(self, *, falsifier: str, law_id: str = "law.test"):
+        return StructuralLawClaimV0(
+            law_id,
+            h("regime"),
+            h("transformation"),
+            h("boundary"),
+            falsifier,
+            EvidencePolicyV0(()).policy_hash,
+            assumption_hashes=(h("assumption"),),
+            formulation_hash=h("formulation"),
+            provenance={"source": law_id},
+        )
+
+    def test_falsification_protocol_does_not_define_law_semantics(self):
+        left = self._law(falsifier=h("falsifier-a"), law_id="law.a")
+        right = self._law(falsifier=h("falsifier-b"), law_id="law.b")
+        self.assertEqual(left.law_semantic_hash, right.law_semantic_hash)
+        self.assertNotEqual(left.law_claim_hash, right.law_claim_hash)
+
+    def test_validity_boundary_remains_semantic(self):
+        policy = EvidencePolicyV0(()).policy_hash
+        left = StructuralLawClaimV0(
+            "law.a", h("regime"), h("transformation"), h("boundary-a"),
+            h("falsifier"), policy, assumption_hashes=(h("assumption"),)
+        )
+        right = StructuralLawClaimV0(
+            "law.b", h("regime"), h("transformation"), h("boundary-b"),
+            h("falsifier"), policy, assumption_hashes=(h("assumption"),)
+        )
+        self.assertNotEqual(left.law_semantic_hash, right.law_semantic_hash)
 
 
 if __name__ == "__main__":
