@@ -12,6 +12,8 @@ from .semantic_evidence_v0 import (
     evaluate_evidence,
 )
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
+from .semantic_realization_v0 import RealizationAdmissionReceiptV0
+from .semantic_residual_v0 import ResidualObstructionV0, residual_from_obstructions
 
 LAW_SCHEMA_V0 = "TEV_SCRIPT_STRUCTURAL_LAW_CLAIM_V0"
 LAW_EQUIVALENCE_SCHEMA_V0 = "TEV_SCRIPT_LAW_EQUIVALENCE_CLAIM_V0"
@@ -372,28 +374,21 @@ class CycleIssueV0:
 @dataclass(frozen=True, slots=True)
 class CycleEvaluationV0:
     cycle_hash: str
+    source_law_semantic_hash: str
+    realization_receipt_hash: str
     discovery_evidence_evaluation_hash: str
     equivalence_evidence_evaluation_hash: str
     issues: tuple[CycleIssueV0, ...]
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "cycle_hash", _hash64(self.cycle_hash, "cycle_hash"))
-        object.__setattr__(
-            self,
+        for name in (
+            "cycle_hash",
+            "source_law_semantic_hash",
+            "realization_receipt_hash",
             "discovery_evidence_evaluation_hash",
-            _hash64(
-                self.discovery_evidence_evaluation_hash,
-                "discovery_evidence_evaluation_hash",
-            ),
-        )
-        object.__setattr__(
-            self,
             "equivalence_evidence_evaluation_hash",
-            _hash64(
-                self.equivalence_evidence_evaluation_hash,
-                "equivalence_evidence_evaluation_hash",
-            ),
-        )
+        ):
+            object.__setattr__(self, name, _hash64(getattr(self, name), name))
         object.__setattr__(
             self,
             "issues",
@@ -413,6 +408,8 @@ class CycleEvaluationV0:
             "schema": "TEV_SCRIPT_DISCOVERY_REALIZATION_CYCLE_EVALUATION_V0",
             "status": self.status,
             "cycle_hash": self.cycle_hash,
+            "source_law_semantic_hash": self.source_law_semantic_hash,
+            "realization_receipt_hash": self.realization_receipt_hash,
             "discovery_evidence_evaluation_hash": self.discovery_evidence_evaluation_hash,
             "equivalence_evidence_evaluation_hash": self.equivalence_evidence_evaluation_hash,
             "issues": [item.to_object() for item in self.issues],
@@ -450,6 +447,8 @@ def _issues_from_evidence(
 def evaluate_discovery_realization_cycle(
     cycle: DiscoveryRealizationCycleV0,
     *,
+    source_law: StructuralLawClaimV0,
+    realization_receipt: RealizationAdmissionReceiptV0,
     rediscovery_claim: DiscoveryClaimV0,
     discovery_evidence_policy: EvidencePolicyV0,
     evidence: Iterable[EvidenceItemV0],
@@ -458,6 +457,52 @@ def evaluate_discovery_realization_cycle(
 ) -> CycleEvaluationV0:
     issues: list[CycleIssueV0] = []
     evidence_items = tuple(evidence)
+
+    if cycle.source_law_semantic_hash != source_law.law_semantic_hash:
+        issues.append(
+            CycleIssueV0(
+                "cycle.source_law_mismatch",
+                "REJECT",
+                cycle.source_law_semantic_hash,
+                {"observed": source_law.law_semantic_hash},
+            )
+        )
+    if cycle.realization_admission_receipt_hash != realization_receipt.receipt_hash:
+        issues.append(
+            CycleIssueV0(
+                "cycle.realization_receipt_mismatch",
+                "REJECT",
+                cycle.realization_admission_receipt_hash,
+                {"observed": realization_receipt.receipt_hash},
+            )
+        )
+    if realization_receipt.status != "PASS":
+        issues.append(
+            CycleIssueV0(
+                "cycle.realization_not_admitted",
+                "REJECT",
+                realization_receipt.receipt_hash,
+                {"status": realization_receipt.status},
+            )
+        )
+    if source_law.transformation_semantic_hash != realization_receipt.transformation_semantic_hash:
+        issues.append(
+            CycleIssueV0(
+                "cycle.realization_transformation_mismatch",
+                "REJECT",
+                source_law.transformation_semantic_hash,
+                {"observed": realization_receipt.transformation_semantic_hash},
+            )
+        )
+    if source_law.regime_hash != realization_receipt.regime_hash:
+        issues.append(
+            CycleIssueV0(
+                "cycle.realization_regime_mismatch",
+                "REJECT",
+                source_law.regime_hash,
+                {"observed": realization_receipt.regime_hash},
+            )
+        )
 
     if cycle.rediscovery_claim_hash != rediscovery_claim.discovery_claim_hash:
         issues.append(
@@ -551,7 +596,10 @@ def evaluate_discovery_realization_cycle(
                         "cycle.law_equivalence_pair_mismatch",
                         "REJECT",
                         law_equivalence_claim.equivalence_claim_hash,
-                        {"expected_pair": list(expected_pair), "observed_pair": list(law_equivalence_claim.law_pair)},
+                        {
+                            "expected_pair": list(expected_pair),
+                            "observed_pair": list(law_equivalence_claim.law_pair),
+                        },
                     )
                 )
             if law_equivalence_claim.evidence_policy_hash != equivalence_evidence_policy.policy_hash:
@@ -574,9 +622,45 @@ def evaluate_discovery_realization_cycle(
 
     return CycleEvaluationV0(
         cycle.cycle_hash,
+        source_law.law_semantic_hash,
+        realization_receipt.receipt_hash,
         discovery_evaluation.evaluation_hash,
         equivalence_evaluation.evaluation_hash,
         tuple(issues),
+    )
+
+
+def residual_from_discovery_realization_cycle(
+    evaluation: CycleEvaluationV0,
+) -> SemanticFieldV0:
+    obstructions = tuple(
+        ResidualObstructionV0(
+            item.kind,
+            item.subject,
+            "resolved",
+            item.severity,
+            dict(item.detail),
+            dependency_refs=(
+                evaluation.cycle_hash,
+                evaluation.source_law_semantic_hash,
+                evaluation.realization_receipt_hash,
+            ),
+        )
+        for item in evaluation.issues
+    )
+    return residual_from_obstructions(
+        domain="discovery_realization",
+        judgment_id="round_trip_consistency",
+        judgment={
+            "kind": "discovery_realization_round_trip",
+            "cycle_hash": evaluation.cycle_hash,
+            "status": evaluation.status,
+        },
+        source={
+            "kind": "discovery_realization_cycle_evaluation",
+            "evaluation_hash": evaluation.evaluation_hash,
+        },
+        obstructions=obstructions,
     )
 
 
@@ -595,4 +679,5 @@ __all__ = [
     "CycleIssueV0",
     "CycleEvaluationV0",
     "evaluate_discovery_realization_cycle",
+    "residual_from_discovery_realization_cycle",
 ]
