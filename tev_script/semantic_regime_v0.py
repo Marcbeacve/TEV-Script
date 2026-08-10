@@ -8,8 +8,12 @@ from .canonical import canonical_hash, canonical_json
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
 
 REGIME_SCHEMA_V0 = "TEV_SCRIPT_REGIME_CONTRACT_V0"
+REGIME_SEMANTIC_SCHEMA_V0 = "TEV_SCRIPT_REGIME_SEMANTIC_IDENTITY_V0"
+REGIME_CONSTRAINT_SEMANTIC_SCHEMA_V0 = "TEV_SCRIPT_REGIME_CONSTRAINT_SEMANTIC_V0"
 REGIME_BINDING_SCHEMA_V0 = "TEV_SCRIPT_TRANSFORMATION_REGIME_BINDING_V0"
+REGIME_BINDING_SEMANTIC_SCHEMA_V0 = "TEV_SCRIPT_TRANSFORMATION_REGIME_BINDING_SEMANTIC_V0"
 REGIME_PRESERVATION_SCHEMA_V0 = "TEV_SCRIPT_REGIME_PRESERVATION_CLAIM_V0"
+REGIME_PRESERVATION_RECORD_SCHEMA_V0 = "TEV_SCRIPT_REGIME_PRESERVATION_RECORD_V0"
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _HEX = frozenset("0123456789abcdef")
 _PRESERVATION = frozenset({"PRESERVED", "VIOLATED", "UNRESOLVED", "NOT_REQUIRED"})
@@ -58,9 +62,22 @@ class RegimeConstraintV0:
         object.__setattr__(self, "claim_hash", _hash64(self.claim_hash, "constraint claim_hash"))
         object.__setattr__(self, "scope_hash", _hash64(self.scope_hash, "constraint scope_hash"))
 
+    def semantic_object(self) -> dict[str, str]:
+        return {
+            "schema": REGIME_CONSTRAINT_SEMANTIC_SCHEMA_V0,
+            "kind": self.kind,
+            "claim_hash": self.claim_hash,
+            "scope_hash": self.scope_hash,
+        }
+
+    @property
+    def constraint_semantic_hash(self) -> str:
+        return canonical_hash(self.semantic_object())
+
     def to_object(self) -> dict[str, str]:
         return {
             "constraint_id": self.constraint_id,
+            "constraint_semantic_hash": self.constraint_semantic_hash,
             "kind": self.kind,
             "claim_hash": self.claim_hash,
             "scope_hash": self.scope_hash,
@@ -92,11 +109,13 @@ class RegimeContractV0:
             "history_space_hash",
             _hash64(self.history_space_hash, "history_space_hash"),
         )
-        constraints = tuple(sorted(self.constraints, key=lambda item: item.constraint_id))
+        constraints = tuple(
+            sorted(self.constraints, key=lambda item: (item.constraint_semantic_hash, item.constraint_id))
+        )
         if len({item.constraint_id for item in constraints}) != len(constraints):
             raise RegimeSemanticsError("duplicate regime constraint id")
-        if len({item.claim_hash for item in constraints}) != len(constraints):
-            raise RegimeSemanticsError("duplicate regime constraint claim")
+        if len({item.constraint_semantic_hash for item in constraints}) != len(constraints):
+            raise RegimeSemanticsError("duplicate regime constraint semantics")
         object.__setattr__(self, "constraints", constraints)
         object.__setattr__(
             self,
@@ -128,12 +147,44 @@ class RegimeContractV0:
         object.__setattr__(self, "provenance", provenance)
 
     @property
+    def constraint_semantic_hashes(self) -> tuple[str, ...]:
+        return tuple(item.constraint_semantic_hash for item in self.constraints)
+
+    @property
     def constraint_claim_hashes(self) -> tuple[str, ...]:
         return tuple(item.claim_hash for item in self.constraints)
+
+    def semantic_object(self) -> dict[str, object]:
+        return {
+            "schema": REGIME_SEMANTIC_SCHEMA_V0,
+            "possibility_space_hash": self.possibility_space_hash,
+            "history_space_hash": self.history_space_hash,
+            "constraints": [
+                item.semantic_object()
+                for item in sorted(
+                    self.constraints,
+                    key=lambda item: canonical_json(item.semantic_object()),
+                )
+            ],
+            "causal_structure_hash": self.causal_structure_hash,
+            "equivalence_relation_hash": self.equivalence_relation_hash,
+            "observable_profile_hash": self.observable_profile_hash,
+            "invariant_claim_hashes": list(self.invariant_claim_hashes),
+            "assumption_hashes": list(self.assumption_hashes),
+        }
+
+    @property
+    def regime_semantic_hash(self) -> str:
+        return canonical_hash(self.semantic_object())
+
+    @property
+    def regime_hash(self) -> str:
+        return self.regime_semantic_hash
 
     def to_object(self) -> dict[str, object]:
         return {
             "schema": REGIME_SCHEMA_V0,
+            "regime_semantic_hash": self.regime_semantic_hash,
             "regime_id": self.regime_id,
             "possibility_space_hash": self.possibility_space_hash,
             "history_space_hash": self.history_space_hash,
@@ -147,7 +198,7 @@ class RegimeContractV0:
         }
 
     @property
-    def regime_hash(self) -> str:
+    def record_hash(self) -> str:
         return canonical_hash(self.to_object())
 
     def to_field(self) -> SemanticFieldV0:
@@ -175,10 +226,9 @@ class TransformationRegimeBindingV0:
         )
         object.__setattr__(self, "binding_id", _stable(self.binding_id, "binding_id"))
 
-    def to_object(self) -> dict[str, str]:
+    def semantic_object(self) -> dict[str, str]:
         return {
-            "schema": REGIME_BINDING_SCHEMA_V0,
-            "binding_id": self.binding_id,
+            "schema": REGIME_BINDING_SEMANTIC_SCHEMA_V0,
             "transformation_semantic_hash": self.transformation_semantic_hash,
             "regime_hash": self.regime_hash,
             "semantic_scope_hash": self.semantic_scope_hash,
@@ -186,6 +236,20 @@ class TransformationRegimeBindingV0:
 
     @property
     def binding_hash(self) -> str:
+        return canonical_hash(self.semantic_object())
+
+    def to_object(self) -> dict[str, str]:
+        return {
+            "schema": REGIME_BINDING_SCHEMA_V0,
+            "binding_hash": self.binding_hash,
+            "binding_id": self.binding_id,
+            "transformation_semantic_hash": self.transformation_semantic_hash,
+            "regime_hash": self.regime_hash,
+            "semantic_scope_hash": self.semantic_scope_hash,
+        }
+
+    @property
+    def record_hash(self) -> str:
         return canonical_hash(self.to_object())
 
     def to_field(self) -> SemanticFieldV0:
@@ -244,7 +308,7 @@ class RegimePreservationClaimV0:
         canonical_json(detail)
         object.__setattr__(self, "detail", detail)
 
-    def to_object(self) -> dict[str, object]:
+    def claim_object(self) -> dict[str, object]:
         return {
             "schema": REGIME_PRESERVATION_SCHEMA_V0,
             "realization_semantic_claim_hash": self.realization_semantic_claim_hash,
@@ -258,11 +322,22 @@ class RegimePreservationClaimV0:
             "causal_preservation": self.causal_preservation,
             "equivalence_preservation": self.equivalence_preservation,
             "assumption_hashes": list(self.assumption_hashes),
-            "detail": dict(self.detail or {}),
         }
 
     @property
     def preservation_claim_hash(self) -> str:
+        return canonical_hash(self.claim_object())
+
+    def to_object(self) -> dict[str, object]:
+        return {
+            "schema": REGIME_PRESERVATION_RECORD_SCHEMA_V0,
+            "preservation_claim_hash": self.preservation_claim_hash,
+            **{key: value for key, value in self.claim_object().items() if key != "schema"},
+            "detail": dict(self.detail or {}),
+        }
+
+    @property
+    def record_hash(self) -> str:
         return canonical_hash(self.to_object())
 
     def to_field(self) -> SemanticFieldV0:
@@ -419,7 +494,7 @@ def evaluate_regime_preservation(
             )
         )
 
-    required_constraints = set(regime.constraint_claim_hashes)
+    required_constraints = set(regime.constraint_semantic_hashes)
     preserved_constraints = set(claim.preserved_constraint_hashes)
     violated_constraints = set(claim.violated_constraint_hashes)
     unknown_constraint_refs = (preserved_constraints | violated_constraints) - required_constraints
@@ -592,8 +667,12 @@ def realization_equivalence_class_claim_hash(
 
 __all__ = [
     "REGIME_SCHEMA_V0",
+    "REGIME_SEMANTIC_SCHEMA_V0",
+    "REGIME_CONSTRAINT_SEMANTIC_SCHEMA_V0",
     "REGIME_BINDING_SCHEMA_V0",
+    "REGIME_BINDING_SEMANTIC_SCHEMA_V0",
     "REGIME_PRESERVATION_SCHEMA_V0",
+    "REGIME_PRESERVATION_RECORD_SCHEMA_V0",
     "RegimeSemanticsError",
     "RegimeConstraintV0",
     "RegimeContractV0",
