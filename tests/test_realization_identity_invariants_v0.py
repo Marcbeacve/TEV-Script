@@ -10,6 +10,12 @@ from tev_script.semantic_machine_v0 import (
     MachineFieldV0,
     NumericModelV0,
 )
+from tev_script.semantic_regime_v0 import (
+    RegimeContractV0,
+    RegimePreservationClaimV0,
+    TransformationRegimeBindingV0,
+    evaluate_regime_preservation,
+)
 from tev_script.semantic_resource_evidence_v0 import ResourceEstimateClaimV0
 
 
@@ -110,6 +116,40 @@ class StructuralLawIdentityBoundaryV0Tests(unittest.TestCase):
             h("falsifier"), policy, assumption_hashes=(h("assumption"),)
         )
         self.assertNotEqual(left.law_semantic_hash, right.law_semantic_hash)
+
+
+class RegimeAssumptionBoundaryV0Tests(unittest.TestCase):
+    def test_constitutive_regime_assumption_cannot_be_omitted(self):
+        assumption = h("regime-assumption")
+        transformation = h("transformation")
+        regime = RegimeContractV0(
+            "regime.test",
+            h("possibility"),
+            h("history"),
+            assumption_hashes=(assumption,),
+        )
+        binding = TransformationRegimeBindingV0(
+            transformation, regime.regime_hash, h("scope")
+        )
+        claim = RegimePreservationClaimV0(
+            h("realization-claim"),
+            binding.binding_hash,
+            regime.regime_hash,
+            "EXACT_EQUIVALENT",
+        )
+        evaluation = evaluate_regime_preservation(
+            regime,
+            binding,
+            claim,
+            transformation_semantic_hash=transformation,
+            realization_semantic_claim_hash=h("realization-claim"),
+            semantic_relation="EXACT_EQUIVALENT",
+        )
+        self.assertEqual(evaluation.status, "PROOF_REQUIRED")
+        self.assertIn(
+            "regime.assumption_unacknowledged",
+            {issue.kind for issue in evaluation.issues},
+        )
 
 
 class ResourceBoundClaimIdentityV0Tests(unittest.TestCase):
