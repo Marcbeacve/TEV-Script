@@ -40,10 +40,7 @@ class RealizationSelectionV0Tests(unittest.TestCase):
 
     def candidate(self, label: str, latency, energy) -> RealizationCandidateV0:
         vector = ResourceVectorV0(
-            (
-                latency,
-                energy,
-            ),
+            (latency, energy),
             complete=True,
             catalog_hash=self.catalog.catalog_hash,
         )
@@ -59,14 +56,14 @@ class RealizationSelectionV0Tests(unittest.TestCase):
             regime_preservation_claim_hash=h("preservation-" + label),
         )
 
-    def receipt(self, candidate, *, status="PASS"):
+    def receipt(self, candidate, *, status="PASS", problem_hash=None):
         issues = ()
         if status == "PROOF_REQUIRED":
             issues = (RealizationIssueV0("resource.bound_unknown", "PROOF_REQUIRED", "latency", {}),)
         elif status == "REJECT":
             issues = (RealizationIssueV0("machine.operation_missing", "REJECT", h("op"), {}),)
         return RealizationAdmissionReceiptV0(
-            problem_hash=self.realization_problem_hash,
+            problem_hash=problem_hash or self.realization_problem_hash,
             candidate_hash=candidate.candidate_hash,
             realization_hash=candidate.realization_hash,
             semantic_claim_hash=candidate.semantic_claim_hash,
@@ -186,6 +183,29 @@ class RealizationSelectionV0Tests(unittest.TestCase):
         )
         self.assertEqual(result.status, "REJECT")
         self.assertIn("selection.candidate_receipt_set_mismatch", {item.kind for item in result.issues})
+
+    def test_receipt_from_different_realization_problem_is_rejected(self):
+        candidate = self.candidate("foreign", ResourceBoundV0.exact("latency", 1), ResourceBoundV0.exact("energy", 1))
+        foreign_receipt = self.receipt(candidate, problem_hash=h("other-realization-problem"))
+        policy = RealizationSelectionPolicyV0(self.catalog.catalog_hash, "PARETO_MEMBER", ("latency",))
+        problem = RealizationSelectionProblemV0(
+            self.realization_problem_hash,
+            policy.policy_hash,
+            (foreign_receipt.receipt_hash,),
+        )
+        decision = RealizationSelectionDecisionV0(problem.problem_hash, candidate.candidate_hash)
+        result = evaluate_realization_selection(
+            problem,
+            decision,
+            policy=policy,
+            resource_catalog=self.catalog,
+            entries=((candidate, foreign_receipt),),
+        )
+        self.assertEqual(result.status, "REJECT")
+        self.assertIn(
+            "selection.receipt_realization_problem_mismatch",
+            {item.kind for item in result.issues},
+        )
 
 
 if __name__ == "__main__":
