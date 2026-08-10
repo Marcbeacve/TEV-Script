@@ -14,7 +14,11 @@ from tev_script.semantic_dispatch_observation_v0 import (
     evaluate_dispatched_execution_observation,
     residual_from_dispatched_execution_observation,
 )
-from tev_script.semantic_dispatch_v0 import DispatchIssueV0, ExecutionDispatchReceiptV0
+from tev_script.semantic_dispatch_v0 import (
+    DispatchIssueV0,
+    ExecutionDispatchReceiptV0,
+    dispatch_consumption_domain_hash,
+)
 from tev_script.semantic_dispatched_grounded_discovery_v0 import (
     DispatchedGroundedDiscoveryV0,
     evaluate_dispatched_grounded_discovery,
@@ -35,8 +39,9 @@ def h(label: str) -> str:
     return canonical_hash({"test": label})
 
 
-def dispatch(*, issues=(), activation=None, context=None, request=None) -> ExecutionDispatchReceiptV0:
+def dispatch(*, issues=(), activation=None, context=None, request=None, authority_claim=None) -> ExecutionDispatchReceiptV0:
     request_hash = request or h("dispatch-request")
+    authority_claim = authority_claim or h("execution-authority-claim")
     return ExecutionDispatchReceiptV0(
         h("dispatch-candidate"),
         h("dispatch-record"),
@@ -46,8 +51,10 @@ def dispatch(*, issues=(), activation=None, context=None, request=None) -> Execu
         h("activation-validity-evaluation"),
         h("activation-authority-state"),
         h("execution-authority-receipt"),
+        authority_claim,
         h("execution-authority-validity-evaluation"),
         h("execution-authority-state"),
+        dispatch_consumption_domain_hash(request_hash),
         h("realization-receipt"),
         h("realization"),
         context or h("execution-context"),
