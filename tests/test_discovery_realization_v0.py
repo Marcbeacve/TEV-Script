@@ -188,25 +188,30 @@ class DiscoveryRealizationCycleV0Tests(unittest.TestCase):
         binding=None,
     ):
         return RealizationAdmissionReceiptV0(
-            h("problem"),
-            h("candidate"),
-            h("realization"),
-            h("semantic-claim"),
-            transformation or law.transformation_semantic_hash,
-            binding or law.expected_realization_binding_hash,
-            "EXACT_EQUIVALENT",
-            h("preservation-claim"),
-            h("resource-estimate-claim"),
-            h("machine"),
-            h("policy"),
-            regime or law.regime_hash,
-            h("resource-catalog"),
-            h("machine-compatibility"),
-            h("regime-evaluation"),
-            h("semantic-evidence-evaluation"),
-            h("regime-evidence-evaluation"),
-            h("resource-evidence-evaluation"),
-            tuple(issues),
+            problem_hash=h("problem"),
+            candidate_hash=h("candidate"),
+            realization_hash=h("realization"),
+            semantic_claim_hash=h("semantic-claim"),
+            artifact_manifest_hash=h("artifact-manifest"),
+            transformation_semantic_hash=(
+                transformation or law.transformation_semantic_hash
+            ),
+            transformation_regime_binding_hash=(
+                binding or law.expected_realization_binding_hash
+            ),
+            semantic_relation="EXACT_EQUIVALENT",
+            regime_preservation_claim_hash=h("preservation-claim"),
+            resource_estimate_claim_hash=h("resource-estimate-claim"),
+            machine_hash=h("machine"),
+            policy_hash=h("policy"),
+            regime_hash=(regime or law.regime_hash),
+            resource_catalog_hash=h("resource-catalog"),
+            machine_compatibility_hash=h("machine-compatibility"),
+            regime_evaluation_hash=h("regime-evaluation"),
+            realization_evidence_evaluation_hash=h("semantic-evidence-evaluation"),
+            regime_evidence_evaluation_hash=h("regime-evidence-evaluation"),
+            resource_evidence_evaluation_hash=h("resource-evidence-evaluation"),
+            issues=tuple(issues),
         )
 
     def _discovery_claim(
