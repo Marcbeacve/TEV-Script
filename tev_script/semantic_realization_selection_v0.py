@@ -256,6 +256,20 @@ def evaluate_realization_selection(
     if observed_receipts != problem.candidate_receipt_hashes:
         issues.append(RealizationSelectionIssueV0("selection.candidate_receipt_set_mismatch", "REJECT", problem.problem_hash, {"expected": list(problem.candidate_receipt_hashes), "observed": list(observed_receipts)}))
 
+    for _, receipt in candidates.values():
+        if receipt.problem_hash != problem.realization_problem_hash:
+            issues.append(
+                RealizationSelectionIssueV0(
+                    "selection.receipt_realization_problem_mismatch",
+                    "REJECT",
+                    receipt.receipt_hash,
+                    {
+                        "expected_realization_problem_hash": problem.realization_problem_hash,
+                        "observed_realization_problem_hash": receipt.problem_hash,
+                    },
+                )
+            )
+
     selected_pair = candidates.get(decision.selected_candidate_hash)
     if selected_pair is None:
         selected_realization_hash = canonical_hash({"schema": "TEV_SCRIPT_MISSING_SELECTED_REALIZATION_V0", "candidate_hash": decision.selected_candidate_hash})
