@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import re
 from typing import Iterable
 
-from .canonical import canonical_hash, canonical_json
+from .canonical import canonical_hash
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
 from .semantic_machine_v0 import MachineRequirementV0
 
@@ -41,33 +41,27 @@ def _hashes(values: Iterable[str], what: str) -> tuple[str, ...]:
     return tuple(sorted(set(_hash64(value, what) for value in values)))
 
 
-def _stable_ids(values: Iterable[str], what: str) -> tuple[str, ...]:
-    return tuple(sorted(set(_stable(value, what) for value in values)))
-
-
 @dataclass(frozen=True, slots=True)
 class ArtifactDescriptorV0:
-    """Semantic role of one immutable content artifact in a Realization.
+    """Semantic role of immutable bytes in one Realization.
 
-    File paths and filenames are deliberately absent. `content_hash` identifies
-    bytes; role/format/interface/dependencies explain how those bytes participate
-    in the realization. `entrypoint=True` means the artifact can be directly
-    selected as a realization entry surface and therefore requires an explicit
-    interface contract.
+    Physical path/filename and adapter-local ABI aliases are absent. `format_hash`
+    and numeric-model hashes bind content-addressed ABI semantics supplied by the
+    target MachineField.
     """
 
     role_id: str
-    format_id: str
+    format_hash: str
     content_hash: str
     interface_hash: str = ""
     entrypoint: bool = False
     dependency_descriptor_hashes: tuple[str, ...] = ()
     required_machine_capability_semantic_hashes: tuple[str, ...] = ()
-    required_numeric_model_ids: tuple[str, ...] = ()
+    required_numeric_model_hashes: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "role_id", _stable(self.role_id, "artifact role_id"))
-        object.__setattr__(self, "format_id", _stable(self.format_id, "artifact format_id"))
+        object.__setattr__(self, "format_hash", _hash64(self.format_hash, "artifact format_hash"))
         object.__setattr__(self, "content_hash", _hash64(self.content_hash, "artifact content_hash"))
         object.__setattr__(
             self,
@@ -93,15 +87,15 @@ class ArtifactDescriptorV0:
         )
         object.__setattr__(
             self,
-            "required_numeric_model_ids",
-            _stable_ids(self.required_numeric_model_ids, "artifact required numeric model id"),
+            "required_numeric_model_hashes",
+            _hashes(self.required_numeric_model_hashes, "artifact required numeric model hash"),
         )
 
     def to_object(self) -> dict[str, object]:
         return {
             "schema": ARTIFACT_DESCRIPTOR_SCHEMA_V0,
             "role_id": self.role_id,
-            "format_id": self.format_id,
+            "format_hash": self.format_hash,
             "content_hash": self.content_hash,
             "interface_hash": self.interface_hash,
             "entrypoint": self.entrypoint,
@@ -109,7 +103,7 @@ class ArtifactDescriptorV0:
             "required_machine_capability_semantic_hashes": list(
                 self.required_machine_capability_semantic_hashes
             ),
-            "required_numeric_model_ids": list(self.required_numeric_model_ids),
+            "required_numeric_model_hashes": list(self.required_numeric_model_hashes),
         }
 
     @property
@@ -154,20 +148,20 @@ class ArtifactManifestV0:
         return tuple(item.descriptor_hash for item in self.descriptors if item.entrypoint)
 
     @property
-    def entrypoint_format_ids(self) -> tuple[str, ...]:
-        return tuple(sorted(set(item.format_id for item in self.descriptors if item.entrypoint)))
+    def entrypoint_format_hashes(self) -> tuple[str, ...]:
+        return tuple(sorted(set(item.format_hash for item in self.descriptors if item.entrypoint)))
 
     @property
     def machine_requirement(self) -> MachineRequirementV0:
         capability_hashes: set[str] = set()
-        numeric_models: set[str] = set()
+        numeric_hashes: set[str] = set()
         for descriptor in self.descriptors:
             capability_hashes.update(descriptor.required_machine_capability_semantic_hashes)
-            numeric_models.update(descriptor.required_numeric_model_ids)
+            numeric_hashes.update(descriptor.required_numeric_model_hashes)
         return MachineRequirementV0(
             tuple(sorted(capability_hashes)),
-            tuple(sorted(numeric_models)),
-            self.entrypoint_format_ids,
+            tuple(sorted(numeric_hashes)),
+            self.entrypoint_format_hashes,
         )
 
     def to_object(self) -> dict[str, object]:
@@ -189,24 +183,24 @@ class ArtifactManifestV0:
 def manifest_from_single_artifact(
     *,
     role_id: str,
-    format_id: str,
+    format_hash: str,
     content_hash: str,
     interface_hash: str,
     required_machine_capability_semantic_hashes: Iterable[str] = (),
-    required_numeric_model_ids: Iterable[str] = (),
+    required_numeric_model_hashes: Iterable[str] = (),
 ) -> ArtifactManifestV0:
     return ArtifactManifestV0(
         (
             ArtifactDescriptorV0(
                 role_id=role_id,
-                format_id=format_id,
+                format_hash=format_hash,
                 content_hash=content_hash,
                 interface_hash=interface_hash,
                 entrypoint=True,
                 required_machine_capability_semantic_hashes=tuple(
                     required_machine_capability_semantic_hashes
                 ),
-                required_numeric_model_ids=tuple(required_numeric_model_ids),
+                required_numeric_model_hashes=tuple(required_numeric_model_hashes),
             ),
         )
     )
