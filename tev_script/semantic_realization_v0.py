@@ -7,12 +7,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from .canonical import canonical_hash, canonical_json
 from .semantic_artifact_v0 import ArtifactManifestV0
-from .semantic_evidence_v0 import (
-    EvidenceEvaluationV0,
-    EvidenceItemV0,
-    EvidencePolicyV0,
-    evaluate_evidence,
-)
+from .semantic_evidence_v0 import EvidenceEvaluationV0, EvidenceItemV0, EvidencePolicyV0, evaluate_evidence
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
 from .semantic_machine_v0 import MachineCompatibilityV0, MachineFieldV0, evaluate_machine_compatibility
 from .semantic_regime_v0 import (
@@ -41,9 +36,7 @@ REALIZATION_RECEIPT_SCHEMA_V0 = "TEV_SCRIPT_REALIZATION_ADMISSION_RECEIPT_V0"
 RESOURCE_OBSERVATION_SCHEMA_V0 = "TEV_SCRIPT_REALIZATION_RESOURCE_OBSERVATION_V0"
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _HEX = frozenset("0123456789abcdef")
-_RELATIONS = frozenset(
-    {"EXACT_EQUIVALENT", "REFINEMENT", "APPROXIMATION", "SIMULATION", "PROJECTION"}
-)
+_RELATIONS = frozenset({"EXACT_EQUIVALENT", "REFINEMENT", "APPROXIMATION", "SIMULATION", "PROJECTION"})
 _GUARANTEES = frozenset({"DETERMINISTIC_BOUND", "PROBABILISTIC_BOUND", "EMPIRICAL_BOUND"})
 
 
@@ -166,12 +159,7 @@ class RealizationPolicyV0:
         if not relations or any(item not in _RELATIONS for item in relations):
             raise RealizationSemanticsError("allowed_relations")
         object.__setattr__(self, "allowed_relations", relations)
-        for name in (
-            "realization_evidence_policy_hash",
-            "regime_evidence_policy_hash",
-            "resource_evidence_policy_hash",
-            "resource_catalog_hash",
-        ):
+        for name in ("realization_evidence_policy_hash", "regime_evidence_policy_hash", "resource_evidence_policy_hash", "resource_catalog_hash"):
             object.__setattr__(self, name, _hash64(getattr(self, name), name))
         object.__setattr__(self, "accepted_assumption_hashes", _hashes(self.accepted_assumption_hashes, "accepted assumption hash"))
         ceilings = tuple(sorted(self.resource_ceilings, key=lambda item: item.dimension_id))
@@ -290,6 +278,7 @@ def realization_identity_object(
     approximation_contract: ApproximationContractV0 | None = None,
     assumption_hashes: Iterable[str] = (),
 ) -> dict[str, object]:
+    _stable(realization_kind, "realization_kind")  # validated record classification, not identity
     return {
         **realization_semantic_claim_object(
             transformation_semantic_hash=transformation_semantic_hash,
@@ -301,7 +290,6 @@ def realization_identity_object(
             assumption_hashes=assumption_hashes,
         ),
         "schema": "TEV_SCRIPT_REALIZATION_IDENTITY_V0",
-        "realization_kind": _stable(realization_kind, "realization_kind"),
     }
 
 
@@ -444,12 +432,11 @@ class RealizationAdmissionReceiptV0:
 
     def __post_init__(self) -> None:
         for name in (
-            "problem_hash", "candidate_hash", "realization_hash", "semantic_claim_hash",
-            "artifact_manifest_hash", "transformation_semantic_hash", "transformation_regime_binding_hash",
-            "regime_preservation_claim_hash", "resource_estimate_claim_hash", "machine_hash", "policy_hash",
-            "regime_hash", "resource_catalog_hash", "machine_compatibility_hash", "regime_evaluation_hash",
-            "realization_evidence_evaluation_hash", "regime_evidence_evaluation_hash",
-            "resource_evidence_evaluation_hash",
+            "problem_hash", "candidate_hash", "realization_hash", "semantic_claim_hash", "artifact_manifest_hash",
+            "transformation_semantic_hash", "transformation_regime_binding_hash", "regime_preservation_claim_hash",
+            "resource_estimate_claim_hash", "machine_hash", "policy_hash", "regime_hash", "resource_catalog_hash",
+            "machine_compatibility_hash", "regime_evaluation_hash", "realization_evidence_evaluation_hash",
+            "regime_evidence_evaluation_hash", "resource_evidence_evaluation_hash",
         ):
             object.__setattr__(self, name, _hash64(getattr(self, name), name))
         if self.semantic_relation not in _RELATIONS:
@@ -539,14 +526,14 @@ def _issue(kind: str, severity: str, subject: str, **detail: Any) -> Realization
 
 
 def _issues_from_machine(compatibility: MachineCompatibilityV0) -> tuple[RealizationIssueV0, ...]:
-    issues: list[RealizationIssueV0] = []
+    rows: list[RealizationIssueV0] = []
     for item in compatibility.missing_capability_semantic_hashes:
-        issues.append(_issue("machine.operation_missing", "REJECT", item))
+        rows.append(_issue("machine.operation_missing", "REJECT", item))
     for item in compatibility.missing_numeric_model_hashes:
-        issues.append(_issue("machine.numeric_model_missing", "REJECT", item))
+        rows.append(_issue("machine.numeric_model_missing", "REJECT", item))
     for item in compatibility.missing_executable_format_hashes:
-        issues.append(_issue("machine.format_missing", "REJECT", item))
-    return tuple(issues)
+        rows.append(_issue("machine.format_missing", "REJECT", item))
+    return tuple(rows)
 
 
 def _issues_from_regime(evaluation: RegimeEvaluationV0) -> tuple[RealizationIssueV0, ...]:
@@ -555,13 +542,7 @@ def _issues_from_regime(evaluation: RegimeEvaluationV0) -> tuple[RealizationIssu
 
 def _issues_from_evidence(evaluation: EvidenceEvaluationV0, *, prefix: str) -> tuple[RealizationIssueV0, ...]:
     return tuple(
-        _issue(
-            prefix + "." + item.kind,
-            "REJECT" if item.kind == "evidence.falsified" else "PROOF_REQUIRED",
-            item.requirement_id,
-            evidence_hash=item.evidence_hash,
-            **dict(item.detail),
-        )
+        _issue(prefix + "." + item.kind, "REJECT" if item.kind == "evidence.falsified" else "PROOF_REQUIRED", item.requirement_id, evidence_hash=item.evidence_hash, **dict(item.detail))
         for item in evaluation.issues
     )
 
@@ -572,25 +553,11 @@ def _issues_from_resources(issues: Iterable[ResourceCeilingIssueV0]) -> tuple[Re
         if item.kind == "UNKNOWN":
             rows.append(_issue("resource.bound_unknown", "PROOF_REQUIRED", item.dimension_id, maximum=_fraction_object(item.maximum)))
         else:
-            rows.append(
-                _issue(
-                    "resource.ceiling_exceeded",
-                    "REJECT",
-                    item.dimension_id,
-                    maximum=_fraction_object(item.maximum),
-                    observed_upper=None if item.observed_upper is None else _fraction_object(item.observed_upper),
-                )
-            )
+            rows.append(_issue("resource.ceiling_exceeded", "REJECT", item.dimension_id, maximum=_fraction_object(item.maximum), observed_upper=None if item.observed_upper is None else _fraction_object(item.observed_upper)))
     return tuple(rows)
 
 
-def _reject_unaccepted_assumptions(
-    issues: list[RealizationIssueV0],
-    values: Iterable[str],
-    accepted: set[str],
-    *,
-    kind: str,
-) -> None:
+def _reject_unaccepted_assumptions(issues: list[RealizationIssueV0], values: Iterable[str], accepted: set[str], *, kind: str) -> None:
     for assumption_hash in sorted(set(values) - accepted):
         issues.append(_issue(kind, "REJECT", assumption_hash))
 
@@ -607,15 +574,7 @@ def _evaluate_approximation(candidate: RealizationCandidateV0, policy: Realizati
     if contract.domain_hash != approximation_policy.domain_hash:
         issues.append(_issue("approximation.domain_mismatch", "REJECT", contract.domain_hash, expected=approximation_policy.domain_hash))
     if contract.error_upper_bound > approximation_policy.maximum_error:
-        issues.append(
-            _issue(
-                "approximation.bound_exceeded",
-                "REJECT",
-                contract.contract_hash,
-                observed=_fraction_object(contract.error_upper_bound),
-                maximum=_fraction_object(approximation_policy.maximum_error),
-            )
-        )
+        issues.append(_issue("approximation.bound_exceeded", "REJECT", contract.contract_hash, observed=_fraction_object(contract.error_upper_bound), maximum=_fraction_object(approximation_policy.maximum_error)))
     if contract.guarantee_kind not in approximation_policy.accepted_guarantee_kinds:
         issues.append(_issue("approximation.guarantee_unaccepted", "REJECT", contract.guarantee_kind))
     if approximation_policy.minimum_confidence is not None:
@@ -674,7 +633,6 @@ def admit_realization(
     for kind, expected, observed in policy_pairs:
         if expected != observed:
             issues.append(_issue(kind, "REJECT", observed, expected=expected))
-
     for kind, evidence_policy in (
         ("evidence.realization_policy_empty", realization_evidence_policy),
         ("evidence.regime_policy_empty", regime_evidence_policy),
@@ -701,7 +659,6 @@ def admit_realization(
 
     machine_evaluation = evaluate_machine_compatibility(machine, artifact_manifest.machine_requirement)
     issues.extend(_issues_from_machine(machine_evaluation))
-
     regime_evaluation = evaluate_regime_preservation(
         regime,
         binding,
@@ -718,11 +675,7 @@ def admit_realization(
     except ResourceAlgebraError as error:
         resource_vector_valid = False
         issues.append(_issue("resource.vector_invalid", "REJECT", candidate.predicted_resources.vector_hash, detail=str(error)))
-    if not resource_estimate_claim.validates_vector(
-        realization_hash=candidate.realization_hash,
-        execution_context_hash=problem.context_hash,
-        vector=candidate.predicted_resources,
-    ):
+    if not resource_estimate_claim.validates_vector(realization_hash=candidate.realization_hash, execution_context_hash=problem.context_hash, vector=candidate.predicted_resources):
         resource_vector_valid = False
         issues.append(_issue("resource.estimate_binding_mismatch", "REJECT", resource_estimate_claim.estimate_claim_hash))
 
@@ -736,27 +689,17 @@ def admit_realization(
     regime_evidence_evaluation = evaluate_evidence(preservation_claim.preservation_claim_hash, regime_evidence_policy, evidence_items)
     resource_evaluation = evaluate_evidence(resource_estimate_claim.estimate_claim_hash, resource_evidence_policy, evidence_items)
 
-    accepted_support = (
-        set(realization_evaluation.accepted_evidence_hashes)
-        | set(regime_evidence_evaluation.accepted_evidence_hashes)
-        | set(resource_evaluation.accepted_evidence_hashes)
-    )
+    accepted_support = set(realization_evaluation.accepted_evidence_hashes) | set(regime_evidence_evaluation.accepted_evidence_hashes) | set(resource_evaluation.accepted_evidence_hashes)
     for accepted_hash in sorted(accepted_support):
         if accepted_hash not in candidate.evidence_hashes:
             issues.append(_issue("evidence.unbound_support", "REJECT", accepted_hash))
         item = evidence_by_hash.get(accepted_hash)
         if item is not None:
-            _reject_unaccepted_assumptions(
-                issues,
-                item.assumption_hashes,
-                accepted_assumptions,
-                kind="evidence.assumption_not_accepted",
-            )
+            _reject_unaccepted_assumptions(issues, item.assumption_hashes, accepted_assumptions, kind="evidence.assumption_not_accepted")
 
     issues.extend(_issues_from_evidence(realization_evaluation, prefix="realization"))
     issues.extend(_issues_from_evidence(regime_evidence_evaluation, prefix="regime"))
     issues.extend(_issues_from_evidence(resource_evaluation, prefix="resource"))
-
     if resource_policy_valid and resource_vector_valid:
         issues.extend(_issues_from_resources(evaluate_resource_ceilings(candidate.predicted_resources, policy.resource_ceilings)))
 
@@ -792,41 +735,20 @@ def residual_from_realization_admission(receipt: RealizationAdmissionReceiptV0) 
             "resolved",
             item.severity,
             dict(item.detail),
-            dependency_refs=(
-                receipt.problem_hash,
-                receipt.candidate_hash,
-                receipt.artifact_manifest_hash,
-                receipt.policy_hash,
-                receipt.regime_hash,
-                receipt.resource_catalog_hash,
-                receipt.resource_estimate_claim_hash,
-            ),
+            dependency_refs=(receipt.problem_hash, receipt.candidate_hash, receipt.artifact_manifest_hash, receipt.policy_hash, receipt.regime_hash, receipt.resource_catalog_hash, receipt.resource_estimate_claim_hash),
         )
         for item in receipt.issues
     )
     return residual_from_obstructions(
         domain="realization",
         judgment_id="realization_admission",
-        judgment={
-            "kind": "candidate_admissible",
-            "problem_hash": receipt.problem_hash,
-            "candidate_hash": receipt.candidate_hash,
-            "realization_hash": receipt.realization_hash,
-            "transformation_semantic_hash": receipt.transformation_semantic_hash,
-            "semantic_relation": receipt.semantic_relation,
-            "status": receipt.status,
-        },
+        judgment={"kind": "candidate_admissible", "problem_hash": receipt.problem_hash, "candidate_hash": receipt.candidate_hash, "realization_hash": receipt.realization_hash, "transformation_semantic_hash": receipt.transformation_semantic_hash, "semantic_relation": receipt.semantic_relation, "status": receipt.status},
         source={"kind": "realization_admission_receipt", "receipt_hash": receipt.receipt_hash},
         obstructions=obstructions,
     )
 
 
-def semantic_memoization_key(
-    *,
-    transformation_semantic_hash: str,
-    canonical_input_hash: str,
-    semantic_environment_hash: str,
-) -> str:
+def semantic_memoization_key(*, transformation_semantic_hash: str, canonical_input_hash: str, semantic_environment_hash: str) -> str:
     return canonical_hash(
         {
             "schema": "TEV_SCRIPT_SEMANTIC_MEMOIZATION_KEY_V0",
@@ -864,8 +786,7 @@ def pareto_front(
         raise RealizationSemanticsError("Pareto extraction requires dimensions")
     if len(set(selected_dimensions)) != len(selected_dimensions):
         raise RealizationSemanticsError("duplicate Pareto dimension")
-    missing_dimensions = set(selected_dimensions) - set(resource_catalog.dimension_ids)
-    if missing_dimensions:
+    if set(selected_dimensions) - set(resource_catalog.dimension_ids):
         raise RealizationSemanticsError("Pareto dimension outside resource catalog")
 
     eligible: list[RealizationCandidateV0] = []
@@ -881,23 +802,11 @@ def pareto_front(
 
     front: list[RealizationCandidateV0] = []
     for candidate in sorted(eligible, key=lambda item: item.candidate_hash):
-        dominated = any(
-            other.candidate_hash != candidate.candidate_hash
-            and _dominates(other.predicted_resources, candidate.predicted_resources, selected_dimensions)
-            for other in eligible
-        )
+        dominated = any(other.candidate_hash != candidate.candidate_hash and _dominates(other.predicted_resources, candidate.predicted_resources, selected_dimensions) for other in eligible)
         if not dominated:
             front.append(candidate)
 
-    return tuple(
-        ParetoEntryV0(
-            candidate.candidate_hash,
-            candidate.realization_hash,
-            candidate.predicted_resources.vector_hash,
-            resource_catalog.catalog_hash,
-        )
-        for candidate in front
-    )
+    return tuple(ParetoEntryV0(candidate.candidate_hash, candidate.realization_hash, candidate.predicted_resources.vector_hash, resource_catalog.catalog_hash) for candidate in front)
 
 
 __all__ = [
