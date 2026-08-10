@@ -12,9 +12,11 @@ EXTENDED_TESTS = (
     "tests.test_realization_cost_model_update_v0",
     "tests.test_realization_cost_prediction_v0",
     "tests.test_realization_dispatch_loop_v0",
+    "tests.test_realization_execution_authority_v0",
     "tests.test_realization_receipt_validity_dispatch_v0",
     "tests.test_realization_resource_measurement_v0",
     "tests.test_realization_resource_calibration_v0",
+    "tests.test_realization_search_v0",
     "tests.test_realization_selection_v0",
 )
 
