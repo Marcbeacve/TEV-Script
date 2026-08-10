@@ -10,6 +10,7 @@ from tev_script.semantic_machine_v0 import (
     MachineFieldV0,
     NumericModelV0,
 )
+from tev_script.semantic_resource_evidence_v0 import ResourceEstimateClaimV0
 
 
 def h(label: str) -> str:
@@ -109,6 +110,43 @@ class StructuralLawIdentityBoundaryV0Tests(unittest.TestCase):
             h("falsifier"), policy, assumption_hashes=(h("assumption"),)
         )
         self.assertNotEqual(left.law_semantic_hash, right.law_semantic_hash)
+
+
+class ResourceBoundClaimIdentityV0Tests(unittest.TestCase):
+    def _claim(
+        self,
+        *,
+        estimate_kind: str = "ANALYTIC_BOUND",
+        estimator: str = "estimator-a",
+        assumptions=("assumption",),
+        detail=None,
+    ):
+        return ResourceEstimateClaimV0(
+            h("realization"),
+            h("context"),
+            h("vector"),
+            h("catalog"),
+            estimate_kind,
+            h(estimator),
+            h("scope"),
+            assumption_hashes=tuple(h(item) for item in assumptions),
+            detail=detail or {},
+        )
+
+    def test_estimator_and_method_are_provenance_not_bound_identity(self):
+        analytic = self._claim(
+            estimate_kind="ANALYTIC_BOUND", estimator="estimator-a", detail={"path": "a"}
+        )
+        exhaustive = self._claim(
+            estimate_kind="EMPIRICAL_ENVELOPE", estimator="estimator-b", detail={"path": "b"}
+        )
+        self.assertEqual(analytic.estimate_claim_hash, exhaustive.estimate_claim_hash)
+        self.assertNotEqual(analytic.record_hash, exhaustive.record_hash)
+
+    def test_resource_claim_assumptions_are_semantic_to_the_claim(self):
+        base = self._claim(assumptions=("assumption",))
+        changed = self._claim(assumptions=("different-assumption",))
+        self.assertNotEqual(base.estimate_claim_hash, changed.estimate_claim_hash)
 
 
 if __name__ == "__main__":
