@@ -13,7 +13,11 @@ from tev_script.semantic_dispatch_consumption_v0 import (
     residual_from_dispatch_consumption_commit,
     residual_from_dispatch_consumption_transition,
 )
-from tev_script.semantic_dispatch_v0 import DispatchIssueV0, ExecutionDispatchReceiptV0
+from tev_script.semantic_dispatch_v0 import (
+    DispatchIssueV0,
+    ExecutionDispatchReceiptV0,
+    dispatch_consumption_domain_hash,
+)
 from tev_script.semantic_evidence_v0 import EvidenceItemV0, EvidencePolicyV0, EvidenceRequirementV0
 from tev_script.semantic_residual_v0 import parse_residual
 
@@ -22,18 +26,22 @@ def h(label: str) -> str:
     return canonical_hash({"test": label})
 
 
-def dispatch(request="request", *, issues=()) -> ExecutionDispatchReceiptV0:
+def dispatch(request="request", *, issues=(), authority_claim=None) -> ExecutionDispatchReceiptV0:
+    request_hash = h(request)
+    authority_claim = authority_claim or h("execution-authority-claim")
     return ExecutionDispatchReceiptV0(
         h("dispatch-candidate-" + request),
         h("dispatch-record-" + request),
-        h(request),
+        request_hash,
         h("dispatch-epoch"),
         h("activation"),
         h("activation-validity"),
         h("activation-authority-state"),
         h("execution-authority"),
+        authority_claim,
         h("execution-authority-validity"),
         h("execution-authority-state"),
+        dispatch_consumption_domain_hash(request_hash),
         h("realization-receipt"),
         h("realization"),
         h("execution-context"),
@@ -46,9 +54,9 @@ def dispatch(request="request", *, issues=()) -> ExecutionDispatchReceiptV0:
 
 class DispatchConsumptionV0Tests(unittest.TestCase):
     def setUp(self) -> None:
-        self.domain = h("dispatch-domain")
-        self.before = DispatchConsumptionStateV0(self.domain)
         self.dispatch = dispatch()
+        self.domain = self.dispatch.dispatch_consumption_domain_hash
+        self.before = DispatchConsumptionStateV0(self.domain)
         self.attempt = DispatchConsumptionAttemptV0(
             self.dispatch.receipt_hash,
             self.dispatch.dispatch_request_hash,
@@ -121,7 +129,52 @@ class DispatchConsumptionV0Tests(unittest.TestCase):
         self.assertIsNotNone(after)
         self.assertTrue(after.contains(self.dispatch.dispatch_request_hash))
         self.assertEqual(after.state_hash, transition.after_state_hash)
+        self.assertEqual(transition.dispatch_domain_hash, self.dispatch.dispatch_consumption_domain_hash)
         self.assertEqual(parse_residual(residual_from_dispatch_consumption_transition(transition)).status, "CLOSED")
+
+    def test_caller_cannot_switch_ledger_domain_to_bypass_request_replay_scope(self):
+        wrong_domain = h("caller-chosen-domain")
+        wrong_state = DispatchConsumptionStateV0(wrong_domain)
+        wrong_attempt = DispatchConsumptionAttemptV0(
+            self.dispatch.receipt_hash,
+            self.dispatch.dispatch_request_hash,
+            wrong_domain,
+            wrong_state.state_hash,
+        )
+        transition, after = self.transition(wrong_attempt, before=wrong_state)
+        self.assertEqual(transition.status, "REJECT")
+        self.assertIsNone(after)
+        kinds = {item.kind for item in transition.issues}
+        self.assertIn("dispatch_consumption.request_domain_mismatch", kinds)
+        self.assertIn("dispatch_consumption.ledger_domain_mismatch", kinds)
+
+    def test_same_request_keeps_same_domain_when_authority_changes(self):
+        reauthorized = dispatch(
+            authority_claim=h("new-execution-authority-claim"),
+        )
+        self.assertEqual(reauthorized.dispatch_request_hash, self.dispatch.dispatch_request_hash)
+        self.assertNotEqual(reauthorized.execution_authority_claim_hash, self.dispatch.execution_authority_claim_hash)
+        self.assertEqual(
+            reauthorized.dispatch_consumption_domain_hash,
+            self.dispatch.dispatch_consumption_domain_hash,
+        )
+
+        first, after = self.transition()
+        self.assertEqual(first.status, "PASS")
+        retry_attempt = DispatchConsumptionAttemptV0(
+            reauthorized.receipt_hash,
+            reauthorized.dispatch_request_hash,
+            reauthorized.dispatch_consumption_domain_hash,
+            after.state_hash,
+        )
+        retry, retry_after = evaluate_dispatch_consumption_transition(
+            retry_attempt,
+            before_state=after,
+            dispatch_receipt=reauthorized,
+        )
+        self.assertEqual(retry.status, "REJECT")
+        self.assertIsNone(retry_after)
+        self.assertIn("dispatch_consumption.replay", {item.kind for item in retry.issues})
 
     def test_replaying_consumed_request_is_rejected(self):
         first, after = self.transition()
@@ -148,13 +201,18 @@ class DispatchConsumptionV0Tests(unittest.TestCase):
                 ),
             )
         )
+        before = DispatchConsumptionStateV0(open_dispatch.dispatch_consumption_domain_hash)
         attempt = DispatchConsumptionAttemptV0(
             open_dispatch.receipt_hash,
             open_dispatch.dispatch_request_hash,
-            self.domain,
-            self.before.state_hash,
+            open_dispatch.dispatch_consumption_domain_hash,
+            before.state_hash,
         )
-        transition, after = self.transition(attempt, dispatch_receipt=open_dispatch)
+        transition, after = evaluate_dispatch_consumption_transition(
+            attempt,
+            before_state=before,
+            dispatch_receipt=open_dispatch,
+        )
         self.assertEqual(transition.status, "PROOF_REQUIRED")
         self.assertIsNone(after)
         self.assertIn("dispatch_consumption.dispatch_not_admitted", {item.kind for item in transition.issues})
@@ -180,26 +238,10 @@ class DispatchConsumptionV0Tests(unittest.TestCase):
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("dispatch_consumption.storage_authority_untrusted", {item.kind for item in receipt.issues})
 
-    def test_concurrent_distinct_requests_share_before_state_but_produce_distinct_after_states(self):
-        other_dispatch = dispatch("other-request")
-        other_attempt = DispatchConsumptionAttemptV0(
-            other_dispatch.receipt_hash,
-            other_dispatch.dispatch_request_hash,
-            self.domain,
-            self.before.state_hash,
-        )
-        first_transition, first_after = self.transition()
-        second_transition, second_after = self.transition(
-            other_attempt,
-            dispatch_receipt=other_dispatch,
-        )
-        self.assertEqual(first_transition.status, "PASS")
-        self.assertEqual(second_transition.status, "PASS")
-        self.assertNotEqual(first_after.state_hash, second_after.state_hash)
-        self.assertEqual(first_transition.before_state_hash, second_transition.before_state_hash)
-        # R0 intentionally requires a physical CAS attestation before either
-        # transition may authorize effects; the pure transition itself does not
-        # claim that both concurrent updates can be committed.
+    def test_distinct_requests_have_distinct_consumption_domains(self):
+        other = dispatch("other-request")
+        self.assertNotEqual(other.dispatch_request_hash, self.dispatch.dispatch_request_hash)
+        self.assertNotEqual(other.dispatch_consumption_domain_hash, self.dispatch.dispatch_consumption_domain_hash)
 
 
 if __name__ == "__main__":
