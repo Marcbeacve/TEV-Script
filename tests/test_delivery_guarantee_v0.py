@@ -36,6 +36,8 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
         self.realization_hash = h("realization")
         self.execution_context_hash = h("context")
         self.coordinator = h("delivery-coordinator")
+        self.atomic_domain = h("atomic-domain")
+        self.participant_manifest = h("participant-manifest")
         self.verifier = h("delivery-verifier")
         self.scope = h("delivery-scope")
         self.evidence_policy = EvidencePolicyV0(
@@ -99,6 +101,7 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
 
     def dispatch(self, prepared_receipt, requested_guarantee):
         request = h("dispatch-request")
+        exact = requested_guarantee != "AT_MOST_ONCE_DISPATCH"
         return ExecutionDispatchReceiptV0(
             dispatch_candidate_hash=h("dispatch-candidate"),
             dispatch_record_hash=h("dispatch-record"),
@@ -123,6 +126,13 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
             prepared_execution_claim_hash=prepared_receipt.prepared_execution_claim_hash,
             prepared_execution_validity_evaluation_hash=h("prepared-execution-validity"),
             prepared_execution_authority_state_hash=h("prepared-state"),
+            delivery_plan_receipt_hash=h("delivery-plan-receipt"),
+            delivery_plan_claim_hash=h("delivery-plan-claim"),
+            delivery_plan_validity_evaluation_hash=h("delivery-plan-validity"),
+            delivery_plan_authority_state_hash=h("delivery-plan-state"),
+            delivery_participant_manifest_hash=self.participant_manifest,
+            delivery_coordinator_hash=self.coordinator if exact else "",
+            delivery_atomic_commit_domain_hash=self.atomic_domain if exact else "",
             invocation_workload_hash=prepared_receipt.invocation_workload_hash,
             before_checkpoint_hash=prepared_receipt.before_checkpoint_hash,
             after_checkpoint_hash=prepared_receipt.after_checkpoint_hash,
@@ -144,13 +154,25 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
             h("commit-epoch"), h("commit-evidence"), h("commit-policy"), (),
         )
 
-    def atomic_claim(self, consumption_receipt, prepared_receipt, *, durable=False, coordinator=None):
+    def atomic_claim(
+        self,
+        dispatch_receipt,
+        consumption_receipt,
+        prepared_receipt,
+        *,
+        durable=False,
+        coordinator=None,
+        participant_manifest=None,
+        atomic_domain=None,
+        delivery_plan_receipt=None,
+    ):
         return AtomicDeliveryCommitClaimV0(
+            delivery_plan_receipt or dispatch_receipt.delivery_plan_receipt_hash,
             consumption_receipt.receipt_hash,
             prepared_receipt.receipt_hash,
-            h("atomic-domain"),
-            h("participant-manifest"),
-            coordinator or self.coordinator,
+            atomic_domain or dispatch_receipt.delivery_atomic_commit_domain_hash,
+            participant_manifest or dispatch_receipt.delivery_participant_manifest_hash,
+            coordinator or dispatch_receipt.delivery_coordinator_hash,
             durable,
         )
 
@@ -170,6 +192,9 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
         with_atomic=False,
         durable_atomic=False,
         coordinator=None,
+        participant_manifest=None,
+        atomic_domain=None,
+        delivery_plan_receipt=None,
     ):
         prepared_receipt = self.prepared_execution(reaction)
         dispatch_receipt = self.dispatch(prepared_receipt, dispatch_guarantee or guarantee)
@@ -178,10 +203,14 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
         evidence = ()
         if with_atomic:
             atomic = self.atomic_claim(
+                dispatch_receipt,
                 consumption_receipt,
                 prepared_receipt,
                 durable=durable_atomic,
                 coordinator=coordinator,
+                participant_manifest=participant_manifest,
+                atomic_domain=atomic_domain,
+                delivery_plan_receipt=delivery_plan_receipt,
             )
             evidence = (self.evidence(atomic),)
         claim = DeliveryGuaranteeClaimV0(
@@ -246,6 +275,30 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
         self.assertTrue(receipt.atomic_delivery_claim_hash)
         self.assertEqual(parse_residual(residual_from_delivery_guarantee(receipt)).status, "CLOSED")
 
+    def test_atomic_claim_cannot_replace_pre_dispatch_plan_identity(self):
+        catalog = self.law_catalog()
+        receipt = self.evaluate(
+            "EXACTLY_ONCE_COMMIT",
+            self.prepared_reaction(catalog),
+            catalog,
+            with_atomic=True,
+            delivery_plan_receipt=h("other-plan"),
+        )
+        self.assertEqual(receipt.status, "REJECT")
+        self.assertIn("delivery.atomic_claim_plan_mismatch", {item.kind for item in receipt.issues})
+
+    def test_atomic_claim_cannot_replace_pre_dispatch_participant_manifest(self):
+        catalog = self.law_catalog()
+        receipt = self.evaluate(
+            "EXACTLY_ONCE_COMMIT",
+            self.prepared_reaction(catalog),
+            catalog,
+            with_atomic=True,
+            participant_manifest=h("other-manifest"),
+        )
+        self.assertEqual(receipt.status, "REJECT")
+        self.assertIn("delivery.atomic_claim_participant_manifest_mismatch", {item.kind for item in receipt.issues})
+
     def test_untrusted_atomic_coordinator_rejects_exactly_once(self):
         catalog = self.law_catalog()
         receipt = self.evaluate(
@@ -257,6 +310,18 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
         )
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("delivery.coordinator_untrusted", {item.kind for item in receipt.issues})
+
+    def test_atomic_claim_cannot_replace_pre_dispatch_atomic_domain(self):
+        catalog = self.law_catalog()
+        receipt = self.evaluate(
+            "EXACTLY_ONCE_COMMIT",
+            self.prepared_reaction(catalog),
+            catalog,
+            with_atomic=True,
+            atomic_domain=h("other-atomic-domain"),
+        )
+        self.assertEqual(receipt.status, "REJECT")
+        self.assertIn("delivery.atomic_claim_domain_mismatch", {item.kind for item in receipt.issues})
 
     def test_durable_exactly_once_requires_all_three_durability_surfaces(self):
         catalog = self.law_catalog(durable=False)
