@@ -13,6 +13,9 @@ _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _AGGREGATIONS = frozenset({"SUM", "MAX"})
 _MODES = frozenset({"SEQUENTIAL", "PARALLEL"})
 _HEX = frozenset("0123456789abcdef")
+EMPTY_RESOURCE_CATALOG_HASH = canonical_hash(
+    {"schema": _RESOURCE_CATALOG_SCHEMA, "dimensions": []}
+)
 
 
 class ResourceAlgebraError(ValueError):
@@ -26,18 +29,18 @@ def _stable(value: str, what: str) -> str:
     return text
 
 
-def _nonnegative_fraction(value: Fraction | int, what: str) -> Fraction:
-    result = value if isinstance(value, Fraction) else Fraction(value)
-    if result < 0:
-        raise ResourceAlgebraError(f"{what} must be non-negative")
-    return result
-
-
 def _hash64(value: str, what: str) -> str:
     text = str(value)
     if len(text) != 64 or any(char not in _HEX for char in text):
         raise ResourceAlgebraError(what)
     return text
+
+
+def _nonnegative_fraction(value: Fraction | int, what: str) -> Fraction:
+    result = value if isinstance(value, Fraction) else Fraction(value)
+    if result < 0:
+        raise ResourceAlgebraError(f"{what} must be non-negative")
+    return result
 
 
 def _fraction_object(value: Fraction) -> dict[str, list[str]]:
@@ -87,6 +90,10 @@ class ResourceCatalogV0:
         if len({item.dimension_id for item in ordered}) != len(ordered):
             raise ResourceAlgebraError("duplicate resource dimension")
         object.__setattr__(self, "dimensions", ordered)
+
+    @property
+    def dimension_ids(self) -> tuple[str, ...]:
+        return tuple(item.dimension_id for item in self.dimensions)
 
     def dimension(self, dimension_id: str) -> ResourceDimensionV0 | None:
         for item in self.dimensions:
@@ -149,14 +156,32 @@ class ResourceBoundV0:
 class ResourceVectorV0:
     bounds: tuple[ResourceBoundV0, ...] = ()
     complete: bool = False
+    catalog_hash: str = EMPTY_RESOURCE_CATALOG_HASH
 
     def __post_init__(self) -> None:
         if not isinstance(self.complete, bool):
             raise ResourceAlgebraError("complete must be bool")
+        object.__setattr__(self, "catalog_hash", _hash64(self.catalog_hash, "catalog_hash"))
         ordered = tuple(sorted(self.bounds, key=lambda item: item.dimension_id))
         if len({item.dimension_id for item in ordered}) != len(ordered):
             raise ResourceAlgebraError("duplicate resource bound")
         object.__setattr__(self, "bounds", ordered)
+
+    def validate_against(self, catalog: ResourceCatalogV0) -> None:
+        if self.catalog_hash != catalog.catalog_hash:
+            raise ResourceAlgebraError("resource vector/catalog identity mismatch")
+        vector_dimensions = {item.dimension_id for item in self.bounds}
+        catalog_dimensions = set(catalog.dimension_ids)
+        extras = vector_dimensions - catalog_dimensions
+        if extras:
+            raise ResourceAlgebraError(
+                "resource vector contains dimensions outside catalog: " + ",".join(sorted(extras))
+            )
+        if self.complete and vector_dimensions != catalog_dimensions:
+            missing = catalog_dimensions - vector_dimensions
+            raise ResourceAlgebraError(
+                "complete resource vector missing catalog dimensions: " + ",".join(sorted(missing))
+            )
 
     def bound(self, dimension_id: str) -> ResourceBoundV0 | None:
         for item in self.bounds:
@@ -166,15 +191,12 @@ class ResourceVectorV0:
 
     def effective_bound(self, dimension_id: str) -> ResourceBoundV0:
         explicit = self.bound(dimension_id)
-        if explicit is not None:
-            return explicit
-        if self.complete:
-            return ResourceBoundV0.exact(dimension_id, 0)
-        return ResourceBoundV0.unknown(dimension_id)
+        return explicit if explicit is not None else ResourceBoundV0.unknown(dimension_id)
 
     def to_object(self) -> dict[str, object]:
         return {
             "schema": _RESOURCE_SCHEMA,
+            "catalog_hash": self.catalog_hash,
             "complete": self.complete,
             "bounds": [item.to_object() for item in self.bounds],
         }
@@ -188,15 +210,18 @@ class ResourceVectorV0:
 class ResourceCeilingV0:
     dimension_id: str
     maximum: Fraction | int
+    catalog_hash: str = EMPTY_RESOURCE_CATALOG_HASH
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "dimension_id", _stable(self.dimension_id, "dimension_id"))
         object.__setattr__(self, "maximum", _nonnegative_fraction(self.maximum, "maximum"))
+        object.__setattr__(self, "catalog_hash", _hash64(self.catalog_hash, "catalog_hash"))
 
     def to_object(self) -> dict[str, object]:
         return {
             "dimension_id": self.dimension_id,
             "maximum": _fraction_object(self.maximum),
+            "catalog_hash": self.catalog_hash,
         }
 
 
@@ -243,8 +268,10 @@ def compose_resource_vectors(
     if mode not in _MODES:
         raise ResourceAlgebraError("unsupported composition mode")
     rows = tuple(vectors)
+    for vector in rows:
+        vector.validate_against(catalog)
     if not rows:
-        return ResourceVectorV0((), complete=True)
+        return ResourceVectorV0((), complete=True, catalog_hash=catalog.catalog_hash)
     result: list[ResourceBoundV0] = []
     for dimension in catalog.dimensions:
         aggregation = dimension.aggregation_for(mode)
@@ -256,7 +283,11 @@ def compose_resource_vectors(
                 aggregation,
             )
         result.append(current)
-    return ResourceVectorV0(tuple(result), complete=all(item.complete for item in rows))
+    return ResourceVectorV0(
+        tuple(result),
+        complete=True,
+        catalog_hash=catalog.catalog_hash,
+    )
 
 
 def evaluate_resource_ceilings(
@@ -269,6 +300,8 @@ def evaluate_resource_ceilings(
         if ceiling.dimension_id in seen:
             raise ResourceAlgebraError("duplicate resource ceiling")
         seen.add(ceiling.dimension_id)
+        if ceiling.catalog_hash != vector.catalog_hash:
+            raise ResourceAlgebraError("resource ceiling/vector catalog mismatch")
         bound = vector.effective_bound(ceiling.dimension_id)
         if bound.upper is None:
             issues.append(ResourceCeilingIssueV0("UNKNOWN", ceiling.dimension_id, ceiling.maximum, None))
@@ -296,6 +329,7 @@ def resource_context_hash(*, machine_hash: str, workload_hash: str, placement_ha
 
 
 __all__ = [
+    "EMPTY_RESOURCE_CATALOG_HASH",
     "ResourceAlgebraError",
     "ResourceDimensionV0",
     "ResourceCatalogV0",
