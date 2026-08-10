@@ -24,14 +24,8 @@ from tev_script.semantic_dispatched_grounded_discovery_v0 import (
     evaluate_dispatched_grounded_discovery,
     residual_from_dispatched_grounded_discovery,
 )
-from tev_script.semantic_execution_observation_v0 import (
-    ExecutionObservationIssueV0,
-    ExecutionObservationReceiptV0,
-)
-from tev_script.semantic_grounded_discovery_v0 import (
-    ExecutionGroundedDiscoveryEvaluationV0,
-    GroundedDiscoveryIssueV0,
-)
+from tev_script.semantic_execution_observation_v0 import ExecutionObservationIssueV0, ExecutionObservationReceiptV0
+from tev_script.semantic_grounded_discovery_v0 import ExecutionGroundedDiscoveryEvaluationV0, GroundedDiscoveryIssueV0
 from tev_script.semantic_residual_v0 import parse_residual
 
 
@@ -46,6 +40,14 @@ def dispatch(*, issues=(), activation=None, context=None, request=None, authorit
         dispatch_record_hash=h("dispatch-record"),
         dispatch_request_hash=request_hash,
         dispatch_epoch_hash=h("dispatch-epoch"),
+        execution_request_receipt_hash=h("execution-request-receipt"),
+        execution_request_intent_hash=h("execution-intent"),
+        execution_request_validity_evaluation_hash=h("execution-request-validity"),
+        execution_request_authority_state_hash=h("execution-request-state"),
+        requester_principal_hash=h("requester"),
+        purpose_hash=h("purpose"),
+        requested_delivery_guarantee="AT_MOST_ONCE_DISPATCH",
+        idempotency_scope="OCCURRENCE_SCOPED",
         activation_receipt_hash=activation or h("activation"),
         activation_validity_evaluation_hash=h("activation-validity-evaluation"),
         activation_authority_state_hash=h("activation-authority-state"),
@@ -73,40 +75,25 @@ def dispatch(*, issues=(), activation=None, context=None, request=None, authorit
 
 def consumption(d: ExecutionDispatchReceiptV0, *, issues=(), request=None) -> DispatchConsumptionCommitReceiptV0:
     return DispatchConsumptionCommitReceiptV0(
-        h("consumption-claim"),
-        h("consumption-record"),
-        h("consumption-transition"),
-        d.receipt_hash,
-        request or d.dispatch_request_hash,
-        h("consumption-before"),
-        h("consumption-after"),
-        h("storage-authority"),
-        h("consumption-epoch"),
-        h("consumption-evidence-evaluation"),
-        h("consumption-policy"),
+        h("consumption-claim"), h("consumption-record"), h("consumption-transition"),
+        d.receipt_hash, request or d.dispatch_request_hash,
+        h("consumption-before"), h("consumption-after"), h("storage-authority"),
+        h("consumption-epoch"), h("consumption-evidence-evaluation"), h("consumption-policy"),
         tuple(issues),
     )
 
 
 def observation(*, issues=(), activation=None, context=None, history=None) -> ExecutionObservationReceiptV0:
     return ExecutionObservationReceiptV0(
-        h("observation-claim"),
-        h("observation-record"),
-        activation or h("activation"),
-        context or h("execution-context"),
-        history or h("observed-history"),
-        h("observation-evidence-evaluation"),
-        tuple(issues),
+        h("observation-claim"), h("observation-record"), activation or h("activation"),
+        context or h("execution-context"), history or h("observed-history"),
+        h("observation-evidence-evaluation"), tuple(issues),
     )
 
 
 class DispatchObservationBindingV0Tests(unittest.TestCase):
     def evaluate(self, d, c, o):
-        binding = DispatchedExecutionObservationBindingV0(
-            d.receipt_hash,
-            c.receipt_hash,
-            o.receipt_hash,
-        )
+        binding = DispatchedExecutionObservationBindingV0(d.receipt_hash, c.receipt_hash, o.receipt_hash)
         return evaluate_dispatched_execution_observation(
             binding,
             dispatch_receipt=d,
@@ -115,9 +102,7 @@ class DispatchObservationBindingV0Tests(unittest.TestCase):
         )
 
     def test_matching_pass_receipts_bind_consumed_dispatch_to_observation(self):
-        d = dispatch()
-        c = consumption(d)
-        o = observation()
+        d = dispatch(); c = consumption(d); o = observation()
         receipt = self.evaluate(d, c, o)
         self.assertEqual(receipt.status, "PASS")
         self.assertEqual(receipt.dispatch_request_hash, d.dispatch_request_hash)
@@ -128,69 +113,38 @@ class DispatchObservationBindingV0Tests(unittest.TestCase):
 
     def test_uncommitted_consumption_keeps_observation_open(self):
         d = dispatch()
-        c = consumption(
-            d,
-            issues=(
-                DispatchConsumptionIssueV0(
-                    "dispatch_consumption.evidence.required",
-                    "PROOF_REQUIRED",
-                    h("cas"),
-                    {},
-                ),
-            ),
-        )
-        o = observation()
-        receipt = self.evaluate(d, c, o)
+        c = consumption(d, issues=(DispatchConsumptionIssueV0("dispatch_consumption.evidence.required", "PROOF_REQUIRED", h("cas"), {}),))
+        receipt = self.evaluate(d, c, observation())
         self.assertEqual(receipt.status, "PROOF_REQUIRED")
         self.assertIn("dispatch_observation.consumption_not_committed", {item.kind for item in receipt.issues})
 
     def test_consumption_for_other_dispatch_request_rejects(self):
-        d = dispatch()
-        c = consumption(d, request=h("other-request"))
-        o = observation()
-        receipt = self.evaluate(d, c, o)
+        d = dispatch(); c = consumption(d, request=h("other-request"))
+        receipt = self.evaluate(d, c, observation())
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("dispatch_observation.consumption_request_mismatch", {item.kind for item in receipt.issues})
 
     def test_activation_mismatch_rejects(self):
-        d = dispatch(activation=h("activation-a"))
-        c = consumption(d)
-        o = observation(activation=h("activation-b"))
-        receipt = self.evaluate(d, c, o)
+        d = dispatch(activation=h("activation-a")); c = consumption(d)
+        receipt = self.evaluate(d, c, observation(activation=h("activation-b")))
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("dispatch_observation.activation_mismatch", {item.kind for item in receipt.issues})
 
     def test_execution_context_mismatch_rejects(self):
-        d = dispatch(context=h("context-a"))
-        c = consumption(d)
-        o = observation(context=h("context-b"))
-        receipt = self.evaluate(d, c, o)
+        d = dispatch(context=h("context-a")); c = consumption(d)
+        receipt = self.evaluate(d, c, observation(context=h("context-b")))
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("dispatch_observation.execution_context_mismatch", {item.kind for item in receipt.issues})
 
-    def test_open_prepared_dispatch_propagates_proof_required(self):
-        d = dispatch(
-            issues=(
-                DispatchIssueV0(
-                    "dispatch.prepared_execution_not_current",
-                    "PROOF_REQUIRED",
-                    h("prepared-validity"),
-                    {},
-                ),
-            )
-        )
-        c = consumption(d)
-        o = observation()
-        receipt = self.evaluate(d, c, o)
+    def test_open_request_dispatch_propagates_proof_required(self):
+        d = dispatch(issues=(DispatchIssueV0("dispatch.execution_request_not_current", "PROOF_REQUIRED", h("request-validity"), {}),))
+        receipt = self.evaluate(d, consumption(d), observation())
         self.assertEqual(receipt.status, "PROOF_REQUIRED")
         self.assertIn("dispatch_observation.dispatch_not_admitted", {item.kind for item in receipt.issues})
 
     def test_rejected_observation_propagates_reject(self):
-        d = dispatch()
-        c = consumption(d)
-        o = observation(
-            issues=(ExecutionObservationIssueV0("observation.history_mismatch", "REJECT", h("history"), {}),)
-        )
+        d = dispatch(); c = consumption(d)
+        o = observation(issues=(ExecutionObservationIssueV0("observation.history_mismatch", "REJECT", h("history"), {}),))
         receipt = self.evaluate(d, c, o)
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("dispatch_observation.observation_not_admitted", {item.kind for item in receipt.issues})
@@ -213,26 +167,17 @@ class DispatchedGroundedDiscoveryV0Tests(unittest.TestCase):
             execution_observation_receipt=self.observation,
         )
         self.grounded = ExecutionGroundedDiscoveryEvaluationV0(
-            h("grounded-cycle"),
-            h("epistemic-evaluation"),
-            self.dispatch.activation_receipt_hash,
-            self.observation.receipt_hash,
-            self.dispatch.realization_receipt_hash,
-            self.observation.observed_history_hash,
-            (),
+            h("grounded-cycle"), h("epistemic-evaluation"), self.dispatch.activation_receipt_hash,
+            self.observation.receipt_hash, self.dispatch.realization_receipt_hash,
+            self.observation.observed_history_hash, (),
         )
 
     def cycle(self, grounded=None, dispatched=None):
-        grounded = grounded or self.grounded
-        dispatched = dispatched or self.dispatched_observation
-        return DispatchedGroundedDiscoveryV0(
-            grounded.evaluation_hash,
-            dispatched.receipt_hash,
-        )
+        grounded = grounded or self.grounded; dispatched = dispatched or self.dispatched_observation
+        return DispatchedGroundedDiscoveryV0(grounded.evaluation_hash, dispatched.receipt_hash)
 
     def evaluate(self, grounded=None, dispatched=None):
-        grounded = grounded or self.grounded
-        dispatched = dispatched or self.dispatched_observation
+        grounded = grounded or self.grounded; dispatched = dispatched or self.dispatched_observation
         return evaluate_dispatched_grounded_discovery(
             self.cycle(grounded, dispatched),
             grounded_discovery_evaluation=grounded,
@@ -266,16 +211,12 @@ class DispatchedGroundedDiscoveryV0Tests(unittest.TestCase):
         )
 
     def test_different_execution_observation_receipt_rejects(self):
-        evaluation = self.evaluate(
-            dispatched=self.mismatched_dispatched(observation_receipt=h("other-observation-receipt"))
-        )
+        evaluation = self.evaluate(dispatched=self.mismatched_dispatched(observation_receipt=h("other-observation-receipt")))
         self.assertEqual(evaluation.status, "REJECT")
         self.assertIn("dispatched_grounded.execution_observation_receipt_mismatch", {item.kind for item in evaluation.issues})
 
     def test_history_mismatch_rejects(self):
-        evaluation = self.evaluate(
-            dispatched=self.mismatched_dispatched(history=h("other-history"))
-        )
+        evaluation = self.evaluate(dispatched=self.mismatched_dispatched(history=h("other-history")))
         self.assertEqual(evaluation.status, "REJECT")
         self.assertIn("dispatched_grounded.history_mismatch", {item.kind for item in evaluation.issues})
 
@@ -287,14 +228,7 @@ class DispatchedGroundedDiscoveryV0Tests(unittest.TestCase):
             self.grounded.execution_observation_receipt_hash,
             self.grounded.realization_receipt_hash,
             self.grounded.observed_history_hash,
-            (
-                GroundedDiscoveryIssueV0(
-                    "grounded.execution_observation_not_admitted",
-                    "PROOF_REQUIRED",
-                    h("observation"),
-                    {},
-                ),
-            ),
+            (GroundedDiscoveryIssueV0("grounded.execution_observation_not_admitted", "PROOF_REQUIRED", h("observation"), {}),),
         )
         evaluation = self.evaluate(grounded=grounded)
         self.assertEqual(evaluation.status, "PROOF_REQUIRED")
@@ -302,14 +236,7 @@ class DispatchedGroundedDiscoveryV0Tests(unittest.TestCase):
 
     def test_rejected_dispatch_observation_propagates_reject(self):
         dispatched = self.mismatched_dispatched(
-            issues=(
-                DispatchObservationIssueV0(
-                    "dispatch_observation.execution_context_mismatch",
-                    "REJECT",
-                    h("context"),
-                    {},
-                ),
-            )
+            issues=(DispatchObservationIssueV0("dispatch_observation.execution_context_mismatch", "REJECT", h("context"), {}),)
         )
         evaluation = self.evaluate(dispatched=dispatched)
         self.assertEqual(evaluation.status, "REJECT")
