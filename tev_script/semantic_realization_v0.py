@@ -35,6 +35,7 @@ from .semantic_resource_algebra_v0 import (
     evaluate_resource_ceilings,
     validate_resource_ceilings,
 )
+from .semantic_resource_evidence_v0 import ResourceEstimateClaimV0
 from .semantic_residual_v0 import ResidualObstructionV0, residual_from_obstructions
 
 REALIZATION_SCHEMA_V0 = "TEV_SCRIPT_REALIZATION_CANDIDATE_V0"
@@ -182,6 +183,7 @@ class RealizationPolicyV0:
     allowed_relations: tuple[str, ...]
     realization_evidence_policy_hash: str
     regime_evidence_policy_hash: str
+    resource_evidence_policy_hash: str
     resource_catalog_hash: str
     accepted_assumption_hashes: tuple[str, ...] = ()
     resource_ceilings: tuple[ResourceCeilingV0, ...] = ()
@@ -192,24 +194,13 @@ class RealizationPolicyV0:
         if not relations or any(item not in _RELATIONS for item in relations):
             raise RealizationSemanticsError("allowed_relations")
         object.__setattr__(self, "allowed_relations", relations)
-        object.__setattr__(
-            self,
+        for name in (
             "realization_evidence_policy_hash",
-            _hash64(
-                self.realization_evidence_policy_hash,
-                "realization_evidence_policy_hash",
-            ),
-        )
-        object.__setattr__(
-            self,
             "regime_evidence_policy_hash",
-            _hash64(self.regime_evidence_policy_hash, "regime_evidence_policy_hash"),
-        )
-        object.__setattr__(
-            self,
+            "resource_evidence_policy_hash",
             "resource_catalog_hash",
-            _hash64(self.resource_catalog_hash, "resource_catalog_hash"),
-        )
+        ):
+            object.__setattr__(self, name, _hash64(getattr(self, name), name))
         object.__setattr__(
             self,
             "accepted_assumption_hashes",
@@ -236,6 +227,7 @@ class RealizationPolicyV0:
             "allowed_relations": list(self.allowed_relations),
             "realization_evidence_policy_hash": self.realization_evidence_policy_hash,
             "regime_evidence_policy_hash": self.regime_evidence_policy_hash,
+            "resource_evidence_policy_hash": self.resource_evidence_policy_hash,
             "resource_catalog_hash": self.resource_catalog_hash,
             "accepted_assumption_hashes": list(self.accepted_assumption_hashes),
             "resource_ceilings": [item.to_object() for item in self.resource_ceilings],
@@ -348,6 +340,38 @@ def realization_semantic_claim_hash(**kwargs: Any) -> str:
     return canonical_hash(realization_semantic_claim_object(**kwargs))
 
 
+def realization_identity_object(
+    *,
+    realization_kind: str,
+    transformation_semantic_hash: str,
+    transformation_regime_binding_hash: str,
+    machine_hash: str,
+    artifact_hashes: Iterable[str],
+    machine_requirement: MachineRequirementV0,
+    semantic_relation: str,
+    approximation_contract: ApproximationContractV0 | None = None,
+    assumption_hashes: Iterable[str] = (),
+) -> dict[str, object]:
+    return {
+        **realization_semantic_claim_object(
+            transformation_semantic_hash=transformation_semantic_hash,
+            transformation_regime_binding_hash=transformation_regime_binding_hash,
+            machine_hash=machine_hash,
+            artifact_hashes=artifact_hashes,
+            machine_requirement=machine_requirement,
+            semantic_relation=semantic_relation,
+            approximation_contract=approximation_contract,
+            assumption_hashes=assumption_hashes,
+        ),
+        "schema": "TEV_SCRIPT_REALIZATION_IDENTITY_V0",
+        "realization_kind": _stable(realization_kind, "realization_kind"),
+    }
+
+
+def realization_identity_hash(**kwargs: Any) -> str:
+    return canonical_hash(realization_identity_object(**kwargs))
+
+
 @dataclass(frozen=True, slots=True)
 class RealizationCandidateV0:
     transformation_semantic_hash: str
@@ -361,6 +385,7 @@ class RealizationCandidateV0:
     assumption_hashes: tuple[str, ...] = ()
     provenance_hashes: tuple[str, ...] = ()
     predicted_resources: ResourceVectorV0 = ResourceVectorV0()
+    resource_estimate_claim_hash: str = ""
     evidence_hashes: tuple[str, ...] = ()
     regime_preservation_claim_hash: str = ""
 
@@ -404,6 +429,11 @@ class RealizationCandidateV0:
         )
         object.__setattr__(
             self,
+            "resource_estimate_claim_hash",
+            _hash64(self.resource_estimate_claim_hash, "resource_estimate_claim_hash"),
+        )
+        object.__setattr__(
+            self,
             "evidence_hashes",
             _hashes(self.evidence_hashes, "evidence hash"),
         )
@@ -432,17 +462,19 @@ class RealizationCandidateV0:
     def semantic_claim_hash(self) -> str:
         return canonical_hash(self._semantic_claim_object())
 
-    def _realization_object(self) -> dict[str, object]:
-        return {
-            **self._semantic_claim_object(),
-            "schema": "TEV_SCRIPT_REALIZATION_IDENTITY_V0",
-            "realization_kind": self.realization_kind,
-            "provenance_hashes": list(self.provenance_hashes),
-        }
-
     @property
     def realization_hash(self) -> str:
-        return canonical_hash(self._realization_object())
+        return realization_identity_hash(
+            realization_kind=self.realization_kind,
+            transformation_semantic_hash=self.transformation_semantic_hash,
+            transformation_regime_binding_hash=self.transformation_regime_binding_hash,
+            machine_hash=self.machine_hash,
+            artifact_hashes=self.artifact_hashes,
+            machine_requirement=self.machine_requirement,
+            semantic_relation=self.semantic_relation,
+            approximation_contract=self.approximation_contract,
+            assumption_hashes=self.assumption_hashes,
+        )
 
     def to_object(self) -> dict[str, object]:
         return {
@@ -462,6 +494,7 @@ class RealizationCandidateV0:
             "assumption_hashes": list(self.assumption_hashes),
             "provenance_hashes": list(self.provenance_hashes),
             "predicted_resources": self.predicted_resources.to_object(),
+            "resource_estimate_claim_hash": self.resource_estimate_claim_hash,
             "evidence_hashes": list(self.evidence_hashes),
             "regime_preservation_claim_hash": self.regime_preservation_claim_hash,
         }
@@ -512,6 +545,7 @@ class RealizationAdmissionReceiptV0:
     transformation_regime_binding_hash: str
     semantic_relation: str
     regime_preservation_claim_hash: str
+    resource_estimate_claim_hash: str
     machine_hash: str
     policy_hash: str
     regime_hash: str
@@ -520,6 +554,7 @@ class RealizationAdmissionReceiptV0:
     regime_evaluation_hash: str
     realization_evidence_evaluation_hash: str
     regime_evidence_evaluation_hash: str
+    resource_evidence_evaluation_hash: str
     issues: tuple[RealizationIssueV0, ...]
 
     def __post_init__(self) -> None:
@@ -531,6 +566,7 @@ class RealizationAdmissionReceiptV0:
             "transformation_semantic_hash",
             "transformation_regime_binding_hash",
             "regime_preservation_claim_hash",
+            "resource_estimate_claim_hash",
             "machine_hash",
             "policy_hash",
             "regime_hash",
@@ -539,6 +575,7 @@ class RealizationAdmissionReceiptV0:
             "regime_evaluation_hash",
             "realization_evidence_evaluation_hash",
             "regime_evidence_evaluation_hash",
+            "resource_evidence_evaluation_hash",
         ):
             object.__setattr__(self, name, _hash64(getattr(self, name), name))
         if self.semantic_relation not in _RELATIONS:
@@ -569,6 +606,7 @@ class RealizationAdmissionReceiptV0:
             "transformation_regime_binding_hash": self.transformation_regime_binding_hash,
             "semantic_relation": self.semantic_relation,
             "regime_preservation_claim_hash": self.regime_preservation_claim_hash,
+            "resource_estimate_claim_hash": self.resource_estimate_claim_hash,
             "machine_hash": self.machine_hash,
             "policy_hash": self.policy_hash,
             "regime_hash": self.regime_hash,
@@ -577,6 +615,7 @@ class RealizationAdmissionReceiptV0:
             "regime_evaluation_hash": self.regime_evaluation_hash,
             "realization_evidence_evaluation_hash": self.realization_evidence_evaluation_hash,
             "regime_evidence_evaluation_hash": self.regime_evidence_evaluation_hash,
+            "resource_evidence_evaluation_hash": self.resource_evidence_evaluation_hash,
             "issues": [item.to_object() for item in self.issues],
         }
 
@@ -791,11 +830,13 @@ def admit_realization(
     machine: MachineFieldV0,
     policy: RealizationPolicyV0,
     resource_catalog: ResourceCatalogV0,
+    resource_estimate_claim: ResourceEstimateClaimV0,
     regime: RegimeContractV0,
     binding: TransformationRegimeBindingV0,
     preservation_claim: RegimePreservationClaimV0,
     realization_evidence_policy: EvidencePolicyV0,
     regime_evidence_policy: EvidencePolicyV0,
+    resource_evidence_policy: EvidencePolicyV0,
     evidence: Iterable[EvidenceItemV0],
 ) -> RealizationAdmissionReceiptV0:
     issues: list[RealizationIssueV0] = []
@@ -845,6 +886,15 @@ def admit_realization(
                 observed=preservation_claim.preservation_claim_hash,
             )
         )
+    if candidate.resource_estimate_claim_hash != resource_estimate_claim.estimate_claim_hash:
+        issues.append(
+            _issue(
+                "resource.estimate_claim_mismatch",
+                "REJECT",
+                candidate.resource_estimate_claim_hash,
+                observed=resource_estimate_claim.estimate_claim_hash,
+            )
+        )
     if candidate.machine_hash != machine.machine_hash:
         issues.append(
             _issue(
@@ -873,24 +923,26 @@ def admit_realization(
             )
         )
 
-    if policy.realization_evidence_policy_hash != realization_evidence_policy.policy_hash:
-        issues.append(
-            _issue(
-                "evidence.realization_policy_mismatch",
-                "REJECT",
-                realization_evidence_policy.policy_hash,
-                expected=policy.realization_evidence_policy_hash,
-            )
-        )
-    if policy.regime_evidence_policy_hash != regime_evidence_policy.policy_hash:
-        issues.append(
-            _issue(
-                "evidence.regime_policy_mismatch",
-                "REJECT",
-                regime_evidence_policy.policy_hash,
-                expected=policy.regime_evidence_policy_hash,
-            )
-        )
+    policy_pairs = (
+        (
+            "evidence.realization_policy_mismatch",
+            policy.realization_evidence_policy_hash,
+            realization_evidence_policy.policy_hash,
+        ),
+        (
+            "evidence.regime_policy_mismatch",
+            policy.regime_evidence_policy_hash,
+            regime_evidence_policy.policy_hash,
+        ),
+        (
+            "evidence.resource_policy_mismatch",
+            policy.resource_evidence_policy_hash,
+            resource_evidence_policy.policy_hash,
+        ),
+    )
+    for kind, expected, observed in policy_pairs:
+        if expected != observed:
+            issues.append(_issue(kind, "REJECT", observed, expected=expected))
 
     resource_policy_valid = True
     if policy.resource_catalog_hash != resource_catalog.catalog_hash:
@@ -915,6 +967,15 @@ def admit_realization(
                 detail=str(error),
             )
         )
+    if policy.resource_ceilings and not resource_evidence_policy.requirements:
+        resource_policy_valid = False
+        issues.append(
+            _issue(
+                "resource.evidence_policy_empty",
+                "REJECT",
+                resource_evidence_policy.policy_hash,
+            )
+        )
 
     missing_assumptions = set(candidate.assumption_hashes) - set(policy.accepted_assumption_hashes)
     for assumption_hash in sorted(missing_assumptions):
@@ -935,6 +996,33 @@ def admit_realization(
     )
     issues.extend(_issues_from_regime(regime_evaluation))
 
+    resource_vector_valid = True
+    try:
+        candidate.predicted_resources.validate_against(resource_catalog)
+    except ResourceAlgebraError as error:
+        resource_vector_valid = False
+        issues.append(
+            _issue(
+                "resource.vector_invalid",
+                "REJECT",
+                candidate.predicted_resources.vector_hash,
+                detail=str(error),
+            )
+        )
+    if not resource_estimate_claim.validates_vector(
+        realization_hash=candidate.realization_hash,
+        execution_context_hash=problem.context_hash,
+        vector=candidate.predicted_resources,
+    ):
+        resource_vector_valid = False
+        issues.append(
+            _issue(
+                "resource.estimate_binding_mismatch",
+                "REJECT",
+                resource_estimate_claim.estimate_claim_hash,
+            )
+        )
+
     evidence_items = tuple(evidence)
     evidence_by_hash = {item.evidence_hash: item for item in evidence_items}
     for evidence_hash in candidate.evidence_hashes:
@@ -951,28 +1039,22 @@ def admit_realization(
         regime_evidence_policy,
         evidence_items,
     )
+    resource_evaluation = evaluate_evidence(
+        resource_estimate_claim.estimate_claim_hash,
+        resource_evidence_policy,
+        evidence_items,
+    )
     for accepted_hash in (
         set(realization_evaluation.accepted_evidence_hashes)
         | set(regime_evaluation_evidence.accepted_evidence_hashes)
+        | set(resource_evaluation.accepted_evidence_hashes)
     ):
         if accepted_hash not in candidate.evidence_hashes:
             issues.append(_issue("evidence.unbound_support", "REJECT", accepted_hash))
     issues.extend(_issues_from_evidence(realization_evaluation, prefix="realization"))
     issues.extend(_issues_from_evidence(regime_evaluation_evidence, prefix="regime"))
+    issues.extend(_issues_from_evidence(resource_evaluation, prefix="resource"))
 
-    resource_vector_valid = True
-    try:
-        candidate.predicted_resources.validate_against(resource_catalog)
-    except ResourceAlgebraError as error:
-        resource_vector_valid = False
-        issues.append(
-            _issue(
-                "resource.vector_invalid",
-                "REJECT",
-                candidate.predicted_resources.vector_hash,
-                detail=str(error),
-            )
-        )
     if resource_policy_valid and resource_vector_valid:
         resource_issues = evaluate_resource_ceilings(
             candidate.predicted_resources,
@@ -989,6 +1071,7 @@ def admit_realization(
         candidate.transformation_regime_binding_hash,
         candidate.semantic_relation,
         candidate.regime_preservation_claim_hash,
+        candidate.resource_estimate_claim_hash,
         machine.machine_hash,
         policy.policy_hash,
         regime.regime_hash,
@@ -997,6 +1080,7 @@ def admit_realization(
         regime_evaluation.evaluation_hash,
         realization_evaluation.evaluation_hash,
         regime_evaluation_evidence.evaluation_hash,
+        resource_evaluation.evaluation_hash,
         tuple(issues),
     )
 
@@ -1017,6 +1101,7 @@ def residual_from_realization_admission(
                 receipt.policy_hash,
                 receipt.regime_hash,
                 receipt.resource_catalog_hash,
+                receipt.resource_estimate_claim_hash,
             ),
         )
         for item in receipt.issues
@@ -1138,6 +1223,8 @@ __all__ = [
     "RealizationProblemV0",
     "realization_semantic_claim_object",
     "realization_semantic_claim_hash",
+    "realization_identity_object",
+    "realization_identity_hash",
     "RealizationCandidateV0",
     "RealizationIssueV0",
     "RealizationAdmissionReceiptV0",
