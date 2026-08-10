@@ -473,6 +473,7 @@ def evaluate_discovery_realization_cycle(
     *,
     source_law: StructuralLawClaimV0,
     realization_receipt: RealizationAdmissionReceiptV0,
+    rediscovered_law: StructuralLawClaimV0,
     rediscovery_claim: DiscoveryClaimV0,
     discovery_evidence_policy: EvidencePolicyV0,
     evidence: Iterable[EvidenceItemV0],
@@ -552,13 +553,43 @@ def evaluate_discovery_realization_cycle(
                 {"observed": rediscovery_claim.discovery_claim_hash},
             )
         )
-    if cycle.rediscovered_law_semantic_hash != rediscovery_claim.candidate_law_semantic_hash:
+    if cycle.rediscovered_law_semantic_hash != rediscovered_law.law_semantic_hash:
         issues.append(
             CycleIssueV0(
-                "cycle.rediscovered_law_mismatch",
+                "cycle.rediscovered_law_object_mismatch",
                 "REJECT",
                 cycle.rediscovered_law_semantic_hash,
-                {"observed": rediscovery_claim.candidate_law_semantic_hash},
+                {"observed": rediscovered_law.law_semantic_hash},
+            )
+        )
+    if rediscovery_claim.candidate_law_semantic_hash != rediscovered_law.law_semantic_hash:
+        issues.append(
+            CycleIssueV0(
+                "cycle.rediscovery_claim_law_mismatch",
+                "REJECT",
+                rediscovery_claim.candidate_law_semantic_hash,
+                {"observed": rediscovered_law.law_semantic_hash},
+            )
+        )
+    if rediscovery_claim.validity_boundary_hash != rediscovered_law.validity_boundary_hash:
+        issues.append(
+            CycleIssueV0(
+                "cycle.rediscovery_boundary_mismatch",
+                "REJECT",
+                rediscovery_claim.validity_boundary_hash,
+                {"observed": rediscovered_law.validity_boundary_hash},
+            )
+        )
+    if rediscovery_claim.assumption_hashes != rediscovered_law.assumption_hashes:
+        issues.append(
+            CycleIssueV0(
+                "cycle.rediscovery_assumption_mismatch",
+                "REJECT",
+                rediscovery_claim.discovery_claim_hash,
+                {
+                    "claim_assumptions": list(rediscovery_claim.assumption_hashes),
+                    "law_assumptions": list(rediscovered_law.assumption_hashes),
+                },
             )
         )
     if rediscovery_claim.evidence_policy_hash != discovery_evidence_policy.policy_hash:
@@ -578,7 +609,7 @@ def evaluate_discovery_realization_cycle(
     )
     issues.extend(_issues_from_evidence(discovery_evaluation, prefix="discovery"))
 
-    same_law = cycle.source_law_semantic_hash == cycle.rediscovered_law_semantic_hash
+    same_law = source_law.law_semantic_hash == rediscovered_law.law_semantic_hash
     if same_law:
         equivalence_evaluation = _empty_evaluation(cycle.cycle_hash)
         if law_equivalence_claim is not None or equivalence_evidence_policy is not None:
@@ -597,8 +628,8 @@ def evaluate_discovery_realization_cycle(
                 CycleIssueV0(
                     "cycle.law_equivalence_required",
                     "PROOF_REQUIRED",
-                    cycle.source_law_semantic_hash,
-                    {"rediscovered_law_semantic_hash": cycle.rediscovered_law_semantic_hash},
+                    source_law.law_semantic_hash,
+                    {"rediscovered_law_semantic_hash": rediscovered_law.law_semantic_hash},
                 )
             )
         elif law_equivalence_claim is None or equivalence_evidence_policy is None:
@@ -622,12 +653,7 @@ def evaluate_discovery_realization_cycle(
                     )
                 )
             expected_pair = tuple(
-                sorted(
-                    (
-                        cycle.source_law_semantic_hash,
-                        cycle.rediscovered_law_semantic_hash,
-                    )
-                )
+                sorted((source_law.law_semantic_hash, rediscovered_law.law_semantic_hash))
             )
             if law_equivalence_claim.law_pair != expected_pair:
                 issues.append(
