@@ -81,8 +81,6 @@ class ResourceCalibrationV0Tests(unittest.TestCase):
             h("estimate-scope"),
         )
         self.receipt = realization_receipt(self.estimate.estimate_claim_hash)
-        # Synthetic receipt helper uses a placeholder catalog in unrelated
-        # admission fields; calibration binds the exact catalog independently.
         object.__setattr__(self.receipt, "realization_hash", self.realization)
         object.__setattr__(self.receipt, "resource_catalog_hash", self.catalog.catalog_hash)
 
@@ -147,10 +145,7 @@ class ResourceCalibrationV0Tests(unittest.TestCase):
 
     def vector(self, latency, energy, *, complete=True):
         return ResourceVectorV0(
-            (
-                latency,
-                energy,
-            ),
+            (latency, energy),
             complete=complete,
             catalog_hash=self.catalog.catalog_hash,
         )
@@ -158,13 +153,15 @@ class ResourceCalibrationV0Tests(unittest.TestCase):
     def test_observation_inside_predicted_bounds_supports_prediction(self):
         observed = self.vector(ResourceBoundV0.exact("latency", 7), ResourceBoundV0.exact("energy", 3))
         evaluation = self.evaluate(observed)
+        self.assertEqual(evaluation.status, "PASS")
         self.assertEqual(evaluation.verdict, "SUPPORTED")
         self.assertTrue(all(item.verdict == "WITHIN_BOUND" for item in evaluation.dimension_results))
         self.assertEqual(parse_residual(residual_from_resource_calibration(evaluation)).status, "CLOSED")
 
-    def test_measurement_above_predicted_upper_falsifies(self):
+    def test_measurement_above_predicted_upper_falsifies_only_valid_calibration(self):
         observed = self.vector(ResourceBoundV0.exact("latency", 11), ResourceBoundV0.exact("energy", 3))
         evaluation = self.evaluate(observed)
+        self.assertEqual(evaluation.status, "PASS")
         self.assertEqual(evaluation.verdict, "FALSIFIED")
         by_dimension = {item.dimension_id: item.verdict for item in evaluation.dimension_results}
         self.assertEqual(by_dimension["latency"], "BOUND_VIOLATED")
@@ -173,11 +170,12 @@ class ResourceCalibrationV0Tests(unittest.TestCase):
     def test_uncertain_measurement_overlapping_boundary_is_inconclusive(self):
         observed = self.vector(ResourceBoundV0("latency", 9, 12), ResourceBoundV0.exact("energy", 3))
         evaluation = self.evaluate(observed)
+        self.assertEqual(evaluation.status, "PASS")
         self.assertEqual(evaluation.verdict, "INCONCLUSIVE")
         by_dimension = {item.dimension_id: item.verdict for item in evaluation.dimension_results}
         self.assertEqual(by_dimension["latency"], "INCONCLUSIVE")
 
-    def test_unknown_predicted_upper_can_still_support_observed_value_above_lower(self):
+    def test_unknown_predicted_upper_can_support_observed_value_above_lower(self):
         predicted = ResourceVectorV0(
             (
                 ResourceBoundV0("latency", 0, None),
@@ -216,16 +214,19 @@ class ResourceCalibrationV0Tests(unittest.TestCase):
             observed_resources=observed,
             resource_catalog=self.catalog,
         )
+        self.assertEqual(evaluation.status, "PASS")
         self.assertEqual(evaluation.verdict, "SUPPORTED")
 
-    def test_measurement_from_different_execution_context_cannot_calibrate(self):
-        observed = self.vector(ResourceBoundV0.exact("latency", 7), ResourceBoundV0.exact("energy", 3))
+    def test_measurement_from_different_execution_context_invalidates_calibration_not_prediction(self):
+        observed = self.vector(ResourceBoundV0.exact("latency", 11), ResourceBoundV0.exact("energy", 3))
         evaluation = self.evaluate(observed, context=h("other-context"))
-        self.assertEqual(evaluation.verdict, "FALSIFIED")
+        self.assertEqual(evaluation.status, "REJECT")
+        self.assertEqual(evaluation.verdict, "INCONCLUSIVE")
         self.assertIn("calibration.execution_context_mismatch", {item.kind for item in evaluation.issues})
+        self.assertEqual(parse_residual(residual_from_resource_calibration(evaluation)).status, "OPEN")
 
-    def test_non_admitted_measurement_does_not_calibrate_as_support(self):
-        observed = self.vector(ResourceBoundV0.exact("latency", 7), ResourceBoundV0.exact("energy", 3))
+    def test_non_admitted_measurement_makes_calibration_open_not_falsified(self):
+        observed = self.vector(ResourceBoundV0.exact("latency", 11), ResourceBoundV0.exact("energy", 3))
         evaluation = self.evaluate(
             observed,
             measurement_issues=(
@@ -237,6 +238,7 @@ class ResourceCalibrationV0Tests(unittest.TestCase):
                 ),
             ),
         )
+        self.assertEqual(evaluation.status, "PROOF_REQUIRED")
         self.assertEqual(evaluation.verdict, "INCONCLUSIVE")
         self.assertIn("calibration.measurement_not_admitted", {item.kind for item in evaluation.issues})
 
