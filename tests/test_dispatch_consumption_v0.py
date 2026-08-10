@@ -33,6 +33,14 @@ def dispatch(request="request", *, issues=(), authority_claim=None) -> Execution
         dispatch_record_hash=h("dispatch-record-" + request),
         dispatch_request_hash=request_hash,
         dispatch_epoch_hash=h("dispatch-epoch"),
+        execution_request_receipt_hash=h("execution-request-receipt-" + request),
+        execution_request_intent_hash=h("execution-intent-" + request),
+        execution_request_validity_evaluation_hash=h("execution-request-validity-" + request),
+        execution_request_authority_state_hash=h("execution-request-state-" + request),
+        requester_principal_hash=h("requester"),
+        purpose_hash=h("purpose"),
+        requested_delivery_guarantee="AT_MOST_ONCE_DISPATCH",
+        idempotency_scope="OCCURRENCE_SCOPED",
         activation_receipt_hash=h("activation"),
         activation_validity_evaluation_hash=h("activation-validity"),
         activation_authority_state_hash=h("activation-authority-state"),
@@ -196,9 +204,9 @@ class DispatchConsumptionV0Tests(unittest.TestCase):
         open_dispatch = dispatch(
             issues=(
                 DispatchIssueV0(
-                    "dispatch.prepared_execution_not_current",
+                    "dispatch.execution_request_not_current",
                     "PROOF_REQUIRED",
-                    h("prepared-validity"),
+                    h("request-validity"),
                     {},
                 ),
             )
