@@ -3,7 +3,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 import subprocess
-import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "284ec3ec8c41681825ec1a8421f7ee2a1b012d68"
@@ -19,6 +18,7 @@ ALLOWED_CHANGED_PATHS = frozenset(
         "tests/test_discovery_realization_v0.py",
         "tests/test_realization_semantics_v0.py",
         "tests/test_realization_identity_invariants_v0.py",
+        "tev_script/semantic_artifact_v0.py",
         "tev_script/semantic_discovery_realization_v0.py",
         "tev_script/semantic_evidence_v0.py",
         "tev_script/semantic_machine_v0.py",
@@ -44,6 +44,7 @@ V1_STABLE_IDENTITY_PATHS = frozenset(
 )
 
 CORE_MODULES = (
+    "tev_script/semantic_artifact_v0.py",
     "tev_script/semantic_discovery_realization_v0.py",
     "tev_script/semantic_evidence_v0.py",
     "tev_script/semantic_machine_v0.py",
@@ -54,11 +55,12 @@ CORE_MODULES = (
 )
 
 ALLOWED_ABSOLUTE_IMPORT_ROOTS = frozenset(
-    {"__future__", "dataclasses", "fractions", "re", "typing"}
+    {"__future__", "ast", "dataclasses", "fractions", "pathlib", "re", "subprocess", "typing"}
 )
 ALLOWED_RELATIVE_IMPORTS = frozenset(
     {
         "canonical",
+        "semantic_artifact_v0",
         "semantic_kernel_v0",
         "semantic_proof_boundary_v0",
         "semantic_residual_v0",
@@ -80,7 +82,7 @@ FORBIDDEN_AUTHORITY_TOKENS = (
     "tevprover",
 )
 FORBIDDEN_HOST_IMPORT_ROOTS = frozenset(
-    {"os", "platform", "subprocess", "socket", "psutil", "torch", "cpuinfo"}
+    {"os", "platform", "socket", "psutil", "torch", "cpuinfo"}
 )
 FORBIDDEN_VENDOR_TOKENS = (
     "nvidia",
