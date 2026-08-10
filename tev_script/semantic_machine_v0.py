@@ -46,8 +46,6 @@ def _fraction_object(value: Fraction) -> dict[str, list[str]]:
 
 @dataclass(frozen=True, slots=True)
 class NumericModelV0:
-    """Named record for one content-addressed numeric semantics profile."""
-
     model_id: str
     semantics_hash: str
     exact: bool
@@ -55,11 +53,7 @@ class NumericModelV0:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "model_id", _stable(self.model_id, "model_id"))
-        object.__setattr__(
-            self,
-            "semantics_hash",
-            _hash64(self.semantics_hash, "numeric semantics hash"),
-        )
+        object.__setattr__(self, "semantics_hash", _hash64(self.semantics_hash, "numeric semantics hash"))
         if not isinstance(self.exact, bool):
             raise MachineSemanticsError("numeric model exact must be bool")
         properties = {} if self.properties is None else dict(self.properties)
@@ -92,19 +86,13 @@ class NumericModelV0:
 
 @dataclass(frozen=True, slots=True)
 class ExecutableFormatV0:
-    """Named record for an executable/container ABI semantics profile."""
-
     format_id: str
     semantics_hash: str
     properties: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "format_id", _stable(self.format_id, "format_id"))
-        object.__setattr__(
-            self,
-            "semantics_hash",
-            _hash64(self.semantics_hash, "format semantics hash"),
-        )
+        object.__setattr__(self, "semantics_hash", _hash64(self.semantics_hash, "format semantics hash"))
         properties = {} if self.properties is None else dict(self.properties)
         canonical_json(properties)
         object.__setattr__(self, "properties", properties)
@@ -141,15 +129,9 @@ class MemorySpaceV0:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "space_id", _stable(self.space_id, "space_id"))
-        object.__setattr__(
-            self, "addressability", _stable(self.addressability, "addressability")
-        )
+        object.__setattr__(self, "addressability", _stable(self.addressability, "addressability"))
         if self.capacity_bytes is not None:
-            capacity = (
-                self.capacity_bytes
-                if isinstance(self.capacity_bytes, Fraction)
-                else Fraction(self.capacity_bytes)
-            )
+            capacity = self.capacity_bytes if isinstance(self.capacity_bytes, Fraction) else Fraction(self.capacity_bytes)
             if capacity < 0:
                 raise MachineSemanticsError("capacity_bytes must be non-negative")
             object.__setattr__(self, "capacity_bytes", capacity)
@@ -161,9 +143,7 @@ class MemorySpaceV0:
         return {
             "schema": MEMORY_SPACE_PROFILE_SCHEMA_V0,
             "addressability": self.addressability,
-            "capacity_bytes": (
-                None if self.capacity_bytes is None else _fraction_object(self.capacity_bytes)
-            ),
+            "capacity_bytes": None if self.capacity_bytes is None else _fraction_object(self.capacity_bytes),
             "properties": dict(self.properties or {}),
         }
 
@@ -194,14 +174,8 @@ class MachineCapabilityV0:
     def __post_init__(self) -> None:
         object.__setattr__(self, "capability_id", _stable(self.capability_id, "capability_id"))
         object.__setattr__(self, "semantic_hash", _hash64(self.semantic_hash, "semantic_hash"))
-        object.__setattr__(
-            self, "capability_class", _stable(self.capability_class, "capability_class")
-        )
-        object.__setattr__(
-            self,
-            "numeric_model_hashes",
-            _hashes(self.numeric_model_hashes, "numeric model hash"),
-        )
+        object.__setattr__(self, "capability_class", _stable(self.capability_class, "capability_class"))
+        object.__setattr__(self, "numeric_model_hashes", _hashes(self.numeric_model_hashes, "numeric model hash"))
         properties = {} if self.properties is None else dict(self.properties)
         canonical_json(properties)
         object.__setattr__(self, "properties", properties)
@@ -233,14 +207,6 @@ class MachineCapabilityV0:
 
 @dataclass(frozen=True, slots=True)
 class MachineFieldV0:
-    """A target-profile Field whose semantic identity is alias-independent.
-
-    Adapter/vendor/local names are retained in records for auditability. Realization
-    compatibility and `machine_hash` depend on content-addressed capability, numeric,
-    memory and executable-format profiles. Concrete placement belongs in execution
-    context/resource observations rather than the target-profile identity.
-    """
-
     machine_id: str
     capabilities: tuple[MachineCapabilityV0, ...] = ()
     numeric_models: tuple[NumericModelV0, ...] = ()
@@ -251,7 +217,6 @@ class MachineFieldV0:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "machine_id", _stable(self.machine_id, "machine_id"))
-
         numeric_models = tuple(sorted(self.numeric_models, key=lambda item: item.model_id))
         if len({item.model_id for item in numeric_models}) != len(numeric_models):
             raise MachineSemanticsError("duplicate numeric model id")
@@ -268,8 +233,7 @@ class MachineFieldV0:
             missing = set(capability.numeric_model_hashes) - known_numeric
             if missing:
                 raise MachineSemanticsError(
-                    "machine capability references undefined numeric semantics: "
-                    + ",".join(sorted(missing))
+                    "machine capability references undefined numeric semantics: " + ",".join(sorted(missing))
                 )
 
         memory_spaces = tuple(sorted(self.memory_spaces, key=lambda item: item.space_id))
@@ -288,11 +252,7 @@ class MachineFieldV0:
         object.__setattr__(self, "numeric_models", numeric_models)
         object.__setattr__(self, "memory_spaces", memory_spaces)
         object.__setattr__(self, "executable_formats", formats)
-        object.__setattr__(
-            self,
-            "topology_hash",
-            "" if not self.topology_hash else _hash64(self.topology_hash, "topology_hash"),
-        )
+        object.__setattr__(self, "topology_hash", "" if not self.topology_hash else _hash64(self.topology_hash, "topology_hash"))
         properties = {} if self.properties is None else dict(self.properties)
         canonical_json(properties)
         object.__setattr__(self, "properties", properties)
@@ -323,28 +283,16 @@ class MachineFieldV0:
         return _hash64(format_hash, "format_hash") in self.executable_format_hashes
 
     def profile_object(self) -> dict[str, object]:
-        capability_profiles = {
-            canonical_json(item.profile_object()): item.profile_object()
-            for item in self.capabilities
-        }
-        numeric_profiles = {
-            canonical_json(item.profile_object()): item.profile_object()
-            for item in self.numeric_models
-        }
-        memory_profiles = {
-            canonical_json(item.profile_object()): item.profile_object()
-            for item in self.memory_spaces
-        }
-        format_profiles = {
-            canonical_json(item.profile_object()): item.profile_object()
-            for item in self.executable_formats
-        }
+        def unique_profiles(items: Iterable[Any]) -> list[dict[str, object]]:
+            rows = {canonical_json(item.profile_object()): item.profile_object() for item in items}
+            return [rows[key] for key in sorted(rows)]
+
         return {
             "schema": MACHINE_PROFILE_SCHEMA_V0,
-            "capabilities": [capability_profiles[key] for key in sorted(capability_profiles)],
-            "numeric_models": [numeric_profiles[key] for key in sorted(numeric_profiles)],
-            "memory_spaces": [memory_profiles[key] for key in sorted(memory_profiles)],
-            "executable_formats": [format_profiles[key] for key in sorted(format_profiles)],
+            "capabilities": unique_profiles(self.capabilities),
+            "numeric_models": unique_profiles(self.numeric_models),
+            "memory_spaces": unique_profiles(self.memory_spaces),
+            "executable_formats": unique_profiles(self.executable_formats),
             "topology_hash": self.topology_hash,
             "properties": dict(self.properties or {}),
         }
@@ -385,21 +333,19 @@ class MachineRequirementV0:
     required_executable_format_hashes: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "required_capability_semantic_hashes",
-            _hashes(self.required_capability_semantic_hashes, "required capability semantic hash"),
-        )
-        object.__setattr__(
-            self,
-            "required_numeric_model_hashes",
-            _hashes(self.required_numeric_model_hashes, "required numeric model hash"),
-        )
-        object.__setattr__(
-            self,
-            "required_executable_format_hashes",
-            _hashes(self.required_executable_format_hashes, "required executable format hash"),
-        )
+        object.__setattr__(self, "required_capability_semantic_hashes", _hashes(self.required_capability_semantic_hashes, "required capability semantic hash"))
+        object.__setattr__(self, "required_numeric_model_hashes", _hashes(self.required_numeric_model_hashes, "required numeric model hash"))
+        object.__setattr__(self, "required_executable_format_hashes", _hashes(self.required_executable_format_hashes, "required executable format hash"))
+
+    @property
+    def required_numeric_model_ids(self) -> tuple[str, ...]:
+        """Deprecated read-only alias; values are semantic hashes, never ids."""
+        return self.required_numeric_model_hashes
+
+    @property
+    def required_executable_formats(self) -> tuple[str, ...]:
+        """Deprecated read-only alias; values are semantic hashes, never ids."""
+        return self.required_executable_format_hashes
 
     def to_object(self) -> dict[str, object]:
         return {
@@ -419,21 +365,9 @@ class MachineCompatibilityV0:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "machine_hash", _hash64(self.machine_hash, "machine_hash"))
-        object.__setattr__(
-            self,
-            "missing_capability_semantic_hashes",
-            _hashes(self.missing_capability_semantic_hashes, "missing capability hash"),
-        )
-        object.__setattr__(
-            self,
-            "missing_numeric_model_hashes",
-            _hashes(self.missing_numeric_model_hashes, "missing numeric model hash"),
-        )
-        object.__setattr__(
-            self,
-            "missing_executable_format_hashes",
-            _hashes(self.missing_executable_format_hashes, "missing executable format hash"),
-        )
+        object.__setattr__(self, "missing_capability_semantic_hashes", _hashes(self.missing_capability_semantic_hashes, "missing capability hash"))
+        object.__setattr__(self, "missing_numeric_model_hashes", _hashes(self.missing_numeric_model_hashes, "missing numeric model hash"))
+        object.__setattr__(self, "missing_executable_format_hashes", _hashes(self.missing_executable_format_hashes, "missing executable format hash"))
         expected = not (
             self.missing_capability_semantic_hashes
             or self.missing_numeric_model_hashes
@@ -441,6 +375,16 @@ class MachineCompatibilityV0:
         )
         if self.compatible != expected:
             raise MachineSemanticsError("machine compatibility flag inconsistent")
+
+    @property
+    def missing_numeric_model_ids(self) -> tuple[str, ...]:
+        """Deprecated read-only alias; values are semantic hashes, never ids."""
+        return self.missing_numeric_model_hashes
+
+    @property
+    def missing_executable_formats(self) -> tuple[str, ...]:
+        """Deprecated read-only alias; values are semantic hashes, never ids."""
+        return self.missing_executable_format_hashes
 
     def to_object(self) -> dict[str, object]:
         return {
@@ -457,19 +401,10 @@ class MachineCompatibilityV0:
         return canonical_hash(self.to_object())
 
 
-def evaluate_machine_compatibility(
-    machine: MachineFieldV0,
-    requirement: MachineRequirementV0,
-) -> MachineCompatibilityV0:
-    missing_caps = tuple(
-        sorted(set(requirement.required_capability_semantic_hashes) - set(machine.capability_semantic_hashes))
-    )
-    missing_numeric = tuple(
-        sorted(set(requirement.required_numeric_model_hashes) - set(machine.numeric_model_hashes))
-    )
-    missing_formats = tuple(
-        sorted(set(requirement.required_executable_format_hashes) - set(machine.executable_format_hashes))
-    )
+def evaluate_machine_compatibility(machine: MachineFieldV0, requirement: MachineRequirementV0) -> MachineCompatibilityV0:
+    missing_caps = tuple(sorted(set(requirement.required_capability_semantic_hashes) - set(machine.capability_semantic_hashes)))
+    missing_numeric = tuple(sorted(set(requirement.required_numeric_model_hashes) - set(machine.numeric_model_hashes)))
+    missing_formats = tuple(sorted(set(requirement.required_executable_format_hashes) - set(machine.executable_format_hashes)))
     return MachineCompatibilityV0(
         not (missing_caps or missing_numeric or missing_formats),
         machine.machine_hash,
