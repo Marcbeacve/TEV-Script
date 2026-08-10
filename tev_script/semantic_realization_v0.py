@@ -14,12 +14,7 @@ from .semantic_evidence_v0 import (
     evaluate_evidence,
 )
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
-from .semantic_machine_v0 import (
-    MachineCompatibilityV0,
-    MachineFieldV0,
-    MachineRequirementV0,
-    evaluate_machine_compatibility,
-)
+from .semantic_machine_v0 import MachineCompatibilityV0, MachineFieldV0, evaluate_machine_compatibility
 from .semantic_regime_v0 import (
     RegimeContractV0,
     RegimeEvaluationV0,
@@ -103,19 +98,11 @@ class ApproximationContractV0:
     def __post_init__(self) -> None:
         object.__setattr__(self, "metric_hash", _hash64(self.metric_hash, "metric_hash"))
         object.__setattr__(self, "domain_hash", _hash64(self.domain_hash, "domain_hash"))
-        object.__setattr__(
-            self,
-            "error_upper_bound",
-            _nonnegative_fraction(self.error_upper_bound, "error_upper_bound"),
-        )
+        object.__setattr__(self, "error_upper_bound", _nonnegative_fraction(self.error_upper_bound, "error_upper_bound"))
         if self.guarantee_kind not in _GUARANTEES:
             raise RealizationSemanticsError("unsupported approximation guarantee")
         if self.confidence_lower_bound is not None:
-            object.__setattr__(
-                self,
-                "confidence_lower_bound",
-                _probability(self.confidence_lower_bound, "confidence_lower_bound"),
-            )
+            object.__setattr__(self, "confidence_lower_bound", _probability(self.confidence_lower_bound, "confidence_lower_bound"))
         if self.guarantee_kind == "DETERMINISTIC_BOUND" and self.confidence_lower_bound is not None:
             raise RealizationSemanticsError("deterministic bound must not carry confidence")
 
@@ -126,11 +113,7 @@ class ApproximationContractV0:
             "domain_hash": self.domain_hash,
             "error_upper_bound": _fraction_object(self.error_upper_bound),
             "guarantee_kind": self.guarantee_kind,
-            "confidence_lower_bound": (
-                None
-                if self.confidence_lower_bound is None
-                else _fraction_object(self.confidence_lower_bound)
-            ),
+            "confidence_lower_bound": None if self.confidence_lower_bound is None else _fraction_object(self.confidence_lower_bound),
         }
 
     @property
@@ -149,21 +132,13 @@ class ApproximationPolicyV0:
     def __post_init__(self) -> None:
         object.__setattr__(self, "metric_hash", _hash64(self.metric_hash, "metric_hash"))
         object.__setattr__(self, "domain_hash", _hash64(self.domain_hash, "domain_hash"))
-        object.__setattr__(
-            self,
-            "maximum_error",
-            _nonnegative_fraction(self.maximum_error, "maximum_error"),
-        )
+        object.__setattr__(self, "maximum_error", _nonnegative_fraction(self.maximum_error, "maximum_error"))
         guarantees = tuple(sorted(set(str(item) for item in self.accepted_guarantee_kinds)))
         if not guarantees or any(item not in _GUARANTEES for item in guarantees):
             raise RealizationSemanticsError("accepted_guarantee_kinds")
         object.__setattr__(self, "accepted_guarantee_kinds", guarantees)
         if self.minimum_confidence is not None:
-            object.__setattr__(
-                self,
-                "minimum_confidence",
-                _probability(self.minimum_confidence, "minimum_confidence"),
-            )
+            object.__setattr__(self, "minimum_confidence", _probability(self.minimum_confidence, "minimum_confidence"))
 
     def to_object(self) -> dict[str, object]:
         return {
@@ -171,9 +146,7 @@ class ApproximationPolicyV0:
             "domain_hash": self.domain_hash,
             "maximum_error": _fraction_object(self.maximum_error),
             "accepted_guarantee_kinds": list(self.accepted_guarantee_kinds),
-            "minimum_confidence": (
-                None if self.minimum_confidence is None else _fraction_object(self.minimum_confidence)
-            ),
+            "minimum_confidence": None if self.minimum_confidence is None else _fraction_object(self.minimum_confidence),
         }
 
 
@@ -200,11 +173,7 @@ class RealizationPolicyV0:
             "resource_catalog_hash",
         ):
             object.__setattr__(self, name, _hash64(getattr(self, name), name))
-        object.__setattr__(
-            self,
-            "accepted_assumption_hashes",
-            _hashes(self.accepted_assumption_hashes, "accepted assumption hash"),
-        )
+        object.__setattr__(self, "accepted_assumption_hashes", _hashes(self.accepted_assumption_hashes, "accepted assumption hash"))
         ceilings = tuple(sorted(self.resource_ceilings, key=lambda item: item.dimension_id))
         if len({item.dimension_id for item in ceilings}) != len(ceilings):
             raise RealizationSemanticsError("duplicate resource ceiling")
@@ -212,13 +181,9 @@ class RealizationPolicyV0:
             raise RealizationSemanticsError("resource ceiling catalog does not match policy")
         object.__setattr__(self, "resource_ceilings", ceilings)
         if "APPROXIMATION" in relations and self.approximation_policy is None:
-            raise RealizationSemanticsError(
-                "APPROXIMATION relation requires an approximation policy"
-            )
+            raise RealizationSemanticsError("APPROXIMATION relation requires an approximation policy")
         if "APPROXIMATION" not in relations and self.approximation_policy is not None:
-            raise RealizationSemanticsError(
-                "approximation policy present while APPROXIMATION is not allowed"
-            )
+            raise RealizationSemanticsError("approximation policy present while APPROXIMATION is not allowed")
 
     def to_object(self) -> dict[str, object]:
         return {
@@ -230,9 +195,7 @@ class RealizationPolicyV0:
             "resource_catalog_hash": self.resource_catalog_hash,
             "accepted_assumption_hashes": list(self.accepted_assumption_hashes),
             "resource_ceilings": [item.to_object() for item in self.resource_ceilings],
-            "approximation_policy": (
-                None if self.approximation_policy is None else self.approximation_policy.to_object()
-            ),
+            "approximation_policy": None if self.approximation_policy is None else self.approximation_policy.to_object(),
         }
 
     @property
@@ -252,24 +215,13 @@ class RealizationProblemV0:
     available_machine_hashes: tuple[str, ...]
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "transformation_semantic_hash",
-            _hash64(self.transformation_semantic_hash, "transformation_semantic_hash"),
-        )
-        object.__setattr__(
-            self,
-            "transformation_regime_binding_hash",
-            _hash64(
-                self.transformation_regime_binding_hash,
-                "transformation_regime_binding_hash",
-            ),
-        )
+        object.__setattr__(self, "transformation_semantic_hash", _hash64(self.transformation_semantic_hash, "transformation_semantic_hash"))
+        object.__setattr__(self, "transformation_regime_binding_hash", _hash64(self.transformation_regime_binding_hash, "transformation_regime_binding_hash"))
         object.__setattr__(self, "context_hash", _hash64(self.context_hash, "context_hash"))
         object.__setattr__(self, "policy_hash", _hash64(self.policy_hash, "policy_hash"))
         machines = _hashes(self.available_machine_hashes, "available machine hash")
         if not machines:
-            raise RealizationSemanticsError("at least one available machine is required")
+            raise RealizationSemanticsError("at least one available machine profile is required")
         object.__setattr__(self, "available_machine_hashes", machines)
 
     def to_object(self) -> dict[str, object]:
@@ -296,17 +248,12 @@ def realization_semantic_claim_object(
     transformation_regime_binding_hash: str,
     machine_hash: str,
     artifact_manifest_hash: str,
-    machine_requirement: MachineRequirementV0,
     semantic_relation: str,
     approximation_contract: ApproximationContractV0 | None = None,
     assumption_hashes: Iterable[str] = (),
 ) -> dict[str, object]:
-    transformation_semantic_hash = _hash64(
-        transformation_semantic_hash, "transformation_semantic_hash"
-    )
-    transformation_regime_binding_hash = _hash64(
-        transformation_regime_binding_hash, "transformation_regime_binding_hash"
-    )
+    transformation_semantic_hash = _hash64(transformation_semantic_hash, "transformation_semantic_hash")
+    transformation_regime_binding_hash = _hash64(transformation_regime_binding_hash, "transformation_regime_binding_hash")
     machine_hash = _hash64(machine_hash, "machine_hash")
     artifact_manifest_hash = _hash64(artifact_manifest_hash, "artifact_manifest_hash")
     if semantic_relation not in _RELATIONS:
@@ -314,9 +261,7 @@ def realization_semantic_claim_object(
     if semantic_relation == "APPROXIMATION" and approximation_contract is None:
         raise RealizationSemanticsError("APPROXIMATION requires approximation contract")
     if semantic_relation != "APPROXIMATION" and approximation_contract is not None:
-        raise RealizationSemanticsError(
-            "non-approximate realization must not carry approximation contract"
-        )
+        raise RealizationSemanticsError("non-approximate realization must not carry approximation contract")
     assumptions = _hashes(assumption_hashes, "candidate assumption hash")
     return {
         "schema": "TEV_SCRIPT_REALIZATION_SEMANTIC_CLAIM_V0",
@@ -324,11 +269,8 @@ def realization_semantic_claim_object(
         "transformation_regime_binding_hash": transformation_regime_binding_hash,
         "machine_hash": machine_hash,
         "artifact_manifest_hash": artifact_manifest_hash,
-        "machine_requirement": machine_requirement.to_object(),
         "semantic_relation": semantic_relation,
-        "approximation_contract_hash": (
-            "" if approximation_contract is None else approximation_contract.contract_hash
-        ),
+        "approximation_contract_hash": "" if approximation_contract is None else approximation_contract.contract_hash,
         "assumption_hashes": list(assumptions),
     }
 
@@ -344,7 +286,6 @@ def realization_identity_object(
     transformation_regime_binding_hash: str,
     machine_hash: str,
     artifact_manifest_hash: str,
-    machine_requirement: MachineRequirementV0,
     semantic_relation: str,
     approximation_contract: ApproximationContractV0 | None = None,
     assumption_hashes: Iterable[str] = (),
@@ -355,7 +296,6 @@ def realization_identity_object(
             transformation_regime_binding_hash=transformation_regime_binding_hash,
             machine_hash=machine_hash,
             artifact_manifest_hash=artifact_manifest_hash,
-            machine_requirement=machine_requirement,
             semantic_relation=semantic_relation,
             approximation_contract=approximation_contract,
             assumption_hashes=assumption_hashes,
@@ -376,7 +316,6 @@ class RealizationCandidateV0:
     realization_kind: str
     machine_hash: str
     artifact_manifest_hash: str
-    machine_requirement: MachineRequirementV0
     semantic_relation: str
     approximation_contract: ApproximationContractV0 | None = None
     assumption_hashes: tuple[str, ...] = ()
@@ -387,62 +326,22 @@ class RealizationCandidateV0:
     regime_preservation_claim_hash: str = ""
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "transformation_semantic_hash",
-            _hash64(self.transformation_semantic_hash, "transformation_semantic_hash"),
-        )
-        object.__setattr__(
-            self,
-            "transformation_regime_binding_hash",
-            _hash64(
-                self.transformation_regime_binding_hash,
-                "transformation_regime_binding_hash",
-            ),
-        )
+        object.__setattr__(self, "transformation_semantic_hash", _hash64(self.transformation_semantic_hash, "transformation_semantic_hash"))
+        object.__setattr__(self, "transformation_regime_binding_hash", _hash64(self.transformation_regime_binding_hash, "transformation_regime_binding_hash"))
         object.__setattr__(self, "realization_kind", _stable(self.realization_kind, "realization_kind"))
         object.__setattr__(self, "machine_hash", _hash64(self.machine_hash, "machine_hash"))
-        object.__setattr__(
-            self,
-            "artifact_manifest_hash",
-            _hash64(self.artifact_manifest_hash, "artifact_manifest_hash"),
-        )
+        object.__setattr__(self, "artifact_manifest_hash", _hash64(self.artifact_manifest_hash, "artifact_manifest_hash"))
         if self.semantic_relation not in _RELATIONS:
             raise RealizationSemanticsError("unsupported semantic relation")
         if self.semantic_relation == "APPROXIMATION" and self.approximation_contract is None:
             raise RealizationSemanticsError("APPROXIMATION requires approximation contract")
         if self.semantic_relation != "APPROXIMATION" and self.approximation_contract is not None:
-            raise RealizationSemanticsError(
-                "non-approximate realization must not carry approximation contract"
-            )
-        object.__setattr__(
-            self,
-            "assumption_hashes",
-            _hashes(self.assumption_hashes, "candidate assumption hash"),
-        )
-        object.__setattr__(
-            self,
-            "provenance_hashes",
-            _hashes(self.provenance_hashes, "provenance hash"),
-        )
-        object.__setattr__(
-            self,
-            "resource_estimate_claim_hash",
-            _hash64(self.resource_estimate_claim_hash, "resource_estimate_claim_hash"),
-        )
-        object.__setattr__(
-            self,
-            "evidence_hashes",
-            _hashes(self.evidence_hashes, "evidence hash"),
-        )
-        object.__setattr__(
-            self,
-            "regime_preservation_claim_hash",
-            _hash64(
-                self.regime_preservation_claim_hash,
-                "regime_preservation_claim_hash",
-            ),
-        )
+            raise RealizationSemanticsError("non-approximate realization must not carry approximation contract")
+        object.__setattr__(self, "assumption_hashes", _hashes(self.assumption_hashes, "candidate assumption hash"))
+        object.__setattr__(self, "provenance_hashes", _hashes(self.provenance_hashes, "provenance hash"))
+        object.__setattr__(self, "resource_estimate_claim_hash", _hash64(self.resource_estimate_claim_hash, "resource_estimate_claim_hash"))
+        object.__setattr__(self, "evidence_hashes", _hashes(self.evidence_hashes, "evidence hash"))
+        object.__setattr__(self, "regime_preservation_claim_hash", _hash64(self.regime_preservation_claim_hash, "regime_preservation_claim_hash"))
 
     @property
     def semantic_claim_hash(self) -> str:
@@ -451,7 +350,6 @@ class RealizationCandidateV0:
             transformation_regime_binding_hash=self.transformation_regime_binding_hash,
             machine_hash=self.machine_hash,
             artifact_manifest_hash=self.artifact_manifest_hash,
-            machine_requirement=self.machine_requirement,
             semantic_relation=self.semantic_relation,
             approximation_contract=self.approximation_contract,
             assumption_hashes=self.assumption_hashes,
@@ -465,7 +363,6 @@ class RealizationCandidateV0:
             transformation_regime_binding_hash=self.transformation_regime_binding_hash,
             machine_hash=self.machine_hash,
             artifact_manifest_hash=self.artifact_manifest_hash,
-            machine_requirement=self.machine_requirement,
             semantic_relation=self.semantic_relation,
             approximation_contract=self.approximation_contract,
             assumption_hashes=self.assumption_hashes,
@@ -481,11 +378,8 @@ class RealizationCandidateV0:
             "realization_kind": self.realization_kind,
             "machine_hash": self.machine_hash,
             "artifact_manifest_hash": self.artifact_manifest_hash,
-            "machine_requirement": self.machine_requirement.to_object(),
             "semantic_relation": self.semantic_relation,
-            "approximation_contract": (
-                None if self.approximation_contract is None else self.approximation_contract.to_object()
-            ),
+            "approximation_contract": None if self.approximation_contract is None else self.approximation_contract.to_object(),
             "assumption_hashes": list(self.assumption_hashes),
             "provenance_hashes": list(self.provenance_hashes),
             "predicted_resources": self.predicted_resources.to_object(),
@@ -522,12 +416,7 @@ class RealizationIssueV0:
         object.__setattr__(self, "detail", detail)
 
     def to_object(self) -> dict[str, object]:
-        return {
-            "kind": self.kind,
-            "severity": self.severity,
-            "subject": self.subject,
-            "detail": dict(self.detail),
-        }
+        return {"kind": self.kind, "severity": self.severity, "subject": self.subject, "detail": dict(self.detail)}
 
 
 @dataclass(frozen=True, slots=True)
@@ -555,41 +444,23 @@ class RealizationAdmissionReceiptV0:
 
     def __post_init__(self) -> None:
         for name in (
-            "problem_hash",
-            "candidate_hash",
-            "realization_hash",
-            "semantic_claim_hash",
-            "artifact_manifest_hash",
-            "transformation_semantic_hash",
-            "transformation_regime_binding_hash",
-            "regime_preservation_claim_hash",
-            "resource_estimate_claim_hash",
-            "machine_hash",
-            "policy_hash",
-            "regime_hash",
-            "resource_catalog_hash",
-            "machine_compatibility_hash",
-            "regime_evaluation_hash",
-            "realization_evidence_evaluation_hash",
-            "regime_evidence_evaluation_hash",
+            "problem_hash", "candidate_hash", "realization_hash", "semantic_claim_hash",
+            "artifact_manifest_hash", "transformation_semantic_hash", "transformation_regime_binding_hash",
+            "regime_preservation_claim_hash", "resource_estimate_claim_hash", "machine_hash", "policy_hash",
+            "regime_hash", "resource_catalog_hash", "machine_compatibility_hash", "regime_evaluation_hash",
+            "realization_evidence_evaluation_hash", "regime_evidence_evaluation_hash",
             "resource_evidence_evaluation_hash",
         ):
             object.__setattr__(self, name, _hash64(getattr(self, name), name))
         if self.semantic_relation not in _RELATIONS:
             raise RealizationSemanticsError("receipt semantic relation")
-        object.__setattr__(
-            self,
-            "issues",
-            tuple(sorted(self.issues, key=lambda item: canonical_json(item.to_object()))),
-        )
+        object.__setattr__(self, "issues", tuple(sorted(self.issues, key=lambda item: canonical_json(item.to_object()))))
 
     @property
     def status(self) -> str:
         if any(item.severity == "REJECT" for item in self.issues):
             return "REJECT"
-        if self.issues:
-            return "PROOF_REQUIRED"
-        return "PASS"
+        return "PROOF_REQUIRED" if self.issues else "PASS"
 
     def to_object(self) -> dict[str, object]:
         return {
@@ -634,16 +505,8 @@ class ResourceObservationV0:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "realization_hash", _hash64(self.realization_hash, "realization_hash"))
-        object.__setattr__(
-            self,
-            "execution_context_hash",
-            _hash64(self.execution_context_hash, "execution_context_hash"),
-        )
-        object.__setattr__(
-            self,
-            "observation_source_hash",
-            _hash64(self.observation_source_hash, "observation_source_hash"),
-        )
+        object.__setattr__(self, "execution_context_hash", _hash64(self.execution_context_hash, "execution_context_hash"))
+        object.__setattr__(self, "observation_source_hash", _hash64(self.observation_source_hash, "observation_source_hash"))
 
     def to_object(self) -> dict[str, object]:
         return {
@@ -664,161 +527,61 @@ class ParetoEntryV0:
     candidate_hash: str
     realization_hash: str
     resource_vector_hash: str
+    resource_catalog_hash: str
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "candidate_hash", _hash64(self.candidate_hash, "candidate_hash"))
-        object.__setattr__(self, "realization_hash", _hash64(self.realization_hash, "realization_hash"))
-        object.__setattr__(
-            self,
-            "resource_vector_hash",
-            _hash64(self.resource_vector_hash, "resource_vector_hash"),
-        )
+        for name in ("candidate_hash", "realization_hash", "resource_vector_hash", "resource_catalog_hash"):
+            object.__setattr__(self, name, _hash64(getattr(self, name), name))
 
 
 def _issue(kind: str, severity: str, subject: str, **detail: Any) -> RealizationIssueV0:
     return RealizationIssueV0(kind, severity, subject, detail)
 
 
-def _evaluate_approximation(
-    candidate: RealizationCandidateV0,
-    policy: RealizationPolicyV0,
-) -> tuple[RealizationIssueV0, ...]:
-    if candidate.semantic_relation != "APPROXIMATION":
-        return ()
-    contract = candidate.approximation_contract
-    approximation_policy = policy.approximation_policy
-    assert contract is not None
-    assert approximation_policy is not None
-    issues: list[RealizationIssueV0] = []
-    if contract.metric_hash != approximation_policy.metric_hash:
-        issues.append(
-            _issue(
-                "approximation.metric_mismatch",
-                "REJECT",
-                contract.metric_hash,
-                expected=approximation_policy.metric_hash,
-            )
-        )
-    if contract.domain_hash != approximation_policy.domain_hash:
-        issues.append(
-            _issue(
-                "approximation.domain_mismatch",
-                "REJECT",
-                contract.domain_hash,
-                expected=approximation_policy.domain_hash,
-            )
-        )
-    if contract.error_upper_bound > approximation_policy.maximum_error:
-        issues.append(
-            _issue(
-                "approximation.bound_exceeded",
-                "REJECT",
-                contract.contract_hash,
-                observed=_fraction_object(contract.error_upper_bound),
-                maximum=_fraction_object(approximation_policy.maximum_error),
-            )
-        )
-    if contract.guarantee_kind not in approximation_policy.accepted_guarantee_kinds:
-        issues.append(
-            _issue(
-                "approximation.guarantee_unaccepted",
-                "REJECT",
-                contract.guarantee_kind,
-                accepted=list(approximation_policy.accepted_guarantee_kinds),
-            )
-        )
-    if approximation_policy.minimum_confidence is not None:
-        if contract.confidence_lower_bound is None:
-            issues.append(
-                _issue(
-                    "approximation.confidence_missing",
-                    "REJECT",
-                    contract.contract_hash,
-                    minimum=_fraction_object(approximation_policy.minimum_confidence),
-                )
-            )
-        elif contract.confidence_lower_bound < approximation_policy.minimum_confidence:
-            issues.append(
-                _issue(
-                    "approximation.confidence_too_low",
-                    "REJECT",
-                    contract.contract_hash,
-                    observed=_fraction_object(contract.confidence_lower_bound),
-                    minimum=_fraction_object(approximation_policy.minimum_confidence),
-                )
-            )
-    return tuple(issues)
-
-
-def _issues_from_machine(
-    compatibility: MachineCompatibilityV0,
-) -> tuple[RealizationIssueV0, ...]:
+def _issues_from_machine(compatibility: MachineCompatibilityV0) -> tuple[RealizationIssueV0, ...]:
     issues: list[RealizationIssueV0] = []
     for item in compatibility.missing_capability_semantic_hashes:
         issues.append(_issue("machine.operation_missing", "REJECT", item))
-    for item in compatibility.missing_numeric_model_ids:
+    for item in compatibility.missing_numeric_model_hashes:
         issues.append(_issue("machine.numeric_model_missing", "REJECT", item))
-    for item in compatibility.missing_executable_formats:
+    for item in compatibility.missing_executable_format_hashes:
         issues.append(_issue("machine.format_missing", "REJECT", item))
     return tuple(issues)
 
 
 def _issues_from_regime(evaluation: RegimeEvaluationV0) -> tuple[RealizationIssueV0, ...]:
+    return tuple(RealizationIssueV0(item.kind, item.severity, item.subject, item.detail) for item in evaluation.issues)
+
+
+def _issues_from_evidence(evaluation: EvidenceEvaluationV0, *, prefix: str) -> tuple[RealizationIssueV0, ...]:
     return tuple(
-        RealizationIssueV0(item.kind, item.severity, item.subject, item.detail)
+        _issue(
+            prefix + "." + item.kind,
+            "REJECT" if item.kind == "evidence.falsified" else "PROOF_REQUIRED",
+            item.requirement_id,
+            evidence_hash=item.evidence_hash,
+            **dict(item.detail),
+        )
         for item in evaluation.issues
     )
 
 
-def _issues_from_evidence(
-    evaluation: EvidenceEvaluationV0,
-    *,
-    prefix: str,
-) -> tuple[RealizationIssueV0, ...]:
-    issues: list[RealizationIssueV0] = []
-    for item in evaluation.issues:
-        severity = "REJECT" if item.kind == "evidence.falsified" else "PROOF_REQUIRED"
-        issues.append(
-            _issue(
-                prefix + "." + item.kind,
-                severity,
-                item.requirement_id,
-                evidence_hash=item.evidence_hash,
-                **dict(item.detail),
-            )
-        )
-    return tuple(issues)
-
-
-def _issues_from_resources(
-    issues: Iterable[ResourceCeilingIssueV0],
-) -> tuple[RealizationIssueV0, ...]:
-    result: list[RealizationIssueV0] = []
+def _issues_from_resources(issues: Iterable[ResourceCeilingIssueV0]) -> tuple[RealizationIssueV0, ...]:
+    rows: list[RealizationIssueV0] = []
     for item in issues:
         if item.kind == "UNKNOWN":
-            result.append(
-                _issue(
-                    "resource.bound_unknown",
-                    "PROOF_REQUIRED",
-                    item.dimension_id,
-                    maximum=_fraction_object(item.maximum),
-                )
-            )
+            rows.append(_issue("resource.bound_unknown", "PROOF_REQUIRED", item.dimension_id, maximum=_fraction_object(item.maximum)))
         else:
-            result.append(
+            rows.append(
                 _issue(
                     "resource.ceiling_exceeded",
                     "REJECT",
                     item.dimension_id,
                     maximum=_fraction_object(item.maximum),
-                    observed_upper=(
-                        None
-                        if item.observed_upper is None
-                        else _fraction_object(item.observed_upper)
-                    ),
+                    observed_upper=None if item.observed_upper is None else _fraction_object(item.observed_upper),
                 )
             )
-    return tuple(result)
+    return tuple(rows)
 
 
 def _reject_unaccepted_assumptions(
@@ -830,6 +593,37 @@ def _reject_unaccepted_assumptions(
 ) -> None:
     for assumption_hash in sorted(set(values) - accepted):
         issues.append(_issue(kind, "REJECT", assumption_hash))
+
+
+def _evaluate_approximation(candidate: RealizationCandidateV0, policy: RealizationPolicyV0) -> tuple[RealizationIssueV0, ...]:
+    if candidate.semantic_relation != "APPROXIMATION":
+        return ()
+    contract = candidate.approximation_contract
+    approximation_policy = policy.approximation_policy
+    assert contract is not None and approximation_policy is not None
+    issues: list[RealizationIssueV0] = []
+    if contract.metric_hash != approximation_policy.metric_hash:
+        issues.append(_issue("approximation.metric_mismatch", "REJECT", contract.metric_hash, expected=approximation_policy.metric_hash))
+    if contract.domain_hash != approximation_policy.domain_hash:
+        issues.append(_issue("approximation.domain_mismatch", "REJECT", contract.domain_hash, expected=approximation_policy.domain_hash))
+    if contract.error_upper_bound > approximation_policy.maximum_error:
+        issues.append(
+            _issue(
+                "approximation.bound_exceeded",
+                "REJECT",
+                contract.contract_hash,
+                observed=_fraction_object(contract.error_upper_bound),
+                maximum=_fraction_object(approximation_policy.maximum_error),
+            )
+        )
+    if contract.guarantee_kind not in approximation_policy.accepted_guarantee_kinds:
+        issues.append(_issue("approximation.guarantee_unaccepted", "REJECT", contract.guarantee_kind))
+    if approximation_policy.minimum_confidence is not None:
+        if contract.confidence_lower_bound is None:
+            issues.append(_issue("approximation.confidence_missing", "REJECT", contract.contract_hash))
+        elif contract.confidence_lower_bound < approximation_policy.minimum_confidence:
+            issues.append(_issue("approximation.confidence_too_low", "REJECT", contract.contract_hash))
+    return tuple(issues)
 
 
 def admit_realization(
@@ -852,187 +646,60 @@ def admit_realization(
     issues: list[RealizationIssueV0] = []
 
     if problem.policy_hash != policy.policy_hash:
-        issues.append(
-            _issue(
-                "realization.policy_mismatch",
-                "REJECT",
-                problem.policy_hash,
-                observed=policy.policy_hash,
-            )
-        )
+        issues.append(_issue("realization.policy_mismatch", "REJECT", problem.policy_hash, observed=policy.policy_hash))
     if problem.transformation_semantic_hash != candidate.transformation_semantic_hash:
-        issues.append(
-            _issue(
-                "realization.transformation_mismatch",
-                "REJECT",
-                candidate.transformation_semantic_hash,
-                expected=problem.transformation_semantic_hash,
-            )
-        )
+        issues.append(_issue("realization.transformation_mismatch", "REJECT", candidate.transformation_semantic_hash, expected=problem.transformation_semantic_hash))
     if problem.transformation_regime_binding_hash != binding.binding_hash:
-        issues.append(
-            _issue(
-                "regime.problem_binding_mismatch",
-                "REJECT",
-                problem.transformation_regime_binding_hash,
-                observed=binding.binding_hash,
-            )
-        )
+        issues.append(_issue("regime.problem_binding_mismatch", "REJECT", problem.transformation_regime_binding_hash, observed=binding.binding_hash))
     if candidate.transformation_regime_binding_hash != binding.binding_hash:
-        issues.append(
-            _issue(
-                "regime.candidate_binding_mismatch",
-                "REJECT",
-                candidate.transformation_regime_binding_hash,
-                observed=binding.binding_hash,
-            )
-        )
+        issues.append(_issue("regime.candidate_binding_mismatch", "REJECT", candidate.transformation_regime_binding_hash, observed=binding.binding_hash))
     if candidate.artifact_manifest_hash != artifact_manifest.manifest_hash:
-        issues.append(
-            _issue(
-                "artifact.manifest_mismatch",
-                "REJECT",
-                candidate.artifact_manifest_hash,
-                observed=artifact_manifest.manifest_hash,
-            )
-        )
-    if canonical_json(candidate.machine_requirement.to_object()) != canonical_json(
-        artifact_manifest.machine_requirement.to_object()
-    ):
-        issues.append(
-            _issue(
-                "artifact.machine_requirement_mismatch",
-                "REJECT",
-                candidate.artifact_manifest_hash,
-                candidate_requirement=candidate.machine_requirement.to_object(),
-                manifest_requirement=artifact_manifest.machine_requirement.to_object(),
-            )
-        )
+        issues.append(_issue("artifact.manifest_mismatch", "REJECT", candidate.artifact_manifest_hash, observed=artifact_manifest.manifest_hash))
     if candidate.regime_preservation_claim_hash != preservation_claim.preservation_claim_hash:
-        issues.append(
-            _issue(
-                "regime.preservation_claim_mismatch",
-                "REJECT",
-                candidate.regime_preservation_claim_hash,
-                observed=preservation_claim.preservation_claim_hash,
-            )
-        )
+        issues.append(_issue("regime.preservation_claim_mismatch", "REJECT", candidate.regime_preservation_claim_hash, observed=preservation_claim.preservation_claim_hash))
     if candidate.resource_estimate_claim_hash != resource_estimate_claim.estimate_claim_hash:
-        issues.append(
-            _issue(
-                "resource.estimate_claim_mismatch",
-                "REJECT",
-                candidate.resource_estimate_claim_hash,
-                observed=resource_estimate_claim.estimate_claim_hash,
-            )
-        )
+        issues.append(_issue("resource.estimate_claim_mismatch", "REJECT", candidate.resource_estimate_claim_hash, observed=resource_estimate_claim.estimate_claim_hash))
     if candidate.machine_hash != machine.machine_hash:
-        issues.append(
-            _issue(
-                "machine.identity_mismatch",
-                "REJECT",
-                candidate.machine_hash,
-                observed=machine.machine_hash,
-            )
-        )
+        issues.append(_issue("machine.identity_mismatch", "REJECT", candidate.machine_hash, observed=machine.machine_hash))
     if machine.machine_hash not in problem.available_machine_hashes:
-        issues.append(
-            _issue(
-                "machine.not_available",
-                "REJECT",
-                machine.machine_hash,
-                available=list(problem.available_machine_hashes),
-            )
-        )
+        issues.append(_issue("machine.not_available", "REJECT", machine.machine_hash, available=list(problem.available_machine_hashes)))
     if candidate.semantic_relation not in policy.allowed_relations:
-        issues.append(
-            _issue(
-                "relation.not_allowed",
-                "REJECT",
-                candidate.semantic_relation,
-                allowed=list(policy.allowed_relations),
-            )
-        )
+        issues.append(_issue("relation.not_allowed", "REJECT", candidate.semantic_relation, allowed=list(policy.allowed_relations)))
 
     policy_pairs = (
-        (
-            "evidence.realization_policy_mismatch",
-            policy.realization_evidence_policy_hash,
-            realization_evidence_policy.policy_hash,
-        ),
-        (
-            "evidence.regime_policy_mismatch",
-            policy.regime_evidence_policy_hash,
-            regime_evidence_policy.policy_hash,
-        ),
-        (
-            "evidence.resource_policy_mismatch",
-            policy.resource_evidence_policy_hash,
-            resource_evidence_policy.policy_hash,
-        ),
+        ("evidence.realization_policy_mismatch", policy.realization_evidence_policy_hash, realization_evidence_policy.policy_hash),
+        ("evidence.regime_policy_mismatch", policy.regime_evidence_policy_hash, regime_evidence_policy.policy_hash),
+        ("evidence.resource_policy_mismatch", policy.resource_evidence_policy_hash, resource_evidence_policy.policy_hash),
     )
     for kind, expected, observed in policy_pairs:
         if expected != observed:
             issues.append(_issue(kind, "REJECT", observed, expected=expected))
 
+    for kind, evidence_policy in (
+        ("evidence.realization_policy_empty", realization_evidence_policy),
+        ("evidence.regime_policy_empty", regime_evidence_policy),
+        ("evidence.resource_policy_empty", resource_evidence_policy),
+    ):
+        if not evidence_policy.requirements:
+            issues.append(_issue(kind, "REJECT", evidence_policy.policy_hash))
+
     resource_policy_valid = True
     if policy.resource_catalog_hash != resource_catalog.catalog_hash:
         resource_policy_valid = False
-        issues.append(
-            _issue(
-                "resource.catalog_policy_mismatch",
-                "REJECT",
-                resource_catalog.catalog_hash,
-                expected=policy.resource_catalog_hash,
-            )
-        )
+        issues.append(_issue("resource.catalog_policy_mismatch", "REJECT", resource_catalog.catalog_hash, expected=policy.resource_catalog_hash))
     try:
         validate_resource_ceilings(policy.resource_ceilings, resource_catalog)
     except ResourceAlgebraError as error:
         resource_policy_valid = False
-        issues.append(
-            _issue(
-                "resource.policy_invalid",
-                "REJECT",
-                policy.policy_hash,
-                detail=str(error),
-            )
-        )
-    if policy.resource_ceilings and not resource_evidence_policy.requirements:
-        resource_policy_valid = False
-        issues.append(
-            _issue(
-                "resource.evidence_policy_empty",
-                "REJECT",
-                resource_evidence_policy.policy_hash,
-            )
-        )
+        issues.append(_issue("resource.policy_invalid", "REJECT", policy.policy_hash, detail=str(error)))
 
     accepted_assumptions = set(policy.accepted_assumption_hashes)
-    _reject_unaccepted_assumptions(
-        issues,
-        candidate.assumption_hashes,
-        accepted_assumptions,
-        kind="assumption.not_accepted",
-    )
-    _reject_unaccepted_assumptions(
-        issues,
-        preservation_claim.assumption_hashes,
-        accepted_assumptions,
-        kind="regime.assumption_not_accepted_by_policy",
-    )
-    _reject_unaccepted_assumptions(
-        issues,
-        resource_estimate_claim.assumption_hashes,
-        accepted_assumptions,
-        kind="resource.estimate_assumption_not_accepted",
-    )
-
+    _reject_unaccepted_assumptions(issues, candidate.assumption_hashes, accepted_assumptions, kind="assumption.not_accepted")
+    _reject_unaccepted_assumptions(issues, preservation_claim.assumption_hashes, accepted_assumptions, kind="regime.assumption_not_accepted_by_policy")
+    _reject_unaccepted_assumptions(issues, resource_estimate_claim.assumption_hashes, accepted_assumptions, kind="resource.estimate_assumption_not_accepted")
     issues.extend(_evaluate_approximation(candidate, policy))
 
-    machine_evaluation = evaluate_machine_compatibility(
-        machine, artifact_manifest.machine_requirement
-    )
+    machine_evaluation = evaluate_machine_compatibility(machine, artifact_manifest.machine_requirement)
     issues.extend(_issues_from_machine(machine_evaluation))
 
     regime_evaluation = evaluate_regime_preservation(
@@ -1050,27 +717,14 @@ def admit_realization(
         candidate.predicted_resources.validate_against(resource_catalog)
     except ResourceAlgebraError as error:
         resource_vector_valid = False
-        issues.append(
-            _issue(
-                "resource.vector_invalid",
-                "REJECT",
-                candidate.predicted_resources.vector_hash,
-                detail=str(error),
-            )
-        )
+        issues.append(_issue("resource.vector_invalid", "REJECT", candidate.predicted_resources.vector_hash, detail=str(error)))
     if not resource_estimate_claim.validates_vector(
         realization_hash=candidate.realization_hash,
         execution_context_hash=problem.context_hash,
         vector=candidate.predicted_resources,
     ):
         resource_vector_valid = False
-        issues.append(
-            _issue(
-                "resource.estimate_binding_mismatch",
-                "REJECT",
-                resource_estimate_claim.estimate_claim_hash,
-            )
-        )
+        issues.append(_issue("resource.estimate_binding_mismatch", "REJECT", resource_estimate_claim.estimate_claim_hash))
 
     evidence_items = tuple(evidence)
     evidence_by_hash = {item.evidence_hash: item for item in evidence_items}
@@ -1078,24 +732,13 @@ def admit_realization(
         if evidence_hash not in evidence_by_hash:
             issues.append(_issue("evidence.reference_missing", "PROOF_REQUIRED", evidence_hash))
 
-    realization_evaluation = evaluate_evidence(
-        candidate.semantic_claim_hash,
-        realization_evidence_policy,
-        evidence_items,
-    )
-    regime_evaluation_evidence = evaluate_evidence(
-        preservation_claim.preservation_claim_hash,
-        regime_evidence_policy,
-        evidence_items,
-    )
-    resource_evaluation = evaluate_evidence(
-        resource_estimate_claim.estimate_claim_hash,
-        resource_evidence_policy,
-        evidence_items,
-    )
+    realization_evaluation = evaluate_evidence(candidate.semantic_claim_hash, realization_evidence_policy, evidence_items)
+    regime_evidence_evaluation = evaluate_evidence(preservation_claim.preservation_claim_hash, regime_evidence_policy, evidence_items)
+    resource_evaluation = evaluate_evidence(resource_estimate_claim.estimate_claim_hash, resource_evidence_policy, evidence_items)
+
     accepted_support = (
         set(realization_evaluation.accepted_evidence_hashes)
-        | set(regime_evaluation_evidence.accepted_evidence_hashes)
+        | set(regime_evidence_evaluation.accepted_evidence_hashes)
         | set(resource_evaluation.accepted_evidence_hashes)
     )
     for accepted_hash in sorted(accepted_support):
@@ -1111,43 +754,37 @@ def admit_realization(
             )
 
     issues.extend(_issues_from_evidence(realization_evaluation, prefix="realization"))
-    issues.extend(_issues_from_evidence(regime_evaluation_evidence, prefix="regime"))
+    issues.extend(_issues_from_evidence(regime_evidence_evaluation, prefix="regime"))
     issues.extend(_issues_from_evidence(resource_evaluation, prefix="resource"))
 
     if resource_policy_valid and resource_vector_valid:
-        resource_issues = evaluate_resource_ceilings(
-            candidate.predicted_resources,
-            policy.resource_ceilings,
-        )
-        issues.extend(_issues_from_resources(resource_issues))
+        issues.extend(_issues_from_resources(evaluate_resource_ceilings(candidate.predicted_resources, policy.resource_ceilings)))
 
     return RealizationAdmissionReceiptV0(
-        problem.problem_hash,
-        candidate.candidate_hash,
-        candidate.realization_hash,
-        candidate.semantic_claim_hash,
-        candidate.artifact_manifest_hash,
-        candidate.transformation_semantic_hash,
-        candidate.transformation_regime_binding_hash,
-        candidate.semantic_relation,
-        candidate.regime_preservation_claim_hash,
-        candidate.resource_estimate_claim_hash,
-        machine.machine_hash,
-        policy.policy_hash,
-        regime.regime_hash,
-        resource_catalog.catalog_hash,
-        machine_evaluation.compatibility_hash,
-        regime_evaluation.evaluation_hash,
-        realization_evaluation.evaluation_hash,
-        regime_evaluation_evidence.evaluation_hash,
-        resource_evaluation.evaluation_hash,
-        tuple(issues),
+        problem_hash=problem.problem_hash,
+        candidate_hash=candidate.candidate_hash,
+        realization_hash=candidate.realization_hash,
+        semantic_claim_hash=candidate.semantic_claim_hash,
+        artifact_manifest_hash=candidate.artifact_manifest_hash,
+        transformation_semantic_hash=candidate.transformation_semantic_hash,
+        transformation_regime_binding_hash=candidate.transformation_regime_binding_hash,
+        semantic_relation=candidate.semantic_relation,
+        regime_preservation_claim_hash=candidate.regime_preservation_claim_hash,
+        resource_estimate_claim_hash=candidate.resource_estimate_claim_hash,
+        machine_hash=machine.machine_hash,
+        policy_hash=policy.policy_hash,
+        regime_hash=regime.regime_hash,
+        resource_catalog_hash=resource_catalog.catalog_hash,
+        machine_compatibility_hash=machine_evaluation.compatibility_hash,
+        regime_evaluation_hash=regime_evaluation.evaluation_hash,
+        realization_evidence_evaluation_hash=realization_evaluation.evaluation_hash,
+        regime_evidence_evaluation_hash=regime_evidence_evaluation.evaluation_hash,
+        resource_evidence_evaluation_hash=resource_evaluation.evaluation_hash,
+        issues=tuple(issues),
     )
 
 
-def residual_from_realization_admission(
-    receipt: RealizationAdmissionReceiptV0,
-) -> SemanticFieldV0:
+def residual_from_realization_admission(receipt: RealizationAdmissionReceiptV0) -> SemanticFieldV0:
     obstructions = tuple(
         ResidualObstructionV0(
             item.kind,
@@ -1175,15 +812,11 @@ def residual_from_realization_admission(
             "problem_hash": receipt.problem_hash,
             "candidate_hash": receipt.candidate_hash,
             "realization_hash": receipt.realization_hash,
-            "artifact_manifest_hash": receipt.artifact_manifest_hash,
             "transformation_semantic_hash": receipt.transformation_semantic_hash,
             "semantic_relation": receipt.semantic_relation,
             "status": receipt.status,
         },
-        source={
-            "kind": "realization_admission_receipt",
-            "receipt_hash": receipt.receipt_hash,
-        },
+        source={"kind": "realization_admission_receipt", "receipt_hash": receipt.receipt_hash},
         obstructions=obstructions,
     )
 
@@ -1197,22 +830,14 @@ def semantic_memoization_key(
     return canonical_hash(
         {
             "schema": "TEV_SCRIPT_SEMANTIC_MEMOIZATION_KEY_V0",
-            "transformation_semantic_hash": _hash64(
-                transformation_semantic_hash, "transformation_semantic_hash"
-            ),
+            "transformation_semantic_hash": _hash64(transformation_semantic_hash, "transformation_semantic_hash"),
             "canonical_input_hash": _hash64(canonical_input_hash, "canonical_input_hash"),
-            "semantic_environment_hash": _hash64(
-                semantic_environment_hash, "semantic_environment_hash"
-            ),
+            "semantic_environment_hash": _hash64(semantic_environment_hash, "semantic_environment_hash"),
         }
     )
 
 
-def _dominates(
-    left: ResourceVectorV0,
-    right: ResourceVectorV0,
-    dimensions: Sequence[str],
-) -> bool:
+def _dominates(left: ResourceVectorV0, right: ResourceVectorV0, dimensions: Sequence[str]) -> bool:
     if left.catalog_hash != right.catalog_hash:
         return False
     strictly_better = False
@@ -1231,6 +856,7 @@ def _dominates(
 def pareto_front(
     entries: Iterable[tuple[RealizationCandidateV0, RealizationAdmissionReceiptV0]],
     *,
+    resource_catalog: ResourceCatalogV0,
     dimensions: Sequence[str],
 ) -> tuple[ParetoEntryV0, ...]:
     selected_dimensions = tuple(_stable(item, "resource dimension") for item in dimensions)
@@ -1238,25 +864,26 @@ def pareto_front(
         raise RealizationSemanticsError("Pareto extraction requires dimensions")
     if len(set(selected_dimensions)) != len(selected_dimensions):
         raise RealizationSemanticsError("duplicate Pareto dimension")
+    missing_dimensions = set(selected_dimensions) - set(resource_catalog.dimension_ids)
+    if missing_dimensions:
+        raise RealizationSemanticsError("Pareto dimension outside resource catalog")
 
     eligible: list[RealizationCandidateV0] = []
     for candidate, receipt in entries:
         if receipt.candidate_hash != candidate.candidate_hash:
             raise RealizationSemanticsError("candidate/receipt mismatch")
-        if receipt.status == "PASS":
-            if receipt.resource_catalog_hash != candidate.predicted_resources.catalog_hash:
-                raise RealizationSemanticsError("candidate/receipt resource catalog mismatch")
-            eligible.append(candidate)
+        if receipt.status != "PASS":
+            continue
+        if receipt.resource_catalog_hash != resource_catalog.catalog_hash:
+            raise RealizationSemanticsError("receipt/resource catalog mismatch")
+        candidate.predicted_resources.validate_against(resource_catalog)
+        eligible.append(candidate)
 
     front: list[RealizationCandidateV0] = []
     for candidate in sorted(eligible, key=lambda item: item.candidate_hash):
         dominated = any(
             other.candidate_hash != candidate.candidate_hash
-            and _dominates(
-                other.predicted_resources,
-                candidate.predicted_resources,
-                selected_dimensions,
-            )
+            and _dominates(other.predicted_resources, candidate.predicted_resources, selected_dimensions)
             for other in eligible
         )
         if not dominated:
@@ -1267,6 +894,7 @@ def pareto_front(
             candidate.candidate_hash,
             candidate.realization_hash,
             candidate.predicted_resources.vector_hash,
+            resource_catalog.catalog_hash,
         )
         for candidate in front
     )
