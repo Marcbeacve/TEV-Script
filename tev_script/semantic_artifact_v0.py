@@ -4,12 +4,14 @@ from dataclasses import dataclass
 import re
 from typing import Iterable
 
-from .canonical import canonical_hash
+from .canonical import canonical_hash, canonical_json
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
 from .semantic_machine_v0 import MachineRequirementV0
 
 ARTIFACT_DESCRIPTOR_SCHEMA_V0 = "TEV_SCRIPT_REALIZATION_ARTIFACT_DESCRIPTOR_V0"
+ARTIFACT_DESCRIPTOR_IDENTITY_SCHEMA_V0 = "TEV_SCRIPT_REALIZATION_ARTIFACT_DESCRIPTOR_IDENTITY_V0"
 ARTIFACT_MANIFEST_SCHEMA_V0 = "TEV_SCRIPT_REALIZATION_ARTIFACT_MANIFEST_V0"
+ARTIFACT_MANIFEST_IDENTITY_SCHEMA_V0 = "TEV_SCRIPT_REALIZATION_ARTIFACT_MANIFEST_IDENTITY_V0"
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _HEX = frozenset("0123456789abcdef")
 
@@ -43,14 +45,15 @@ def _hashes(values: Iterable[str], what: str) -> tuple[str, ...]:
 
 @dataclass(frozen=True, slots=True)
 class ArtifactDescriptorV0:
-    """Semantic role of immutable bytes in one Realization.
+    """Record for immutable bytes with a content-addressed semantic role.
 
-    Physical path/filename and adapter-local ABI aliases are absent. `format_hash`
-    and numeric-model hashes bind content-addressed ABI semantics supplied by the
-    target MachineField.
+    `role_id` is a human/adapter label. `role_semantics_hash` determines whether
+    the bytes are being used as an executable, library, table, firmware image,
+    proof object, etc. Paths and filenames remain outside this semantic record.
     """
 
     role_id: str
+    role_semantics_hash: str
     format_hash: str
     content_hash: str
     interface_hash: str = ""
@@ -61,53 +64,49 @@ class ArtifactDescriptorV0:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "role_id", _stable(self.role_id, "artifact role_id"))
+        object.__setattr__(self, "role_semantics_hash", _hash64(self.role_semantics_hash, "artifact role_semantics_hash"))
         object.__setattr__(self, "format_hash", _hash64(self.format_hash, "artifact format_hash"))
         object.__setattr__(self, "content_hash", _hash64(self.content_hash, "artifact content_hash"))
-        object.__setattr__(
-            self,
-            "interface_hash",
-            _optional_hash(self.interface_hash, "artifact interface_hash"),
-        )
+        object.__setattr__(self, "interface_hash", _optional_hash(self.interface_hash, "artifact interface_hash"))
         if not isinstance(self.entrypoint, bool):
             raise ArtifactSemanticsError("artifact entrypoint must be bool")
         if self.entrypoint and not self.interface_hash:
             raise ArtifactSemanticsError("entrypoint artifact requires interface_hash")
-        object.__setattr__(
-            self,
-            "dependency_descriptor_hashes",
-            _hashes(self.dependency_descriptor_hashes, "artifact dependency descriptor hash"),
-        )
+        object.__setattr__(self, "dependency_descriptor_hashes", _hashes(self.dependency_descriptor_hashes, "artifact dependency descriptor hash"))
         object.__setattr__(
             self,
             "required_machine_capability_semantic_hashes",
-            _hashes(
-                self.required_machine_capability_semantic_hashes,
-                "artifact required machine capability semantic hash",
-            ),
+            _hashes(self.required_machine_capability_semantic_hashes, "artifact required machine capability semantic hash"),
         )
-        object.__setattr__(
-            self,
-            "required_numeric_model_hashes",
-            _hashes(self.required_numeric_model_hashes, "artifact required numeric model hash"),
-        )
+        object.__setattr__(self, "required_numeric_model_hashes", _hashes(self.required_numeric_model_hashes, "artifact required numeric model hash"))
 
-    def to_object(self) -> dict[str, object]:
+    def semantic_object(self) -> dict[str, object]:
         return {
-            "schema": ARTIFACT_DESCRIPTOR_SCHEMA_V0,
-            "role_id": self.role_id,
+            "schema": ARTIFACT_DESCRIPTOR_IDENTITY_SCHEMA_V0,
+            "role_semantics_hash": self.role_semantics_hash,
             "format_hash": self.format_hash,
             "content_hash": self.content_hash,
             "interface_hash": self.interface_hash,
             "entrypoint": self.entrypoint,
             "dependency_descriptor_hashes": list(self.dependency_descriptor_hashes),
-            "required_machine_capability_semantic_hashes": list(
-                self.required_machine_capability_semantic_hashes
-            ),
+            "required_machine_capability_semantic_hashes": list(self.required_machine_capability_semantic_hashes),
             "required_numeric_model_hashes": list(self.required_numeric_model_hashes),
         }
 
     @property
     def descriptor_hash(self) -> str:
+        return canonical_hash(self.semantic_object())
+
+    def to_object(self) -> dict[str, object]:
+        return {
+            "schema": ARTIFACT_DESCRIPTOR_SCHEMA_V0,
+            "descriptor_hash": self.descriptor_hash,
+            "role_id": self.role_id,
+            **{key: value for key, value in self.semantic_object().items() if key != "schema"},
+        }
+
+    @property
+    def record_hash(self) -> str:
         return canonical_hash(self.to_object())
 
 
@@ -116,13 +115,12 @@ class ArtifactManifestV0:
     descriptors: tuple[ArtifactDescriptorV0, ...]
 
     def __post_init__(self) -> None:
-        descriptors = tuple(sorted(self.descriptors, key=lambda item: item.descriptor_hash))
+        descriptors = tuple(sorted(self.descriptors, key=lambda item: (item.descriptor_hash, item.role_id)))
         if not descriptors:
             raise ArtifactSemanticsError("artifact manifest requires at least one descriptor")
-        hashes = tuple(item.descriptor_hash for item in descriptors)
-        if len(set(hashes)) != len(hashes):
-            raise ArtifactSemanticsError("duplicate artifact descriptor semantics")
-        known = set(hashes)
+        if len({(item.role_id, item.descriptor_hash) for item in descriptors}) != len(descriptors):
+            raise ArtifactSemanticsError("duplicate artifact descriptor record")
+        known = {item.descriptor_hash for item in descriptors}
         for descriptor in descriptors:
             missing = set(descriptor.dependency_descriptor_hashes) - known
             if missing:
@@ -136,26 +134,33 @@ class ArtifactManifestV0:
         object.__setattr__(self, "descriptors", descriptors)
 
     @property
+    def semantic_descriptors(self) -> tuple[ArtifactDescriptorV0, ...]:
+        by_hash: dict[str, ArtifactDescriptorV0] = {}
+        for descriptor in self.descriptors:
+            by_hash.setdefault(descriptor.descriptor_hash, descriptor)
+        return tuple(by_hash[key] for key in sorted(by_hash))
+
+    @property
     def descriptor_hashes(self) -> tuple[str, ...]:
-        return tuple(item.descriptor_hash for item in self.descriptors)
+        return tuple(item.descriptor_hash for item in self.semantic_descriptors)
 
     @property
     def content_hashes(self) -> tuple[str, ...]:
-        return tuple(sorted(set(item.content_hash for item in self.descriptors)))
+        return tuple(sorted(set(item.content_hash for item in self.semantic_descriptors)))
 
     @property
     def entrypoint_descriptor_hashes(self) -> tuple[str, ...]:
-        return tuple(item.descriptor_hash for item in self.descriptors if item.entrypoint)
+        return tuple(item.descriptor_hash for item in self.semantic_descriptors if item.entrypoint)
 
     @property
     def entrypoint_format_hashes(self) -> tuple[str, ...]:
-        return tuple(sorted(set(item.format_hash for item in self.descriptors if item.entrypoint)))
+        return tuple(sorted(set(item.format_hash for item in self.semantic_descriptors if item.entrypoint)))
 
     @property
     def machine_requirement(self) -> MachineRequirementV0:
         capability_hashes: set[str] = set()
         numeric_hashes: set[str] = set()
-        for descriptor in self.descriptors:
+        for descriptor in self.semantic_descriptors:
             capability_hashes.update(descriptor.required_machine_capability_semantic_hashes)
             numeric_hashes.update(descriptor.required_numeric_model_hashes)
         return MachineRequirementV0(
@@ -164,16 +169,29 @@ class ArtifactManifestV0:
             self.entrypoint_format_hashes,
         )
 
-    def to_object(self) -> dict[str, object]:
+    def semantic_object(self) -> dict[str, object]:
         return {
-            "schema": ARTIFACT_MANIFEST_SCHEMA_V0,
-            "descriptors": [item.to_object() for item in self.descriptors],
+            "schema": ARTIFACT_MANIFEST_IDENTITY_SCHEMA_V0,
+            "descriptors": [item.semantic_object() for item in self.semantic_descriptors],
             "entrypoint_descriptor_hashes": list(self.entrypoint_descriptor_hashes),
             "machine_requirement": self.machine_requirement.to_object(),
         }
 
     @property
     def manifest_hash(self) -> str:
+        return canonical_hash(self.semantic_object())
+
+    def to_object(self) -> dict[str, object]:
+        return {
+            "schema": ARTIFACT_MANIFEST_SCHEMA_V0,
+            "manifest_hash": self.manifest_hash,
+            "descriptors": [item.to_object() for item in self.descriptors],
+            "entrypoint_descriptor_hashes": list(self.entrypoint_descriptor_hashes),
+            "machine_requirement": self.machine_requirement.to_object(),
+        }
+
+    @property
+    def record_hash(self) -> str:
         return canonical_hash(self.to_object())
 
     def to_field(self) -> SemanticFieldV0:
@@ -183,6 +201,7 @@ class ArtifactManifestV0:
 def manifest_from_single_artifact(
     *,
     role_id: str,
+    role_semantics_hash: str,
     format_hash: str,
     content_hash: str,
     interface_hash: str,
@@ -193,13 +212,12 @@ def manifest_from_single_artifact(
         (
             ArtifactDescriptorV0(
                 role_id=role_id,
+                role_semantics_hash=role_semantics_hash,
                 format_hash=format_hash,
                 content_hash=content_hash,
                 interface_hash=interface_hash,
                 entrypoint=True,
-                required_machine_capability_semantic_hashes=tuple(
-                    required_machine_capability_semantic_hashes
-                ),
+                required_machine_capability_semantic_hashes=tuple(required_machine_capability_semantic_hashes),
                 required_numeric_model_hashes=tuple(required_numeric_model_hashes),
             ),
         )
@@ -208,7 +226,9 @@ def manifest_from_single_artifact(
 
 __all__ = [
     "ARTIFACT_DESCRIPTOR_SCHEMA_V0",
+    "ARTIFACT_DESCRIPTOR_IDENTITY_SCHEMA_V0",
     "ARTIFACT_MANIFEST_SCHEMA_V0",
+    "ARTIFACT_MANIFEST_IDENTITY_SCHEMA_V0",
     "ArtifactSemanticsError",
     "ArtifactDescriptorV0",
     "ArtifactManifestV0",
