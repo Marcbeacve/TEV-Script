@@ -9,7 +9,10 @@ from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
 from .semantic_proof_boundary_v0 import ProofBoundaryWitnessV0
 
 EVIDENCE_SCHEMA_V0 = "TEV_SCRIPT_REALIZATION_EVIDENCE_V0"
+EVIDENCE_IDENTITY_SCHEMA_V0 = "TEV_SCRIPT_REALIZATION_EVIDENCE_IDENTITY_V0"
 EVIDENCE_POLICY_SCHEMA_V0 = "TEV_SCRIPT_REALIZATION_EVIDENCE_POLICY_V0"
+EVIDENCE_POLICY_RECORD_SCHEMA_V0 = "TEV_SCRIPT_REALIZATION_EVIDENCE_POLICY_RECORD_V0"
+EVIDENCE_REQUIREMENT_SCHEMA_V0 = "TEV_SCRIPT_REALIZATION_EVIDENCE_REQUIREMENT_V0"
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _HEX = frozenset("0123456789abcdef")
 _METHODS = frozenset(
@@ -101,19 +104,14 @@ class EvidenceItemV0:
             raise EvidenceSemanticsError(f"{self.method} requires verifier_hash")
         if self.status == "FALSIFIED" and not self.witness_hash:
             raise EvidenceSemanticsError("FALSIFIED evidence requires witness_hash")
-        object.__setattr__(
-            self,
-            "assumption_hashes",
-            _hashes(self.assumption_hashes, "assumption_hash"),
-        )
+        object.__setattr__(self, "assumption_hashes", _hashes(self.assumption_hashes, "assumption_hash"))
         coverage = {} if self.coverage is None else dict(self.coverage)
         canonical_json(coverage)
         object.__setattr__(self, "coverage", coverage)
 
-    def to_object(self) -> dict[str, object]:
+    def identity_object(self) -> dict[str, object]:
         return {
-            "schema": EVIDENCE_SCHEMA_V0,
-            "evidence_id": self.evidence_id,
+            "schema": EVIDENCE_IDENTITY_SCHEMA_V0,
             "claim_hash": self.claim_hash,
             "scope_hash": self.scope_hash,
             "method": self.method,
@@ -121,11 +119,24 @@ class EvidenceItemV0:
             "witness_hash": self.witness_hash,
             "assumption_hashes": list(self.assumption_hashes),
             "coverage": dict(self.coverage or {}),
-            "status": self.status,
         }
 
     @property
     def evidence_hash(self) -> str:
+        """Stable evidence identity; independent of local label and current status."""
+        return canonical_hash(self.identity_object())
+
+    def to_object(self) -> dict[str, object]:
+        return {
+            "schema": EVIDENCE_SCHEMA_V0,
+            "evidence_hash": self.evidence_hash,
+            "evidence_id": self.evidence_id,
+            "status": self.status,
+            **{key: value for key, value in self.identity_object().items() if key != "schema"},
+        }
+
+    @property
+    def record_hash(self) -> str:
         return canonical_hash(self.to_object())
 
     def to_field(self) -> SemanticFieldV0:
@@ -147,26 +158,33 @@ class EvidenceRequirementV0:
             raise EvidenceSemanticsError("accepted_methods")
         object.__setattr__(self, "accepted_methods", methods)
         object.__setattr__(self, "scope_hash", _optional_hash(self.scope_hash, "scope_hash"))
-        object.__setattr__(
-            self,
-            "trusted_verifier_hashes",
-            _hashes(self.trusted_verifier_hashes, "trusted_verifier_hash"),
-        )
-        if (
-            not isinstance(self.minimum_count, int)
-            or isinstance(self.minimum_count, bool)
-            or self.minimum_count <= 0
-        ):
+        object.__setattr__(self, "trusted_verifier_hashes", _hashes(self.trusted_verifier_hashes, "trusted_verifier_hash"))
+        if not isinstance(self.minimum_count, int) or isinstance(self.minimum_count, bool) or self.minimum_count <= 0:
             raise EvidenceSemanticsError("minimum_count must be a positive integer")
 
-    def to_object(self) -> dict[str, object]:
+    def semantic_object(self) -> dict[str, object]:
         return {
-            "requirement_id": self.requirement_id,
+            "schema": EVIDENCE_REQUIREMENT_SCHEMA_V0,
             "accepted_methods": list(self.accepted_methods),
             "scope_hash": self.scope_hash,
             "trusted_verifier_hashes": list(self.trusted_verifier_hashes),
             "minimum_count": self.minimum_count,
         }
+
+    @property
+    def requirement_hash(self) -> str:
+        return canonical_hash(self.semantic_object())
+
+    def to_object(self) -> dict[str, object]:
+        return {
+            "requirement_id": self.requirement_id,
+            "requirement_hash": self.requirement_hash,
+            **{key: value for key, value in self.semantic_object().items() if key != "schema"},
+        }
+
+    @property
+    def record_hash(self) -> str:
+        return canonical_hash(self.to_object())
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,19 +192,32 @@ class EvidencePolicyV0:
     requirements: tuple[EvidenceRequirementV0, ...] = ()
 
     def __post_init__(self) -> None:
-        ordered = tuple(sorted(self.requirements, key=lambda item: item.requirement_id))
+        ordered = tuple(sorted(self.requirements, key=lambda item: (item.requirement_hash, item.requirement_id)))
         if len({item.requirement_id for item in ordered}) != len(ordered):
-            raise EvidenceSemanticsError("duplicate evidence requirement")
+            raise EvidenceSemanticsError("duplicate evidence requirement id")
+        if len({item.requirement_hash for item in ordered}) != len(ordered):
+            raise EvidenceSemanticsError("duplicate evidence requirement semantics")
         object.__setattr__(self, "requirements", ordered)
 
-    def to_object(self) -> dict[str, object]:
+    def semantic_object(self) -> dict[str, object]:
         return {
             "schema": EVIDENCE_POLICY_SCHEMA_V0,
-            "requirements": [item.to_object() for item in self.requirements],
+            "requirements": [item.semantic_object() for item in self.requirements],
         }
 
     @property
     def policy_hash(self) -> str:
+        return canonical_hash(self.semantic_object())
+
+    def to_object(self) -> dict[str, object]:
+        return {
+            "schema": EVIDENCE_POLICY_RECORD_SCHEMA_V0,
+            "policy_hash": self.policy_hash,
+            "requirements": [item.to_object() for item in self.requirements],
+        }
+
+    @property
+    def record_hash(self) -> str:
         return canonical_hash(self.to_object())
 
     def to_field(self) -> SemanticFieldV0:
@@ -227,13 +258,8 @@ class EvidenceEvaluationV0:
     def __post_init__(self) -> None:
         object.__setattr__(self, "claim_hash", _hash64(self.claim_hash, "claim_hash"))
         object.__setattr__(self, "policy_hash", _hash64(self.policy_hash, "policy_hash"))
-        object.__setattr__(
-            self,
-            "accepted_evidence_hashes",
-            _hashes(self.accepted_evidence_hashes, "accepted_evidence_hash"),
-        )
-        issues = tuple(sorted(self.issues, key=lambda item: canonical_json(item.to_object())))
-        object.__setattr__(self, "issues", issues)
+        object.__setattr__(self, "accepted_evidence_hashes", _hashes(self.accepted_evidence_hashes, "accepted_evidence_hash"))
+        object.__setattr__(self, "issues", tuple(sorted(self.issues, key=lambda item: canonical_json(item.to_object()))))
 
     @property
     def falsified(self) -> bool:
@@ -264,10 +290,7 @@ def _requirement_accepts(requirement: EvidenceRequirementV0, item: EvidenceItemV
         return False
     if requirement.scope_hash and item.scope_hash != requirement.scope_hash:
         return False
-    if (
-        requirement.trusted_verifier_hashes
-        and item.verifier_hash not in requirement.trusted_verifier_hashes
-    ):
+    if requirement.trusted_verifier_hashes and item.verifier_hash not in requirement.trusted_verifier_hashes:
         return False
     return True
 
@@ -280,7 +303,7 @@ def evaluate_evidence(
     claim_hash = _hash64(claim_hash, "claim_hash")
     items = tuple(evidence)
     if len({item.evidence_hash for item in items}) != len(items):
-        raise EvidenceSemanticsError("duplicate evidence item")
+        raise EvidenceSemanticsError("duplicate evidence identity in current evidence state")
 
     issues: list[EvidenceIssueV0] = []
     accepted: set[str] = set()
@@ -291,13 +314,13 @@ def evaluate_evidence(
                 EvidenceIssueV0(
                     "evidence.falsified",
                     "global_claim_integrity",
-                    {"evidence_id": item.evidence_id, "method": item.method},
+                    {"evidence_id": item.evidence_id, "method": item.method, "record_hash": item.record_hash},
                     item.evidence_hash,
                 )
             )
 
+    matching_claim = tuple(item for item in items if item.claim_hash == claim_hash)
     for requirement in policy.requirements:
-        matching_claim = tuple(item for item in items if item.claim_hash == claim_hash)
         valid = tuple(item for item in matching_claim if _requirement_accepts(requirement, item))
         if len(valid) >= requirement.minimum_count:
             accepted.update(item.evidence_hash for item in valid)
@@ -308,10 +331,7 @@ def evaluate_evidence(
                 EvidenceIssueV0(
                     "evidence.required",
                     requirement.requirement_id,
-                    {
-                        "minimum_count": requirement.minimum_count,
-                        "accepted_methods": list(requirement.accepted_methods),
-                    },
+                    {"requirement_hash": requirement.requirement_hash, "minimum_count": requirement.minimum_count, "accepted_methods": list(requirement.accepted_methods)},
                 )
             )
             continue
@@ -322,7 +342,7 @@ def evaluate_evidence(
                 EvidenceIssueV0(
                     "evidence.inactive",
                     requirement.requirement_id,
-                    {"observed_statuses": sorted(set(item.status for item in matching_claim))},
+                    {"requirement_hash": requirement.requirement_hash, "observed_statuses": sorted(set(item.status for item in matching_claim))},
                 )
             )
             continue
@@ -333,14 +353,12 @@ def evaluate_evidence(
                 EvidenceIssueV0(
                     "evidence.method_unaccepted",
                     requirement.requirement_id,
-                    {
-                        "accepted_methods": list(requirement.accepted_methods),
-                        "observed_methods": sorted(set(item.method for item in active)),
-                    },
+                    {"requirement_hash": requirement.requirement_hash, "accepted_methods": list(requirement.accepted_methods), "observed_methods": sorted(set(item.method for item in active))},
                 )
             )
             continue
 
+        scope_matches = method_matches
         if requirement.scope_hash:
             scope_matches = tuple(item for item in method_matches if item.scope_hash == requirement.scope_hash)
             if not scope_matches:
@@ -348,56 +366,33 @@ def evaluate_evidence(
                     EvidenceIssueV0(
                         "evidence.scope_mismatch",
                         requirement.requirement_id,
-                        {
-                            "expected_scope_hash": requirement.scope_hash,
-                            "observed_scope_hashes": sorted(set(item.scope_hash for item in method_matches)),
-                        },
+                        {"requirement_hash": requirement.requirement_hash, "expected_scope_hash": requirement.scope_hash, "observed_scope_hashes": sorted(set(item.scope_hash for item in method_matches))},
                     )
                 )
                 continue
-        else:
-            scope_matches = method_matches
 
+        trusted = scope_matches
         if requirement.trusted_verifier_hashes:
-            trusted = tuple(
-                item
-                for item in scope_matches
-                if item.verifier_hash in requirement.trusted_verifier_hashes
-            )
+            trusted = tuple(item for item in scope_matches if item.verifier_hash in requirement.trusted_verifier_hashes)
             if not trusted:
                 issues.append(
                     EvidenceIssueV0(
                         "evidence.verifier_untrusted",
                         requirement.requirement_id,
-                        {
-                            "trusted_verifier_hashes": list(requirement.trusted_verifier_hashes),
-                            "observed_verifier_hashes": sorted(
-                                set(item.verifier_hash for item in scope_matches)
-                            ),
-                        },
+                        {"requirement_hash": requirement.requirement_hash, "trusted_verifier_hashes": list(requirement.trusted_verifier_hashes), "observed_verifier_hashes": sorted(set(item.verifier_hash for item in scope_matches))},
                     )
                 )
                 continue
-        else:
-            trusted = scope_matches
 
         issues.append(
             EvidenceIssueV0(
                 "evidence.required",
                 requirement.requirement_id,
-                {
-                    "minimum_count": requirement.minimum_count,
-                    "accepted_count": len(trusted),
-                },
+                {"requirement_hash": requirement.requirement_hash, "minimum_count": requirement.minimum_count, "accepted_count": len(trusted)},
             )
         )
 
-    return EvidenceEvaluationV0(
-        claim_hash,
-        policy.policy_hash,
-        tuple(sorted(accepted)),
-        tuple(issues),
-    )
+    return EvidenceEvaluationV0(claim_hash, policy.policy_hash, tuple(sorted(accepted)), tuple(issues))
 
 
 def evidence_from_proof_boundary(
@@ -423,7 +418,10 @@ def evidence_from_proof_boundary(
 
 __all__ = [
     "EVIDENCE_SCHEMA_V0",
+    "EVIDENCE_IDENTITY_SCHEMA_V0",
     "EVIDENCE_POLICY_SCHEMA_V0",
+    "EVIDENCE_POLICY_RECORD_SCHEMA_V0",
+    "EVIDENCE_REQUIREMENT_SCHEMA_V0",
     "EvidenceSemanticsError",
     "EvidenceItemV0",
     "EvidenceRequirementV0",
