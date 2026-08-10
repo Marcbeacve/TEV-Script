@@ -14,6 +14,7 @@ MODULES = (
     "tev_script/semantic_dispatch_observation_v0.py",
     "tev_script/semantic_dispatched_grounded_discovery_v0.py",
     "tev_script/semantic_execution_authority_v0.py",
+    "tev_script/semantic_prepared_execution_v0.py",
     "tev_script/semantic_receipt_validity_v0.py",
     "tev_script/semantic_realization_search_v0.py",
     "tev_script/semantic_realization_selection_v0.py",
@@ -22,6 +23,7 @@ MODULES = (
 )
 TESTS = (
     "tests/test_dispatch_consumption_v0.py",
+    "tests/test_prepared_execution_v0.py",
     "tests/test_realization_cost_model_v0.py",
     "tests/test_realization_cost_model_update_v0.py",
     "tests/test_realization_cost_prediction_v0.py",
@@ -87,6 +89,7 @@ def main() -> int:
     dispatch = (ROOT / "tev_script" / "semantic_dispatch_v0.py").read_text(encoding="utf-8")
     consumption = (ROOT / "tev_script" / "semantic_dispatch_consumption_v0.py").read_text(encoding="utf-8")
     execution_authority = (ROOT / "tev_script" / "semantic_execution_authority_v0.py").read_text(encoding="utf-8")
+    prepared_execution = (ROOT / "tev_script" / "semantic_prepared_execution_v0.py").read_text(encoding="utf-8")
     search = (ROOT / "tev_script" / "semantic_realization_search_v0.py").read_text(encoding="utf-8")
     dispatched_observation = (ROOT / "tev_script" / "semantic_dispatch_observation_v0.py").read_text(encoding="utf-8")
     dispatched_grounded = (ROOT / "tev_script" / "semantic_dispatched_grounded_discovery_v0.py").read_text(encoding="utf-8")
@@ -107,18 +110,23 @@ def main() -> int:
         "dispatch_epoch_hash",
         "ACTIVATION_RECEIPT_CONTRACT_HASH_V0",
         "AUTHORITY_RECEIPT_CONTRACT_HASH_V0",
+        "PREPARED_EXECUTION_RECEIPT_CONTRACT_HASH_V0",
         "execution_authority_receipt_hash",
         "execution_authority_validity_evaluation_hash",
+        "prepared_execution_receipt_hash",
+        "prepared_execution_validity_evaluation_hash",
+        "invocation_workload_hash",
+        "before_checkpoint_hash",
+        "after_checkpoint_hash",
         "dispatch_consumption_domain_hash(candidate.dispatch_request_hash)",
         "dispatch consumption domain not derived from request identity",
         "dispatch.execution_authority_not_current",
-        "dispatch.execution_authority_realization_mismatch",
+        "dispatch.prepared_execution_not_current",
+        "dispatch.prepared_execution_context_mismatch",
     )
     if any(token not in dispatch for token in required_dispatch):
-        return fail("just-in-time dual-authority/request-scoped dispatch surface incomplete")
-    if '"execution_authority_claim_hash": _hash64' in dispatch:
-        return fail("dispatch consumption domain must not be derived from execution authority")
-    print("R0_JIT_DISPATCH_DUAL_AUTHORITY_REQUEST_SCOPED=PASS")
+        return fail("just-in-time activation/authority/prepared dispatch surface incomplete")
+    print("R0_JIT_DISPATCH_TRIPLE_CURRENT_PREPARED=PASS")
 
     required_consumption = (
         "DispatchConsumptionStateV0",
@@ -155,6 +163,21 @@ def main() -> int:
     if any(token not in execution_authority for token in required_execution_authority):
         return fail("causal least-authority realization bridge incomplete")
     print("R0_CAUSAL_LEAST_AUTHORITY_BRIDGE=PASS")
+
+    required_prepared_execution = (
+        "causal_invocation_workload_hash",
+        "verify_prepared_refinement",
+        "prepared_execution.workload_mismatch",
+        "prepared_execution.refinement_revalidation_mismatch",
+        "prepared_execution.prepared_refinement_not_admitted",
+        "before_checkpoint_hash",
+        "after_checkpoint_hash",
+        "execution_authority_receipt_hash",
+        "activation_candidate.activation_candidate_hash",
+    )
+    if any(token not in prepared_execution for token in required_prepared_execution):
+        return fail("prepared causal invocation binding incomplete")
+    print("R0_PREPARED_EXECUTION_REVALIDATED=PASS")
 
     required_search = (
         "HEURISTIC",
