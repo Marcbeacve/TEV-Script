@@ -52,6 +52,13 @@ def dispatch(request="request", *, issues=(), authority_claim=None) -> Execution
         prepared_execution_claim_hash=h("prepared-execution-claim"),
         prepared_execution_validity_evaluation_hash=h("prepared-execution-validity"),
         prepared_execution_authority_state_hash=h("prepared-execution-authority-state"),
+        delivery_plan_receipt_hash=h("delivery-plan-receipt-" + request),
+        delivery_plan_claim_hash=h("delivery-plan-claim-" + request),
+        delivery_plan_validity_evaluation_hash=h("delivery-plan-validity-" + request),
+        delivery_plan_authority_state_hash=h("delivery-plan-state-" + request),
+        delivery_participant_manifest_hash=h("delivery-manifest-" + request),
+        delivery_coordinator_hash="",
+        delivery_atomic_commit_domain_hash="",
         invocation_workload_hash=h("invocation-workload"),
         before_checkpoint_hash=h("before-checkpoint"),
         after_checkpoint_hash=h("after-checkpoint"),
@@ -204,9 +211,9 @@ class DispatchConsumptionV0Tests(unittest.TestCase):
         open_dispatch = dispatch(
             issues=(
                 DispatchIssueV0(
-                    "dispatch.execution_request_not_current",
+                    "dispatch.delivery_plan_not_current",
                     "PROOF_REQUIRED",
-                    h("request-validity"),
+                    h("delivery-plan-validity"),
                     {},
                 ),
             )
