@@ -5,13 +5,10 @@ import re
 from typing import Any, Iterable, Mapping
 
 from .canonical import canonical_hash, canonical_json
-from .semantic_evidence_v0 import (
-    EvidenceItemV0,
-    EvidencePolicyV0,
-    evaluate_evidence,
-)
+from .semantic_evidence_v0 import EvidenceItemV0, EvidencePolicyV0, evaluate_evidence
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
 from .semantic_realization_v0 import RealizationAdmissionReceiptV0
+from .semantic_regime_v0 import TransformationRegimeBindingV0
 from .semantic_residual_v0 import ResidualObstructionV0, residual_from_obstructions
 
 REALIZATION_COMPOSITION_CLAIM_SCHEMA_V0 = "TEV_SCRIPT_REALIZATION_COMPOSITION_CLAIM_V0"
@@ -58,10 +55,7 @@ class RealizationCompositionClaimV0:
         object.__setattr__(
             self,
             "target_transformation_semantic_hash",
-            _hash64(
-                self.target_transformation_semantic_hash,
-                "target_transformation_semantic_hash",
-            ),
+            _hash64(self.target_transformation_semantic_hash, "target_transformation_semantic_hash"),
         )
         object.__setattr__(
             self,
@@ -119,16 +113,8 @@ class RealizationCompositionRecordV0:
     provenance: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "evidence_policy_hash",
-            _hash64(self.evidence_policy_hash, "evidence_policy_hash"),
-        )
-        object.__setattr__(
-            self,
-            "evidence_hashes",
-            _hashes(self.evidence_hashes, "composition evidence hash"),
-        )
+        object.__setattr__(self, "evidence_policy_hash", _hash64(self.evidence_policy_hash, "evidence_policy_hash"))
+        object.__setattr__(self, "evidence_hashes", _hashes(self.evidence_hashes, "composition evidence hash"))
         provenance = {} if self.provenance is None else dict(self.provenance)
         canonical_json(provenance)
         object.__setattr__(self, "provenance", provenance)
@@ -157,11 +143,7 @@ class RealizationCompositionPolicyV0:
     accepted_assumption_hashes: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "evidence_policy_hash",
-            _hash64(self.evidence_policy_hash, "evidence_policy_hash"),
-        )
+        object.__setattr__(self, "evidence_policy_hash", _hash64(self.evidence_policy_hash, "evidence_policy_hash"))
         object.__setattr__(
             self,
             "accepted_assumption_hashes",
@@ -212,6 +194,7 @@ class RealizationCompositionIssueV0:
 class RealizationCompositionEvaluationV0:
     composition_claim_hash: str
     composition_record_hash: str
+    target_binding_hash: str
     policy_hash: str
     evidence_evaluation_hash: str
     issues: tuple[RealizationCompositionIssueV0, ...]
@@ -220,6 +203,7 @@ class RealizationCompositionEvaluationV0:
         for name in (
             "composition_claim_hash",
             "composition_record_hash",
+            "target_binding_hash",
             "policy_hash",
             "evidence_evaluation_hash",
         ):
@@ -244,6 +228,7 @@ class RealizationCompositionEvaluationV0:
             "status": self.status,
             "composition_claim_hash": self.composition_claim_hash,
             "composition_record_hash": self.composition_record_hash,
+            "target_binding_hash": self.target_binding_hash,
             "policy_hash": self.policy_hash,
             "evidence_evaluation_hash": self.evidence_evaluation_hash,
             "issues": [item.to_object() for item in self.issues],
@@ -257,6 +242,7 @@ class RealizationCompositionEvaluationV0:
 def evaluate_realization_composition(
     record: RealizationCompositionRecordV0,
     *,
+    target_binding: TransformationRegimeBindingV0,
     policy: RealizationCompositionPolicyV0,
     evidence_policy: EvidencePolicyV0,
     component_receipts: Iterable[RealizationAdmissionReceiptV0],
@@ -267,16 +253,41 @@ def evaluate_realization_composition(
     receipts = tuple(component_receipts)
     observed_hashes = tuple(sorted(receipt.receipt_hash for receipt in receipts))
 
+    if claim.target_regime_binding_hash != target_binding.binding_hash:
+        issues.append(
+            RealizationCompositionIssueV0(
+                "composition.target_binding_mismatch",
+                "REJECT",
+                claim.target_regime_binding_hash,
+                {"observed": target_binding.binding_hash},
+            )
+        )
+    if claim.target_transformation_semantic_hash != target_binding.transformation_semantic_hash:
+        issues.append(
+            RealizationCompositionIssueV0(
+                "composition.target_transformation_mismatch",
+                "REJECT",
+                claim.target_transformation_semantic_hash,
+                {"observed": target_binding.transformation_semantic_hash},
+            )
+        )
+    if claim.composition_scope_hash != target_binding.semantic_scope_hash:
+        issues.append(
+            RealizationCompositionIssueV0(
+                "composition.target_scope_mismatch",
+                "REJECT",
+                claim.composition_scope_hash,
+                {"observed": target_binding.semantic_scope_hash},
+            )
+        )
+
     if observed_hashes != claim.component_receipt_hashes:
         issues.append(
             RealizationCompositionIssueV0(
                 "composition.component_receipt_set_mismatch",
                 "REJECT",
                 claim.composition_claim_hash,
-                {
-                    "expected": list(claim.component_receipt_hashes),
-                    "observed": list(observed_hashes),
-                },
+                {"expected": list(claim.component_receipt_hashes), "observed": list(observed_hashes)},
             )
         )
     for receipt in receipts:
@@ -359,9 +370,7 @@ def evaluate_realization_composition(
             )
         item = evidence_by_hash.get(accepted_hash)
         if item is not None:
-            for assumption_hash in sorted(
-                set(item.assumption_hashes) - accepted_assumptions
-            ):
+            for assumption_hash in sorted(set(item.assumption_hashes) - accepted_assumptions):
                 issues.append(
                     RealizationCompositionIssueV0(
                         "composition.evidence_assumption_not_accepted",
@@ -374,6 +383,7 @@ def evaluate_realization_composition(
     return RealizationCompositionEvaluationV0(
         claim.composition_claim_hash,
         record.record_hash,
+        target_binding.binding_hash,
         policy.policy_hash,
         evidence_evaluation.evaluation_hash,
         tuple(issues),
@@ -389,6 +399,7 @@ def residual_from_realization_composition(
         judgment={
             "kind": "component_realizations_compose",
             "composition_claim_hash": evaluation.composition_claim_hash,
+            "target_binding_hash": evaluation.target_binding_hash,
             "status": evaluation.status,
         },
         source={
@@ -405,6 +416,7 @@ def residual_from_realization_composition(
                 dependency_refs=(
                     evaluation.composition_claim_hash,
                     evaluation.composition_record_hash,
+                    evaluation.target_binding_hash,
                 ),
             )
             for item in evaluation.issues
