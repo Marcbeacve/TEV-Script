@@ -13,6 +13,7 @@ from .semantic_evidence_v0 import (
 )
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
 from .semantic_realization_v0 import RealizationAdmissionReceiptV0
+from .semantic_regime_v0 import REGIME_BINDING_SEMANTIC_SCHEMA_V0
 from .semantic_residual_v0 import ResidualObstructionV0, residual_from_obstructions
 
 LAW_SCHEMA_V0 = "TEV_SCRIPT_STRUCTURAL_LAW_CLAIM_V0"
@@ -20,6 +21,7 @@ LAW_EQUIVALENCE_SCHEMA_V0 = "TEV_SCRIPT_LAW_EQUIVALENCE_CLAIM_V0"
 DISCOVERY_SCHEMA_V0 = "TEV_SCRIPT_DISCOVERY_CLAIM_V0"
 MODEL_COMPATIBILITY_SCHEMA_V0 = "TEV_SCRIPT_MODEL_COMPATIBILITY_CLAIM_V0"
 DISCOVERY_REALIZATION_CYCLE_SCHEMA_V0 = "TEV_SCRIPT_DISCOVERY_REALIZATION_CYCLE_V0"
+LAW_REALIZATION_SCOPE_SCHEMA_V0 = "TEV_SCRIPT_LAW_REALIZATION_SCOPE_V0"
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _HEX = frozenset("0123456789abcdef")
 
@@ -100,6 +102,27 @@ class StructuralLawClaimV0:
         canonical_json(provenance)
         object.__setattr__(self, "provenance", provenance)
 
+    @property
+    def law_realization_scope_hash(self) -> str:
+        return canonical_hash(
+            {
+                "schema": LAW_REALIZATION_SCOPE_SCHEMA_V0,
+                "validity_boundary_hash": self.validity_boundary_hash,
+                "assumption_hashes": list(self.assumption_hashes),
+            }
+        )
+
+    @property
+    def expected_realization_binding_hash(self) -> str:
+        return canonical_hash(
+            {
+                "schema": REGIME_BINDING_SEMANTIC_SCHEMA_V0,
+                "transformation_semantic_hash": self.transformation_semantic_hash,
+                "regime_hash": self.regime_hash,
+                "semantic_scope_hash": self.law_realization_scope_hash,
+            }
+        )
+
     def semantic_object(self) -> dict[str, object]:
         return {
             "schema": "TEV_SCRIPT_STRUCTURAL_LAW_SEMANTIC_IDENTITY_V0",
@@ -118,6 +141,8 @@ class StructuralLawClaimV0:
             "schema": LAW_SCHEMA_V0,
             "law_id": self.law_id,
             "law_semantic_hash": self.law_semantic_hash,
+            "law_realization_scope_hash": self.law_realization_scope_hash,
+            "expected_realization_binding_hash": self.expected_realization_binding_hash,
             "regime_hash": self.regime_hash,
             "transformation_semantic_hash": self.transformation_semantic_hash,
             "validity_boundary_hash": self.validity_boundary_hash,
@@ -502,6 +527,21 @@ def evaluate_discovery_realization_cycle(
                 {"observed": realization_receipt.regime_hash},
             )
         )
+    if (
+        source_law.expected_realization_binding_hash
+        != realization_receipt.transformation_regime_binding_hash
+    ):
+        issues.append(
+            CycleIssueV0(
+                "cycle.realization_scope_mismatch",
+                "REJECT",
+                source_law.expected_realization_binding_hash,
+                {
+                    "observed_binding_hash": realization_receipt.transformation_regime_binding_hash,
+                    "law_realization_scope_hash": source_law.law_realization_scope_hash,
+                },
+            )
+        )
 
     if cycle.rediscovery_claim_hash != rediscovery_claim.discovery_claim_hash:
         issues.append(
@@ -667,6 +707,7 @@ __all__ = [
     "DISCOVERY_SCHEMA_V0",
     "MODEL_COMPATIBILITY_SCHEMA_V0",
     "DISCOVERY_REALIZATION_CYCLE_SCHEMA_V0",
+    "LAW_REALIZATION_SCOPE_SCHEMA_V0",
     "DiscoveryRealizationError",
     "StructuralLawClaimV0",
     "LawEquivalenceClaimV0",
