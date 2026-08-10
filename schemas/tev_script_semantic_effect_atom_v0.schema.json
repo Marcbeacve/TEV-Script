@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TEV Script Semantic Effect Atom V0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "domain",
+    "resource",
+    "mode",
+    "payload",
+    "temporal",
+    "amount",
+    "stage",
+    "recoverability",
+    "durability",
+    "exposure"
+  ],
+  "properties": {
+    "domain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "resource": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mode": {
+      "enum": [
+        "read",
+        "write",
+        "consume",
+        "reserve",
+        "release"
+      ]
+    },
+    "payload": {
+      "type": "array"
+    },
+    "temporal": {
+      "enum": [
+        "snapshot",
+        "stable",
+        "sequence_sensitive",
+        "unknown"
+      ]
+    },
+    "amount": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "stage": {
+      "enum": [
+        "untouched",
+        "reserved",
+        "applied",
+        "confirmed",
+        "unknown"
+      ]
+    },
+    "recoverability": {
+      "enum": [
+        "reversible",
+        "compensable",
+        "irreversible",
+        "unknown"
+      ]
+    },
+    "durability": {
+      "enum": [
+        "volatile",
+        "durable",
+        "unknown"
+      ]
+    },
+    "exposure": {
+      "enum": [
+        "none",
+        "acquired",
+        "disclosed"
+      ]
+    }
+  }
+}

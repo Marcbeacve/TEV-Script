@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TEV Script Semantic Field V0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "facts",
+    "field_hash"
+  ],
+  "properties": {
+    "schema": {
+      "const": "TEV_SCRIPT_SEMANTIC_FIELD_V0"
+    },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "relation",
+          "arguments"
+        ],
+        "properties": {
+          "relation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "arguments": {
+            "type": "array"
+          }
+        }
+      }
+    },
+    "field_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

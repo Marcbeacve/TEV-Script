@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TEV Script Semantic Calculus Manifest V0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "base_semantics",
+    "core_relation",
+    "effect_model",
+    "closed_focal",
+    "open_proof_obligations",
+    "non_goals"
+  ],
+  "properties": {
+    "schema": {
+      "const": "TEV_SCRIPT_SEMANTIC_CALCULUS_MANIFEST_V0"
+    },
+    "status": {
+      "enum": [
+        "experimental",
+        "candidate",
+        "closed"
+      ]
+    },
+    "base_semantics": {
+      "type": "string"
+    },
+    "core_relation": {
+      "type": "string"
+    },
+    "effect_model": {
+      "type": "string"
+    },
+    "closed_focal": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "open_proof_obligations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "non_goals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
