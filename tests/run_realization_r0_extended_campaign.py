@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 EXTENDED_TESTS = (
     "tests.test_dispatch_consumption_v0",
+    "tests.test_prepared_execution_v0",
     "tests.test_realization_cost_model_v0",
     "tests.test_realization_cost_model_update_v0",
     "tests.test_realization_cost_prediction_v0",
