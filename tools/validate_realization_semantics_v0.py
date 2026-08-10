@@ -17,12 +17,14 @@ ALLOWED_CHANGED_PATHS = frozenset(
         "tests/run_realization_semantics_campaign.py",
         "tests/test_discovery_realization_v0.py",
         "tests/test_realization_composition_v0.py",
-        "tests/test_realization_semantics_v0.py",
         "tests/test_realization_identity_invariants_v0.py",
+        "tests/test_realization_placement_v0.py",
+        "tests/test_realization_semantics_v0.py",
         "tev_script/semantic_artifact_v0.py",
         "tev_script/semantic_discovery_realization_v0.py",
         "tev_script/semantic_evidence_v0.py",
         "tev_script/semantic_machine_v0.py",
+        "tev_script/semantic_placement_v0.py",
         "tev_script/semantic_realization_composition_v0.py",
         "tev_script/semantic_realization_v0.py",
         "tev_script/semantic_regime_v0.py",
@@ -50,6 +52,7 @@ CORE_MODULES = (
     "tev_script/semantic_discovery_realization_v0.py",
     "tev_script/semantic_evidence_v0.py",
     "tev_script/semantic_machine_v0.py",
+    "tev_script/semantic_placement_v0.py",
     "tev_script/semantic_realization_composition_v0.py",
     "tev_script/semantic_realization_v0.py",
     "tev_script/semantic_regime_v0.py",
@@ -57,9 +60,7 @@ CORE_MODULES = (
     "tev_script/semantic_resource_evidence_v0.py",
 )
 
-ALLOWED_ABSOLUTE_IMPORT_ROOTS = frozenset(
-    {"__future__", "dataclasses", "fractions", "re", "typing"}
-)
+ALLOWED_ABSOLUTE_IMPORT_ROOTS = frozenset({"__future__", "dataclasses", "fractions", "re", "typing"})
 ALLOWED_RELATIVE_IMPORTS = frozenset(
     {
         "canonical",
@@ -70,6 +71,7 @@ ALLOWED_RELATIVE_IMPORTS = frozenset(
         "semantic_discovery_realization_v0",
         "semantic_evidence_v0",
         "semantic_machine_v0",
+        "semantic_placement_v0",
         "semantic_realization_composition_v0",
         "semantic_realization_v0",
         "semantic_regime_v0",
@@ -77,24 +79,9 @@ ALLOWED_RELATIVE_IMPORTS = frozenset(
         "semantic_resource_evidence_v0",
     }
 )
-FORBIDDEN_AUTHORITY_TOKENS = (
-    "cuofc",
-    "lnu",
-    "tirv",
-    "ia_tev",
-    "ia-tev",
-    "tevprover",
-)
-FORBIDDEN_HOST_IMPORT_ROOTS = frozenset(
-    {"os", "platform", "subprocess", "socket", "psutil", "torch", "cpuinfo"}
-)
-FORBIDDEN_VENDOR_TOKENS = (
-    "nvidia",
-    "cuda",
-    "rocm",
-    "amd",
-    "intel",
-)
+FORBIDDEN_AUTHORITY_TOKENS = ("cuofc", "lnu", "tirv", "ia_tev", "ia-tev", "tevprover")
+FORBIDDEN_HOST_IMPORT_ROOTS = frozenset({"os", "platform", "subprocess", "socket", "psutil", "torch", "cpuinfo"})
+FORBIDDEN_VENDOR_TOKENS = ("nvidia", "cuda", "rocm", "amd", "intel")
 
 
 def git(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -139,7 +126,6 @@ def validate_imports() -> tuple[bool, str]:
         for token in FORBIDDEN_VENDOR_TOKENS:
             if token in lowered:
                 return False, f"vendor token {token!r} in semantic core {rel}"
-
         tree = ast.parse(source, filename=rel)
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -164,9 +150,13 @@ def validate_imports() -> tuple[bool, str]:
     return True, ""
 
 
-def validate_semantic_abi_authority() -> tuple[bool, str]:
+def validate_identity_boundaries() -> tuple[bool, str]:
     machine = (ROOT / "tev_script" / "semantic_machine_v0.py").read_text(encoding="utf-8")
     artifact = (ROOT / "tev_script" / "semantic_artifact_v0.py").read_text(encoding="utf-8")
+    evidence = (ROOT / "tev_script" / "semantic_evidence_v0.py").read_text(encoding="utf-8")
+    realization = (ROOT / "tev_script" / "semantic_realization_v0.py").read_text(encoding="utf-8")
+    placement = (ROOT / "tev_script" / "semantic_placement_v0.py").read_text(encoding="utf-8")
+
     forbidden_machine_fields = (
         "required_numeric_model_ids: tuple",
         "required_executable_formats: tuple",
@@ -176,23 +166,23 @@ def validate_semantic_abi_authority() -> tuple[bool, str]:
     for token in forbidden_machine_fields:
         if token in machine:
             return False, f"nominal ABI field remains authoritative: {token}"
-    required_machine_tokens = (
-        "required_numeric_model_hashes",
-        "required_executable_format_hashes",
-        "numeric_model_hash",
-        "format_hash",
-    )
-    for token in required_machine_tokens:
+    for token in ("required_numeric_model_hashes", "required_executable_format_hashes", "numeric_model_hash", "format_hash"):
         if token not in machine:
             return False, f"semantic ABI token missing: {token}"
-    required_artifact_tokens = (
-        "format_hash",
-        "required_numeric_model_hashes",
-        "entrypoint_format_hashes",
-    )
-    for token in required_artifact_tokens:
+    for token in ("format_hash", "required_numeric_model_hashes", "entrypoint_format_hashes"):
         if token not in artifact:
             return False, f"artifact manifest semantic ABI token missing: {token}"
+
+    if "evidence_id" not in evidence or "record_hash" not in evidence or "requirement_hash" not in evidence:
+        return False, "evidence identity/record split missing"
+    if "status\": self.status" not in evidence and '"status": self.status' not in evidence:
+        return False, "evidence status record binding missing"
+    if "realization_kind" not in realization or "record classification, not identity" not in realization:
+        return False, "realization kind identity separation missing"
+    if "machine_instance_hash" not in placement or "placement_context_hash" not in placement:
+        return False, "machine instance/placement separation missing"
+    if "execution_context_hash" not in placement:
+        return False, "execution context derivation missing"
     return True, ""
 
 
@@ -227,15 +217,15 @@ def main() -> int:
     print("R0_NO_TEVPROVER_RUNTIME_AUTHORITY=PASS")
     print("R0_NO_VENDOR_HOST_INTROSPECTION=PASS")
 
-    ok, detail = validate_semantic_abi_authority()
+    ok, detail = validate_identity_boundaries()
     if not ok:
         return fail(detail)
     print("R0_MACHINE_ABI_SEMANTIC_HASH_AUTHORITY=PASS")
     print("R0_ARTIFACT_ABI_SEMANTIC_HASH_AUTHORITY=PASS")
+    print("R0_EVIDENCE_IDENTITY_RECORD_SEPARATION=PASS")
+    print("R0_MACHINE_PROFILE_INSTANCE_PLACEMENT_SEPARATION=PASS")
 
-    architecture = (ROOT / "spec" / "TEV_SCRIPT_REALIZATION_SEMANTICS_V0.md").read_text(
-        encoding="utf-8"
-    )
+    architecture = (ROOT / "spec" / "TEV_SCRIPT_REALIZATION_SEMANTICS_V0.md").read_text(encoding="utf-8")
     if "Field" not in architecture or "Transformation" not in architecture:
         return fail("Field + Transformation primitive statement missing")
     if "introduces **no new primitive**" not in architecture:
