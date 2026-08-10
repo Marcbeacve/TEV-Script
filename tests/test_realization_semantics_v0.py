@@ -189,6 +189,7 @@ class MachineAndArtifactV0Tests(unittest.TestCase):
     def test_manifest_is_single_machine_requirement_authority(self):
         manifest = manifest_from_single_artifact(
             role_id="entry",
+            role_semantics_hash=h("role.executable.entrypoint"),
             format_hash=self.format.format_hash,
             content_hash=h("binary"),
             interface_hash=h("interface"),
@@ -199,10 +200,51 @@ class MachineAndArtifactV0Tests(unittest.TestCase):
         self.assertEqual(manifest.machine_requirement.required_numeric_model_hashes, (self.numeric.numeric_model_hash,))
         self.assertEqual(manifest.machine_requirement.required_executable_format_hashes, (self.format.format_hash,))
 
+    def test_role_alias_changes_record_not_descriptor_or_manifest_identity(self):
+        kwargs = dict(
+            role_semantics_hash=h("role.executable.entrypoint"),
+            format_hash=self.format.format_hash,
+            content_hash=h("binary"),
+            interface_hash=h("interface"),
+            entrypoint=True,
+            required_machine_capability_semantic_hashes=(self.operation,),
+            required_numeric_model_hashes=(self.numeric.numeric_model_hash,),
+        )
+        left = ArtifactDescriptorV0(role_id="entry", **kwargs)
+        right = ArtifactDescriptorV0(role_id="main_executable", **kwargs)
+        self.assertEqual(left.descriptor_hash, right.descriptor_hash)
+        self.assertNotEqual(left.record_hash, right.record_hash)
+        self.assertEqual(ArtifactManifestV0((left,)).manifest_hash, ArtifactManifestV0((right,)).manifest_hash)
+
+    def test_role_semantics_change_changes_descriptor_identity(self):
+        left = ArtifactDescriptorV0(
+            "entry",
+            h("role.executable"),
+            self.format.format_hash,
+            h("bytes"),
+            interface_hash=h("interface"),
+            entrypoint=True,
+        )
+        right = ArtifactDescriptorV0(
+            "entry",
+            h("role.data"),
+            self.format.format_hash,
+            h("bytes"),
+            interface_hash=h("interface"),
+            entrypoint=True,
+        )
+        self.assertNotEqual(left.descriptor_hash, right.descriptor_hash)
+
     def test_manifest_requires_closed_dependency_graph(self):
-        dependency = ArtifactDescriptorV0("library", h("format"), h("library"))
+        dependency = ArtifactDescriptorV0(
+            "library",
+            h("role.library"),
+            h("format"),
+            h("library"),
+        )
         entry = ArtifactDescriptorV0(
             "entry",
+            h("role.executable"),
             h("format"),
             h("entry"),
             interface_hash=h("interface"),
@@ -212,6 +254,7 @@ class MachineAndArtifactV0Tests(unittest.TestCase):
         self.assertEqual(len(ArtifactManifestV0((entry, dependency)).descriptors), 2)
         outside = ArtifactDescriptorV0(
             "entry",
+            h("role.executable"),
             h("format"),
             h("bad"),
             interface_hash=h("interface"),
@@ -325,6 +368,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         )
         manifest = manifest_from_single_artifact(
             role_id="entry",
+            role_semantics_hash=h("role.executable.entrypoint"),
             format_hash=fmt.format_hash,
             content_hash=h("artifact-bytes"),
             interface_hash=h("interface"),
@@ -451,6 +495,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         f = self._fixture()
         other = manifest_from_single_artifact(
             role_id="entry",
+            role_semantics_hash=h("role.executable.entrypoint"),
             format_hash=f["machine"].executable_formats[0].format_hash,
             content_hash=h("different-bytes"),
             interface_hash=h("interface"),
@@ -501,6 +546,27 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         receipt = self._admit(f, policy=policy, problem=problem, realization_evidence_policy=empty)
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("evidence.realization_policy_empty", {x.kind for x in receipt.issues})
+
+    def test_revoked_support_keeps_binding_but_reopens_admission(self):
+        f = self._fixture()
+        active = f["evidence"][0]
+        revoked = EvidenceItemV0(
+            "e.semantic.revoked",
+            active.claim_hash,
+            active.scope_hash,
+            active.method,
+            verifier_hash=active.verifier_hash,
+            witness_hash=active.witness_hash,
+            assumption_hashes=active.assumption_hashes,
+            coverage=active.coverage,
+            status="REVOKED",
+        )
+        self.assertEqual(active.evidence_hash, revoked.evidence_hash)
+        receipt = self._admit(f, evidence=(revoked, f["evidence"][1], f["evidence"][2]))
+        self.assertEqual(receipt.status, "PROOF_REQUIRED")
+        kinds = {x.kind for x in receipt.issues}
+        self.assertIn("realization.evidence.inactive", kinds)
+        self.assertNotIn("evidence.reference_missing", kinds)
 
     def test_unknown_resource_bound_remains_proof_required(self):
         receipt = self._admit(self._fixture(latency_upper=None))
