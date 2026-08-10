@@ -40,6 +40,15 @@ def _hashes(values: Iterable[str], what: str) -> tuple[str, ...]:
     return tuple(sorted(set(_hash64(value, what) for value in values)))
 
 
+def _mapping(value: Mapping[str, Any] | None, what: str) -> dict[str, Any]:
+    result = {} if value is None else dict(value)
+    try:
+        canonical_json(result)
+    except Exception as error:
+        raise MachineSemanticsError(f"{what} must be canonicalizable") from error
+    return result
+
+
 def _fraction_object(value: Fraction) -> dict[str, list[str]]:
     return {"$rat": [str(value.numerator), str(value.denominator)]}
 
@@ -49,23 +58,23 @@ class NumericModelV0:
     model_id: str
     semantics_hash: str
     exact: bool
-    properties: Mapping[str, Any] | None = None
+    semantic_properties: Mapping[str, Any] | None = None
+    metadata: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "model_id", _stable(self.model_id, "model_id"))
         object.__setattr__(self, "semantics_hash", _hash64(self.semantics_hash, "numeric semantics hash"))
         if not isinstance(self.exact, bool):
             raise MachineSemanticsError("numeric model exact must be bool")
-        properties = {} if self.properties is None else dict(self.properties)
-        canonical_json(properties)
-        object.__setattr__(self, "properties", properties)
+        object.__setattr__(self, "semantic_properties", _mapping(self.semantic_properties, "numeric semantic_properties"))
+        object.__setattr__(self, "metadata", _mapping(self.metadata, "numeric metadata"))
 
     def profile_object(self) -> dict[str, object]:
         return {
             "schema": NUMERIC_MODEL_PROFILE_SCHEMA_V0,
             "semantics_hash": self.semantics_hash,
             "exact": self.exact,
-            "properties": dict(self.properties or {}),
+            "semantic_properties": dict(self.semantic_properties or {}),
         }
 
     @property
@@ -77,6 +86,7 @@ class NumericModelV0:
             "model_id": self.model_id,
             "numeric_model_hash": self.numeric_model_hash,
             **{key: value for key, value in self.profile_object().items() if key != "schema"},
+            "metadata": dict(self.metadata or {}),
         }
 
     @property
@@ -88,20 +98,20 @@ class NumericModelV0:
 class ExecutableFormatV0:
     format_id: str
     semantics_hash: str
-    properties: Mapping[str, Any] | None = None
+    semantic_properties: Mapping[str, Any] | None = None
+    metadata: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "format_id", _stable(self.format_id, "format_id"))
         object.__setattr__(self, "semantics_hash", _hash64(self.semantics_hash, "format semantics hash"))
-        properties = {} if self.properties is None else dict(self.properties)
-        canonical_json(properties)
-        object.__setattr__(self, "properties", properties)
+        object.__setattr__(self, "semantic_properties", _mapping(self.semantic_properties, "format semantic_properties"))
+        object.__setattr__(self, "metadata", _mapping(self.metadata, "format metadata"))
 
     def profile_object(self) -> dict[str, object]:
         return {
             "schema": EXECUTABLE_FORMAT_PROFILE_SCHEMA_V0,
             "semantics_hash": self.semantics_hash,
-            "properties": dict(self.properties or {}),
+            "semantic_properties": dict(self.semantic_properties or {}),
         }
 
     @property
@@ -113,6 +123,7 @@ class ExecutableFormatV0:
             "format_id": self.format_id,
             "format_hash": self.format_hash,
             **{key: value for key, value in self.profile_object().items() if key != "schema"},
+            "metadata": dict(self.metadata or {}),
         }
 
     @property
@@ -125,7 +136,8 @@ class MemorySpaceV0:
     space_id: str
     addressability: str
     capacity_bytes: Fraction | int | None = None
-    properties: Mapping[str, Any] | None = None
+    semantic_properties: Mapping[str, Any] | None = None
+    metadata: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "space_id", _stable(self.space_id, "space_id"))
@@ -135,16 +147,15 @@ class MemorySpaceV0:
             if capacity < 0:
                 raise MachineSemanticsError("capacity_bytes must be non-negative")
             object.__setattr__(self, "capacity_bytes", capacity)
-        properties = {} if self.properties is None else dict(self.properties)
-        canonical_json(properties)
-        object.__setattr__(self, "properties", properties)
+        object.__setattr__(self, "semantic_properties", _mapping(self.semantic_properties, "memory semantic_properties"))
+        object.__setattr__(self, "metadata", _mapping(self.metadata, "memory metadata"))
 
     def profile_object(self) -> dict[str, object]:
         return {
             "schema": MEMORY_SPACE_PROFILE_SCHEMA_V0,
             "addressability": self.addressability,
             "capacity_bytes": None if self.capacity_bytes is None else _fraction_object(self.capacity_bytes),
-            "properties": dict(self.properties or {}),
+            "semantic_properties": dict(self.semantic_properties or {}),
         }
 
     @property
@@ -156,6 +167,7 @@ class MemorySpaceV0:
             "space_id": self.space_id,
             "memory_space_hash": self.memory_space_hash,
             **{key: value for key, value in self.profile_object().items() if key != "schema"},
+            "metadata": dict(self.metadata or {}),
         }
 
     @property
@@ -169,23 +181,23 @@ class MachineCapabilityV0:
     semantic_hash: str
     capability_class: str
     numeric_model_hashes: tuple[str, ...] = ()
-    properties: Mapping[str, Any] | None = None
+    semantic_properties: Mapping[str, Any] | None = None
+    metadata: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "capability_id", _stable(self.capability_id, "capability_id"))
         object.__setattr__(self, "semantic_hash", _hash64(self.semantic_hash, "semantic_hash"))
         object.__setattr__(self, "capability_class", _stable(self.capability_class, "capability_class"))
         object.__setattr__(self, "numeric_model_hashes", _hashes(self.numeric_model_hashes, "numeric model hash"))
-        properties = {} if self.properties is None else dict(self.properties)
-        canonical_json(properties)
-        object.__setattr__(self, "properties", properties)
+        object.__setattr__(self, "semantic_properties", _mapping(self.semantic_properties, "capability semantic_properties"))
+        object.__setattr__(self, "metadata", _mapping(self.metadata, "capability metadata"))
 
     def profile_object(self) -> dict[str, object]:
         return {
             "schema": MACHINE_CAPABILITY_PROFILE_SCHEMA_V0,
             "semantic_hash": self.semantic_hash,
             "numeric_model_hashes": list(self.numeric_model_hashes),
-            "properties": dict(self.properties or {}),
+            "semantic_properties": dict(self.semantic_properties or {}),
         }
 
     @property
@@ -198,6 +210,7 @@ class MachineCapabilityV0:
             "capability_class": self.capability_class,
             "capability_profile_hash": self.capability_profile_hash,
             **{key: value for key, value in self.profile_object().items() if key != "schema"},
+            "metadata": dict(self.metadata or {}),
         }
 
     @property
@@ -213,7 +226,8 @@ class MachineFieldV0:
     memory_spaces: tuple[MemorySpaceV0, ...] = ()
     executable_formats: tuple[ExecutableFormatV0, ...] = ()
     topology_hash: str = ""
-    properties: Mapping[str, Any] | None = None
+    semantic_properties: Mapping[str, Any] | None = None
+    metadata: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "machine_id", _stable(self.machine_id, "machine_id"))
@@ -245,9 +259,8 @@ class MachineFieldV0:
         object.__setattr__(self, "memory_spaces", memory_spaces)
         object.__setattr__(self, "executable_formats", formats)
         object.__setattr__(self, "topology_hash", "" if not self.topology_hash else _hash64(self.topology_hash, "topology_hash"))
-        properties = {} if self.properties is None else dict(self.properties)
-        canonical_json(properties)
-        object.__setattr__(self, "properties", properties)
+        object.__setattr__(self, "semantic_properties", _mapping(self.semantic_properties, "machine semantic_properties"))
+        object.__setattr__(self, "metadata", _mapping(self.metadata, "machine metadata"))
 
     @property
     def capability_semantic_hashes(self) -> tuple[str, ...]:
@@ -286,7 +299,7 @@ class MachineFieldV0:
             "memory_spaces": unique_profiles(self.memory_spaces),
             "executable_formats": unique_profiles(self.executable_formats),
             "topology_hash": self.topology_hash,
-            "properties": dict(self.properties or {}),
+            "semantic_properties": dict(self.semantic_properties or {}),
         }
 
     @property
@@ -307,7 +320,8 @@ class MachineFieldV0:
             "memory_spaces": [item.to_object() for item in self.memory_spaces],
             "executable_formats": [item.to_object() for item in self.executable_formats],
             "topology_hash": self.topology_hash,
-            "properties": dict(self.properties or {}),
+            "semantic_properties": dict(self.semantic_properties or {}),
+            "metadata": dict(self.metadata or {}),
         }
 
     @property
@@ -393,13 +407,7 @@ def evaluate_machine_compatibility(machine: MachineFieldV0, requirement: Machine
     missing_caps = tuple(sorted(set(requirement.required_capability_semantic_hashes) - set(machine.capability_semantic_hashes)))
     missing_numeric = tuple(sorted(set(requirement.required_numeric_model_hashes) - set(machine.numeric_model_hashes)))
     missing_formats = tuple(sorted(set(requirement.required_executable_format_hashes) - set(machine.executable_format_hashes)))
-    return MachineCompatibilityV0(
-        not (missing_caps or missing_numeric or missing_formats),
-        machine.machine_hash,
-        missing_caps,
-        missing_numeric,
-        missing_formats,
-    )
+    return MachineCompatibilityV0(not (missing_caps or missing_numeric or missing_formats), machine.machine_hash, missing_caps, missing_numeric, missing_formats)
 
 
 __all__ = [
