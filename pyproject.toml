@@ -1,6 +1,7 @@
 [build-system]
-requires = ["setuptools>=70"]
-build-backend = "setuptools.build_meta"
+requires = []
+build-backend = "tev_script_build_backend"
+backend-path = ["tools"]
 
 [project]
 name = "tev-script-portable-reference"
@@ -15,7 +16,3 @@ tev-script-v1 = "tev_script.cli_v1:main"
 tev-script-v1-describe = "tev_script.describe_v1:main"
 tev-script-v1-ir = "tev_script.runtime_cli_v3:main"
 tev-script-v1-lsp = "tev_script.lsp_v1:main"
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["tev_script*"]
