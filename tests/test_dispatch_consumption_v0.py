@@ -28,27 +28,33 @@ def h(label: str) -> str:
 
 def dispatch(request="request", *, issues=(), authority_claim=None) -> ExecutionDispatchReceiptV0:
     request_hash = h(request)
-    authority_claim = authority_claim or h("execution-authority-claim")
     return ExecutionDispatchReceiptV0(
-        h("dispatch-candidate-" + request),
-        h("dispatch-record-" + request),
-        request_hash,
-        h("dispatch-epoch"),
-        h("activation"),
-        h("activation-validity"),
-        h("activation-authority-state"),
-        h("execution-authority"),
-        authority_claim,
-        h("execution-authority-validity"),
-        h("execution-authority-state"),
-        dispatch_consumption_domain_hash(request_hash),
-        h("realization-receipt"),
-        h("realization"),
-        h("execution-context"),
-        h("machine-instance"),
-        h("placement-context"),
-        h("runtime-state"),
-        tuple(issues),
+        dispatch_candidate_hash=h("dispatch-candidate-" + request),
+        dispatch_record_hash=h("dispatch-record-" + request),
+        dispatch_request_hash=request_hash,
+        dispatch_epoch_hash=h("dispatch-epoch"),
+        activation_receipt_hash=h("activation"),
+        activation_validity_evaluation_hash=h("activation-validity"),
+        activation_authority_state_hash=h("activation-authority-state"),
+        execution_authority_receipt_hash=h("execution-authority"),
+        execution_authority_claim_hash=authority_claim or h("execution-authority-claim"),
+        execution_authority_validity_evaluation_hash=h("execution-authority-validity"),
+        execution_authority_state_hash=h("execution-authority-state"),
+        prepared_execution_receipt_hash=h("prepared-execution"),
+        prepared_execution_claim_hash=h("prepared-execution-claim"),
+        prepared_execution_validity_evaluation_hash=h("prepared-execution-validity"),
+        prepared_execution_authority_state_hash=h("prepared-execution-authority-state"),
+        invocation_workload_hash=h("invocation-workload"),
+        before_checkpoint_hash=h("before-checkpoint"),
+        after_checkpoint_hash=h("after-checkpoint"),
+        dispatch_consumption_domain_hash=dispatch_consumption_domain_hash(request_hash),
+        realization_receipt_hash=h("realization-receipt"),
+        realization_hash=h("realization"),
+        execution_context_hash=h("execution-context"),
+        machine_instance_hash=h("machine-instance"),
+        placement_context_hash=h("placement-context"),
+        runtime_state_claim_hash=h("runtime-state"),
+        issues=tuple(issues),
     )
 
 
@@ -89,9 +95,10 @@ class DispatchConsumptionV0Tests(unittest.TestCase):
         )
 
     def commit(self, transition, *, evidence=True, storage_authority=None):
+        authority = storage_authority or self.storage_authority
         record = DispatchConsumptionCommitRecordV0(
             transition.transition_hash,
-            storage_authority or self.storage_authority,
+            authority,
             h("cas-commit-epoch"),
             self.evidence_policy.policy_hash,
         )
@@ -106,7 +113,7 @@ class DispatchConsumptionV0Tests(unittest.TestCase):
         if evidence:
             record = DispatchConsumptionCommitRecordV0(
                 transition.transition_hash,
-                storage_authority or self.storage_authority,
+                authority,
                 h("cas-commit-epoch"),
                 self.evidence_policy.policy_hash,
                 (witness.evidence_hash,),
@@ -149,15 +156,10 @@ class DispatchConsumptionV0Tests(unittest.TestCase):
         self.assertIn("dispatch_consumption.ledger_domain_mismatch", kinds)
 
     def test_same_request_keeps_same_domain_when_authority_changes(self):
-        reauthorized = dispatch(
-            authority_claim=h("new-execution-authority-claim"),
-        )
+        reauthorized = dispatch(authority_claim=h("new-execution-authority-claim"))
         self.assertEqual(reauthorized.dispatch_request_hash, self.dispatch.dispatch_request_hash)
         self.assertNotEqual(reauthorized.execution_authority_claim_hash, self.dispatch.execution_authority_claim_hash)
-        self.assertEqual(
-            reauthorized.dispatch_consumption_domain_hash,
-            self.dispatch.dispatch_consumption_domain_hash,
-        )
+        self.assertEqual(reauthorized.dispatch_consumption_domain_hash, self.dispatch.dispatch_consumption_domain_hash)
 
         first, after = self.transition()
         self.assertEqual(first.status, "PASS")
@@ -194,9 +196,9 @@ class DispatchConsumptionV0Tests(unittest.TestCase):
         open_dispatch = dispatch(
             issues=(
                 DispatchIssueV0(
-                    "dispatch.execution_authority_not_current",
+                    "dispatch.prepared_execution_not_current",
                     "PROOF_REQUIRED",
-                    h("authority"),
+                    h("prepared-validity"),
                     {},
                 ),
             )
