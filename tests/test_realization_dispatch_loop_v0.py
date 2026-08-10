@@ -59,6 +59,13 @@ def dispatch(*, issues=(), activation=None, context=None, request=None, authorit
         prepared_execution_claim_hash=h("prepared-execution-claim"),
         prepared_execution_validity_evaluation_hash=h("prepared-execution-validity-evaluation"),
         prepared_execution_authority_state_hash=h("prepared-execution-authority-state"),
+        delivery_plan_receipt_hash=h("delivery-plan-receipt"),
+        delivery_plan_claim_hash=h("delivery-plan-claim"),
+        delivery_plan_validity_evaluation_hash=h("delivery-plan-validity-evaluation"),
+        delivery_plan_authority_state_hash=h("delivery-plan-authority-state"),
+        delivery_participant_manifest_hash=h("delivery-participant-manifest"),
+        delivery_coordinator_hash="",
+        delivery_atomic_commit_domain_hash="",
         invocation_workload_hash=h("invocation-workload"),
         before_checkpoint_hash=h("before-checkpoint"),
         after_checkpoint_hash=h("after-checkpoint"),
@@ -136,8 +143,8 @@ class DispatchObservationBindingV0Tests(unittest.TestCase):
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("dispatch_observation.execution_context_mismatch", {item.kind for item in receipt.issues})
 
-    def test_open_request_dispatch_propagates_proof_required(self):
-        d = dispatch(issues=(DispatchIssueV0("dispatch.execution_request_not_current", "PROOF_REQUIRED", h("request-validity"), {}),))
+    def test_open_delivery_plan_dispatch_propagates_proof_required(self):
+        d = dispatch(issues=(DispatchIssueV0("dispatch.delivery_plan_not_current", "PROOF_REQUIRED", h("delivery-plan-validity"), {}),))
         receipt = self.evaluate(d, consumption(d), observation())
         self.assertEqual(receipt.status, "PROOF_REQUIRED")
         self.assertIn("dispatch_observation.dispatch_not_admitted", {item.kind for item in receipt.issues})
