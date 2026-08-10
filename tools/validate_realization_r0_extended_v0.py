@@ -12,7 +12,9 @@ MODULES = (
     "tev_script/semantic_dispatch_v0.py",
     "tev_script/semantic_dispatch_observation_v0.py",
     "tev_script/semantic_dispatched_grounded_discovery_v0.py",
+    "tev_script/semantic_execution_authority_v0.py",
     "tev_script/semantic_receipt_validity_v0.py",
+    "tev_script/semantic_realization_search_v0.py",
     "tev_script/semantic_realization_selection_v0.py",
     "tev_script/semantic_resource_calibration_v0.py",
     "tev_script/semantic_resource_measurement_v0.py",
@@ -22,9 +24,11 @@ TESTS = (
     "tests/test_realization_cost_model_update_v0.py",
     "tests/test_realization_cost_prediction_v0.py",
     "tests/test_realization_dispatch_loop_v0.py",
+    "tests/test_realization_execution_authority_v0.py",
     "tests/test_realization_receipt_validity_dispatch_v0.py",
     "tests/test_realization_resource_calibration_v0.py",
     "tests/test_realization_resource_measurement_v0.py",
+    "tests/test_realization_search_v0.py",
     "tests/test_realization_selection_v0.py",
 )
 ALLOWED_ABSOLUTE_IMPORT_ROOTS = frozenset({"__future__", "dataclasses", "fractions", "re", "typing"})
@@ -79,6 +83,8 @@ def main() -> int:
 
     validity = (ROOT / "tev_script" / "semantic_receipt_validity_v0.py").read_text(encoding="utf-8")
     dispatch = (ROOT / "tev_script" / "semantic_dispatch_v0.py").read_text(encoding="utf-8")
+    execution_authority = (ROOT / "tev_script" / "semantic_execution_authority_v0.py").read_text(encoding="utf-8")
+    search = (ROOT / "tev_script" / "semantic_realization_search_v0.py").read_text(encoding="utf-8")
     dispatched_observation = (ROOT / "tev_script" / "semantic_dispatch_observation_v0.py").read_text(encoding="utf-8")
     dispatched_grounded = (ROOT / "tev_script" / "semantic_dispatched_grounded_discovery_v0.py").read_text(encoding="utf-8")
     measurement = (ROOT / "tev_script" / "semantic_resource_measurement_v0.py").read_text(encoding="utf-8")
@@ -93,10 +99,47 @@ def main() -> int:
         return fail("historical receipt validity surface incomplete")
     print("R0_HISTORICAL_RECEIPT_VALIDITY=PASS")
 
-    required_dispatch = ("dispatch_request_hash", "dispatch_epoch_hash", "ACTIVATION_RECEIPT_CONTRACT_HASH_V0", "activation_not_current")
+    required_dispatch = (
+        "dispatch_request_hash",
+        "dispatch_epoch_hash",
+        "ACTIVATION_RECEIPT_CONTRACT_HASH_V0",
+        "AUTHORITY_RECEIPT_CONTRACT_HASH_V0",
+        "execution_authority_receipt_hash",
+        "execution_authority_validity_evaluation_hash",
+        "dispatch.execution_authority_not_current",
+        "dispatch.execution_authority_realization_mismatch",
+    )
     if any(token not in dispatch for token in required_dispatch):
-        return fail("just-in-time dispatch surface incomplete")
-    print("R0_JIT_DISPATCH_BOUNDARY=PASS")
+        return fail("just-in-time dual-authority dispatch surface incomplete")
+    print("R0_JIT_DISPATCH_DUAL_AUTHORITY=PASS")
+
+    required_execution_authority = (
+        "TransformationProgramBindingClaimV0",
+        "ReactionContractV1",
+        "ReactionFootprintV1",
+        "CapabilityLawCatalogV1",
+        "RefinementReceiptV1",
+        "authority.refinement_not_admitted",
+        "authority.law_catalog_incomplete",
+        "binding_evidence_policy",
+    )
+    if any(token not in execution_authority for token in required_execution_authority):
+        return fail("causal least-authority realization bridge incomplete")
+    print("R0_CAUSAL_LEAST_AUTHORITY_BRIDGE=PASS")
+
+    required_search = (
+        "HEURISTIC",
+        "BOUNDED",
+        "EXHAUSTIVE",
+        "CANDIDATE_SET",
+        "BOUNDED_SEARCH_SPACE",
+        "EXHAUSTIVE_SEARCH_SPACE",
+        "search.receipt_realization_problem_mismatch",
+        "planning.candidate_universe_mismatch",
+    )
+    if any(token not in search for token in required_search):
+        return fail("search coverage/planning scope surface incomplete")
+    print("R0_SEARCH_COVERAGE_SCOPE=PASS")
 
     if "dispatch_request_hash" not in dispatched_observation or "execution_observation_receipt_hash" not in dispatched_observation:
         return fail("dispatch-to-observation binding incomplete")
