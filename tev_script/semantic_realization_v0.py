@@ -6,6 +6,7 @@ import re
 from typing import Any, Iterable, Mapping, Sequence
 
 from .canonical import canonical_hash, canonical_json
+from .semantic_artifact_v0 import ArtifactManifestV0
 from .semantic_evidence_v0 import (
     EvidenceEvaluationV0,
     EvidenceItemV0,
@@ -294,7 +295,7 @@ def realization_semantic_claim_object(
     transformation_semantic_hash: str,
     transformation_regime_binding_hash: str,
     machine_hash: str,
-    artifact_hashes: Iterable[str],
+    artifact_manifest_hash: str,
     machine_requirement: MachineRequirementV0,
     semantic_relation: str,
     approximation_contract: ApproximationContractV0 | None = None,
@@ -307,9 +308,7 @@ def realization_semantic_claim_object(
         transformation_regime_binding_hash, "transformation_regime_binding_hash"
     )
     machine_hash = _hash64(machine_hash, "machine_hash")
-    artifacts = _hashes(artifact_hashes, "artifact hash")
-    if not artifacts:
-        raise RealizationSemanticsError("semantic claim requires at least one artifact hash")
+    artifact_manifest_hash = _hash64(artifact_manifest_hash, "artifact_manifest_hash")
     if semantic_relation not in _RELATIONS:
         raise RealizationSemanticsError("unsupported semantic relation")
     if semantic_relation == "APPROXIMATION" and approximation_contract is None:
@@ -324,7 +323,7 @@ def realization_semantic_claim_object(
         "transformation_semantic_hash": transformation_semantic_hash,
         "transformation_regime_binding_hash": transformation_regime_binding_hash,
         "machine_hash": machine_hash,
-        "artifact_hashes": list(artifacts),
+        "artifact_manifest_hash": artifact_manifest_hash,
         "machine_requirement": machine_requirement.to_object(),
         "semantic_relation": semantic_relation,
         "approximation_contract_hash": (
@@ -344,7 +343,7 @@ def realization_identity_object(
     transformation_semantic_hash: str,
     transformation_regime_binding_hash: str,
     machine_hash: str,
-    artifact_hashes: Iterable[str],
+    artifact_manifest_hash: str,
     machine_requirement: MachineRequirementV0,
     semantic_relation: str,
     approximation_contract: ApproximationContractV0 | None = None,
@@ -355,7 +354,7 @@ def realization_identity_object(
             transformation_semantic_hash=transformation_semantic_hash,
             transformation_regime_binding_hash=transformation_regime_binding_hash,
             machine_hash=machine_hash,
-            artifact_hashes=artifact_hashes,
+            artifact_manifest_hash=artifact_manifest_hash,
             machine_requirement=machine_requirement,
             semantic_relation=semantic_relation,
             approximation_contract=approximation_contract,
@@ -376,7 +375,7 @@ class RealizationCandidateV0:
     transformation_regime_binding_hash: str
     realization_kind: str
     machine_hash: str
-    artifact_hashes: tuple[str, ...]
+    artifact_manifest_hash: str
     machine_requirement: MachineRequirementV0
     semantic_relation: str
     approximation_contract: ApproximationContractV0 | None = None
@@ -403,10 +402,11 @@ class RealizationCandidateV0:
         )
         object.__setattr__(self, "realization_kind", _stable(self.realization_kind, "realization_kind"))
         object.__setattr__(self, "machine_hash", _hash64(self.machine_hash, "machine_hash"))
-        artifacts = _hashes(self.artifact_hashes, "artifact hash")
-        if not artifacts:
-            raise RealizationSemanticsError("candidate requires at least one artifact hash")
-        object.__setattr__(self, "artifact_hashes", artifacts)
+        object.__setattr__(
+            self,
+            "artifact_manifest_hash",
+            _hash64(self.artifact_manifest_hash, "artifact_manifest_hash"),
+        )
         if self.semantic_relation not in _RELATIONS:
             raise RealizationSemanticsError("unsupported semantic relation")
         if self.semantic_relation == "APPROXIMATION" and self.approximation_contract is None:
@@ -450,7 +450,7 @@ class RealizationCandidateV0:
             transformation_semantic_hash=self.transformation_semantic_hash,
             transformation_regime_binding_hash=self.transformation_regime_binding_hash,
             machine_hash=self.machine_hash,
-            artifact_hashes=self.artifact_hashes,
+            artifact_manifest_hash=self.artifact_manifest_hash,
             machine_requirement=self.machine_requirement,
             semantic_relation=self.semantic_relation,
             approximation_contract=self.approximation_contract,
@@ -464,7 +464,7 @@ class RealizationCandidateV0:
             transformation_semantic_hash=self.transformation_semantic_hash,
             transformation_regime_binding_hash=self.transformation_regime_binding_hash,
             machine_hash=self.machine_hash,
-            artifact_hashes=self.artifact_hashes,
+            artifact_manifest_hash=self.artifact_manifest_hash,
             machine_requirement=self.machine_requirement,
             semantic_relation=self.semantic_relation,
             approximation_contract=self.approximation_contract,
@@ -480,7 +480,7 @@ class RealizationCandidateV0:
             "transformation_regime_binding_hash": self.transformation_regime_binding_hash,
             "realization_kind": self.realization_kind,
             "machine_hash": self.machine_hash,
-            "artifact_hashes": list(self.artifact_hashes),
+            "artifact_manifest_hash": self.artifact_manifest_hash,
             "machine_requirement": self.machine_requirement.to_object(),
             "semantic_relation": self.semantic_relation,
             "approximation_contract": (
@@ -536,6 +536,7 @@ class RealizationAdmissionReceiptV0:
     candidate_hash: str
     realization_hash: str
     semantic_claim_hash: str
+    artifact_manifest_hash: str
     transformation_semantic_hash: str
     transformation_regime_binding_hash: str
     semantic_relation: str
@@ -558,6 +559,7 @@ class RealizationAdmissionReceiptV0:
             "candidate_hash",
             "realization_hash",
             "semantic_claim_hash",
+            "artifact_manifest_hash",
             "transformation_semantic_hash",
             "transformation_regime_binding_hash",
             "regime_preservation_claim_hash",
@@ -597,6 +599,7 @@ class RealizationAdmissionReceiptV0:
             "candidate_hash": self.candidate_hash,
             "realization_hash": self.realization_hash,
             "semantic_claim_hash": self.semantic_claim_hash,
+            "artifact_manifest_hash": self.artifact_manifest_hash,
             "transformation_semantic_hash": self.transformation_semantic_hash,
             "transformation_regime_binding_hash": self.transformation_regime_binding_hash,
             "semantic_relation": self.semantic_relation,
@@ -833,6 +836,7 @@ def admit_realization(
     problem: RealizationProblemV0,
     candidate: RealizationCandidateV0,
     *,
+    artifact_manifest: ArtifactManifestV0,
     machine: MachineFieldV0,
     policy: RealizationPolicyV0,
     resource_catalog: ResourceCatalogV0,
@@ -881,6 +885,27 @@ def admit_realization(
                 "REJECT",
                 candidate.transformation_regime_binding_hash,
                 observed=binding.binding_hash,
+            )
+        )
+    if candidate.artifact_manifest_hash != artifact_manifest.manifest_hash:
+        issues.append(
+            _issue(
+                "artifact.manifest_mismatch",
+                "REJECT",
+                candidate.artifact_manifest_hash,
+                observed=artifact_manifest.manifest_hash,
+            )
+        )
+    if canonical_json(candidate.machine_requirement.to_object()) != canonical_json(
+        artifact_manifest.machine_requirement.to_object()
+    ):
+        issues.append(
+            _issue(
+                "artifact.machine_requirement_mismatch",
+                "REJECT",
+                candidate.artifact_manifest_hash,
+                candidate_requirement=candidate.machine_requirement.to_object(),
+                manifest_requirement=artifact_manifest.machine_requirement.to_object(),
             )
         )
     if candidate.regime_preservation_claim_hash != preservation_claim.preservation_claim_hash:
@@ -1005,7 +1030,9 @@ def admit_realization(
 
     issues.extend(_evaluate_approximation(candidate, policy))
 
-    machine_evaluation = evaluate_machine_compatibility(machine, candidate.machine_requirement)
+    machine_evaluation = evaluate_machine_compatibility(
+        machine, artifact_manifest.machine_requirement
+    )
     issues.extend(_issues_from_machine(machine_evaluation))
 
     regime_evaluation = evaluate_regime_preservation(
@@ -1099,6 +1126,7 @@ def admit_realization(
         candidate.candidate_hash,
         candidate.realization_hash,
         candidate.semantic_claim_hash,
+        candidate.artifact_manifest_hash,
         candidate.transformation_semantic_hash,
         candidate.transformation_regime_binding_hash,
         candidate.semantic_relation,
@@ -1130,6 +1158,7 @@ def residual_from_realization_admission(
             dependency_refs=(
                 receipt.problem_hash,
                 receipt.candidate_hash,
+                receipt.artifact_manifest_hash,
                 receipt.policy_hash,
                 receipt.regime_hash,
                 receipt.resource_catalog_hash,
@@ -1146,6 +1175,7 @@ def residual_from_realization_admission(
             "problem_hash": receipt.problem_hash,
             "candidate_hash": receipt.candidate_hash,
             "realization_hash": receipt.realization_hash,
+            "artifact_manifest_hash": receipt.artifact_manifest_hash,
             "transformation_semantic_hash": receipt.transformation_semantic_hash,
             "semantic_relation": receipt.semantic_relation,
             "status": receipt.status,
