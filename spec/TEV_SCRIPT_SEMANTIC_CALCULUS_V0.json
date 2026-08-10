@@ -24,7 +24,9 @@
     "authority_attenuation",
     "stratified_self_change",
     "ir_v3_projection",
-    "judgment_scoped_residual_field"
+    "judgment_scoped_residual_field",
+    "residual_obstruction_content_addressing",
+    "residual_progress_partial_order"
   ],
   "open_proof_obligations": [
     "full_paraconsistent_inference",
