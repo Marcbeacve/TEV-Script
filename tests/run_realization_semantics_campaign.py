@@ -6,21 +6,22 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+TEST_ROOT = ROOT / "tests"
 
-TEST_MODULES = (
-    "tests.test_realization_semantics_v0",
-    "tests.test_realization_identity_invariants_v0",
-    "tests.test_discovery_realization_v0",
-    "tests.test_realization_composition_v0",
-    "tests.test_realization_placement_v0",
+TEST_FILES = (
+    "test_realization_semantics_v0.py",
+    "test_realization_identity_invariants_v0.py",
+    "test_discovery_realization_v0.py",
+    "test_realization_composition_v0.py",
+    "test_realization_placement_v0.py",
 )
 
 
 def run_tests() -> tuple[bool, int]:
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
-    for module in TEST_MODULES:
-        suite.addTests(loader.loadTestsFromName(module))
+    for file_name in TEST_FILES:
+        suite.addTests(loader.discover(str(TEST_ROOT), pattern=file_name))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful(), result.testsRun
 
