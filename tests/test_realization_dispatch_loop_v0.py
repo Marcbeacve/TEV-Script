@@ -41,27 +41,33 @@ def h(label: str) -> str:
 
 def dispatch(*, issues=(), activation=None, context=None, request=None, authority_claim=None) -> ExecutionDispatchReceiptV0:
     request_hash = request or h("dispatch-request")
-    authority_claim = authority_claim or h("execution-authority-claim")
     return ExecutionDispatchReceiptV0(
-        h("dispatch-candidate"),
-        h("dispatch-record"),
-        request_hash,
-        h("dispatch-epoch"),
-        activation or h("activation"),
-        h("activation-validity-evaluation"),
-        h("activation-authority-state"),
-        h("execution-authority-receipt"),
-        authority_claim,
-        h("execution-authority-validity-evaluation"),
-        h("execution-authority-state"),
-        dispatch_consumption_domain_hash(request_hash),
-        h("realization-receipt"),
-        h("realization"),
-        context or h("execution-context"),
-        h("machine-instance"),
-        h("placement-context"),
-        h("runtime-claim"),
-        tuple(issues),
+        dispatch_candidate_hash=h("dispatch-candidate"),
+        dispatch_record_hash=h("dispatch-record"),
+        dispatch_request_hash=request_hash,
+        dispatch_epoch_hash=h("dispatch-epoch"),
+        activation_receipt_hash=activation or h("activation"),
+        activation_validity_evaluation_hash=h("activation-validity-evaluation"),
+        activation_authority_state_hash=h("activation-authority-state"),
+        execution_authority_receipt_hash=h("execution-authority-receipt"),
+        execution_authority_claim_hash=authority_claim or h("execution-authority-claim"),
+        execution_authority_validity_evaluation_hash=h("execution-authority-validity-evaluation"),
+        execution_authority_state_hash=h("execution-authority-state"),
+        prepared_execution_receipt_hash=h("prepared-execution-receipt"),
+        prepared_execution_claim_hash=h("prepared-execution-claim"),
+        prepared_execution_validity_evaluation_hash=h("prepared-execution-validity-evaluation"),
+        prepared_execution_authority_state_hash=h("prepared-execution-authority-state"),
+        invocation_workload_hash=h("invocation-workload"),
+        before_checkpoint_hash=h("before-checkpoint"),
+        after_checkpoint_hash=h("after-checkpoint"),
+        dispatch_consumption_domain_hash=dispatch_consumption_domain_hash(request_hash),
+        realization_receipt_hash=h("realization-receipt"),
+        realization_hash=h("realization"),
+        execution_context_hash=context or h("execution-context"),
+        machine_instance_hash=h("machine-instance"),
+        placement_context_hash=h("placement-context"),
+        runtime_state_claim_hash=h("runtime-claim"),
+        issues=tuple(issues),
     )
 
 
@@ -162,13 +168,13 @@ class DispatchObservationBindingV0Tests(unittest.TestCase):
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("dispatch_observation.execution_context_mismatch", {item.kind for item in receipt.issues})
 
-    def test_open_dispatch_propagates_proof_required(self):
+    def test_open_prepared_dispatch_propagates_proof_required(self):
         d = dispatch(
             issues=(
                 DispatchIssueV0(
-                    "dispatch.execution_authority_not_current",
+                    "dispatch.prepared_execution_not_current",
                     "PROOF_REQUIRED",
-                    h("authority-validity"),
+                    h("prepared-validity"),
                     {},
                 ),
             )
