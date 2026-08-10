@@ -45,13 +45,13 @@ def _hash64(value: str, what: str) -> str:
     return text
 
 
-def dispatch_consumption_domain_hash(authority_claim_hash: str) -> str:
+def dispatch_consumption_domain_hash(dispatch_request_hash: str) -> str:
     return canonical_hash(
         {
             "schema": DISPATCH_CONSUMPTION_DOMAIN_SCHEMA_V0,
-            "execution_authority_claim_hash": _hash64(
-                authority_claim_hash,
-                "execution_authority_claim_hash",
+            "dispatch_request_hash": _hash64(
+                dispatch_request_hash,
+                "dispatch_request_hash",
             ),
         }
     )
@@ -176,9 +176,9 @@ class ExecutionDispatchReceiptV0:
             "runtime_state_claim_hash",
         ):
             object.__setattr__(self, name, _hash64(getattr(self, name), name))
-        expected_domain = dispatch_consumption_domain_hash(self.execution_authority_claim_hash)
+        expected_domain = dispatch_consumption_domain_hash(self.dispatch_request_hash)
         if self.dispatch_consumption_domain_hash != expected_domain:
-            raise DispatchSemanticsError("dispatch consumption domain not derived from authority claim")
+            raise DispatchSemanticsError("dispatch consumption domain not derived from request identity")
         object.__setattr__(self, "issues", tuple(sorted(self.issues, key=lambda item: canonical_json(item.to_object()))))
 
     @property
@@ -288,7 +288,7 @@ def evaluate_execution_dispatch(
         issues.append(DispatchIssueV0("dispatch.execution_authority_realization_mismatch", "REJECT", execution_authority_receipt.realization_hash, {"activation": activation_receipt.realization_hash}))
 
     authority_claim_hash = execution_authority_receipt.authority_claim_hash
-    consumption_domain_hash = dispatch_consumption_domain_hash(authority_claim_hash)
+    consumption_domain_hash = dispatch_consumption_domain_hash(candidate.dispatch_request_hash)
     return ExecutionDispatchReceiptV0(
         candidate.dispatch_candidate_hash,
         candidate.record_hash,
@@ -327,13 +327,14 @@ def residual_from_execution_dispatch(receipt: ExecutionDispatchReceiptV0) -> Sem
                 dict(item.detail),
                 dependency_refs=(
                     receipt.dispatch_candidate_hash,
+                    receipt.dispatch_request_hash,
+                    receipt.dispatch_consumption_domain_hash,
                     receipt.activation_receipt_hash,
                     receipt.activation_validity_evaluation_hash,
                     receipt.execution_authority_receipt_hash,
                     receipt.execution_authority_claim_hash,
                     receipt.execution_authority_validity_evaluation_hash,
                     receipt.dispatch_epoch_hash,
-                    receipt.dispatch_consumption_domain_hash,
                     receipt.activation_authority_state_hash,
                     receipt.execution_authority_state_hash,
                 ),
