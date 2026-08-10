@@ -194,6 +194,10 @@ def evaluate_dispatch_consumption_transition(
         issues.append(DispatchConsumptionIssueV0("dispatch_consumption.dispatch_receipt_mismatch", "REJECT", attempt.dispatch_receipt_hash, {"observed": dispatch_receipt.receipt_hash}))
     if attempt.dispatch_request_hash != dispatch_receipt.dispatch_request_hash:
         issues.append(DispatchConsumptionIssueV0("dispatch_consumption.dispatch_request_mismatch", "REJECT", attempt.dispatch_request_hash, {"observed": dispatch_receipt.dispatch_request_hash}))
+    if attempt.dispatch_domain_hash != dispatch_receipt.dispatch_consumption_domain_hash:
+        issues.append(DispatchConsumptionIssueV0("dispatch_consumption.request_domain_mismatch", "REJECT", attempt.dispatch_domain_hash, {"expected": dispatch_receipt.dispatch_consumption_domain_hash}))
+    if before_state.dispatch_domain_hash != dispatch_receipt.dispatch_consumption_domain_hash:
+        issues.append(DispatchConsumptionIssueV0("dispatch_consumption.ledger_domain_mismatch", "REJECT", before_state.dispatch_domain_hash, {"expected": dispatch_receipt.dispatch_consumption_domain_hash}))
     if attempt.dispatch_domain_hash != before_state.dispatch_domain_hash:
         issues.append(DispatchConsumptionIssueV0("dispatch_consumption.domain_mismatch", "REJECT", attempt.dispatch_domain_hash, {"observed": before_state.dispatch_domain_hash}))
     if attempt.before_state_hash != before_state.state_hash:
@@ -427,7 +431,7 @@ def residual_from_dispatch_consumption_transition(transition: DispatchConsumptio
         judgment={"kind": "dispatch_request_not_previously_consumed", "dispatch_request_hash": transition.dispatch_request_hash, "status": transition.status},
         source={"kind": "dispatch_consumption_transition", "transition_hash": transition.transition_hash},
         obstructions=(
-            ResidualObstructionV0(item.kind, item.subject, "resolved", item.severity, dict(item.detail), dependency_refs=(transition.attempt_hash, transition.dispatch_receipt_hash, transition.before_state_hash))
+            ResidualObstructionV0(item.kind, item.subject, "resolved", item.severity, dict(item.detail), dependency_refs=(transition.attempt_hash, transition.dispatch_receipt_hash, transition.dispatch_domain_hash, transition.before_state_hash))
             for item in transition.issues
         ),
     )
