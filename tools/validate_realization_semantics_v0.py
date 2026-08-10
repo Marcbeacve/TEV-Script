@@ -16,12 +16,14 @@ ALLOWED_CHANGED_PATHS = frozenset(
         "spec/TEV_SCRIPT_REGIME_ADMISSIBILITY_V0.md",
         "tests/run_realization_semantics_campaign.py",
         "tests/test_discovery_realization_v0.py",
+        "tests/test_realization_composition_v0.py",
         "tests/test_realization_semantics_v0.py",
         "tests/test_realization_identity_invariants_v0.py",
         "tev_script/semantic_artifact_v0.py",
         "tev_script/semantic_discovery_realization_v0.py",
         "tev_script/semantic_evidence_v0.py",
         "tev_script/semantic_machine_v0.py",
+        "tev_script/semantic_realization_composition_v0.py",
         "tev_script/semantic_realization_v0.py",
         "tev_script/semantic_regime_v0.py",
         "tev_script/semantic_resource_algebra_v0.py",
@@ -48,6 +50,7 @@ CORE_MODULES = (
     "tev_script/semantic_discovery_realization_v0.py",
     "tev_script/semantic_evidence_v0.py",
     "tev_script/semantic_machine_v0.py",
+    "tev_script/semantic_realization_composition_v0.py",
     "tev_script/semantic_realization_v0.py",
     "tev_script/semantic_regime_v0.py",
     "tev_script/semantic_resource_algebra_v0.py",
@@ -55,7 +58,7 @@ CORE_MODULES = (
 )
 
 ALLOWED_ABSOLUTE_IMPORT_ROOTS = frozenset(
-    {"__future__", "ast", "dataclasses", "fractions", "pathlib", "re", "subprocess", "typing"}
+    {"__future__", "dataclasses", "fractions", "re", "typing"}
 )
 ALLOWED_RELATIVE_IMPORTS = frozenset(
     {
@@ -67,6 +70,7 @@ ALLOWED_RELATIVE_IMPORTS = frozenset(
         "semantic_discovery_realization_v0",
         "semantic_evidence_v0",
         "semantic_machine_v0",
+        "semantic_realization_composition_v0",
         "semantic_realization_v0",
         "semantic_regime_v0",
         "semantic_resource_algebra_v0",
@@ -82,7 +86,7 @@ FORBIDDEN_AUTHORITY_TOKENS = (
     "tevprover",
 )
 FORBIDDEN_HOST_IMPORT_ROOTS = frozenset(
-    {"os", "platform", "socket", "psutil", "torch", "cpuinfo"}
+    {"os", "platform", "subprocess", "socket", "psutil", "torch", "cpuinfo"}
 )
 FORBIDDEN_VENDOR_TOKENS = (
     "nvidia",
@@ -160,6 +164,38 @@ def validate_imports() -> tuple[bool, str]:
     return True, ""
 
 
+def validate_semantic_abi_authority() -> tuple[bool, str]:
+    machine = (ROOT / "tev_script" / "semantic_machine_v0.py").read_text(encoding="utf-8")
+    artifact = (ROOT / "tev_script" / "semantic_artifact_v0.py").read_text(encoding="utf-8")
+    forbidden_machine_fields = (
+        "required_numeric_model_ids: tuple",
+        "required_executable_formats: tuple",
+        "missing_numeric_model_ids: tuple",
+        "missing_executable_formats: tuple",
+    )
+    for token in forbidden_machine_fields:
+        if token in machine:
+            return False, f"nominal ABI field remains authoritative: {token}"
+    required_machine_tokens = (
+        "required_numeric_model_hashes",
+        "required_executable_format_hashes",
+        "numeric_model_hash",
+        "format_hash",
+    )
+    for token in required_machine_tokens:
+        if token not in machine:
+            return False, f"semantic ABI token missing: {token}"
+    required_artifact_tokens = (
+        "format_hash",
+        "required_numeric_model_hashes",
+        "entrypoint_format_hashes",
+    )
+    for token in required_artifact_tokens:
+        if token not in artifact:
+            return False, f"artifact manifest semantic ABI token missing: {token}"
+    return True, ""
+
+
 def main() -> int:
     branch = git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
     if branch != EXPECTED_BRANCH:
@@ -190,6 +226,12 @@ def main() -> int:
     print("R0_NO_IA_TEV_RUNTIME_AUTHORITY=PASS")
     print("R0_NO_TEVPROVER_RUNTIME_AUTHORITY=PASS")
     print("R0_NO_VENDOR_HOST_INTROSPECTION=PASS")
+
+    ok, detail = validate_semantic_abi_authority()
+    if not ok:
+        return fail(detail)
+    print("R0_MACHINE_ABI_SEMANTIC_HASH_AUTHORITY=PASS")
+    print("R0_ARTIFACT_ABI_SEMANTIC_HASH_AUTHORITY=PASS")
 
     architecture = (ROOT / "spec" / "TEV_SCRIPT_REALIZATION_SEMANTICS_V0.md").read_text(
         encoding="utf-8"
