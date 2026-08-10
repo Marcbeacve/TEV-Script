@@ -6,37 +6,22 @@ from typing import Any, Mapping
 
 from .canonical import canonical_hash, canonical_json
 from .semantic_activation_v0 import ACTIVATION_RECEIPT_SCHEMA_V0, ExecutionActivationReceiptV0
-from .semantic_execution_authority_v0 import (
-    EXECUTION_AUTHORITY_RECEIPT_SCHEMA_V0,
-    ExecutionAuthorityReceiptV0,
-)
-from .semantic_execution_request_v0 import (
-    EXECUTION_REQUEST_ADMISSION_SCHEMA_V0,
-    ExecutionRequestAdmissionReceiptV0,
-)
+from .semantic_delivery_plan_v0 import DELIVERY_PLAN_RECEIPT_SCHEMA_V0, DeliveryPlanReceiptV0
+from .semantic_execution_authority_v0 import EXECUTION_AUTHORITY_RECEIPT_SCHEMA_V0, ExecutionAuthorityReceiptV0
+from .semantic_execution_request_v0 import EXECUTION_REQUEST_ADMISSION_SCHEMA_V0, ExecutionRequestAdmissionReceiptV0
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
-from .semantic_prepared_execution_v0 import (
-    PREPARED_EXECUTION_RECEIPT_SCHEMA_V0,
-    PreparedExecutionReceiptV0,
-)
+from .semantic_prepared_execution_v0 import PREPARED_EXECUTION_RECEIPT_SCHEMA_V0, PreparedExecutionReceiptV0
 from .semantic_receipt_validity_v0 import ReceiptValidityEvaluationV0
 from .semantic_residual_v0 import ResidualObstructionV0, residual_from_obstructions
 
 DISPATCH_CANDIDATE_SCHEMA_V0 = "TEV_SCRIPT_EXECUTION_DISPATCH_CANDIDATE_V0"
 DISPATCH_RECEIPT_SCHEMA_V0 = "TEV_SCRIPT_EXECUTION_DISPATCH_RECEIPT_V0"
 DISPATCH_CONSUMPTION_DOMAIN_SCHEMA_V0 = "TEV_SCRIPT_DISPATCH_CONSUMPTION_DOMAIN_V0"
-ACTIVATION_RECEIPT_CONTRACT_HASH_V0 = canonical_hash(
-    {"schema": "TEV_SCRIPT_CONTRACT_IDENTITY_V0", "contract_schema": ACTIVATION_RECEIPT_SCHEMA_V0}
-)
-AUTHORITY_RECEIPT_CONTRACT_HASH_V0 = canonical_hash(
-    {"schema": "TEV_SCRIPT_CONTRACT_IDENTITY_V0", "contract_schema": EXECUTION_AUTHORITY_RECEIPT_SCHEMA_V0}
-)
-PREPARED_EXECUTION_RECEIPT_CONTRACT_HASH_V0 = canonical_hash(
-    {"schema": "TEV_SCRIPT_CONTRACT_IDENTITY_V0", "contract_schema": PREPARED_EXECUTION_RECEIPT_SCHEMA_V0}
-)
-EXECUTION_REQUEST_RECEIPT_CONTRACT_HASH_V0 = canonical_hash(
-    {"schema": "TEV_SCRIPT_CONTRACT_IDENTITY_V0", "contract_schema": EXECUTION_REQUEST_ADMISSION_SCHEMA_V0}
-)
+ACTIVATION_RECEIPT_CONTRACT_HASH_V0 = canonical_hash({"schema": "TEV_SCRIPT_CONTRACT_IDENTITY_V0", "contract_schema": ACTIVATION_RECEIPT_SCHEMA_V0})
+AUTHORITY_RECEIPT_CONTRACT_HASH_V0 = canonical_hash({"schema": "TEV_SCRIPT_CONTRACT_IDENTITY_V0", "contract_schema": EXECUTION_AUTHORITY_RECEIPT_SCHEMA_V0})
+PREPARED_EXECUTION_RECEIPT_CONTRACT_HASH_V0 = canonical_hash({"schema": "TEV_SCRIPT_CONTRACT_IDENTITY_V0", "contract_schema": PREPARED_EXECUTION_RECEIPT_SCHEMA_V0})
+EXECUTION_REQUEST_RECEIPT_CONTRACT_HASH_V0 = canonical_hash({"schema": "TEV_SCRIPT_CONTRACT_IDENTITY_V0", "contract_schema": EXECUTION_REQUEST_ADMISSION_SCHEMA_V0})
+DELIVERY_PLAN_RECEIPT_CONTRACT_HASH_V0 = canonical_hash({"schema": "TEV_SCRIPT_CONTRACT_IDENTITY_V0", "contract_schema": DELIVERY_PLAN_RECEIPT_SCHEMA_V0})
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _HEX = frozenset("0123456789abcdef")
 
@@ -59,13 +44,13 @@ def _hash64(value: str, what: str) -> str:
     return text
 
 
+def _optional_hash(value: str, what: str) -> str:
+    text = str(value)
+    return "" if not text else _hash64(text, what)
+
+
 def dispatch_consumption_domain_hash(dispatch_request_hash: str) -> str:
-    return canonical_hash(
-        {
-            "schema": DISPATCH_CONSUMPTION_DOMAIN_SCHEMA_V0,
-            "dispatch_request_hash": _hash64(dispatch_request_hash, "dispatch_request_hash"),
-        }
-    )
+    return canonical_hash({"schema": DISPATCH_CONSUMPTION_DOMAIN_SCHEMA_V0, "dispatch_request_hash": _hash64(dispatch_request_hash, "dispatch_request_hash")})
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,21 +64,18 @@ class ExecutionDispatchCandidateV0:
     execution_authority_validity_evaluation_hash: str
     prepared_execution_receipt_hash: str
     prepared_execution_validity_evaluation_hash: str
+    delivery_plan_receipt_hash: str
+    delivery_plan_validity_evaluation_hash: str
     dispatch_epoch_hash: str
     provenance: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         for name in (
-            "dispatch_request_hash",
-            "execution_request_receipt_hash",
-            "execution_request_validity_evaluation_hash",
-            "activation_receipt_hash",
-            "activation_validity_evaluation_hash",
-            "execution_authority_receipt_hash",
-            "execution_authority_validity_evaluation_hash",
-            "prepared_execution_receipt_hash",
-            "prepared_execution_validity_evaluation_hash",
-            "dispatch_epoch_hash",
+            "dispatch_request_hash", "execution_request_receipt_hash", "execution_request_validity_evaluation_hash",
+            "activation_receipt_hash", "activation_validity_evaluation_hash",
+            "execution_authority_receipt_hash", "execution_authority_validity_evaluation_hash",
+            "prepared_execution_receipt_hash", "prepared_execution_validity_evaluation_hash",
+            "delivery_plan_receipt_hash", "delivery_plan_validity_evaluation_hash", "dispatch_epoch_hash",
         ):
             object.__setattr__(self, name, _hash64(getattr(self, name), name))
         provenance = {} if self.provenance is None else dict(self.provenance)
@@ -112,6 +94,8 @@ class ExecutionDispatchCandidateV0:
             "execution_authority_validity_evaluation_hash": self.execution_authority_validity_evaluation_hash,
             "prepared_execution_receipt_hash": self.prepared_execution_receipt_hash,
             "prepared_execution_validity_evaluation_hash": self.prepared_execution_validity_evaluation_hash,
+            "delivery_plan_receipt_hash": self.delivery_plan_receipt_hash,
+            "delivery_plan_validity_evaluation_hash": self.delivery_plan_validity_evaluation_hash,
             "dispatch_epoch_hash": self.dispatch_epoch_hash,
         }
 
@@ -120,12 +104,7 @@ class ExecutionDispatchCandidateV0:
         return canonical_hash(self.identity_object())
 
     def to_object(self) -> dict[str, object]:
-        return {
-            "schema": DISPATCH_CANDIDATE_SCHEMA_V0,
-            "dispatch_candidate_hash": self.dispatch_candidate_hash,
-            **{key: value for key, value in self.identity_object().items() if key != "schema"},
-            "provenance": dict(self.provenance or {}),
-        }
+        return {"schema": DISPATCH_CANDIDATE_SCHEMA_V0, "dispatch_candidate_hash": self.dispatch_candidate_hash, **{k: v for k, v in self.identity_object().items() if k != "schema"}, "provenance": dict(self.provenance or {})}
 
     @property
     def record_hash(self) -> str:
@@ -180,6 +159,13 @@ class ExecutionDispatchReceiptV0:
     prepared_execution_claim_hash: str
     prepared_execution_validity_evaluation_hash: str
     prepared_execution_authority_state_hash: str
+    delivery_plan_receipt_hash: str
+    delivery_plan_claim_hash: str
+    delivery_plan_validity_evaluation_hash: str
+    delivery_plan_authority_state_hash: str
+    delivery_participant_manifest_hash: str
+    delivery_coordinator_hash: str
+    delivery_atomic_commit_domain_hash: str
     invocation_workload_hash: str
     before_checkpoint_hash: str
     after_checkpoint_hash: str
@@ -194,47 +180,22 @@ class ExecutionDispatchReceiptV0:
 
     def __post_init__(self) -> None:
         for name in (
-            "dispatch_candidate_hash",
-            "dispatch_record_hash",
-            "dispatch_request_hash",
-            "dispatch_epoch_hash",
-            "execution_request_receipt_hash",
-            "execution_request_intent_hash",
-            "execution_request_validity_evaluation_hash",
-            "execution_request_authority_state_hash",
-            "requester_principal_hash",
-            "purpose_hash",
-            "activation_receipt_hash",
-            "activation_validity_evaluation_hash",
-            "activation_authority_state_hash",
-            "execution_authority_receipt_hash",
-            "execution_authority_claim_hash",
-            "execution_authority_validity_evaluation_hash",
-            "execution_authority_state_hash",
-            "prepared_execution_receipt_hash",
-            "prepared_execution_claim_hash",
-            "prepared_execution_validity_evaluation_hash",
-            "prepared_execution_authority_state_hash",
-            "invocation_workload_hash",
-            "before_checkpoint_hash",
-            "after_checkpoint_hash",
-            "dispatch_consumption_domain_hash",
-            "realization_receipt_hash",
-            "realization_hash",
-            "execution_context_hash",
-            "machine_instance_hash",
-            "placement_context_hash",
-            "runtime_state_claim_hash",
+            "dispatch_candidate_hash", "dispatch_record_hash", "dispatch_request_hash", "dispatch_epoch_hash",
+            "execution_request_receipt_hash", "execution_request_intent_hash", "execution_request_validity_evaluation_hash", "execution_request_authority_state_hash",
+            "requester_principal_hash", "purpose_hash",
+            "activation_receipt_hash", "activation_validity_evaluation_hash", "activation_authority_state_hash",
+            "execution_authority_receipt_hash", "execution_authority_claim_hash", "execution_authority_validity_evaluation_hash", "execution_authority_state_hash",
+            "prepared_execution_receipt_hash", "prepared_execution_claim_hash", "prepared_execution_validity_evaluation_hash", "prepared_execution_authority_state_hash",
+            "delivery_plan_receipt_hash", "delivery_plan_claim_hash", "delivery_plan_validity_evaluation_hash", "delivery_plan_authority_state_hash", "delivery_participant_manifest_hash",
+            "invocation_workload_hash", "before_checkpoint_hash", "after_checkpoint_hash", "dispatch_consumption_domain_hash",
+            "realization_receipt_hash", "realization_hash", "execution_context_hash", "machine_instance_hash", "placement_context_hash", "runtime_state_claim_hash",
         ):
             object.__setattr__(self, name, _hash64(getattr(self, name), name))
-        expected_domain = dispatch_consumption_domain_hash(self.dispatch_request_hash)
-        if self.dispatch_consumption_domain_hash != expected_domain:
+        object.__setattr__(self, "delivery_coordinator_hash", _optional_hash(self.delivery_coordinator_hash, "delivery_coordinator_hash"))
+        object.__setattr__(self, "delivery_atomic_commit_domain_hash", _optional_hash(self.delivery_atomic_commit_domain_hash, "delivery_atomic_commit_domain_hash"))
+        if self.dispatch_consumption_domain_hash != dispatch_consumption_domain_hash(self.dispatch_request_hash):
             raise DispatchSemanticsError("dispatch consumption domain not derived from request identity")
-        if self.requested_delivery_guarantee not in {
-            "AT_MOST_ONCE_DISPATCH",
-            "EXACTLY_ONCE_COMMIT",
-            "DURABLE_EXACTLY_ONCE_COMMIT",
-        }:
+        if self.requested_delivery_guarantee not in {"AT_MOST_ONCE_DISPATCH", "EXACTLY_ONCE_COMMIT", "DURABLE_EXACTLY_ONCE_COMMIT"}:
             raise DispatchSemanticsError("requested_delivery_guarantee")
         if self.idempotency_scope not in {"INTENT_SINGLETON", "OCCURRENCE_SCOPED"}:
             raise DispatchSemanticsError("idempotency_scope")
@@ -248,61 +209,34 @@ class ExecutionDispatchReceiptV0:
 
     @property
     def authority_state_hash(self) -> str:
-        states = (
-            self.execution_request_authority_state_hash,
-            self.activation_authority_state_hash,
-            self.execution_authority_state_hash,
-            self.prepared_execution_authority_state_hash,
-        )
+        states = (self.execution_request_authority_state_hash, self.activation_authority_state_hash, self.execution_authority_state_hash, self.prepared_execution_authority_state_hash, self.delivery_plan_authority_state_hash)
         if len(set(states)) == 1:
             return states[0]
-        return canonical_hash(
-            {
-                "schema": "TEV_SCRIPT_DISPATCH_COMBINED_AUTHORITY_STATE_V0",
-                "execution_request": self.execution_request_authority_state_hash,
-                "activation": self.activation_authority_state_hash,
-                "execution_authority": self.execution_authority_state_hash,
-                "prepared_execution": self.prepared_execution_authority_state_hash,
-            }
-        )
+        return canonical_hash({"schema": "TEV_SCRIPT_DISPATCH_COMBINED_AUTHORITY_STATE_V0", "execution_request": states[0], "activation": states[1], "execution_authority": states[2], "prepared_execution": states[3], "delivery_plan": states[4]})
 
     def to_object(self) -> dict[str, object]:
         return {
-            "schema": DISPATCH_RECEIPT_SCHEMA_V0,
-            "status": self.status,
-            "dispatch_candidate_hash": self.dispatch_candidate_hash,
-            "dispatch_record_hash": self.dispatch_record_hash,
-            "dispatch_request_hash": self.dispatch_request_hash,
-            "dispatch_epoch_hash": self.dispatch_epoch_hash,
-            "execution_request_receipt_hash": self.execution_request_receipt_hash,
-            "execution_request_intent_hash": self.execution_request_intent_hash,
-            "execution_request_validity_evaluation_hash": self.execution_request_validity_evaluation_hash,
-            "execution_request_authority_state_hash": self.execution_request_authority_state_hash,
-            "requester_principal_hash": self.requester_principal_hash,
-            "purpose_hash": self.purpose_hash,
-            "requested_delivery_guarantee": self.requested_delivery_guarantee,
-            "idempotency_scope": self.idempotency_scope,
-            "activation_receipt_hash": self.activation_receipt_hash,
-            "activation_validity_evaluation_hash": self.activation_validity_evaluation_hash,
-            "activation_authority_state_hash": self.activation_authority_state_hash,
-            "execution_authority_receipt_hash": self.execution_authority_receipt_hash,
-            "execution_authority_claim_hash": self.execution_authority_claim_hash,
-            "execution_authority_validity_evaluation_hash": self.execution_authority_validity_evaluation_hash,
-            "execution_authority_state_hash": self.execution_authority_state_hash,
-            "prepared_execution_receipt_hash": self.prepared_execution_receipt_hash,
-            "prepared_execution_claim_hash": self.prepared_execution_claim_hash,
-            "prepared_execution_validity_evaluation_hash": self.prepared_execution_validity_evaluation_hash,
-            "prepared_execution_authority_state_hash": self.prepared_execution_authority_state_hash,
-            "invocation_workload_hash": self.invocation_workload_hash,
-            "before_checkpoint_hash": self.before_checkpoint_hash,
-            "after_checkpoint_hash": self.after_checkpoint_hash,
+            "schema": DISPATCH_RECEIPT_SCHEMA_V0, "status": self.status,
+            "dispatch_candidate_hash": self.dispatch_candidate_hash, "dispatch_record_hash": self.dispatch_record_hash,
+            "dispatch_request_hash": self.dispatch_request_hash, "dispatch_epoch_hash": self.dispatch_epoch_hash,
+            "execution_request_receipt_hash": self.execution_request_receipt_hash, "execution_request_intent_hash": self.execution_request_intent_hash,
+            "execution_request_validity_evaluation_hash": self.execution_request_validity_evaluation_hash, "execution_request_authority_state_hash": self.execution_request_authority_state_hash,
+            "requester_principal_hash": self.requester_principal_hash, "purpose_hash": self.purpose_hash,
+            "requested_delivery_guarantee": self.requested_delivery_guarantee, "idempotency_scope": self.idempotency_scope,
+            "activation_receipt_hash": self.activation_receipt_hash, "activation_validity_evaluation_hash": self.activation_validity_evaluation_hash, "activation_authority_state_hash": self.activation_authority_state_hash,
+            "execution_authority_receipt_hash": self.execution_authority_receipt_hash, "execution_authority_claim_hash": self.execution_authority_claim_hash,
+            "execution_authority_validity_evaluation_hash": self.execution_authority_validity_evaluation_hash, "execution_authority_state_hash": self.execution_authority_state_hash,
+            "prepared_execution_receipt_hash": self.prepared_execution_receipt_hash, "prepared_execution_claim_hash": self.prepared_execution_claim_hash,
+            "prepared_execution_validity_evaluation_hash": self.prepared_execution_validity_evaluation_hash, "prepared_execution_authority_state_hash": self.prepared_execution_authority_state_hash,
+            "delivery_plan_receipt_hash": self.delivery_plan_receipt_hash, "delivery_plan_claim_hash": self.delivery_plan_claim_hash,
+            "delivery_plan_validity_evaluation_hash": self.delivery_plan_validity_evaluation_hash, "delivery_plan_authority_state_hash": self.delivery_plan_authority_state_hash,
+            "delivery_participant_manifest_hash": self.delivery_participant_manifest_hash, "delivery_coordinator_hash": self.delivery_coordinator_hash,
+            "delivery_atomic_commit_domain_hash": self.delivery_atomic_commit_domain_hash,
+            "invocation_workload_hash": self.invocation_workload_hash, "before_checkpoint_hash": self.before_checkpoint_hash, "after_checkpoint_hash": self.after_checkpoint_hash,
             "dispatch_consumption_domain_hash": self.dispatch_consumption_domain_hash,
-            "realization_receipt_hash": self.realization_receipt_hash,
-            "realization_hash": self.realization_hash,
-            "execution_context_hash": self.execution_context_hash,
-            "machine_instance_hash": self.machine_instance_hash,
-            "placement_context_hash": self.placement_context_hash,
-            "runtime_state_claim_hash": self.runtime_state_claim_hash,
+            "realization_receipt_hash": self.realization_receipt_hash, "realization_hash": self.realization_hash,
+            "execution_context_hash": self.execution_context_hash, "machine_instance_hash": self.machine_instance_hash,
+            "placement_context_hash": self.placement_context_hash, "runtime_state_claim_hash": self.runtime_state_claim_hash,
             "issues": [item.to_object() for item in self.issues],
         }
 
@@ -320,16 +254,7 @@ def _upstream(kind: str, subject: str, status: str) -> DispatchIssueV0 | None:
     return DispatchIssueV0(kind, "REJECT" if status == "REJECT" else "PROOF_REQUIRED", subject, {"status": status})
 
 
-def _validate_current_receipt(
-    issues: list[DispatchIssueV0],
-    *,
-    prefix: str,
-    subject_receipt_hash: str,
-    subject_contract_hash: str,
-    candidate_evaluation_hash: str,
-    candidate_epoch_hash: str,
-    validity: ReceiptValidityEvaluationV0,
-) -> None:
+def _validate_current_receipt(issues: list[DispatchIssueV0], *, prefix: str, subject_receipt_hash: str, subject_contract_hash: str, candidate_evaluation_hash: str, candidate_epoch_hash: str, validity: ReceiptValidityEvaluationV0) -> None:
     if candidate_evaluation_hash != validity.evaluation_hash:
         issues.append(DispatchIssueV0(f"dispatch.{prefix}_validity_evaluation_mismatch", "REJECT", candidate_evaluation_hash, {"observed": validity.evaluation_hash}))
     if validity.subject_receipt_hash != subject_receipt_hash:
@@ -351,56 +276,30 @@ def evaluate_execution_dispatch(
     execution_authority_validity: ReceiptValidityEvaluationV0,
     prepared_execution_receipt: PreparedExecutionReceiptV0,
     prepared_execution_validity: ReceiptValidityEvaluationV0,
+    delivery_plan_receipt: DeliveryPlanReceiptV0,
+    delivery_plan_validity: ReceiptValidityEvaluationV0,
 ) -> ExecutionDispatchReceiptV0:
     issues: list[DispatchIssueV0] = []
-
     bindings = (
         ("dispatch.request_hash_mismatch", candidate.dispatch_request_hash, execution_request_receipt.request_hash),
         ("dispatch.execution_request_receipt_mismatch", candidate.execution_request_receipt_hash, execution_request_receipt.receipt_hash),
         ("dispatch.activation_receipt_mismatch", candidate.activation_receipt_hash, activation_receipt.receipt_hash),
         ("dispatch.execution_authority_receipt_mismatch", candidate.execution_authority_receipt_hash, execution_authority_receipt.receipt_hash),
         ("dispatch.prepared_execution_receipt_mismatch", candidate.prepared_execution_receipt_hash, prepared_execution_receipt.receipt_hash),
+        ("dispatch.delivery_plan_receipt_mismatch", candidate.delivery_plan_receipt_hash, delivery_plan_receipt.receipt_hash),
     )
     for kind, expected, observed in bindings:
         if expected != observed:
             issues.append(DispatchIssueV0(kind, "REJECT", expected, {"observed": observed}))
 
-    _validate_current_receipt(
-        issues,
-        prefix="execution_request",
-        subject_receipt_hash=execution_request_receipt.receipt_hash,
-        subject_contract_hash=EXECUTION_REQUEST_RECEIPT_CONTRACT_HASH_V0,
-        candidate_evaluation_hash=candidate.execution_request_validity_evaluation_hash,
-        candidate_epoch_hash=candidate.dispatch_epoch_hash,
-        validity=execution_request_validity,
-    )
-    _validate_current_receipt(
-        issues,
-        prefix="activation",
-        subject_receipt_hash=activation_receipt.receipt_hash,
-        subject_contract_hash=ACTIVATION_RECEIPT_CONTRACT_HASH_V0,
-        candidate_evaluation_hash=candidate.activation_validity_evaluation_hash,
-        candidate_epoch_hash=candidate.dispatch_epoch_hash,
-        validity=activation_validity,
-    )
-    _validate_current_receipt(
-        issues,
-        prefix="execution_authority",
-        subject_receipt_hash=execution_authority_receipt.receipt_hash,
-        subject_contract_hash=AUTHORITY_RECEIPT_CONTRACT_HASH_V0,
-        candidate_evaluation_hash=candidate.execution_authority_validity_evaluation_hash,
-        candidate_epoch_hash=candidate.dispatch_epoch_hash,
-        validity=execution_authority_validity,
-    )
-    _validate_current_receipt(
-        issues,
-        prefix="prepared_execution",
-        subject_receipt_hash=prepared_execution_receipt.receipt_hash,
-        subject_contract_hash=PREPARED_EXECUTION_RECEIPT_CONTRACT_HASH_V0,
-        candidate_evaluation_hash=candidate.prepared_execution_validity_evaluation_hash,
-        candidate_epoch_hash=candidate.dispatch_epoch_hash,
-        validity=prepared_execution_validity,
-    )
+    for prefix, subject, contract, evaluation_hash, validity in (
+        ("execution_request", execution_request_receipt.receipt_hash, EXECUTION_REQUEST_RECEIPT_CONTRACT_HASH_V0, candidate.execution_request_validity_evaluation_hash, execution_request_validity),
+        ("activation", activation_receipt.receipt_hash, ACTIVATION_RECEIPT_CONTRACT_HASH_V0, candidate.activation_validity_evaluation_hash, activation_validity),
+        ("execution_authority", execution_authority_receipt.receipt_hash, AUTHORITY_RECEIPT_CONTRACT_HASH_V0, candidate.execution_authority_validity_evaluation_hash, execution_authority_validity),
+        ("prepared_execution", prepared_execution_receipt.receipt_hash, PREPARED_EXECUTION_RECEIPT_CONTRACT_HASH_V0, candidate.prepared_execution_validity_evaluation_hash, prepared_execution_validity),
+        ("delivery_plan", delivery_plan_receipt.receipt_hash, DELIVERY_PLAN_RECEIPT_CONTRACT_HASH_V0, candidate.delivery_plan_validity_evaluation_hash, delivery_plan_validity),
+    ):
+        _validate_current_receipt(issues, prefix=prefix, subject_receipt_hash=subject, subject_contract_hash=contract, candidate_evaluation_hash=evaluation_hash, candidate_epoch_hash=candidate.dispatch_epoch_hash, validity=validity)
 
     for kind, subject, status in (
         ("dispatch.execution_request_not_admitted", execution_request_receipt.receipt_hash, execution_request_receipt.status),
@@ -411,6 +310,8 @@ def evaluate_execution_dispatch(
         ("dispatch.execution_authority_not_current", execution_authority_validity.evaluation_hash, execution_authority_validity.status),
         ("dispatch.prepared_execution_not_admitted", prepared_execution_receipt.receipt_hash, prepared_execution_receipt.status),
         ("dispatch.prepared_execution_not_current", prepared_execution_validity.evaluation_hash, prepared_execution_validity.status),
+        ("dispatch.delivery_plan_not_admitted", delivery_plan_receipt.receipt_hash, delivery_plan_receipt.status),
+        ("dispatch.delivery_plan_not_current", delivery_plan_validity.evaluation_hash, delivery_plan_validity.status),
     ):
         issue = _upstream(kind, subject, status)
         if issue is not None:
@@ -421,53 +322,34 @@ def evaluate_execution_dispatch(
     if execution_authority_receipt.realization_hash != activation_receipt.realization_hash:
         issues.append(DispatchIssueV0("dispatch.execution_authority_realization_mismatch", "REJECT", execution_authority_receipt.realization_hash, {"activation": activation_receipt.realization_hash}))
 
-    prepared_bindings = (
+    consistency = (
         ("dispatch.prepared_activation_mismatch", prepared_execution_receipt.activation_receipt_hash, activation_receipt.receipt_hash),
         ("dispatch.prepared_authority_mismatch", prepared_execution_receipt.execution_authority_receipt_hash, execution_authority_receipt.receipt_hash),
         ("dispatch.prepared_realization_receipt_mismatch", prepared_execution_receipt.realization_receipt_hash, activation_receipt.realization_receipt_hash),
         ("dispatch.prepared_realization_mismatch", prepared_execution_receipt.realization_hash, activation_receipt.realization_hash),
         ("dispatch.prepared_execution_context_mismatch", prepared_execution_receipt.execution_context_hash, activation_receipt.execution_context_hash),
         ("dispatch.request_workload_mismatch", execution_request_receipt.invocation_workload_hash, prepared_execution_receipt.invocation_workload_hash),
+        ("dispatch.delivery_plan_request_mismatch", delivery_plan_receipt.execution_request_receipt_hash, execution_request_receipt.receipt_hash),
+        ("dispatch.delivery_plan_prepared_mismatch", delivery_plan_receipt.prepared_execution_receipt_hash, prepared_execution_receipt.receipt_hash),
+        ("dispatch.delivery_plan_guarantee_mismatch", delivery_plan_receipt.requested_guarantee, execution_request_receipt.requested_delivery_guarantee),
     )
-    for kind, observed, expected in prepared_bindings:
+    for kind, observed, expected in consistency:
         if observed != expected:
-            issues.append(DispatchIssueV0(kind, "REJECT", observed, {"expected": expected}))
+            issues.append(DispatchIssueV0(kind, "REJECT", str(observed), {"expected": expected}))
 
     consumption_domain_hash = dispatch_consumption_domain_hash(execution_request_receipt.request_hash)
     return ExecutionDispatchReceiptV0(
-        candidate.dispatch_candidate_hash,
-        candidate.record_hash,
-        execution_request_receipt.request_hash,
-        candidate.dispatch_epoch_hash,
-        execution_request_receipt.receipt_hash,
-        execution_request_receipt.intent_hash,
-        execution_request_validity.evaluation_hash,
-        execution_request_validity.authority_state_hash,
-        execution_request_receipt.requester_principal_hash,
-        execution_request_receipt.purpose_hash,
-        execution_request_receipt.requested_delivery_guarantee,
-        execution_request_receipt.idempotency_scope,
-        activation_receipt.receipt_hash,
-        activation_validity.evaluation_hash,
-        activation_validity.authority_state_hash,
-        execution_authority_receipt.receipt_hash,
-        execution_authority_receipt.authority_claim_hash,
-        execution_authority_validity.evaluation_hash,
-        execution_authority_validity.authority_state_hash,
-        prepared_execution_receipt.receipt_hash,
-        prepared_execution_receipt.prepared_execution_claim_hash,
-        prepared_execution_validity.evaluation_hash,
-        prepared_execution_validity.authority_state_hash,
-        prepared_execution_receipt.invocation_workload_hash,
-        prepared_execution_receipt.before_checkpoint_hash,
-        prepared_execution_receipt.after_checkpoint_hash,
-        consumption_domain_hash,
-        activation_receipt.realization_receipt_hash,
-        activation_receipt.realization_hash,
-        activation_receipt.execution_context_hash,
-        activation_receipt.machine_instance_hash,
-        activation_receipt.placement_context_hash,
-        activation_receipt.runtime_state_claim_hash,
+        candidate.dispatch_candidate_hash, candidate.record_hash, execution_request_receipt.request_hash, candidate.dispatch_epoch_hash,
+        execution_request_receipt.receipt_hash, execution_request_receipt.intent_hash, execution_request_validity.evaluation_hash, execution_request_validity.authority_state_hash,
+        execution_request_receipt.requester_principal_hash, execution_request_receipt.purpose_hash, execution_request_receipt.requested_delivery_guarantee, execution_request_receipt.idempotency_scope,
+        activation_receipt.receipt_hash, activation_validity.evaluation_hash, activation_validity.authority_state_hash,
+        execution_authority_receipt.receipt_hash, execution_authority_receipt.authority_claim_hash, execution_authority_validity.evaluation_hash, execution_authority_validity.authority_state_hash,
+        prepared_execution_receipt.receipt_hash, prepared_execution_receipt.prepared_execution_claim_hash, prepared_execution_validity.evaluation_hash, prepared_execution_validity.authority_state_hash,
+        delivery_plan_receipt.receipt_hash, delivery_plan_receipt.plan_claim_hash, delivery_plan_validity.evaluation_hash, delivery_plan_validity.authority_state_hash,
+        delivery_plan_receipt.participant_manifest_hash, delivery_plan_receipt.coordinator_hash, delivery_plan_receipt.atomic_commit_domain_hash,
+        prepared_execution_receipt.invocation_workload_hash, prepared_execution_receipt.before_checkpoint_hash, prepared_execution_receipt.after_checkpoint_hash, consumption_domain_hash,
+        activation_receipt.realization_receipt_hash, activation_receipt.realization_hash, activation_receipt.execution_context_hash,
+        activation_receipt.machine_instance_hash, activation_receipt.placement_context_hash, activation_receipt.runtime_state_claim_hash,
         tuple(issues),
     )
 
@@ -476,55 +358,19 @@ def residual_from_execution_dispatch(receipt: ExecutionDispatchReceiptV0) -> Sem
     return residual_from_obstructions(
         domain="realization_dispatch",
         judgment_id="execution_dispatch",
-        judgment={
-            "kind": "admitted_request_prepared_execution_may_dispatch_now",
-            "dispatch_request_hash": receipt.dispatch_request_hash,
-            "requested_delivery_guarantee": receipt.requested_delivery_guarantee,
-            "status": receipt.status,
-        },
+        judgment={"kind": "admitted_request_prepared_delivery_plan_may_dispatch_now", "dispatch_request_hash": receipt.dispatch_request_hash, "requested_delivery_guarantee": receipt.requested_delivery_guarantee, "status": receipt.status},
         source={"kind": "execution_dispatch_receipt", "receipt_hash": receipt.receipt_hash},
-        obstructions=(
-            ResidualObstructionV0(
-                item.kind,
-                item.subject,
-                "resolved",
-                item.severity,
-                dict(item.detail),
-                dependency_refs=(
-                    receipt.dispatch_candidate_hash,
-                    receipt.dispatch_request_hash,
-                    receipt.execution_request_receipt_hash,
-                    receipt.execution_request_validity_evaluation_hash,
-                    receipt.dispatch_consumption_domain_hash,
-                    receipt.activation_receipt_hash,
-                    receipt.activation_validity_evaluation_hash,
-                    receipt.execution_authority_receipt_hash,
-                    receipt.execution_authority_claim_hash,
-                    receipt.execution_authority_validity_evaluation_hash,
-                    receipt.prepared_execution_receipt_hash,
-                    receipt.prepared_execution_claim_hash,
-                    receipt.prepared_execution_validity_evaluation_hash,
-                    receipt.dispatch_epoch_hash,
-                ),
-            )
-            for item in receipt.issues
-        ),
+        obstructions=(ResidualObstructionV0(
+            item.kind, item.subject, "resolved", item.severity, dict(item.detail),
+            dependency_refs=(receipt.dispatch_candidate_hash, receipt.dispatch_request_hash, receipt.execution_request_receipt_hash, receipt.activation_receipt_hash, receipt.execution_authority_receipt_hash, receipt.prepared_execution_receipt_hash, receipt.delivery_plan_receipt_hash, receipt.dispatch_epoch_hash),
+        ) for item in receipt.issues),
     )
 
 
 __all__ = [
-    "DISPATCH_CANDIDATE_SCHEMA_V0",
-    "DISPATCH_RECEIPT_SCHEMA_V0",
-    "DISPATCH_CONSUMPTION_DOMAIN_SCHEMA_V0",
-    "ACTIVATION_RECEIPT_CONTRACT_HASH_V0",
-    "AUTHORITY_RECEIPT_CONTRACT_HASH_V0",
-    "PREPARED_EXECUTION_RECEIPT_CONTRACT_HASH_V0",
-    "EXECUTION_REQUEST_RECEIPT_CONTRACT_HASH_V0",
-    "dispatch_consumption_domain_hash",
-    "DispatchSemanticsError",
-    "ExecutionDispatchCandidateV0",
-    "DispatchIssueV0",
-    "ExecutionDispatchReceiptV0",
-    "evaluate_execution_dispatch",
-    "residual_from_execution_dispatch",
+    "DISPATCH_CANDIDATE_SCHEMA_V0", "DISPATCH_RECEIPT_SCHEMA_V0", "DISPATCH_CONSUMPTION_DOMAIN_SCHEMA_V0",
+    "ACTIVATION_RECEIPT_CONTRACT_HASH_V0", "AUTHORITY_RECEIPT_CONTRACT_HASH_V0", "PREPARED_EXECUTION_RECEIPT_CONTRACT_HASH_V0",
+    "EXECUTION_REQUEST_RECEIPT_CONTRACT_HASH_V0", "DELIVERY_PLAN_RECEIPT_CONTRACT_HASH_V0",
+    "dispatch_consumption_domain_hash", "DispatchSemanticsError", "ExecutionDispatchCandidateV0", "DispatchIssueV0", "ExecutionDispatchReceiptV0",
+    "evaluate_execution_dispatch", "residual_from_execution_dispatch",
 ]
