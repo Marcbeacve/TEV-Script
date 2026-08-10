@@ -7,6 +7,7 @@ from tev_script.semantic_activation_v0 import ActivationIssueV0, ExecutionActiva
 from tev_script.semantic_dispatch_v0 import (
     ACTIVATION_RECEIPT_CONTRACT_HASH_V0,
     AUTHORITY_RECEIPT_CONTRACT_HASH_V0,
+    PREPARED_EXECUTION_RECEIPT_CONTRACT_HASH_V0,
     ExecutionDispatchCandidateV0,
     dispatch_consumption_domain_hash,
     evaluate_execution_dispatch,
@@ -16,6 +17,10 @@ from tev_script.semantic_evidence_v0 import EvidenceItemV0, EvidencePolicyV0, Ev
 from tev_script.semantic_execution_authority_v0 import (
     ExecutionAuthorityIssueV0,
     ExecutionAuthorityReceiptV0,
+)
+from tev_script.semantic_prepared_execution_v0 import (
+    PreparedExecutionIssueV0,
+    PreparedExecutionReceiptV0,
 )
 from tev_script.semantic_receipt_validity_v0 import (
     ReceiptValidityClaimV0,
@@ -47,15 +52,21 @@ def activation(*, issues=()) -> ExecutionActivationReceiptV0:
     )
 
 
-def authority(a: ExecutionActivationReceiptV0, *, issues=(), realization_receipt=None, realization=None):
+def authority(
+    a: ExecutionActivationReceiptV0,
+    *,
+    issues=(),
+    realization_receipt=None,
+    realization=None,
+) -> ExecutionAuthorityReceiptV0:
     return ExecutionAuthorityReceiptV0(
         authority_claim_hash=h("authority-claim"),
         authority_record_hash=h("authority-record"),
         realization_receipt_hash=realization_receipt or a.realization_receipt_hash,
         realization_hash=realization or a.realization_hash,
         transformation_semantic_hash=h("transformation"),
-        transformation_regime_binding_hash=h("transformation-regime-binding"),
-        semantic_scope_hash=h("authority-scope"),
+        transformation_regime_binding_hash=h("regime-binding"),
+        semantic_scope_hash=h("semantic-scope"),
         program_semantic_hash=h("program"),
         reaction_contract_hash=h("reaction-contract"),
         reaction_footprint_hash=h("reaction-footprint"),
@@ -67,13 +78,43 @@ def authority(a: ExecutionActivationReceiptV0, *, issues=(), realization_receipt
     )
 
 
+def prepared(
+    a: ExecutionActivationReceiptV0,
+    auth: ExecutionAuthorityReceiptV0,
+    *,
+    issues=(),
+    activation_hash=None,
+    authority_hash=None,
+) -> PreparedExecutionReceiptV0:
+    return PreparedExecutionReceiptV0(
+        prepared_execution_claim_hash=h("prepared-execution-claim"),
+        activation_receipt_hash=activation_hash or a.receipt_hash,
+        execution_authority_receipt_hash=authority_hash or auth.receipt_hash,
+        realization_receipt_hash=a.realization_receipt_hash,
+        realization_hash=a.realization_hash,
+        execution_context_hash=a.execution_context_hash,
+        invocation_workload_hash=h("invocation-workload"),
+        prepared_reaction_hash=h("prepared-reaction"),
+        prepared_refinement_receipt_hash=h("prepared-refinement"),
+        before_checkpoint_hash=h("before-checkpoint"),
+        after_checkpoint_hash=h("after-checkpoint"),
+        program_semantic_hash=auth.program_semantic_hash,
+        reaction_contract_hash=auth.reaction_contract_hash,
+        reaction_footprint_hash=auth.reaction_footprint_hash,
+        law_catalog_hash=auth.law_catalog_hash,
+        issues=tuple(issues),
+    )
+
+
 class ReceiptValidityAndDispatchV0Tests(unittest.TestCase):
     def setUp(self) -> None:
         self.activation = activation()
         self.authority = authority(self.activation)
+        self.prepared = prepared(self.activation, self.authority)
         self.epoch = h("dispatch-epoch")
-        self.activation_authority_state = h("activation-authority-state")
-        self.execution_authority_state = h("execution-authority-state")
+        self.activation_state = h("activation-authority-state")
+        self.authority_state = h("execution-authority-state")
+        self.prepared_state = h("prepared-execution-authority-state")
         self.assumption = h("validity-assumption")
         self.scope = h("validity-scope")
         self.verifier = h("validity-verifier")
@@ -95,12 +136,12 @@ class ReceiptValidityAndDispatchV0Tests(unittest.TestCase):
     def validity(
         self,
         *,
-        subject_receipt_hash,
-        subject_contract_hash,
-        authority_state_hash,
-        status="VALID",
-        epoch=None,
-        evidence_status="ACTIVE",
+        subject_receipt_hash: str,
+        subject_contract_hash: str,
+        authority_state_hash: str,
+        status: str = "VALID",
+        epoch: str | None = None,
+        evidence_status: str = "ACTIVE",
     ):
         claim = ReceiptValidityClaimV0(
             subject_receipt_hash,
@@ -140,7 +181,7 @@ class ReceiptValidityAndDispatchV0Tests(unittest.TestCase):
         return self.validity(
             subject_receipt_hash=self.activation.receipt_hash,
             subject_contract_hash=ACTIVATION_RECEIPT_CONTRACT_HASH_V0,
-            authority_state_hash=self.activation_authority_state,
+            authority_state_hash=self.activation_state,
             **kwargs,
         )
 
@@ -149,7 +190,16 @@ class ReceiptValidityAndDispatchV0Tests(unittest.TestCase):
         return self.validity(
             subject_receipt_hash=receipt.receipt_hash,
             subject_contract_hash=AUTHORITY_RECEIPT_CONTRACT_HASH_V0,
-            authority_state_hash=self.execution_authority_state,
+            authority_state_hash=self.authority_state,
+            **kwargs,
+        )
+
+    def prepared_validity(self, *, prepared_receipt=None, **kwargs):
+        receipt = prepared_receipt or self.prepared
+        return self.validity(
+            subject_receipt_hash=receipt.receipt_hash,
+            subject_contract_hash=PREPARED_EXECUTION_RECEIPT_CONTRACT_HASH_V0,
+            authority_state_hash=self.prepared_state,
             **kwargs,
         )
 
@@ -157,77 +207,198 @@ class ReceiptValidityAndDispatchV0Tests(unittest.TestCase):
         self,
         activation_validity,
         authority_validity,
+        prepared_validity,
         *,
         authority_receipt=None,
+        prepared_receipt=None,
         request="dispatch-request",
         epoch=None,
         provenance=None,
     ):
         authority_receipt = authority_receipt or self.authority
+        prepared_receipt = prepared_receipt or self.prepared
         candidate = ExecutionDispatchCandidateV0(
             h(request),
             self.activation.receipt_hash,
             activation_validity.evaluation_hash,
             authority_receipt.receipt_hash,
             authority_validity.evaluation_hash,
+            prepared_receipt.receipt_hash,
+            prepared_validity.evaluation_hash,
             epoch or self.epoch,
             provenance={} if provenance is None else provenance,
         )
-        return candidate, evaluate_execution_dispatch(
+        result = evaluate_execution_dispatch(
             candidate,
             activation_receipt=self.activation,
             activation_validity=activation_validity,
             execution_authority_receipt=authority_receipt,
             execution_authority_validity=authority_validity,
+            prepared_execution_receipt=prepared_receipt,
+            prepared_execution_validity=prepared_validity,
+        )
+        return candidate, result
+
+    def current_triplet(self):
+        return (
+            self.activation_validity()[2],
+            self.authority_validity()[2],
+            self.prepared_validity()[2],
         )
 
-    def test_both_current_receipts_at_exact_epoch_are_required_for_pass(self):
-        activation_record, _, activation_validity = self.activation_validity()
-        authority_record, _, authority_validity = self.authority_validity()
-        self.assertEqual(activation_validity.status, "PASS")
-        self.assertEqual(authority_validity.status, "PASS")
-        self.assertEqual(parse_residual(residual_from_receipt_validity(activation_validity)).status, "CLOSED")
-        self.assertEqual(parse_residual(residual_from_receipt_validity(authority_validity)).status, "CLOSED")
+    def test_all_three_current_receipts_at_exact_epoch_are_required_for_pass(self):
+        activation_record, _, av = self.activation_validity()
+        authority_record, _, uv = self.authority_validity()
+        prepared_record, _, pv = self.prepared_validity()
+        self.assertEqual(av.status, "PASS")
+        self.assertEqual(uv.status, "PASS")
+        self.assertEqual(pv.status, "PASS")
+        self.assertEqual(parse_residual(residual_from_receipt_validity(av)).status, "CLOSED")
+        self.assertEqual(parse_residual(residual_from_receipt_validity(uv)).status, "CLOSED")
+        self.assertEqual(parse_residual(residual_from_receipt_validity(pv)).status, "CLOSED")
 
-        candidate, dispatch = self.dispatch(activation_validity, authority_validity)
+        candidate, dispatch = self.dispatch(av, uv, pv)
         self.assertEqual(dispatch.status, "PASS")
         self.assertEqual(dispatch.dispatch_request_hash, candidate.dispatch_request_hash)
         self.assertEqual(dispatch.execution_authority_receipt_hash, self.authority.receipt_hash)
-        self.assertEqual(dispatch.execution_authority_claim_hash, self.authority.authority_claim_hash)
-        self.assertEqual(dispatch.dispatch_consumption_domain_hash, dispatch_consumption_domain_hash(candidate.dispatch_request_hash))
-        self.assertEqual(dispatch.activation_authority_state_hash, self.activation_authority_state)
-        self.assertEqual(dispatch.execution_authority_state_hash, self.execution_authority_state)
+        self.assertEqual(dispatch.prepared_execution_receipt_hash, self.prepared.receipt_hash)
+        self.assertEqual(dispatch.invocation_workload_hash, self.prepared.invocation_workload_hash)
+        self.assertEqual(dispatch.before_checkpoint_hash, self.prepared.before_checkpoint_hash)
+        self.assertEqual(dispatch.after_checkpoint_hash, self.prepared.after_checkpoint_hash)
+        self.assertEqual(
+            dispatch.dispatch_consumption_domain_hash,
+            dispatch_consumption_domain_hash(dispatch.dispatch_request_hash),
+        )
         self.assertEqual(parse_residual(residual_from_execution_dispatch(dispatch)).status, "CLOSED")
         self.assertEqual(activation_record.claim.subject_receipt_hash, self.activation.receipt_hash)
         self.assertEqual(authority_record.claim.subject_receipt_hash, self.authority.receipt_hash)
+        self.assertEqual(prepared_record.claim.subject_receipt_hash, self.prepared.receipt_hash)
 
-    def test_activation_unknown_blocks_dispatch_even_when_authority_is_current(self):
-        _, _, activation_validity = self.activation_validity(status="UNKNOWN")
-        _, _, authority_validity = self.authority_validity()
-        _, dispatch = self.dispatch(activation_validity, authority_validity)
-        self.assertEqual(dispatch.status, "PROOF_REQUIRED")
-        self.assertIn("dispatch.activation_not_current", {item.kind for item in dispatch.issues})
+    def test_any_unknown_currentness_keeps_dispatch_open(self):
+        _, _, av = self.activation_validity(status="UNKNOWN")
+        _, _, uv = self.authority_validity()
+        _, _, pv = self.prepared_validity()
+        _, result = self.dispatch(av, uv, pv)
+        self.assertEqual(result.status, "PROOF_REQUIRED")
+        self.assertIn("dispatch.activation_not_current", {item.kind for item in result.issues})
 
-    def test_execution_authority_unknown_blocks_dispatch_even_when_activation_is_current(self):
-        _, _, activation_validity = self.activation_validity()
-        _, _, authority_validity = self.authority_validity(status="UNKNOWN")
-        _, dispatch = self.dispatch(activation_validity, authority_validity)
-        self.assertEqual(dispatch.status, "PROOF_REQUIRED")
-        self.assertIn("dispatch.execution_authority_not_current", {item.kind for item in dispatch.issues})
+        _, _, av = self.activation_validity()
+        _, _, uv = self.authority_validity(status="UNKNOWN")
+        _, result = self.dispatch(av, uv, pv)
+        self.assertEqual(result.status, "PROOF_REQUIRED")
+        self.assertIn("dispatch.execution_authority_not_current", {item.kind for item in result.issues})
 
-    def test_revoked_execution_authority_rejects_new_dispatch_without_mutating_activation(self):
-        _, _, activation_validity = self.activation_validity()
-        _, _, authority_validity = self.authority_validity(status="REVOKED")
-        self.assertEqual(activation_validity.status, "PASS")
-        self.assertEqual(authority_validity.status, "REJECT")
-        _, dispatch = self.dispatch(activation_validity, authority_validity)
-        self.assertEqual(dispatch.status, "REJECT")
-        self.assertIn("dispatch.execution_authority_not_current", {item.kind for item in dispatch.issues})
+        _, _, uv = self.authority_validity()
+        _, _, pv = self.prepared_validity(status="UNKNOWN")
+        _, result = self.dispatch(av, uv, pv)
+        self.assertEqual(result.status, "PROOF_REQUIRED")
+        self.assertIn("dispatch.prepared_execution_not_current", {item.kind for item in result.issues})
+
+    def test_revoked_prepared_execution_blocks_new_dispatch_without_mutating_history(self):
+        _, _, av = self.activation_validity()
+        _, _, uv = self.authority_validity()
+        _, _, pv = self.prepared_validity(status="REVOKED")
         self.assertEqual(self.activation.status, "PASS")
+        self.assertEqual(self.authority.status, "PASS")
+        self.assertEqual(self.prepared.status, "PASS")
+        _, result = self.dispatch(av, uv, pv)
+        self.assertEqual(result.status, "REJECT")
+        self.assertIn("dispatch.prepared_execution_not_current", {item.kind for item in result.issues})
 
-    def test_non_pass_execution_authority_receipt_cannot_dispatch(self):
-        open_authority = authority(
+    def test_non_pass_prepared_execution_cannot_dispatch(self):
+        open_prepared = prepared(
             self.activation,
+            self.authority,
+            issues=(
+                PreparedExecutionIssueV0(
+                    "prepared_execution.workload_mismatch",
+                    "PROOF_REQUIRED",
+                    h("workload"),
+                    {},
+                ),
+            ),
+        )
+        _, _, av = self.activation_validity()
+        _, _, uv = self.authority_validity()
+        _, _, pv = self.prepared_validity(prepared_receipt=open_prepared)
+        _, result = self.dispatch(
+            av,
+            uv,
+            pv,
+            prepared_receipt=open_prepared,
+        )
+        self.assertEqual(result.status, "PROOF_REQUIRED")
+        self.assertIn("dispatch.prepared_execution_not_admitted", {item.kind for item in result.issues})
+
+    def test_prepared_execution_must_bind_same_activation_and_authority(self):
+        foreign_prepared = prepared(
+            self.activation,
+            self.authority,
+            activation_hash=h("other-activation"),
+            authority_hash=h("other-authority"),
+        )
+        _, _, av = self.activation_validity()
+        _, _, uv = self.authority_validity()
+        _, _, pv = self.prepared_validity(prepared_receipt=foreign_prepared)
+        _, result = self.dispatch(
+            av,
+            uv,
+            pv,
+            prepared_receipt=foreign_prepared,
+        )
+        self.assertEqual(result.status, "REJECT")
+        kinds = {item.kind for item in result.issues}
+        self.assertIn("dispatch.prepared_activation_mismatch", kinds)
+        self.assertIn("dispatch.prepared_authority_mismatch", kinds)
+
+    def test_foreign_execution_authority_realization_is_rejected(self):
+        foreign = authority(
+            self.activation,
+            realization_receipt=h("foreign-realization-receipt"),
+            realization=h("foreign-realization"),
+        )
+        foreign_prepared = prepared(self.activation, foreign)
+        _, _, av = self.activation_validity()
+        _, _, uv = self.authority_validity(authority_receipt=foreign)
+        _, _, pv = self.prepared_validity(prepared_receipt=foreign_prepared)
+        _, result = self.dispatch(
+            av,
+            uv,
+            pv,
+            authority_receipt=foreign,
+            prepared_receipt=foreign_prepared,
+        )
+        self.assertEqual(result.status, "REJECT")
+        kinds = {item.kind for item in result.issues}
+        self.assertIn("dispatch.execution_authority_realization_receipt_mismatch", kinds)
+        self.assertIn("dispatch.execution_authority_realization_mismatch", kinds)
+
+    def test_validity_from_other_epoch_cannot_authorize_dispatch(self):
+        _, _, av = self.activation_validity()
+        _, _, uv = self.authority_validity()
+        _, _, pv = self.prepared_validity(epoch=h("old-epoch"))
+        self.assertEqual(pv.status, "REJECT")
+        _, result = self.dispatch(av, uv, pv)
+        self.assertEqual(result.status, "REJECT")
+        self.assertIn("dispatch.prepared_execution_not_current", {item.kind for item in result.issues})
+
+    def test_dispatch_request_and_provenance_identity_rules_remain_explicit(self):
+        av, uv, pv = self.current_triplet()
+        first, _ = self.dispatch(av, uv, pv, request="dispatch-a")
+        second, _ = self.dispatch(av, uv, pv, request="dispatch-b")
+        self.assertNotEqual(first.dispatch_candidate_hash, second.dispatch_candidate_hash)
+
+        left, _ = self.dispatch(av, uv, pv, provenance={"scheduler": "a"})
+        right, _ = self.dispatch(av, uv, pv, provenance={"scheduler": "b"})
+        self.assertEqual(left.dispatch_candidate_hash, right.dispatch_candidate_hash)
+        self.assertNotEqual(left.record_hash, right.record_hash)
+
+    def test_non_pass_activation_and_authority_still_propagate(self):
+        rejected_activation = activation(
+            issues=(ActivationIssueV0("activation.failure", "REJECT", h("failure"), {}),)
+        )
+        rejected_authority = authority(
+            rejected_activation,
             issues=(
                 ExecutionAuthorityIssueV0(
                     "authority.refinement_not_admitted",
@@ -237,206 +408,48 @@ class ReceiptValidityAndDispatchV0Tests(unittest.TestCase):
                 ),
             ),
         )
-        _, _, activation_validity = self.activation_validity()
-        _, _, authority_validity = self.authority_validity(authority_receipt=open_authority)
-        _, dispatch = self.dispatch(
-            activation_validity,
-            authority_validity,
-            authority_receipt=open_authority,
-        )
-        self.assertEqual(dispatch.status, "PROOF_REQUIRED")
-        self.assertIn("dispatch.execution_authority_not_admitted", {item.kind for item in dispatch.issues})
+        prepared_for_rejected = prepared(rejected_activation, rejected_authority)
 
-    def test_authority_for_different_realization_is_rejected(self):
-        foreign = authority(
-            self.activation,
-            realization_receipt=h("foreign-realization-receipt"),
-            realization=h("foreign-realization"),
+        av_record, av_evidence, av = self.validity(
+            subject_receipt_hash=rejected_activation.receipt_hash,
+            subject_contract_hash=ACTIVATION_RECEIPT_CONTRACT_HASH_V0,
+            authority_state_hash=self.activation_state,
         )
-        _, _, activation_validity = self.activation_validity()
-        _, _, authority_validity = self.authority_validity(authority_receipt=foreign)
-        _, dispatch = self.dispatch(
-            activation_validity,
-            authority_validity,
-            authority_receipt=foreign,
+        _, _, uv = self.validity(
+            subject_receipt_hash=rejected_authority.receipt_hash,
+            subject_contract_hash=AUTHORITY_RECEIPT_CONTRACT_HASH_V0,
+            authority_state_hash=self.authority_state,
         )
-        self.assertEqual(dispatch.status, "REJECT")
-        kinds = {item.kind for item in dispatch.issues}
-        self.assertIn("dispatch.execution_authority_realization_receipt_mismatch", kinds)
-        self.assertIn("dispatch.execution_authority_realization_mismatch", kinds)
-
-    def test_authority_validity_from_other_epoch_cannot_authorize_dispatch(self):
-        _, _, activation_validity = self.activation_validity()
-        _, _, authority_validity = self.authority_validity(epoch=h("old-epoch"))
-        self.assertEqual(authority_validity.status, "REJECT")
-        _, dispatch = self.dispatch(activation_validity, authority_validity)
-        self.assertEqual(dispatch.status, "REJECT")
-        self.assertIn("dispatch.execution_authority_not_current", {item.kind for item in dispatch.issues})
-
-    def test_revoking_same_authority_validity_witness_reopens_without_changing_evidence_identity(self):
-        claim = ReceiptValidityClaimV0(
-            self.authority.receipt_hash,
-            AUTHORITY_RECEIPT_CONTRACT_HASH_V0,
-            self.epoch,
-            self.execution_authority_state,
-            "VALID",
-            assumption_hashes=(self.assumption,),
+        _, _, pv = self.validity(
+            subject_receipt_hash=prepared_for_rejected.receipt_hash,
+            subject_contract_hash=PREPARED_EXECUTION_RECEIPT_CONTRACT_HASH_V0,
+            authority_state_hash=self.prepared_state,
         )
-        active = EvidenceItemV0(
-            "e.active",
-            claim.validity_claim_hash,
-            self.scope,
-            "ATTESTATION",
-            verifier_hash=self.verifier,
-            witness_hash=h("same-authority-validity-witness"),
-            assumption_hashes=(self.assumption,),
-            status="ACTIVE",
-        )
-        revoked = EvidenceItemV0(
-            "e.revoked",
-            claim.validity_claim_hash,
-            self.scope,
-            "ATTESTATION",
-            verifier_hash=self.verifier,
-            witness_hash=h("same-authority-validity-witness"),
-            assumption_hashes=(self.assumption,),
-            status="REVOKED",
-        )
-        self.assertEqual(active.evidence_hash, revoked.evidence_hash)
-        record = ReceiptValidityRecordV0(claim, self.evidence_policy.policy_hash, (active.evidence_hash,))
-        active_eval = evaluate_receipt_validity(
-            record,
-            expected_subject_receipt_hash=self.authority.receipt_hash,
-            expected_subject_contract_hash=AUTHORITY_RECEIPT_CONTRACT_HASH_V0,
-            expected_validation_epoch_hash=self.epoch,
-            policy=self.policy,
-            evidence_policy=self.evidence_policy,
-            evidence=(active,),
-        )
-        revoked_eval = evaluate_receipt_validity(
-            record,
-            expected_subject_receipt_hash=self.authority.receipt_hash,
-            expected_subject_contract_hash=AUTHORITY_RECEIPT_CONTRACT_HASH_V0,
-            expected_validation_epoch_hash=self.epoch,
-            policy=self.policy,
-            evidence_policy=self.evidence_policy,
-            evidence=(revoked,),
-        )
-        self.assertEqual(active_eval.status, "PASS")
-        self.assertEqual(revoked_eval.status, "PROOF_REQUIRED")
-        _, _, activation_validity = self.activation_validity()
-        _, dispatch = self.dispatch(activation_validity, revoked_eval)
-        self.assertEqual(dispatch.status, "PROOF_REQUIRED")
-
-    def test_dispatch_request_and_provenance_identity_rules_remain_explicit(self):
-        _, _, activation_validity = self.activation_validity()
-        _, _, authority_validity = self.authority_validity()
-        first, first_receipt = self.dispatch(activation_validity, authority_validity, request="dispatch-a")
-        second, second_receipt = self.dispatch(activation_validity, authority_validity, request="dispatch-b")
-        self.assertNotEqual(first.dispatch_candidate_hash, second.dispatch_candidate_hash)
-        self.assertNotEqual(first_receipt.dispatch_consumption_domain_hash, second_receipt.dispatch_consumption_domain_hash)
-
-        left, left_receipt = self.dispatch(
-            activation_validity,
-            authority_validity,
-            provenance={"scheduler": "a"},
-        )
-        right, right_receipt = self.dispatch(
-            activation_validity,
-            authority_validity,
-            provenance={"scheduler": "b"},
-        )
-        self.assertEqual(left.dispatch_candidate_hash, right.dispatch_candidate_hash)
-        self.assertNotEqual(left.record_hash, right.record_hash)
-        self.assertEqual(left_receipt.dispatch_consumption_domain_hash, right_receipt.dispatch_consumption_domain_hash)
-
-    def test_non_pass_activation_cannot_dispatch_even_with_current_authority(self):
-        rejected_activation = activation(
-            issues=(ActivationIssueV0("activation.failure", "REJECT", h("failure"), {}),)
-        )
-        current_authority = authority(rejected_activation)
-
-        activation_claim = ReceiptValidityClaimV0(
-            rejected_activation.receipt_hash,
-            ACTIVATION_RECEIPT_CONTRACT_HASH_V0,
-            self.epoch,
-            self.activation_authority_state,
-            "VALID",
-            assumption_hashes=(self.assumption,),
-        )
-        activation_evidence = EvidenceItemV0(
-            "e.rejected-activation-validity",
-            activation_claim.validity_claim_hash,
-            self.scope,
-            "ATTESTATION",
-            verifier_hash=self.verifier,
-            witness_hash=h("rejected-activation-validity"),
-            assumption_hashes=(self.assumption,),
-        )
-        activation_record = ReceiptValidityRecordV0(
-            activation_claim,
-            self.evidence_policy.policy_hash,
-            (activation_evidence.evidence_hash,),
-        )
-        activation_validity = evaluate_receipt_validity(
-            activation_record,
-            expected_subject_receipt_hash=rejected_activation.receipt_hash,
-            expected_subject_contract_hash=ACTIVATION_RECEIPT_CONTRACT_HASH_V0,
-            expected_validation_epoch_hash=self.epoch,
-            policy=self.policy,
-            evidence_policy=self.evidence_policy,
-            evidence=(activation_evidence,),
-        )
-
-        authority_claim = ReceiptValidityClaimV0(
-            current_authority.receipt_hash,
-            AUTHORITY_RECEIPT_CONTRACT_HASH_V0,
-            self.epoch,
-            self.execution_authority_state,
-            "VALID",
-            assumption_hashes=(self.assumption,),
-        )
-        authority_evidence = EvidenceItemV0(
-            "e.current-authority-validity",
-            authority_claim.validity_claim_hash,
-            self.scope,
-            "ATTESTATION",
-            verifier_hash=self.verifier,
-            witness_hash=h("current-authority-validity"),
-            assumption_hashes=(self.assumption,),
-        )
-        authority_record = ReceiptValidityRecordV0(
-            authority_claim,
-            self.evidence_policy.policy_hash,
-            (authority_evidence.evidence_hash,),
-        )
-        authority_validity = evaluate_receipt_validity(
-            authority_record,
-            expected_subject_receipt_hash=current_authority.receipt_hash,
-            expected_subject_contract_hash=AUTHORITY_RECEIPT_CONTRACT_HASH_V0,
-            expected_validation_epoch_hash=self.epoch,
-            policy=self.policy,
-            evidence_policy=self.evidence_policy,
-            evidence=(authority_evidence,),
-        )
-
         candidate = ExecutionDispatchCandidateV0(
-            h("dispatch-request"),
+            h("dispatch-rejected-upstream"),
             rejected_activation.receipt_hash,
-            activation_validity.evaluation_hash,
-            current_authority.receipt_hash,
-            authority_validity.evaluation_hash,
+            av.evaluation_hash,
+            rejected_authority.receipt_hash,
+            uv.evaluation_hash,
+            prepared_for_rejected.receipt_hash,
+            pv.evaluation_hash,
             self.epoch,
         )
-        dispatch = evaluate_execution_dispatch(
+        result = evaluate_execution_dispatch(
             candidate,
             activation_receipt=rejected_activation,
-            activation_validity=activation_validity,
-            execution_authority_receipt=current_authority,
-            execution_authority_validity=authority_validity,
+            activation_validity=av,
+            execution_authority_receipt=rejected_authority,
+            execution_authority_validity=uv,
+            prepared_execution_receipt=prepared_for_rejected,
+            prepared_execution_validity=pv,
         )
-        self.assertEqual(dispatch.status, "REJECT")
-        self.assertIn("dispatch.activation_not_admitted", {item.kind for item in dispatch.issues})
+        self.assertEqual(result.status, "REJECT")
+        kinds = {item.kind for item in result.issues}
+        self.assertIn("dispatch.activation_not_admitted", kinds)
+        self.assertIn("dispatch.execution_authority_not_admitted", kinds)
+        self.assertEqual(av_record.claim.subject_receipt_hash, rejected_activation.receipt_hash)
+        self.assertTrue(av_evidence.evidence_hash)
 
 
 if __name__ == "__main__":
