@@ -6,21 +6,26 @@ import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+TEST_ROOT = ROOT / "tests"
 
-EXTENDED_TESTS = (
-    "tests.test_delivery_guarantee_v0",
-    "tests.test_dispatch_consumption_v0",
-    "tests.test_prepared_execution_v0",
-    "tests.test_realization_cost_model_v0",
-    "tests.test_realization_cost_model_update_v0",
-    "tests.test_realization_cost_prediction_v0",
-    "tests.test_realization_dispatch_loop_v0",
-    "tests.test_realization_execution_authority_v0",
-    "tests.test_realization_receipt_validity_dispatch_v0",
-    "tests.test_realization_resource_measurement_v0",
-    "tests.test_realization_resource_calibration_v0",
-    "tests.test_realization_search_v0",
-    "tests.test_realization_selection_v0",
+EXTENDED_TEST_FILES = (
+    "test_commit_outcome_v0.py",
+    "test_delivery_guarantee_v0.py",
+    "test_delivery_plan_v0.py",
+    "test_delivery_satisfaction_v0.py",
+    "test_dispatch_consumption_v0.py",
+    "test_execution_request_v0.py",
+    "test_prepared_execution_v0.py",
+    "test_realization_cost_model_v0.py",
+    "test_realization_cost_model_update_v0.py",
+    "test_realization_cost_prediction_v0.py",
+    "test_realization_dispatch_loop_v0.py",
+    "test_realization_execution_authority_v0.py",
+    "test_realization_receipt_validity_dispatch_v0.py",
+    "test_realization_resource_measurement_v0.py",
+    "test_realization_resource_calibration_v0.py",
+    "test_realization_search_v0.py",
+    "test_realization_selection_v0.py",
 )
 
 
@@ -31,8 +36,8 @@ def run(command: list[str]) -> int:
 def run_tests() -> tuple[bool, int]:
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
-    for module in EXTENDED_TESTS:
-        suite.addTests(loader.loadTestsFromName(module))
+    for file_name in EXTENDED_TEST_FILES:
+        suite.addTests(loader.discover(str(TEST_ROOT), pattern=file_name))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful(), result.testsRun
 
