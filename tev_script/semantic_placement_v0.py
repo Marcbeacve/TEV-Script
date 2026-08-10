@@ -16,6 +16,7 @@ PLACEMENT_CONTEXT_SCHEMA_V0 = "TEV_SCRIPT_PLACEMENT_CONTEXT_V0"
 PLACEMENT_POLICY_SCHEMA_V0 = "TEV_SCRIPT_PLACEMENT_POLICY_V0"
 PLACEMENT_CANDIDATE_SCHEMA_V0 = "TEV_SCRIPT_PLACEMENT_CANDIDATE_V0"
 PLACEMENT_EVALUATION_SCHEMA_V0 = "TEV_SCRIPT_PLACEMENT_EVALUATION_V0"
+EXECUTION_CONTEXT_SCHEMA_V0 = "TEV_SCRIPT_EXECUTION_CONTEXT_V0"
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _HEX = frozenset("0123456789abcdef")
 
@@ -49,13 +50,7 @@ def _hashes(values: Iterable[str], what: str) -> tuple[str, ...]:
 
 @dataclass(frozen=True, slots=True)
 class MachineInstanceV0:
-    """Claim about one concrete substrate instance.
-
-    `instance_id` is a local inventory label. `instance_principal_hash` is the
-    stable identity principal whose profile/attributes must be attested by
-    independent Evidence before placement admission. Mutable load, health and
-    availability are deliberately excluded.
-    """
+    """Claim about one concrete substrate principal bound to one machine profile."""
 
     instance_id: str
     machine_profile_hash: str
@@ -67,11 +62,7 @@ class MachineInstanceV0:
         object.__setattr__(self, "instance_id", _stable(self.instance_id, "instance_id"))
         object.__setattr__(self, "machine_profile_hash", _hash64(self.machine_profile_hash, "machine_profile_hash"))
         object.__setattr__(self, "instance_principal_hash", _hash64(self.instance_principal_hash, "instance_principal_hash"))
-        object.__setattr__(
-            self,
-            "immutable_attribute_claim_hashes",
-            _hashes(self.immutable_attribute_claim_hashes, "immutable attribute claim hash"),
-        )
+        object.__setattr__(self, "immutable_attribute_claim_hashes", _hashes(self.immutable_attribute_claim_hashes, "immutable attribute claim hash"))
         provenance = {} if self.provenance is None else dict(self.provenance)
         canonical_json(provenance)
         object.__setattr__(self, "provenance", provenance)
@@ -147,6 +138,26 @@ class PlacementContextV0:
         return field_from_mapping("tev.realization.placement_context.v0", self.to_object())
 
 
+def execution_context_hash(
+    *,
+    realization_hash: str,
+    machine_instance_hash: str,
+    placement_context_hash: str,
+    workload_hash: str,
+    environment_hash: str = "",
+) -> str:
+    return canonical_hash(
+        {
+            "schema": EXECUTION_CONTEXT_SCHEMA_V0,
+            "realization_hash": _hash64(realization_hash, "realization_hash"),
+            "machine_instance_hash": _hash64(machine_instance_hash, "machine_instance_hash"),
+            "placement_context_hash": _hash64(placement_context_hash, "placement_context_hash"),
+            "workload_hash": _hash64(workload_hash, "workload_hash"),
+            "environment_hash": _optional_hash(environment_hash, "environment_hash"),
+        }
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class PlacementPolicyV0:
     instance_evidence_policy_hash: str
@@ -191,12 +202,14 @@ class PlacementCandidateV0:
     realization_admission_receipt_hash: str
     placement_context_hash: str
     assumption_hashes: tuple[str, ...] = ()
+    evidence_hashes: tuple[str, ...] = ()
     provenance: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "realization_admission_receipt_hash", _hash64(self.realization_admission_receipt_hash, "realization_admission_receipt_hash"))
         object.__setattr__(self, "placement_context_hash", _hash64(self.placement_context_hash, "placement_context_hash"))
         object.__setattr__(self, "assumption_hashes", _hashes(self.assumption_hashes, "placement candidate assumption hash"))
+        object.__setattr__(self, "evidence_hashes", _hashes(self.evidence_hashes, "placement evidence hash"))
         provenance = {} if self.provenance is None else dict(self.provenance)
         canonical_json(provenance)
         object.__setattr__(self, "provenance", provenance)
@@ -218,6 +231,7 @@ class PlacementCandidateV0:
             "schema": PLACEMENT_CANDIDATE_SCHEMA_V0,
             "placement_candidate_hash": self.placement_candidate_hash,
             **{key: value for key, value in self.identity_object().items() if key != "schema"},
+            "evidence_hashes": list(self.evidence_hashes),
             "provenance": dict(self.provenance or {}),
         }
 
@@ -246,17 +260,13 @@ class PlacementIssueV0:
         object.__setattr__(self, "detail", detail)
 
     def to_object(self) -> dict[str, object]:
-        return {
-            "kind": self.kind,
-            "severity": self.severity,
-            "subject": self.subject,
-            "detail": dict(self.detail),
-        }
+        return {"kind": self.kind, "severity": self.severity, "subject": self.subject, "detail": dict(self.detail)}
 
 
 @dataclass(frozen=True, slots=True)
 class PlacementEvaluationV0:
     placement_candidate_hash: str
+    placement_record_hash: str
     realization_receipt_hash: str
     machine_instance_hash: str
     placement_context_hash: str
@@ -267,6 +277,7 @@ class PlacementEvaluationV0:
     def __post_init__(self) -> None:
         for name in (
             "placement_candidate_hash",
+            "placement_record_hash",
             "realization_receipt_hash",
             "machine_instance_hash",
             "placement_context_hash",
@@ -287,6 +298,7 @@ class PlacementEvaluationV0:
             "schema": PLACEMENT_EVALUATION_SCHEMA_V0,
             "status": self.status,
             "placement_candidate_hash": self.placement_candidate_hash,
+            "placement_record_hash": self.placement_record_hash,
             "realization_receipt_hash": self.realization_receipt_hash,
             "machine_instance_hash": self.machine_instance_hash,
             "placement_context_hash": self.placement_context_hash,
@@ -298,10 +310,6 @@ class PlacementEvaluationV0:
     @property
     def evaluation_hash(self) -> str:
         return canonical_hash(self.to_object())
-
-
-def _allowed(value: str, allowed: tuple[str, ...]) -> bool:
-    return not allowed or value in allowed
 
 
 def evaluate_placement(
@@ -335,9 +343,7 @@ def evaluate_placement(
     for assumption_hash in sorted((set(candidate.assumption_hashes) | set(placement_context.assumption_hashes)) - accepted_assumptions):
         issues.append(PlacementIssueV0("placement.assumption_not_accepted", "REJECT", assumption_hash, {}))
 
-    required_attributes = set(policy.required_instance_attribute_claim_hashes)
-    observed_attributes = set(machine_instance.immutable_attribute_claim_hashes)
-    for attribute_hash in sorted(required_attributes - observed_attributes):
+    for attribute_hash in sorted(set(policy.required_instance_attribute_claim_hashes) - set(machine_instance.immutable_attribute_claim_hashes)):
         issues.append(PlacementIssueV0("placement.instance_attribute_missing", "REJECT", attribute_hash, {}))
 
     domain_checks = (
@@ -347,15 +353,16 @@ def evaluate_placement(
         ("placement.communication_domain_not_allowed", placement_context.communication_domain_hash, policy.allowed_communication_domain_hashes),
     )
     for kind, observed, allowed in domain_checks:
-        if allowed and (not observed or not _allowed(observed, allowed)):
+        if allowed and (not observed or observed not in allowed):
             issues.append(PlacementIssueV0(kind, "REJECT", observed or "missing", {"allowed": list(allowed)}))
 
     evidence_items = tuple(evidence)
-    instance_evaluation = evaluate_evidence(
-        machine_instance.machine_instance_hash,
-        instance_evidence_policy,
-        evidence_items,
-    )
+    evidence_by_hash = {item.evidence_hash: item for item in evidence_items}
+    for evidence_hash in candidate.evidence_hashes:
+        if evidence_hash not in evidence_by_hash:
+            issues.append(PlacementIssueV0("placement.evidence_reference_missing", "PROOF_REQUIRED", evidence_hash, {}))
+
+    instance_evaluation = evaluate_evidence(machine_instance.machine_instance_hash, instance_evidence_policy, evidence_items)
     for item in instance_evaluation.issues:
         issues.append(
             PlacementIssueV0(
@@ -366,13 +373,16 @@ def evaluate_placement(
             )
         )
     for accepted_hash in instance_evaluation.accepted_evidence_hashes:
-        item = next((row for row in evidence_items if row.evidence_hash == accepted_hash), None)
+        if accepted_hash not in candidate.evidence_hashes:
+            issues.append(PlacementIssueV0("placement.evidence_unbound_support", "REJECT", accepted_hash, {}))
+        item = evidence_by_hash.get(accepted_hash)
         if item is not None:
             for assumption_hash in sorted(set(item.assumption_hashes) - accepted_assumptions):
                 issues.append(PlacementIssueV0("placement.evidence_assumption_not_accepted", "REJECT", assumption_hash, {"evidence_hash": accepted_hash}))
 
     return PlacementEvaluationV0(
         candidate.placement_candidate_hash,
+        candidate.record_hash,
         realization_receipt.receipt_hash,
         machine_instance.machine_instance_hash,
         placement_context.placement_context_hash,
@@ -401,6 +411,7 @@ def residual_from_placement(evaluation: PlacementEvaluationV0) -> SemanticFieldV
                 dict(item.detail),
                 dependency_refs=(
                     evaluation.placement_candidate_hash,
+                    evaluation.placement_record_hash,
                     evaluation.realization_receipt_hash,
                     evaluation.machine_instance_hash,
                     evaluation.placement_context_hash,
@@ -418,6 +429,7 @@ __all__ = [
     "PLACEMENT_POLICY_SCHEMA_V0",
     "PLACEMENT_CANDIDATE_SCHEMA_V0",
     "PLACEMENT_EVALUATION_SCHEMA_V0",
+    "EXECUTION_CONTEXT_SCHEMA_V0",
     "PlacementSemanticsError",
     "MachineInstanceV0",
     "PlacementContextV0",
@@ -425,6 +437,7 @@ __all__ = [
     "PlacementCandidateV0",
     "PlacementIssueV0",
     "PlacementEvaluationV0",
+    "execution_context_hash",
     "evaluate_placement",
     "residual_from_placement",
 ]
