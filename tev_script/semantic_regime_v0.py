@@ -618,13 +618,22 @@ def evaluate_regime_preservation(
             )
         )
 
-    accepted_assumptions = set(regime.assumption_hashes)
-    extra_assumptions = set(claim.assumption_hashes) - accepted_assumptions
-    for item in sorted(extra_assumptions):
+    regime_assumptions = set(regime.assumption_hashes)
+    claim_assumptions = set(claim.assumption_hashes)
+    for item in sorted(claim_assumptions - regime_assumptions):
         issues.append(
             RegimeIssueV0(
                 "regime.assumption_unaccepted",
                 "REJECT",
+                item,
+                {"regime_hash": regime.regime_hash},
+            )
+        )
+    for item in sorted(regime_assumptions - claim_assumptions):
+        issues.append(
+            RegimeIssueV0(
+                "regime.assumption_unacknowledged",
+                "PROOF_REQUIRED",
                 item,
                 {"regime_hash": regime.regime_hash},
             )
