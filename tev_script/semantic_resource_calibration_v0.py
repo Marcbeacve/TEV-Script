@@ -69,15 +69,11 @@ def _bound_hash(bound: ResourceBoundV0) -> str:
 
 
 def _dimension_verdict(predicted: ResourceBoundV0, observed: ResourceBoundV0) -> str:
-    # A measured interval proves a bound false only when the whole possible
-    # observed interval lies below the predicted lower bound, or the measured
-    # lower bound lies above a finite predicted upper bound.
     if observed.upper is not None and observed.upper < predicted.lower:
         return "BOUND_VIOLATED"
     if predicted.upper is not None and observed.lower > predicted.upper:
         return "BOUND_VIOLATED"
 
-    # Full containment is positive compatibility evidence for this measurement.
     lower_inside = observed.lower >= predicted.lower
     upper_inside = predicted.upper is None or (
         observed.upper is not None and observed.upper <= predicted.upper
@@ -85,8 +81,6 @@ def _dimension_verdict(predicted: ResourceBoundV0, observed: ResourceBoundV0) ->
     if lower_inside and upper_inside:
         return "WITHIN_BOUND"
 
-    # Interval overlap, unknown observed upper, or absent finite prediction is
-    # not silently converted into support or falsification.
     return "INCONCLUSIVE"
 
 
@@ -156,17 +150,28 @@ class ResourceCalibrationEvaluationV0:
             raise ResourceCalibrationError("resource calibration verdict")
         object.__setattr__(self, "dimension_results", tuple(sorted(self.dimension_results, key=lambda item: item.dimension_id)))
         object.__setattr__(self, "issues", tuple(sorted(self.issues, key=lambda item: canonical_json(item.to_object()))))
-        expected = "SUPPORTED"
-        if any(item.severity == "REJECT" for item in self.issues) or any(item.verdict == "BOUND_VIOLATED" for item in self.dimension_results):
-            expected = "FALSIFIED"
-        elif self.issues or any(item.verdict in {"INCONCLUSIVE", "UNPREDICTED"} for item in self.dimension_results):
+
+        if self.status != "PASS":
             expected = "INCONCLUSIVE"
+        elif any(item.verdict == "BOUND_VIOLATED" for item in self.dimension_results):
+            expected = "FALSIFIED"
+        elif any(item.verdict in {"INCONCLUSIVE", "UNPREDICTED"} for item in self.dimension_results):
+            expected = "INCONCLUSIVE"
+        else:
+            expected = "SUPPORTED"
         if self.verdict != expected:
-            raise ResourceCalibrationError("calibration verdict inconsistent")
+            raise ResourceCalibrationError("calibration verdict inconsistent with validity status")
+
+    @property
+    def status(self) -> str:
+        if any(item.severity == "REJECT" for item in self.issues):
+            return "REJECT"
+        return "PROOF_REQUIRED" if self.issues else "PASS"
 
     def to_object(self) -> dict[str, object]:
         return {
             "schema": RESOURCE_CALIBRATION_EVALUATION_SCHEMA_V0,
+            "status": self.status,
             "verdict": self.verdict,
             "calibration_hash": self.calibration_hash,
             "dimension_results": [item.to_object() for item in self.dimension_results],
@@ -242,8 +247,6 @@ def evaluate_resource_calibration(
         predicted = predicted_resources.bound(dimension_id)
         observed = observed_resources.bound(dimension_id)
         if observed is None:
-            # A complete admitted measurement should normally cover the measured
-            # catalog, but incomplete measurement surfaces remain explicitly open.
             observed = observed_resources.effective_bound(dimension_id)
         if predicted is None:
             results.append(
@@ -264,11 +267,14 @@ def evaluate_resource_calibration(
             )
         )
 
-    verdict = "SUPPORTED"
-    if any(item.severity == "REJECT" for item in issues) or any(item.verdict == "BOUND_VIOLATED" for item in results):
-        verdict = "FALSIFIED"
-    elif issues or any(item.verdict in {"INCONCLUSIVE", "UNPREDICTED"} for item in results):
+    if issues:
         verdict = "INCONCLUSIVE"
+    elif any(item.verdict == "BOUND_VIOLATED" for item in results):
+        verdict = "FALSIFIED"
+    elif any(item.verdict in {"INCONCLUSIVE", "UNPREDICTED"} for item in results):
+        verdict = "INCONCLUSIVE"
+    else:
+        verdict = "SUPPORTED"
 
     return ResourceCalibrationEvaluationV0(calibration.calibration_hash, verdict, tuple(results), tuple(issues))
 
@@ -286,33 +292,40 @@ def residual_from_resource_calibration(evaluation: ResourceCalibrationEvaluation
                 dependency_refs=(evaluation.calibration_hash,),
             )
         )
-    for result in evaluation.dimension_results:
-        if result.verdict == "BOUND_VIOLATED":
-            obstructions.append(
-                ResidualObstructionV0(
-                    "resource.prediction_falsified",
-                    result.dimension_id,
-                    result.predicted_bound_hash,
-                    result.observed_bound_hash,
-                    {"dimension_verdict": result.verdict},
-                    dependency_refs=(evaluation.calibration_hash,),
+
+    if evaluation.status == "PASS":
+        for result in evaluation.dimension_results:
+            if result.verdict == "BOUND_VIOLATED":
+                obstructions.append(
+                    ResidualObstructionV0(
+                        "resource.prediction_falsified",
+                        result.dimension_id,
+                        result.predicted_bound_hash,
+                        result.observed_bound_hash,
+                        {"dimension_verdict": result.verdict},
+                        dependency_refs=(evaluation.calibration_hash,),
+                    )
                 )
-            )
-        elif result.verdict in {"INCONCLUSIVE", "UNPREDICTED"}:
-            obstructions.append(
-                ResidualObstructionV0(
-                    "resource.calibration_inconclusive",
-                    result.dimension_id,
-                    result.predicted_bound_hash,
-                    result.observed_bound_hash,
-                    {"dimension_verdict": result.verdict},
-                    dependency_refs=(evaluation.calibration_hash,),
+            elif result.verdict in {"INCONCLUSIVE", "UNPREDICTED"}:
+                obstructions.append(
+                    ResidualObstructionV0(
+                        "resource.calibration_inconclusive",
+                        result.dimension_id,
+                        result.predicted_bound_hash,
+                        result.observed_bound_hash,
+                        {"dimension_verdict": result.verdict},
+                        dependency_refs=(evaluation.calibration_hash,),
+                    )
                 )
-            )
+
     return residual_from_obstructions(
         domain="realization_resource_calibration",
         judgment_id="resource_prediction_calibration",
-        judgment={"kind": "prediction_consistent_with_admitted_measurement", "verdict": evaluation.verdict},
+        judgment={
+            "kind": "prediction_consistent_with_admitted_measurement",
+            "status": evaluation.status,
+            "verdict": evaluation.verdict,
+        },
         source={"kind": "resource_calibration_evaluation", "evaluation_hash": evaluation.evaluation_hash},
         obstructions=tuple(obstructions),
     )
