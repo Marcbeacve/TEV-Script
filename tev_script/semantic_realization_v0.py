@@ -287,6 +287,55 @@ class RealizationProblemV0:
         return field_from_mapping("tev.realization.problem.v0", self.to_object())
 
 
+def realization_semantic_claim_object(
+    *,
+    transformation_semantic_hash: str,
+    transformation_regime_binding_hash: str,
+    machine_hash: str,
+    artifact_hashes: Iterable[str],
+    machine_requirement: MachineRequirementV0,
+    semantic_relation: str,
+    approximation_contract: ApproximationContractV0 | None = None,
+    assumption_hashes: Iterable[str] = (),
+) -> dict[str, object]:
+    transformation_semantic_hash = _hash64(
+        transformation_semantic_hash, "transformation_semantic_hash"
+    )
+    transformation_regime_binding_hash = _hash64(
+        transformation_regime_binding_hash, "transformation_regime_binding_hash"
+    )
+    machine_hash = _hash64(machine_hash, "machine_hash")
+    artifacts = _hashes(artifact_hashes, "artifact hash")
+    if not artifacts:
+        raise RealizationSemanticsError("semantic claim requires at least one artifact hash")
+    if semantic_relation not in _RELATIONS:
+        raise RealizationSemanticsError("unsupported semantic relation")
+    if semantic_relation == "APPROXIMATION" and approximation_contract is None:
+        raise RealizationSemanticsError("APPROXIMATION requires approximation contract")
+    if semantic_relation != "APPROXIMATION" and approximation_contract is not None:
+        raise RealizationSemanticsError(
+            "non-approximate realization must not carry approximation contract"
+        )
+    assumptions = _hashes(assumption_hashes, "candidate assumption hash")
+    return {
+        "schema": "TEV_SCRIPT_REALIZATION_SEMANTIC_CLAIM_V0",
+        "transformation_semantic_hash": transformation_semantic_hash,
+        "transformation_regime_binding_hash": transformation_regime_binding_hash,
+        "machine_hash": machine_hash,
+        "artifact_hashes": list(artifacts),
+        "machine_requirement": machine_requirement.to_object(),
+        "semantic_relation": semantic_relation,
+        "approximation_contract_hash": (
+            "" if approximation_contract is None else approximation_contract.contract_hash
+        ),
+        "assumption_hashes": list(assumptions),
+    }
+
+
+def realization_semantic_claim_hash(**kwargs: Any) -> str:
+    return canonical_hash(realization_semantic_claim_object(**kwargs))
+
+
 @dataclass(frozen=True, slots=True)
 class RealizationCandidateV0:
     transformation_semantic_hash: str
@@ -356,19 +405,16 @@ class RealizationCandidateV0:
         )
 
     def _semantic_claim_object(self) -> dict[str, object]:
-        return {
-            "schema": "TEV_SCRIPT_REALIZATION_SEMANTIC_CLAIM_V0",
-            "transformation_semantic_hash": self.transformation_semantic_hash,
-            "transformation_regime_binding_hash": self.transformation_regime_binding_hash,
-            "machine_hash": self.machine_hash,
-            "artifact_hashes": list(self.artifact_hashes),
-            "machine_requirement": self.machine_requirement.to_object(),
-            "semantic_relation": self.semantic_relation,
-            "approximation_contract_hash": (
-                "" if self.approximation_contract is None else self.approximation_contract.contract_hash
-            ),
-            "assumption_hashes": list(self.assumption_hashes),
-        }
+        return realization_semantic_claim_object(
+            transformation_semantic_hash=self.transformation_semantic_hash,
+            transformation_regime_binding_hash=self.transformation_regime_binding_hash,
+            machine_hash=self.machine_hash,
+            artifact_hashes=self.artifact_hashes,
+            machine_requirement=self.machine_requirement,
+            semantic_relation=self.semantic_relation,
+            approximation_contract=self.approximation_contract,
+            assumption_hashes=self.assumption_hashes,
+        )
 
     @property
     def semantic_claim_hash(self) -> str:
@@ -376,8 +422,8 @@ class RealizationCandidateV0:
 
     def _realization_object(self) -> dict[str, object]:
         return {
-            "schema": "TEV_SCRIPT_REALIZATION_IDENTITY_V0",
             **self._semantic_claim_object(),
+            "schema": "TEV_SCRIPT_REALIZATION_IDENTITY_V0",
             "realization_kind": self.realization_kind,
             "provenance_hashes": list(self.provenance_hashes),
         }
@@ -743,13 +789,31 @@ def admit_realization(
                 expected=problem.transformation_semantic_hash,
             )
         )
-    if problem.transformation_regime_binding_hash != candidate.transformation_regime_binding_hash:
+    if problem.transformation_regime_binding_hash != binding.binding_hash:
         issues.append(
             _issue(
-                "regime.binding_mismatch",
+                "regime.problem_binding_mismatch",
+                "REJECT",
+                problem.transformation_regime_binding_hash,
+                observed=binding.binding_hash,
+            )
+        )
+    if candidate.transformation_regime_binding_hash != binding.binding_hash:
+        issues.append(
+            _issue(
+                "regime.candidate_binding_mismatch",
                 "REJECT",
                 candidate.transformation_regime_binding_hash,
-                expected=problem.transformation_regime_binding_hash,
+                observed=binding.binding_hash,
+            )
+        )
+    if candidate.regime_preservation_claim_hash != preservation_claim.preservation_claim_hash:
+        issues.append(
+            _issue(
+                "regime.preservation_claim_mismatch",
+                "REJECT",
+                candidate.regime_preservation_claim_hash,
+                observed=preservation_claim.preservation_claim_hash,
             )
         )
     if candidate.machine_hash != machine.machine_hash:
@@ -802,11 +866,7 @@ def admit_realization(
     missing_assumptions = set(candidate.assumption_hashes) - set(policy.accepted_assumption_hashes)
     for assumption_hash in sorted(missing_assumptions):
         issues.append(
-            _issue(
-                "assumption.not_accepted",
-                "REJECT",
-                assumption_hash,
-            )
+            _issue("assumption.not_accepted", "REJECT", assumption_hash)
         )
 
     issues.extend(_evaluate_approximation(candidate, policy))
@@ -842,6 +902,14 @@ def admit_realization(
         regime_evidence_policy,
         evidence_items,
     )
+    for accepted_hash in (
+        set(realization_evaluation.accepted_evidence_hashes)
+        | set(regime_evaluation_evidence.accepted_evidence_hashes)
+    ):
+        if accepted_hash not in candidate.evidence_hashes:
+            issues.append(
+                _issue("evidence.unbound_support", "REJECT", accepted_hash)
+            )
     issues.extend(
         _issues_from_evidence(realization_evaluation, prefix="realization")
     )
@@ -999,6 +1067,8 @@ __all__ = [
     "ApproximationPolicyV0",
     "RealizationPolicyV0",
     "RealizationProblemV0",
+    "realization_semantic_claim_object",
+    "realization_semantic_claim_hash",
     "RealizationCandidateV0",
     "RealizationIssueV0",
     "RealizationAdmissionReceiptV0",
