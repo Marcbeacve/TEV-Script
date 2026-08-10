@@ -217,6 +217,14 @@ class ResourceCeilingV0:
         object.__setattr__(self, "maximum", _nonnegative_fraction(self.maximum, "maximum"))
         object.__setattr__(self, "catalog_hash", _hash64(self.catalog_hash, "catalog_hash"))
 
+    def validate_against(self, catalog: ResourceCatalogV0) -> None:
+        if self.catalog_hash != catalog.catalog_hash:
+            raise ResourceAlgebraError("resource ceiling/catalog identity mismatch")
+        if catalog.dimension(self.dimension_id) is None:
+            raise ResourceAlgebraError(
+                f"resource ceiling dimension {self.dimension_id!r} is outside catalog"
+            )
+
     def to_object(self) -> dict[str, object]:
         return {
             "dimension_id": self.dimension_id,
@@ -271,7 +279,11 @@ def compose_resource_vectors(
     for vector in rows:
         vector.validate_against(catalog)
     if not rows:
-        return ResourceVectorV0((), complete=True, catalog_hash=catalog.catalog_hash)
+        return ResourceVectorV0(
+            tuple(ResourceBoundV0.exact(item.dimension_id, 0) for item in catalog.dimensions),
+            complete=True,
+            catalog_hash=catalog.catalog_hash,
+        )
     result: list[ResourceBoundV0] = []
     for dimension in catalog.dimensions:
         aggregation = dimension.aggregation_for(mode)
@@ -288,6 +300,18 @@ def compose_resource_vectors(
         complete=True,
         catalog_hash=catalog.catalog_hash,
     )
+
+
+def validate_resource_ceilings(
+    ceilings: Iterable[ResourceCeilingV0],
+    catalog: ResourceCatalogV0,
+) -> tuple[ResourceCeilingV0, ...]:
+    ordered = tuple(sorted(ceilings, key=lambda item: item.dimension_id))
+    if len({item.dimension_id for item in ordered}) != len(ordered):
+        raise ResourceAlgebraError("duplicate resource ceiling")
+    for ceiling in ordered:
+        ceiling.validate_against(catalog)
+    return ordered
 
 
 def evaluate_resource_ceilings(
@@ -338,6 +362,7 @@ __all__ = [
     "ResourceCeilingV0",
     "ResourceCeilingIssueV0",
     "compose_resource_vectors",
+    "validate_resource_ceilings",
     "evaluate_resource_ceilings",
     "resource_context_hash",
 ]
