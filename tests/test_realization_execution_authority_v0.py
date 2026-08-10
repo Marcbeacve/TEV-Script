@@ -5,7 +5,6 @@ import unittest
 from tev_script.canonical import canonical_hash
 from tev_script.causal_model_v1 import (
     CapabilityLawCatalogV1,
-    CapabilityOccurrenceV1,
     ReactionContractV1,
     ReactionFootprintV1,
     RefinementReceiptV1,
@@ -19,6 +18,7 @@ from tev_script.semantic_execution_authority_v0 import (
     residual_from_execution_authority,
 )
 from tev_script.semantic_realization_v0 import RealizationAdmissionReceiptV0
+from tev_script.semantic_regime_v0 import TransformationRegimeBindingV0
 from tev_script.semantic_residual_v0 import parse_residual
 
 
@@ -31,6 +31,12 @@ class ExecutionAuthorityV0Tests(unittest.TestCase):
         self.transformation_hash = h("transformation")
         self.program_hash = h("program")
         self.scope = h("authority-scope")
+        self.regime_hash = h("regime")
+        self.regime_binding = TransformationRegimeBindingV0(
+            self.transformation_hash,
+            self.regime_hash,
+            self.scope,
+        )
         self.verifier = h("authority-verifier")
         self.realization = RealizationAdmissionReceiptV0(
             problem_hash=h("problem"),
@@ -39,13 +45,13 @@ class ExecutionAuthorityV0Tests(unittest.TestCase):
             semantic_claim_hash=h("semantic-claim"),
             artifact_manifest_hash=h("manifest"),
             transformation_semantic_hash=self.transformation_hash,
-            transformation_regime_binding_hash=h("regime-binding"),
+            transformation_regime_binding_hash=self.regime_binding.binding_hash,
             semantic_relation="EXACT_EQUIVALENT",
             regime_preservation_claim_hash=h("regime-preservation"),
             resource_estimate_claim_hash=h("resource-estimate"),
             machine_hash=h("machine"),
             policy_hash=h("realization-policy"),
-            regime_hash=h("regime"),
+            regime_hash=self.regime_hash,
             resource_catalog_hash=h("resource-catalog"),
             machine_compatibility_hash=h("machine-evaluation"),
             regime_evaluation_hash=h("regime-evaluation"),
@@ -114,7 +120,7 @@ class ExecutionAuthorityV0Tests(unittest.TestCase):
         return EvidenceItemV0(
             "e.authority." + status.lower(),
             claim.binding_claim_hash,
-            self.scope,
+            claim.scope_hash,
             "PROOF",
             verifier_hash=self.verifier,
             witness_hash=h("authority-witness-" + status.lower()),
@@ -141,10 +147,12 @@ class ExecutionAuthorityV0Tests(unittest.TestCase):
         catalog=None,
         refinement=None,
         footprint=None,
+        regime_binding=None,
     ):
         return evaluate_execution_authority(
             record,
             realization_receipt=self.realization,
+            transformation_regime_binding=regime_binding or self.regime_binding,
             reaction_contract=self.contract,
             reaction_footprint=footprint or self.footprint,
             law_catalog=catalog or self.catalog,
@@ -163,6 +171,8 @@ class ExecutionAuthorityV0Tests(unittest.TestCase):
         self.assertEqual(receipt.status, "PASS")
         self.assertEqual(receipt.realization_receipt_hash, self.realization.receipt_hash)
         self.assertEqual(receipt.transformation_semantic_hash, self.transformation_hash)
+        self.assertEqual(receipt.transformation_regime_binding_hash, self.regime_binding.binding_hash)
+        self.assertEqual(receipt.semantic_scope_hash, self.scope)
         self.assertEqual(receipt.program_semantic_hash, self.program_hash)
         self.assertEqual(parse_residual(residual_from_execution_authority(receipt)).status, "CLOSED")
 
@@ -191,11 +201,7 @@ class ExecutionAuthorityV0Tests(unittest.TestCase):
             self.evidence_policy.policy_hash,
             (evidence.evidence_hash,),
         )
-        receipt = self.evaluate(
-            record,
-            evidence=(evidence,),
-            refinement=open_refinement,
-        )
+        receipt = self.evaluate(record, evidence=(evidence,), refinement=open_refinement)
         self.assertEqual(receipt.status, "PROOF_REQUIRED")
         self.assertIn("authority.refinement_not_admitted", {item.kind for item in receipt.issues})
 
@@ -240,6 +246,58 @@ class ExecutionAuthorityV0Tests(unittest.TestCase):
         receipt = self.evaluate(record, evidence=(evidence,))
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("authority.program_footprint_mismatch", {item.kind for item in receipt.issues})
+
+    def test_binding_scope_cannot_be_narrower_or_different_than_realization_regime_scope(self):
+        wrong_scope = h("different-scope")
+        wrong_binding = TransformationProgramBindingClaimV0(
+            self.transformation_hash,
+            self.program_hash,
+            "EXACT_EQUIVALENT",
+            wrong_scope,
+        )
+        wrong_policy = EvidencePolicyV0(
+            (
+                EvidenceRequirementV0(
+                    "transformation-program-binding",
+                    ("PROOF",),
+                    scope_hash=wrong_scope,
+                    trusted_verifier_hashes=(self.verifier,),
+                ),
+            )
+        )
+        wrong_execution_policy = ExecutionAuthorityPolicyV0(wrong_policy.policy_hash)
+        evidence = EvidenceItemV0(
+            "e.wrong-scope",
+            wrong_binding.binding_claim_hash,
+            wrong_scope,
+            "PROOF",
+            verifier_hash=self.verifier,
+            witness_hash=h("wrong-scope-witness"),
+        )
+        record = ExecutionAuthorityRecordV0(
+            self.realization.receipt_hash,
+            wrong_binding,
+            self.contract.contract_hash,
+            self.footprint.footprint_hash,
+            self.catalog.catalog_hash,
+            self.refinement.receipt_hash,
+            wrong_policy.policy_hash,
+            (evidence.evidence_hash,),
+        )
+        receipt = evaluate_execution_authority(
+            record,
+            realization_receipt=self.realization,
+            transformation_regime_binding=self.regime_binding,
+            reaction_contract=self.contract,
+            reaction_footprint=self.footprint,
+            law_catalog=self.catalog,
+            refinement_receipt=self.refinement,
+            policy=wrong_execution_policy,
+            binding_evidence_policy=wrong_policy,
+            evidence=(evidence,),
+        )
+        self.assertEqual(receipt.status, "REJECT")
+        self.assertIn("authority.binding_scope_mismatch", {item.kind for item in receipt.issues})
 
     def test_falsified_binding_evidence_rejects_authority(self):
         good = self.evidence()
