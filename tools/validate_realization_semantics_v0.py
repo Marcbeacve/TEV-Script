@@ -14,22 +14,52 @@ ALLOWED_CHANGED_PATHS = frozenset(
         "spec/TEV_SCRIPT_DISCOVERY_REALIZATION_DUALITY_V0.md",
         "spec/TEV_SCRIPT_REALIZATION_SEMANTICS_V0.md",
         "spec/TEV_SCRIPT_REGIME_ADMISSIBILITY_V0.md",
+        "tests/run_realization_action_loop_campaign.py",
+        "tests/run_realization_r0_extended_campaign.py",
         "tests/run_realization_semantics_campaign.py",
         "tests/test_discovery_realization_v0.py",
+        "tests/test_execution_grounded_discovery_v0.py",
+        "tests/test_realization_activation_v0.py",
         "tests/test_realization_composition_v0.py",
+        "tests/test_realization_cost_model_update_v0.py",
+        "tests/test_realization_cost_model_v0.py",
+        "tests/test_realization_cost_prediction_v0.py",
+        "tests/test_realization_dispatch_loop_v0.py",
+        "tests/test_realization_execution_observation_v0.py",
         "tests/test_realization_identity_invariants_v0.py",
         "tests/test_realization_placement_v0.py",
+        "tests/test_realization_receipt_validity_dispatch_v0.py",
+        "tests/test_realization_resource_calibration_v0.py",
+        "tests/test_realization_resource_measurement_v0.py",
+        "tests/test_realization_runtime_state_v0.py",
+        "tests/test_realization_selection_v0.py",
         "tests/test_realization_semantics_v0.py",
+        "tev_script/semantic_activation_v0.py",
         "tev_script/semantic_artifact_v0.py",
+        "tev_script/semantic_cost_model_update_v0.py",
+        "tev_script/semantic_cost_model_v0.py",
+        "tev_script/semantic_cost_prediction_v0.py",
         "tev_script/semantic_discovery_realization_v0.py",
+        "tev_script/semantic_dispatch_observation_v0.py",
+        "tev_script/semantic_dispatch_v0.py",
+        "tev_script/semantic_dispatched_grounded_discovery_v0.py",
         "tev_script/semantic_evidence_v0.py",
+        "tev_script/semantic_execution_observation_v0.py",
+        "tev_script/semantic_grounded_discovery_v0.py",
         "tev_script/semantic_machine_v0.py",
         "tev_script/semantic_placement_v0.py",
         "tev_script/semantic_realization_composition_v0.py",
+        "tev_script/semantic_realization_selection_v0.py",
         "tev_script/semantic_realization_v0.py",
+        "tev_script/semantic_receipt_validity_v0.py",
         "tev_script/semantic_regime_v0.py",
         "tev_script/semantic_resource_algebra_v0.py",
+        "tev_script/semantic_resource_calibration_v0.py",
         "tev_script/semantic_resource_evidence_v0.py",
+        "tev_script/semantic_resource_measurement_v0.py",
+        "tev_script/semantic_runtime_state_v0.py",
+        "tools/validate_realization_action_loop_v0.py",
+        "tools/validate_realization_r0_extended_v0.py",
         "tools/validate_realization_semantics_v0.py",
     }
 )
@@ -175,7 +205,7 @@ def validate_identity_boundaries() -> tuple[bool, str]:
 
     if "evidence_id" not in evidence or "record_hash" not in evidence or "requirement_hash" not in evidence:
         return False, "evidence identity/record split missing"
-    if "status\": self.status" not in evidence and '"status": self.status' not in evidence:
+    if '"status": self.status' not in evidence:
         return False, "evidence status record binding missing"
     if "realization_kind" not in realization or "record classification, not identity" not in realization:
         return False, "realization kind identity separation missing"
