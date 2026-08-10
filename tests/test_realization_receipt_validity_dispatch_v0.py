@@ -8,6 +8,7 @@ from tev_script.semantic_dispatch_v0 import (
     ACTIVATION_RECEIPT_CONTRACT_HASH_V0,
     AUTHORITY_RECEIPT_CONTRACT_HASH_V0,
     ExecutionDispatchCandidateV0,
+    dispatch_consumption_domain_hash,
     evaluate_execution_dispatch,
     residual_from_execution_dispatch,
 )
@@ -48,19 +49,21 @@ def activation(*, issues=()) -> ExecutionActivationReceiptV0:
 
 def authority(a: ExecutionActivationReceiptV0, *, issues=(), realization_receipt=None, realization=None):
     return ExecutionAuthorityReceiptV0(
-        h("authority-claim"),
-        h("authority-record"),
-        realization_receipt or a.realization_receipt_hash,
-        realization or a.realization_hash,
-        h("transformation"),
-        h("program"),
-        h("reaction-contract"),
-        h("reaction-footprint"),
-        h("law-catalog"),
-        h("refinement-receipt"),
-        h("binding-evidence-evaluation"),
-        h("authority-policy"),
-        tuple(issues),
+        authority_claim_hash=h("authority-claim"),
+        authority_record_hash=h("authority-record"),
+        realization_receipt_hash=realization_receipt or a.realization_receipt_hash,
+        realization_hash=realization or a.realization_hash,
+        transformation_semantic_hash=h("transformation"),
+        transformation_regime_binding_hash=h("transformation-regime-binding"),
+        semantic_scope_hash=h("authority-scope"),
+        program_semantic_hash=h("program"),
+        reaction_contract_hash=h("reaction-contract"),
+        reaction_footprint_hash=h("reaction-footprint"),
+        law_catalog_hash=h("law-catalog"),
+        refinement_receipt_hash=h("refinement-receipt"),
+        binding_evidence_evaluation_hash=h("binding-evidence-evaluation"),
+        policy_hash=h("authority-policy"),
+        issues=tuple(issues),
     )
 
 
@@ -190,6 +193,8 @@ class ReceiptValidityAndDispatchV0Tests(unittest.TestCase):
         self.assertEqual(dispatch.status, "PASS")
         self.assertEqual(dispatch.dispatch_request_hash, candidate.dispatch_request_hash)
         self.assertEqual(dispatch.execution_authority_receipt_hash, self.authority.receipt_hash)
+        self.assertEqual(dispatch.execution_authority_claim_hash, self.authority.authority_claim_hash)
+        self.assertEqual(dispatch.dispatch_consumption_domain_hash, dispatch_consumption_domain_hash(candidate.dispatch_request_hash))
         self.assertEqual(dispatch.activation_authority_state_hash, self.activation_authority_state)
         self.assertEqual(dispatch.execution_authority_state_hash, self.execution_authority_state)
         self.assertEqual(parse_residual(residual_from_execution_dispatch(dispatch)).status, "CLOSED")
@@ -326,22 +331,24 @@ class ReceiptValidityAndDispatchV0Tests(unittest.TestCase):
     def test_dispatch_request_and_provenance_identity_rules_remain_explicit(self):
         _, _, activation_validity = self.activation_validity()
         _, _, authority_validity = self.authority_validity()
-        first, _ = self.dispatch(activation_validity, authority_validity, request="dispatch-a")
-        second, _ = self.dispatch(activation_validity, authority_validity, request="dispatch-b")
+        first, first_receipt = self.dispatch(activation_validity, authority_validity, request="dispatch-a")
+        second, second_receipt = self.dispatch(activation_validity, authority_validity, request="dispatch-b")
         self.assertNotEqual(first.dispatch_candidate_hash, second.dispatch_candidate_hash)
+        self.assertNotEqual(first_receipt.dispatch_consumption_domain_hash, second_receipt.dispatch_consumption_domain_hash)
 
-        left, _ = self.dispatch(
+        left, left_receipt = self.dispatch(
             activation_validity,
             authority_validity,
             provenance={"scheduler": "a"},
         )
-        right, _ = self.dispatch(
+        right, right_receipt = self.dispatch(
             activation_validity,
             authority_validity,
             provenance={"scheduler": "b"},
         )
         self.assertEqual(left.dispatch_candidate_hash, right.dispatch_candidate_hash)
         self.assertNotEqual(left.record_hash, right.record_hash)
+        self.assertEqual(left_receipt.dispatch_consumption_domain_hash, right_receipt.dispatch_consumption_domain_hash)
 
     def test_non_pass_activation_cannot_dispatch_even_with_current_authority(self):
         rejected_activation = activation(
