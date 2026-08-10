@@ -6,6 +6,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 MODULES = (
+    "tev_script/semantic_cost_model_v0.py",
+    "tev_script/semantic_cost_model_update_v0.py",
+    "tev_script/semantic_cost_prediction_v0.py",
     "tev_script/semantic_dispatch_v0.py",
     "tev_script/semantic_dispatch_observation_v0.py",
     "tev_script/semantic_dispatched_grounded_discovery_v0.py",
@@ -15,13 +18,16 @@ MODULES = (
     "tev_script/semantic_resource_measurement_v0.py",
 )
 TESTS = (
+    "tests/test_realization_cost_model_v0.py",
+    "tests/test_realization_cost_model_update_v0.py",
+    "tests/test_realization_cost_prediction_v0.py",
     "tests/test_realization_dispatch_loop_v0.py",
     "tests/test_realization_receipt_validity_dispatch_v0.py",
     "tests/test_realization_resource_calibration_v0.py",
     "tests/test_realization_resource_measurement_v0.py",
     "tests/test_realization_selection_v0.py",
 )
-ALLOWED_ABSOLUTE_IMPORT_ROOTS = frozenset({"__future__", "dataclasses", "re", "typing"})
+ALLOWED_ABSOLUTE_IMPORT_ROOTS = frozenset({"__future__", "dataclasses", "fractions", "re", "typing"})
 FORBIDDEN_HOST_IMPORT_ROOTS = frozenset({"os", "platform", "subprocess", "socket", "psutil", "torch", "cpuinfo"})
 FORBIDDEN_TOKENS = ("nvidia", "cuda", "rocm", "tevprover", "ia_tev", "ia-tev")
 
@@ -76,7 +82,11 @@ def main() -> int:
     dispatched_observation = (ROOT / "tev_script" / "semantic_dispatch_observation_v0.py").read_text(encoding="utf-8")
     dispatched_grounded = (ROOT / "tev_script" / "semantic_dispatched_grounded_discovery_v0.py").read_text(encoding="utf-8")
     measurement = (ROOT / "tev_script" / "semantic_resource_measurement_v0.py").read_text(encoding="utf-8")
+    calibration = (ROOT / "tev_script" / "semantic_resource_calibration_v0.py").read_text(encoding="utf-8")
     selection = (ROOT / "tev_script" / "semantic_realization_selection_v0.py").read_text(encoding="utf-8")
+    cost_model = (ROOT / "tev_script" / "semantic_cost_model_v0.py").read_text(encoding="utf-8")
+    cost_update = (ROOT / "tev_script" / "semantic_cost_model_update_v0.py").read_text(encoding="utf-8")
+    cost_prediction = (ROOT / "tev_script" / "semantic_cost_prediction_v0.py").read_text(encoding="utf-8")
 
     required_validity = ("VALID", "REVOKED", "SUPERSEDED", "UNKNOWN", "validation_epoch_hash", "authority_state_hash")
     if any(token not in validity for token in required_validity):
@@ -99,9 +109,57 @@ def main() -> int:
         return fail("resource measurement binding incomplete")
     print("R0_RESOURCE_MEASUREMENT_CONTEXT_BOUND=PASS")
 
-    if "PARETO_MEMBER" not in selection or "LEXICOGRAPHIC_MIN" not in selection:
-        return fail("verifiable selection rules missing")
-    print("R0_SELECTION_RULES_EXPLICIT=PASS")
+    required_selection = (
+        "PARETO_MEMBER",
+        "LEXICOGRAPHIC_MIN",
+        "receipt.problem_hash != problem.realization_problem_hash",
+        "selection.receipt_realization_problem_mismatch",
+    )
+    if any(token not in selection for token in required_selection):
+        return fail("verifiable selection/problem binding incomplete")
+    print("R0_SELECTION_RULES_AND_PROBLEM_BINDING=PASS")
+
+    required_calibration = (
+        "def status(self) -> str",
+        '"status": self.status',
+        'if self.status != "PASS"',
+        'verdict = "INCONCLUSIVE"',
+    )
+    if any(token not in calibration for token in required_calibration):
+        return fail("calibration validity/verdict separation incomplete")
+    print("R0_CALIBRATION_VALIDITY_VERDICT_SEPARATED=PASS")
+
+    required_cost_model = (
+        "EmpiricalCostModelV0",
+        "CostModelAdmissionReceiptV0",
+        "empirical_envelope",
+        "measurement_claim_hashes",
+        "execution_context_hash",
+    )
+    if any(token not in cost_model for token in required_cost_model):
+        return fail("empirical cost model surface incomplete")
+    print("R0_EMPIRICAL_COST_MODEL=PASS")
+
+    required_update = (
+        "parent_model_hash",
+        "successor_model_hash",
+        "new_measurement_claim_hashes",
+        "successor_basis_mismatch",
+        "measurement_already_in_parent",
+    )
+    if any(token not in cost_update for token in required_update):
+        return fail("cost model append-only lineage incomplete")
+    print("R0_COST_MODEL_APPEND_ONLY_LINEAGE=PASS")
+
+    required_prediction = (
+        "cost_prediction.context_unseen",
+        "EMPIRICAL_ENVELOPE",
+        "EMPIRICAL_OBSERVATION",
+        "model_admission.receipt_hash",
+    )
+    if any(token not in cost_prediction for token in required_prediction):
+        return fail("cost prediction fail-closed projection incomplete")
+    print("R0_COST_PREDICTION_FAIL_CLOSED=PASS")
 
     print("R0_EXTENDED_LONG_VALIDATION_DEFERRED=PASS")
     print("REALIZATION_R0_EXTENDED_AUTHORITY=PASS")
