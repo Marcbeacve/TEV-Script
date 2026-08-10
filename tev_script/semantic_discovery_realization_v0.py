@@ -106,7 +106,6 @@ class StructuralLawClaimV0:
             "regime_hash": self.regime_hash,
             "transformation_semantic_hash": self.transformation_semantic_hash,
             "validity_boundary_hash": self.validity_boundary_hash,
-            "falsifier_profile_hash": self.falsifier_profile_hash,
             "assumption_hashes": list(self.assumption_hashes),
         }
 
@@ -616,9 +615,7 @@ def evaluate_discovery_realization_cycle(
                 equivalence_evidence_policy,
                 evidence_items,
             )
-            issues.extend(
-                _issues_from_evidence(equivalence_evaluation, prefix="equivalence")
-            )
+            issues.extend(_issues_from_evidence(equivalence_evaluation, prefix="equivalence"))
 
     return CycleEvaluationV0(
         cycle.cycle_hash,
