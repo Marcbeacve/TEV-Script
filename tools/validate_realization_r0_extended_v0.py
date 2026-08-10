@@ -9,6 +9,7 @@ MODULES = (
     "tev_script/semantic_cost_model_v0.py",
     "tev_script/semantic_cost_model_update_v0.py",
     "tev_script/semantic_cost_prediction_v0.py",
+    "tev_script/semantic_delivery_guarantee_v0.py",
     "tev_script/semantic_dispatch_consumption_v0.py",
     "tev_script/semantic_dispatch_v0.py",
     "tev_script/semantic_dispatch_observation_v0.py",
@@ -22,6 +23,7 @@ MODULES = (
     "tev_script/semantic_resource_measurement_v0.py",
 )
 TESTS = (
+    "tests/test_delivery_guarantee_v0.py",
     "tests/test_dispatch_consumption_v0.py",
     "tests/test_prepared_execution_v0.py",
     "tests/test_realization_cost_model_v0.py",
@@ -90,6 +92,7 @@ def main() -> int:
     consumption = (ROOT / "tev_script" / "semantic_dispatch_consumption_v0.py").read_text(encoding="utf-8")
     execution_authority = (ROOT / "tev_script" / "semantic_execution_authority_v0.py").read_text(encoding="utf-8")
     prepared_execution = (ROOT / "tev_script" / "semantic_prepared_execution_v0.py").read_text(encoding="utf-8")
+    delivery = (ROOT / "tev_script" / "semantic_delivery_guarantee_v0.py").read_text(encoding="utf-8")
     search = (ROOT / "tev_script" / "semantic_realization_search_v0.py").read_text(encoding="utf-8")
     dispatched_observation = (ROOT / "tev_script" / "semantic_dispatch_observation_v0.py").read_text(encoding="utf-8")
     dispatched_grounded = (ROOT / "tev_script" / "semantic_dispatched_grounded_discovery_v0.py").read_text(encoding="utf-8")
@@ -178,6 +181,23 @@ def main() -> int:
     if any(token not in prepared_execution for token in required_prepared_execution):
         return fail("prepared causal invocation binding incomplete")
     print("R0_PREPARED_EXECUTION_REVALIDATED=PASS")
+
+    required_delivery = (
+        "AT_MOST_ONCE_DISPATCH",
+        "EXACTLY_ONCE_COMMIT",
+        "DURABLE_EXACTLY_ONCE_COMMIT",
+        "delivery.atomic_commit_witness_required",
+        "delivery.effect_not_exactly_once_capable",
+        "delivery.effect_not_durably_recoverable",
+        "delivery.atomic_commit_not_durable",
+        "trusted_coordinator_hashes",
+        "prepare_commit_abort",
+        "commit_total_after_prepare",
+        "durable_recovery",
+    )
+    if any(token not in delivery for token in required_delivery):
+        return fail("delivery guarantee separation incomplete")
+    print("R0_DELIVERY_GUARANTEE_NOT_OVERCLAIMED=PASS")
 
     required_search = (
         "HEURISTIC",
