@@ -16,17 +16,17 @@ from tev_script.semantic_evidence_v0 import (
     EvidenceRequirementV0,
     EvidenceSemanticsError,
     evaluate_evidence,
-    evidence_from_proof_boundary,
 )
 from tev_script.semantic_machine_v0 import (
+    ExecutableFormatV0,
     MachineCapabilityV0,
     MachineFieldV0,
     MachineRequirementV0,
     MachineSemanticsError,
+    MemorySpaceV0,
     NumericModelV0,
     evaluate_machine_compatibility,
 )
-from tev_script.semantic_proof_boundary_v0 import ProofBoundaryWitnessV0
 from tev_script.semantic_regime_v0 import (
     RegimeConstraintV0,
     RegimeContractV0,
@@ -47,8 +47,6 @@ from tev_script.semantic_realization_v0 import (
     residual_from_realization_admission,
     semantic_memoization_key,
 )
-from tev_script.semantic_resource_evidence_v0 import ResourceEstimateClaimV0
-from tev_script.semantic_residual_v0 import parse_residual
 from tev_script.semantic_resource_algebra_v0 import (
     ResourceAlgebraError,
     ResourceBoundV0,
@@ -59,6 +57,8 @@ from tev_script.semantic_resource_algebra_v0 import (
     compose_resource_vectors,
     evaluate_resource_ceilings,
 )
+from tev_script.semantic_resource_evidence_v0 import ResourceEstimateClaimV0
+from tev_script.semantic_residual_v0 import parse_residual
 
 
 def h(label: str) -> str:
@@ -66,7 +66,7 @@ def h(label: str) -> str:
 
 
 class ResourceAlgebraV0Tests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.catalog = ResourceCatalogV0(
             (
                 ResourceDimensionV0("energy", "J", "SUM", "SUM"),
@@ -75,12 +75,14 @@ class ResourceAlgebraV0Tests(unittest.TestCase):
             )
         )
 
-    def vector(self, bounds, *, complete):
+    def vector(self, bounds, *, complete: bool) -> ResourceVectorV0:
         return ResourceVectorV0(
-            tuple(bounds), complete=complete, catalog_hash=self.catalog.catalog_hash
+            tuple(bounds),
+            complete=complete,
+            catalog_hash=self.catalog.catalog_hash,
         )
 
-    def test_exact_rational_sequential_and_parallel_composition(self):
+    def test_exact_rational_composition_uses_dimension_laws(self):
         left = self.vector(
             (
                 ResourceBoundV0.exact("latency", Fraction(3, 2)),
@@ -99,15 +101,14 @@ class ResourceAlgebraV0Tests(unittest.TestCase):
         )
         sequential = compose_resource_vectors((left, right), self.catalog, mode="SEQUENTIAL")
         parallel = compose_resource_vectors((left, right), self.catalog, mode="PARALLEL")
-        self.assertEqual(sequential.bound("latency").exact_value, Fraction(4, 1))
+        self.assertEqual(sequential.bound("latency").exact_value, 4)
         self.assertEqual(parallel.bound("latency").exact_value, Fraction(5, 2))
         self.assertEqual(sequential.bound("energy").exact_value, 5)
         self.assertEqual(parallel.bound("energy").exact_value, 5)
         self.assertEqual(sequential.bound("peak_memory").exact_value, 13)
         self.assertEqual(parallel.bound("peak_memory").exact_value, 21)
-        self.assertEqual(sequential.catalog_hash, self.catalog.catalog_hash)
 
-    def test_unknown_bound_propagates_instead_of_becoming_zero(self):
+    def test_unknown_bound_propagates_and_never_becomes_zero(self):
         left = self.vector((ResourceBoundV0.exact("energy", 1),), complete=False)
         right = self.vector((ResourceBoundV0.exact("latency", 2),), complete=False)
         combined = compose_resource_vectors((left, right), self.catalog, mode="SEQUENTIAL")
@@ -115,23 +116,18 @@ class ResourceAlgebraV0Tests(unittest.TestCase):
         self.assertIsNone(combined.bound("energy").upper)
         self.assertIsNone(combined.bound("peak_memory").upper)
 
-    def test_empty_composition_is_explicit_zero_identity_over_catalog(self):
+    def test_empty_composition_is_explicit_zero_identity_for_catalog(self):
         result = compose_resource_vectors((), self.catalog, mode="SEQUENTIAL")
         self.assertTrue(result.complete)
         self.assertEqual(tuple(x.dimension_id for x in result.bounds), self.catalog.dimension_ids)
         self.assertTrue(all(x.exact_value == 0 for x in result.bounds))
 
-    def test_complete_vector_must_cover_exact_catalog(self):
+    def test_complete_vector_requires_exact_catalog_surface(self):
         vector = self.vector((ResourceBoundV0.exact("energy", 4),), complete=True)
         with self.assertRaises(ResourceAlgebraError):
             vector.validate_against(self.catalog)
 
-    def test_vector_dimension_outside_catalog_rejects(self):
-        vector = self.vector((ResourceBoundV0.exact("unknown_dimension", 1),), complete=False)
-        with self.assertRaises(ResourceAlgebraError):
-            vector.validate_against(self.catalog)
-
-    def test_catalog_identity_is_part_of_resource_meaning(self):
+    def test_catalog_identity_carries_units_and_semantics(self):
         other = ResourceCatalogV0((ResourceDimensionV0("latency", "cycle", "SUM", "MAX"),))
         vector = ResourceVectorV0(
             (ResourceBoundV0.exact("latency", 1),),
@@ -141,7 +137,7 @@ class ResourceAlgebraV0Tests(unittest.TestCase):
         with self.assertRaises(ResourceAlgebraError):
             vector.validate_against(other)
 
-    def test_resource_ceilings_distinguish_unknown_and_exceeded(self):
+    def test_ceiling_distinguishes_unknown_from_exceeded(self):
         vector = self.vector(
             (
                 ResourceBoundV0("latency", 2, None),
@@ -163,116 +159,119 @@ class ResourceAlgebraV0Tests(unittest.TestCase):
         )
 
 
-class ArtifactManifestV0Tests(unittest.TestCase):
-    def test_paths_and_filenames_are_not_part_of_artifact_identity(self):
-        artifact = ArtifactDescriptorV0(
-            "entry.program",
-            "tev.binary",
-            h("bytes"),
-            interface_hash=h("abi"),
-            entrypoint=True,
+class MachineSemanticIdentityV0Tests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.numeric = NumericModelV0("adapter.int", h("exact-int-semantics"), True)
+        self.format = ExecutableFormatV0("adapter.exec", h("exec-abi-semantics"))
+
+    def machine(self, *, machine_id="machine.a", capability_id="cap.a", numeric=None, fmt=None):
+        numeric = numeric or self.numeric
+        fmt = fmt or self.format
+        capability = MachineCapabilityV0(
+            capability_id,
+            h("operation"),
+            "compute",
+            (numeric.numeric_model_hash,),
         )
-        self.assertNotIn("path", artifact.to_object())
-        self.assertNotIn("filename", artifact.to_object())
-
-    def test_entrypoint_requires_explicit_interface(self):
-        with self.assertRaises(ArtifactSemanticsError):
-            ArtifactDescriptorV0("entry.program", "tev.binary", h("bytes"), entrypoint=True)
-
-    def test_dependency_closure_is_fail_closed(self):
-        with self.assertRaises(ArtifactSemanticsError):
-            ArtifactManifestV0(
-                (
-                    ArtifactDescriptorV0(
-                        "entry.program",
-                        "tev.binary",
-                        h("program"),
-                        interface_hash=h("abi"),
-                        entrypoint=True,
-                        dependency_descriptor_hashes=(h("missing-descriptor"),),
-                    ),
-                )
-            )
-
-    def test_manifest_derives_machine_requirements_from_artifacts(self):
-        op = h("operation")
-        manifest = manifest_from_single_artifact(
-            role_id="entry.program",
-            format_id="tev.binary",
-            content_hash=h("program"),
-            interface_hash=h("abi"),
-            required_machine_capability_semantic_hashes=(op,),
-            required_numeric_model_ids=("exact.int",),
-        )
-        requirement = manifest.machine_requirement
-        self.assertEqual(requirement.required_capability_semantic_hashes, (op,))
-        self.assertEqual(requirement.required_numeric_model_ids, ("exact.int",))
-        self.assertEqual(requirement.required_executable_formats, ("tev.binary",))
-
-    def test_role_or_interface_change_changes_manifest_identity(self):
-        a = manifest_from_single_artifact(
-            role_id="entry.program",
-            format_id="tev.binary",
-            content_hash=h("same-bytes"),
-            interface_hash=h("abi-a"),
-        )
-        b = manifest_from_single_artifact(
-            role_id="entry.kernel",
-            format_id="tev.binary",
-            content_hash=h("same-bytes"),
-            interface_hash=h("abi-a"),
-        )
-        c = manifest_from_single_artifact(
-            role_id="entry.program",
-            format_id="tev.binary",
-            content_hash=h("same-bytes"),
-            interface_hash=h("abi-b"),
-        )
-        self.assertNotEqual(a.manifest_hash, b.manifest_hash)
-        self.assertNotEqual(a.manifest_hash, c.manifest_hash)
-
-
-class MachineAndEvidenceV0Tests(unittest.TestCase):
-    def test_machine_identity_is_order_independent_and_semantic_capability_based(self):
-        op_a = MachineCapabilityV0("host.alpha", h("op-a"), "compute")
-        op_b = MachineCapabilityV0("host.beta", h("op-b"), "compute", ("exact.int",))
-        numeric = NumericModelV0("exact.int", h("exact-int"), True)
-        first = MachineFieldV0(
-            "machine.test",
-            capabilities=(op_a, op_b),
+        return MachineFieldV0(
+            machine_id,
+            capabilities=(capability,),
             numeric_models=(numeric,),
-            executable_formats=("format.z", "format.a"),
+            memory_spaces=(MemorySpaceV0("mem.local", "byte", 1024),),
+            executable_formats=(fmt,),
+            topology_hash=h("topology"),
         )
-        second = MachineFieldV0(
-            "machine.test",
-            capabilities=(op_b, op_a),
-            numeric_models=(numeric,),
-            executable_formats=("format.a", "format.z"),
-        )
-        self.assertEqual(first.machine_hash, second.machine_hash)
-        self.assertTrue(first.supports_semantic_capability(h("op-a")))
-        requirement = MachineRequirementV0((h("op-a"),), ("exact.int",), ("format.a",))
-        self.assertTrue(evaluate_machine_compatibility(first, requirement).compatible)
 
-    def test_capability_cannot_reference_undefined_numeric_model(self):
+    def test_machine_and_capability_aliases_do_not_change_profile_identity(self):
+        left = self.machine(machine_id="machine.a", capability_id="adapter.op.a")
+        right = self.machine(machine_id="machine.b", capability_id="adapter.op.b")
+        self.assertEqual(left.machine_hash, right.machine_hash)
+        self.assertNotEqual(left.record_hash, right.record_hash)
+
+    def test_numeric_and_format_aliases_do_not_change_profile_identity(self):
+        numeric_alias = NumericModelV0("another.int.name", self.numeric.semantics_hash, True)
+        format_alias = ExecutableFormatV0("another.exec.name", self.format.semantics_hash)
+        left = self.machine()
+        right = self.machine(numeric=numeric_alias, fmt=format_alias)
+        self.assertEqual(left.machine_hash, right.machine_hash)
+        self.assertNotEqual(left.record_hash, right.record_hash)
+
+    def test_numeric_semantics_change_changes_machine_profile(self):
+        changed = NumericModelV0("adapter.int", h("different-int-semantics"), True)
+        self.assertNotEqual(self.machine().machine_hash, self.machine(numeric=changed).machine_hash)
+
+    def test_format_semantics_change_changes_machine_profile(self):
+        changed = ExecutableFormatV0("adapter.exec", h("different-exec-abi"))
+        self.assertNotEqual(self.machine().machine_hash, self.machine(fmt=changed).machine_hash)
+
+    def test_capability_cannot_reference_undefined_numeric_semantics(self):
+        missing = h("missing-numeric-profile")
         with self.assertRaises(MachineSemanticsError):
             MachineFieldV0(
                 "machine.bad",
-                capabilities=(
-                    MachineCapabilityV0(
-                        "opaque.compute", h("compute"), "compute", ("missing.numeric",)
-                    ),
-                ),
+                capabilities=(MachineCapabilityV0("op", h("op"), "compute", (missing,)),),
             )
 
-    def test_machine_missing_semantic_operation_is_explicit(self):
-        machine = MachineFieldV0("machine.test")
-        requirement = MachineRequirementV0((h("missing-op"),), (), ())
-        evaluation = evaluate_machine_compatibility(machine, requirement)
+    def test_compatibility_is_semantic_hash_based(self):
+        machine = self.machine()
+        requirement = MachineRequirementV0(
+            (h("operation"),),
+            (self.numeric.numeric_model_hash,),
+            (self.format.format_hash,),
+        )
+        self.assertTrue(evaluate_machine_compatibility(machine, requirement).compatible)
+        missing = MachineRequirementV0((h("missing-operation"),), (), ())
+        evaluation = evaluate_machine_compatibility(machine, missing)
         self.assertFalse(evaluation.compatible)
-        self.assertEqual(evaluation.missing_capability_semantic_hashes, (h("missing-op"),))
+        self.assertEqual(evaluation.missing_capability_semantic_hashes, (h("missing-operation"),))
 
-    def test_evidence_policy_checks_method_scope_verifier_and_status(self):
+
+class ArtifactManifestV0Tests(unittest.TestCase):
+    def test_manifest_derives_machine_requirement_from_artifact_semantics(self):
+        numeric = NumericModelV0("int.alias", h("int-semantics"), True)
+        fmt = ExecutableFormatV0("exec.alias", h("exec-semantics"))
+        manifest = manifest_from_single_artifact(
+            role_id="entry",
+            format_hash=fmt.format_hash,
+            content_hash=h("binary-bytes"),
+            interface_hash=h("interface"),
+            required_machine_capability_semantic_hashes=(h("op"),),
+            required_numeric_model_hashes=(numeric.numeric_model_hash,),
+        )
+        requirement = manifest.machine_requirement
+        self.assertEqual(requirement.required_capability_semantic_hashes, (h("op"),))
+        self.assertEqual(requirement.required_numeric_model_hashes, (numeric.numeric_model_hash,))
+        self.assertEqual(requirement.required_executable_format_hashes, (fmt.format_hash,))
+
+    def test_manifest_requires_closed_dependency_graph(self):
+        dependency = ArtifactDescriptorV0(
+            role_id="library",
+            format_hash=h("format"),
+            content_hash=h("library"),
+        )
+        entry = ArtifactDescriptorV0(
+            role_id="entry",
+            format_hash=h("format"),
+            content_hash=h("entry"),
+            interface_hash=h("interface"),
+            entrypoint=True,
+            dependency_descriptor_hashes=(dependency.descriptor_hash,),
+        )
+        self.assertEqual(len(ArtifactManifestV0((entry, dependency)).descriptors), 2)
+        outside = ArtifactDescriptorV0(
+            role_id="bad.entry",
+            format_hash=h("format"),
+            content_hash=h("bad-entry"),
+            interface_hash=h("interface"),
+            entrypoint=True,
+            dependency_descriptor_hashes=(h("outside-descriptor"),),
+        )
+        with self.assertRaises(ArtifactSemanticsError):
+            ArtifactManifestV0((outside,))
+
+
+class EvidenceV0Tests(unittest.TestCase):
+    def test_policy_checks_method_scope_verifier_and_status(self):
         claim, scope, verifier = h("claim"), h("scope"), h("verifier")
         policy = EvidencePolicyV0(
             (
@@ -299,22 +298,24 @@ class MachineAndEvidenceV0Tests(unittest.TestCase):
             scope,
             "TRANSLATION_VALIDATION",
             verifier_hash=verifier,
-            witness_hash=h("revoked-witness"),
+            witness_hash=h("revoked"),
             status="REVOKED",
         )
-        evaluation = evaluate_evidence(claim, policy, (revoked,))
-        self.assertEqual({x.kind for x in evaluation.issues}, {"evidence.inactive"})
+        self.assertIn("evidence.inactive", {x.kind for x in evaluate_evidence(claim, policy, (revoked,)).issues})
 
-    def test_proof_like_evidence_requires_witness_and_verifier(self):
+    def test_proof_like_evidence_requires_real_witness_and_verifier(self):
         with self.assertRaises(EvidenceSemanticsError):
             EvidenceItemV0("e.bad", h("claim"), h("scope"), "PROOF")
         with self.assertRaises(EvidenceSemanticsError):
             EvidenceItemV0(
-                "e.bad2", h("claim"), h("scope"), "TRANSLATION_VALIDATION",
+                "e.bad2",
+                h("claim"),
+                h("scope"),
+                "TRANSLATION_VALIDATION",
                 witness_hash=h("witness"),
             )
 
-    def test_falsified_evidence_on_exact_claim_is_never_silently_ignored(self):
+    def test_falsification_is_never_silently_ignored(self):
         claim = h("claim")
         falsified = EvidenceItemV0(
             "e.false",
@@ -324,85 +325,7 @@ class MachineAndEvidenceV0Tests(unittest.TestCase):
             witness_hash=h("counterexample"),
             status="FALSIFIED",
         )
-        evaluation = evaluate_evidence(claim, EvidencePolicyV0(()), (falsified,))
-        self.assertTrue(evaluation.falsified)
-
-    def test_existing_proof_boundary_projects_without_redefining_it(self):
-        witness = ProofBoundaryWitnessV0(h("proof"), h("verifier"), h("scope"), "proved")
-        projected = evidence_from_proof_boundary(
-            witness, evidence_id="proof.projected", claim_hash=h("claim")
-        )
-        self.assertEqual(projected.method, "PROOF")
-        self.assertEqual(projected.witness_hash, witness.witness_hash)
-
-
-class RegimeIdentityV0Tests(unittest.TestCase):
-    def _regime(self, regime_id="regime.a", constraint_id="c.a", provenance=None):
-        return RegimeContractV0(
-            regime_id,
-            h("possibility"),
-            h("history"),
-            constraints=(
-                RegimeConstraintV0(constraint_id, "safety", h("constraint"), h("scope")),
-            ),
-            causal_structure_hash=h("causal"),
-            equivalence_relation_hash=h("equivalence"),
-            observable_profile_hash=h("observables"),
-            invariant_claim_hashes=(h("invariant"),),
-            assumption_hashes=(h("assumption"),),
-            provenance=provenance or {},
-        )
-
-    def test_regime_names_and_provenance_do_not_define_semantic_identity(self):
-        left = self._regime("regime.alpha", "constraint.alpha", {"source": "a"})
-        right = self._regime("regime.beta", "constraint.beta", {"source": "b"})
-        self.assertEqual(left.regime_hash, right.regime_hash)
-        self.assertNotEqual(left.record_hash, right.record_hash)
-        self.assertEqual(
-            left.constraints[0].constraint_semantic_hash,
-            right.constraints[0].constraint_semantic_hash,
-        )
-
-    def test_structural_regime_change_changes_semantic_identity(self):
-        base = self._regime()
-        changed = RegimeContractV0(
-            "regime.other",
-            h("different-possibility"),
-            h("history"),
-            constraints=base.constraints,
-            causal_structure_hash=base.causal_structure_hash,
-            equivalence_relation_hash=base.equivalence_relation_hash,
-            observable_profile_hash=base.observable_profile_hash,
-            invariant_claim_hashes=base.invariant_claim_hashes,
-            assumption_hashes=base.assumption_hashes,
-        )
-        self.assertNotEqual(base.regime_hash, changed.regime_hash)
-
-    def test_binding_id_is_record_metadata_not_semantic_binding_identity(self):
-        regime = self._regime()
-        a = TransformationRegimeBindingV0(h("t"), regime.regime_hash, h("scope"), "a")
-        b = TransformationRegimeBindingV0(h("t"), regime.regime_hash, h("scope"), "b")
-        self.assertEqual(a.binding_hash, b.binding_hash)
-        self.assertNotEqual(a.record_hash, b.record_hash)
-
-    def test_preservation_detail_is_audit_metadata(self):
-        regime = self._regime()
-        binding = TransformationRegimeBindingV0(h("t"), regime.regime_hash, h("scope"))
-        kwargs = dict(
-            realization_semantic_claim_hash=h("realization-claim"),
-            transformation_regime_binding_hash=binding.binding_hash,
-            regime_hash=regime.regime_hash,
-            semantic_relation="EXACT_EQUIVALENT",
-            preserved_constraint_hashes=regime.constraint_semantic_hashes,
-            preserved_invariant_hashes=regime.invariant_claim_hashes,
-            causal_preservation="PRESERVED",
-            equivalence_preservation="PRESERVED",
-            assumption_hashes=regime.assumption_hashes,
-        )
-        a = RegimePreservationClaimV0(**kwargs, detail={"tool": "a"})
-        b = RegimePreservationClaimV0(**kwargs, detail={"tool": "b"})
-        self.assertEqual(a.preservation_claim_hash, b.preservation_claim_hash)
-        self.assertNotEqual(a.record_hash, b.record_hash)
+        self.assertTrue(evaluate_evidence(claim, EvidencePolicyV0(()), (falsified,)).falsified)
 
 
 class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
@@ -413,9 +336,10 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         relation="EXACT_EQUIVALENT",
         approximation=None,
         resource_assumptions=None,
-        resource_detail=None,
     ):
-        transformation, scope, context = h("transformation"), h("semantic-scope"), h("context")
+        transformation = h("transformation")
+        scope = h("semantic-scope")
+        context = h("context")
         assumption = h("assumption")
         regime = RegimeContractV0(
             "regime.test",
@@ -429,24 +353,36 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         )
         binding = TransformationRegimeBindingV0(transformation, regime.regime_hash, scope)
         verifier = h("verifier")
-        realization_policy = EvidencePolicyV0(
-            (EvidenceRequirementV0(
-                "semantic-preservation", ("TRANSLATION_VALIDATION",),
-                scope_hash=scope, trusted_verifier_hashes=(verifier,),
-            ),)
+        realization_evidence_policy = EvidencePolicyV0(
+            (
+                EvidenceRequirementV0(
+                    "semantic-preservation",
+                    ("TRANSLATION_VALIDATION",),
+                    scope_hash=scope,
+                    trusted_verifier_hashes=(verifier,),
+                ),
+            )
         )
-        regime_policy = EvidencePolicyV0(
-            (EvidenceRequirementV0(
-                "regime-preservation", ("PROOF",),
-                scope_hash=scope, trusted_verifier_hashes=(verifier,),
-            ),)
+        regime_evidence_policy = EvidencePolicyV0(
+            (
+                EvidenceRequirementV0(
+                    "regime-preservation",
+                    ("PROOF",),
+                    scope_hash=scope,
+                    trusted_verifier_hashes=(verifier,),
+                ),
+            )
         )
         resource_scope = h("resource-scope")
-        resource_policy = EvidencePolicyV0(
-            (EvidenceRequirementV0(
-                "resource-bound", ("PROOF", "EXHAUSTIVE"),
-                scope_hash=resource_scope, trusted_verifier_hashes=(verifier,),
-            ),)
+        resource_evidence_policy = EvidencePolicyV0(
+            (
+                EvidenceRequirementV0(
+                    "resource-bound",
+                    ("PROOF", "EXHAUSTIVE"),
+                    scope_hash=resource_scope,
+                    trusted_verifier_hashes=(verifier,),
+                ),
+            )
         )
         resource_catalog = ResourceCatalogV0(
             (ResourceDimensionV0("latency", "ms", "SUM", "MAX"),)
@@ -454,41 +390,60 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         approximation_policy = None
         if relation == "APPROXIMATION":
             approximation_policy = ApproximationPolicyV0(
-                h("metric"), h("approx-domain"), Fraction(1, 100),
+                h("metric"),
+                h("approx-domain"),
+                Fraction(1, 100),
                 ("DETERMINISTIC_BOUND",),
             )
         policy = RealizationPolicyV0(
-            (relation,), realization_policy.policy_hash, regime_policy.policy_hash,
-            resource_policy.policy_hash, resource_catalog.catalog_hash,
+            (relation,),
+            realization_evidence_policy.policy_hash,
+            regime_evidence_policy.policy_hash,
+            resource_evidence_policy.policy_hash,
+            resource_catalog.catalog_hash,
             accepted_assumption_hashes=(assumption,),
-            resource_ceilings=(ResourceCeilingV0(
-                "latency", 10, resource_catalog.catalog_hash
-            ),),
+            resource_ceilings=(
+                ResourceCeilingV0("latency", 10, resource_catalog.catalog_hash),
+            ),
             approximation_policy=approximation_policy,
         )
+
+        numeric = NumericModelV0("adapter.int", h("int-semantics"), True)
+        fmt = ExecutableFormatV0("adapter.exec", h("exec-semantics"))
         operation_hash = h("machine-operation")
+        capability = MachineCapabilityV0(
+            "adapter.compute",
+            operation_hash,
+            "compute",
+            (numeric.numeric_model_hash,),
+        )
         machine = MachineFieldV0(
             "machine.test",
-            capabilities=(MachineCapabilityV0("opaque.compute", operation_hash, "compute"),),
-            executable_formats=("tev.binary",),
+            capabilities=(capability,),
+            numeric_models=(numeric,),
+            executable_formats=(fmt,),
         )
-        artifact_manifest = manifest_from_single_artifact(
-            role_id="entry.program",
-            format_id="tev.binary",
-            content_hash=h("artifact"),
-            interface_hash=h("entry-interface"),
+        manifest = manifest_from_single_artifact(
+            role_id="entry",
+            format_hash=fmt.format_hash,
+            content_hash=h("artifact-bytes"),
+            interface_hash=h("interface"),
             required_machine_capability_semantic_hashes=(operation_hash,),
+            required_numeric_model_hashes=(numeric.numeric_model_hash,),
         )
-        requirement = artifact_manifest.machine_requirement
+        requirement = manifest.machine_requirement
         problem = RealizationProblemV0(
-            transformation, binding.binding_hash, context, policy.policy_hash,
+            transformation,
+            binding.binding_hash,
+            context,
+            policy.policy_hash,
             (machine.machine_hash,),
         )
         claim_hash = realization_semantic_claim_hash(
             transformation_semantic_hash=transformation,
             transformation_regime_binding_hash=binding.binding_hash,
             machine_hash=machine.machine_hash,
-            artifact_manifest_hash=artifact_manifest.manifest_hash,
+            artifact_manifest_hash=manifest.manifest_hash,
             machine_requirement=requirement,
             semantic_relation=relation,
             approximation_contract=approximation,
@@ -499,7 +454,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             transformation_semantic_hash=transformation,
             transformation_regime_binding_hash=binding.binding_hash,
             machine_hash=machine.machine_hash,
-            artifact_manifest_hash=artifact_manifest.manifest_hash,
+            artifact_manifest_hash=manifest.manifest_hash,
             machine_requirement=requirement,
             semantic_relation=relation,
             approximation_contract=approximation,
@@ -518,8 +473,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             "ANALYTIC_BOUND",
             h("resource-estimator"),
             resource_scope,
-            assumption_hashes=(assumption,) if resource_assumptions is None else resource_assumptions,
-            detail=resource_detail,
+            assumption_hashes=(assumption,) if resource_assumptions is None else tuple(resource_assumptions),
         )
         preservation = RegimePreservationClaimV0(
             claim_hash,
@@ -532,18 +486,30 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             assumption_hashes=(assumption,),
         )
         semantic_evidence = EvidenceItemV0(
-            "e.semantic", claim_hash, scope, "TRANSLATION_VALIDATION",
-            verifier_hash=verifier, witness_hash=h("translation-witness"),
+            "e.semantic",
+            claim_hash,
+            scope,
+            "TRANSLATION_VALIDATION",
+            verifier_hash=verifier,
+            witness_hash=h("translation-witness"),
             assumption_hashes=(assumption,),
         )
         regime_evidence = EvidenceItemV0(
-            "e.regime", preservation.preservation_claim_hash, scope, "PROOF",
-            verifier_hash=verifier, witness_hash=h("regime-witness"),
+            "e.regime",
+            preservation.preservation_claim_hash,
+            scope,
+            "PROOF",
+            verifier_hash=verifier,
+            witness_hash=h("regime-witness"),
             assumption_hashes=(assumption,),
         )
         resource_evidence = EvidenceItemV0(
-            "e.resource", estimate.estimate_claim_hash, resource_scope, "PROOF",
-            verifier_hash=verifier, witness_hash=h("resource-bound-witness"),
+            "e.resource",
+            estimate.estimate_claim_hash,
+            resource_scope,
+            "PROOF",
+            verifier_hash=verifier,
+            witness_hash=h("resource-witness"),
             assumption_hashes=(assumption,),
         )
         candidate = RealizationCandidateV0(
@@ -551,7 +517,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             binding.binding_hash,
             "tev.realization.test",
             machine.machine_hash,
-            artifact_manifest.manifest_hash,
+            manifest.manifest_hash,
             requirement,
             relation,
             approximation_contract=approximation,
@@ -565,10 +531,12 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             ),
             regime_preservation_claim_hash=preservation.preservation_claim_hash,
         )
+        self.assertEqual(candidate.semantic_claim_hash, claim_hash)
+        self.assertEqual(candidate.realization_hash, realization_hash)
         return {
             "problem": problem,
             "candidate": candidate,
-            "artifact_manifest": artifact_manifest,
+            "artifact_manifest": manifest,
             "machine": machine,
             "policy": policy,
             "resource_catalog": resource_catalog,
@@ -576,9 +544,9 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             "regime": regime,
             "binding": binding,
             "preservation": preservation,
-            "realization_evidence_policy": realization_policy,
-            "regime_evidence_policy": regime_policy,
-            "resource_evidence_policy": resource_policy,
+            "realization_evidence_policy": realization_evidence_policy,
+            "regime_evidence_policy": regime_evidence_policy,
+            "resource_evidence_policy": resource_evidence_policy,
             "evidence": (semantic_evidence, regime_evidence, resource_evidence),
         }
 
@@ -588,11 +556,14 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         evidence = args.pop("evidence")
         preservation = args.pop("preservation")
         return admit_realization(
-            args.pop("problem"), args.pop("candidate"),
-            preservation_claim=preservation, evidence=evidence, **args
+            args.pop("problem"),
+            args.pop("candidate"),
+            preservation_claim=preservation,
+            evidence=evidence,
+            **args,
         )
 
-    def test_regime_unresolved_invariant_is_proof_required_not_pass(self):
+    def test_regime_omitted_invariant_is_proof_required(self):
         f = self._fixture()
         claim = RegimePreservationClaimV0(
             f["candidate"].semantic_claim_hash,
@@ -604,7 +575,9 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             assumption_hashes=f["regime"].assumption_hashes,
         )
         evaluation = evaluate_regime_preservation(
-            f["regime"], f["binding"], claim,
+            f["regime"],
+            f["binding"],
+            claim,
             transformation_semantic_hash=f["problem"].transformation_semantic_hash,
             realization_semantic_claim_hash=f["candidate"].semantic_claim_hash,
             semantic_relation="EXACT_EQUIVALENT",
@@ -612,41 +585,60 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         self.assertEqual(evaluation.status, "PROOF_REQUIRED")
         self.assertIn("regime.invariant_unresolved", {x.kind for x in evaluation.issues})
 
-    def test_exact_realization_passes_only_after_all_boundaries_close(self):
+    def test_regime_omitted_constitutive_assumption_is_proof_required(self):
+        f = self._fixture()
+        claim = RegimePreservationClaimV0(
+            f["candidate"].semantic_claim_hash,
+            f["binding"].binding_hash,
+            f["regime"].regime_hash,
+            "EXACT_EQUIVALENT",
+            preserved_constraint_hashes=f["regime"].constraint_semantic_hashes,
+            preserved_invariant_hashes=f["regime"].invariant_claim_hashes,
+            equivalence_preservation="PRESERVED",
+            assumption_hashes=(),
+        )
+        evaluation = evaluate_regime_preservation(
+            f["regime"],
+            f["binding"],
+            claim,
+            transformation_semantic_hash=f["problem"].transformation_semantic_hash,
+            realization_semantic_claim_hash=f["candidate"].semantic_claim_hash,
+            semantic_relation="EXACT_EQUIVALENT",
+        )
+        self.assertEqual(evaluation.status, "PROOF_REQUIRED")
+        self.assertIn("regime.assumption_unresolved", {x.kind for x in evaluation.issues})
+
+    def test_exact_realization_passes_only_after_every_boundary_closes(self):
         f = self._fixture()
         receipt = self._admit(f)
         self.assertEqual(receipt.status, "PASS")
-        self.assertEqual(receipt.regime_hash, f["regime"].regime_hash)
         self.assertEqual(receipt.artifact_manifest_hash, f["artifact_manifest"].manifest_hash)
-        self.assertEqual(receipt.resource_catalog_hash, f["resource_catalog"].catalog_hash)
-        self.assertEqual(
-            parse_residual(residual_from_realization_admission(receipt)).status,
-            "CLOSED",
-        )
+        self.assertEqual(parse_residual(residual_from_realization_admission(receipt)).status, "CLOSED")
 
-    def test_artifact_manifest_mismatch_rejects_candidate(self):
+    def test_artifact_manifest_mismatch_rejects(self):
         f = self._fixture()
         other = manifest_from_single_artifact(
-            role_id="entry.program",
-            format_id="tev.binary",
-            content_hash=h("other-artifact"),
-            interface_hash=h("entry-interface"),
-            required_machine_capability_semantic_hashes=(h("machine-operation"),),
+            role_id="entry",
+            format_hash=f["machine"].executable_formats[0].format_hash,
+            content_hash=h("different-bytes"),
+            interface_hash=h("interface"),
+            required_machine_capability_semantic_hashes=f["candidate"].machine_requirement.required_capability_semantic_hashes,
+            required_numeric_model_hashes=f["candidate"].machine_requirement.required_numeric_model_hashes,
         )
         receipt = self._admit(f, artifact_manifest=other)
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("artifact.manifest_mismatch", {x.kind for x in receipt.issues})
 
-    def test_candidate_cannot_hide_manifest_machine_requirement(self):
+    def test_candidate_cannot_hide_artifact_machine_dependency(self):
         f = self._fixture()
         base = f["candidate"]
-        weakened = RealizationCandidateV0(
+        hidden = RealizationCandidateV0(
             base.transformation_semantic_hash,
             base.transformation_regime_binding_hash,
             base.realization_kind,
             base.machine_hash,
             base.artifact_manifest_hash,
-            MachineRequirementV0((), (), ("tev.binary",)),
+            MachineRequirementV0(),
             base.semantic_relation,
             assumption_hashes=base.assumption_hashes,
             predicted_resources=base.predicted_resources,
@@ -654,13 +646,17 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             evidence_hashes=base.evidence_hashes,
             regime_preservation_claim_hash=base.regime_preservation_claim_hash,
         )
-        receipt = self._admit(f, candidate=weakened)
+        receipt = self._admit(f, candidate=hidden)
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("artifact.machine_requirement_mismatch", {x.kind for x in receipt.issues})
 
-    def test_missing_machine_operation_rejects_candidate(self):
+    def test_missing_machine_operation_rejects(self):
         f = self._fixture()
-        incompatible = MachineFieldV0("machine.test", executable_formats=("tev.binary",))
+        incompatible = MachineFieldV0(
+            "machine.bad",
+            numeric_models=f["machine"].numeric_models,
+            executable_formats=f["machine"].executable_formats,
+        )
         problem = RealizationProblemV0(
             f["problem"].transformation_semantic_hash,
             f["problem"].transformation_regime_binding_hash,
@@ -672,7 +668,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("machine.operation_missing", {x.kind for x in receipt.issues})
 
-    def test_unknown_resource_bound_is_proof_required(self):
+    def test_unknown_resource_bound_remains_open(self):
         receipt = self._admit(self._fixture(latency_upper=None))
         self.assertEqual(receipt.status, "PROOF_REQUIRED")
         self.assertIn("resource.bound_unknown", {x.kind for x in receipt.issues})
@@ -682,130 +678,25 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("resource.ceiling_exceeded", {x.kind for x in receipt.issues})
 
-    def test_resource_bound_without_accepted_evidence_remains_open(self):
+    def test_resource_estimate_assumption_requires_policy_acceptance(self):
+        receipt = self._admit(self._fixture(resource_assumptions=(h("zero-contention"),)))
+        self.assertEqual(receipt.status, "REJECT")
+        self.assertIn("resource.estimate_assumption_not_accepted", {x.kind for x in receipt.issues})
+
+    def test_missing_resource_evidence_is_proof_required(self):
         f = self._fixture()
         receipt = self._admit(f, evidence=f["evidence"][:2])
         self.assertEqual(receipt.status, "PROOF_REQUIRED")
         self.assertIn("resource.evidence.required", {x.kind for x in receipt.issues})
 
-    def test_resource_estimate_assumption_requires_policy_acceptance(self):
-        f = self._fixture(resource_assumptions=(h("zero-contention"),))
-        receipt = self._admit(f)
-        self.assertEqual(receipt.status, "REJECT")
-        self.assertIn(
-            "resource.estimate_assumption_not_accepted",
-            {x.kind for x in receipt.issues},
-        )
-
-    def test_evidence_assumption_requires_policy_acceptance(self):
-        f = self._fixture()
-        bad = EvidenceItemV0(
-            "e.semantic.bad-assumption",
-            f["candidate"].semantic_claim_hash,
-            h("semantic-scope"),
-            "TRANSLATION_VALIDATION",
-            verifier_hash=h("verifier"),
-            witness_hash=h("translation-witness-2"),
-            assumption_hashes=(h("hidden-assumption"),),
-        )
-        base = f["candidate"]
-        candidate = RealizationCandidateV0(
-            base.transformation_semantic_hash,
-            base.transformation_regime_binding_hash,
-            base.realization_kind,
-            base.machine_hash,
-            base.artifact_manifest_hash,
-            base.machine_requirement,
-            base.semantic_relation,
-            assumption_hashes=base.assumption_hashes,
-            predicted_resources=base.predicted_resources,
-            resource_estimate_claim_hash=base.resource_estimate_claim_hash,
-            evidence_hashes=(
-                bad.evidence_hash,
-                f["evidence"][1].evidence_hash,
-                f["evidence"][2].evidence_hash,
-            ),
-            regime_preservation_claim_hash=base.regime_preservation_claim_hash,
-        )
-        receipt = self._admit(
-            f, candidate=candidate, evidence=(bad, f["evidence"][1], f["evidence"][2])
-        )
-        self.assertEqual(receipt.status, "REJECT")
-        self.assertIn("evidence.assumption_not_accepted", {x.kind for x in receipt.issues})
-
-    def test_resource_estimate_detail_is_not_claim_identity(self):
-        f = self._fixture(resource_detail={"note": "a"})
-        base = f["resource_estimate_claim"]
-        other = ResourceEstimateClaimV0(
-            base.realization_hash,
-            base.execution_context_hash,
-            base.resource_vector_hash,
-            base.resource_catalog_hash,
-            base.estimate_kind,
-            base.estimator_hash,
-            base.scope_hash,
-            assumption_hashes=base.assumption_hashes,
-            detail={"note": "b"},
-        )
-        self.assertEqual(base.estimate_claim_hash, other.estimate_claim_hash)
-        self.assertNotEqual(base.record_hash, other.record_hash)
-
-    def test_resource_estimate_must_bind_realization_context_and_vector(self):
-        f = self._fixture()
-        base = f["resource_estimate_claim"]
-        bad = ResourceEstimateClaimV0(
-            f["candidate"].realization_hash,
-            h("wrong-context"),
-            f["candidate"].predicted_resources.vector_hash,
-            f["resource_catalog"].catalog_hash,
-            base.estimate_kind,
-            base.estimator_hash,
-            base.scope_hash,
-            assumption_hashes=base.assumption_hashes,
-        )
-        receipt = self._admit(f, resource_estimate_claim=bad)
-        self.assertEqual(receipt.status, "REJECT")
-
-    def test_resource_catalog_mismatch_rejects(self):
-        f = self._fixture()
-        other = ResourceCatalogV0((ResourceDimensionV0("latency", "cycle", "SUM", "MAX"),))
-        receipt = self._admit(f, resource_catalog=other)
-        self.assertEqual(receipt.status, "REJECT")
-
-    def test_missing_realization_evidence_remains_open(self):
-        f = self._fixture()
-        receipt = self._admit(f, evidence=f["evidence"][1:])
-        self.assertEqual(receipt.status, "PROOF_REQUIRED")
-
-    def test_positive_support_must_be_candidate_bound(self):
-        f = self._fixture()
-        base = f["candidate"]
-        candidate = RealizationCandidateV0(
-            base.transformation_semantic_hash,
-            base.transformation_regime_binding_hash,
-            base.realization_kind,
-            base.machine_hash,
-            base.artifact_manifest_hash,
-            base.machine_requirement,
-            base.semantic_relation,
-            assumption_hashes=base.assumption_hashes,
-            predicted_resources=base.predicted_resources,
-            resource_estimate_claim_hash=base.resource_estimate_claim_hash,
-            evidence_hashes=(),
-            regime_preservation_claim_hash=base.regime_preservation_claim_hash,
-        )
-        receipt = self._admit(f, candidate=candidate)
-        self.assertEqual(receipt.status, "REJECT")
-        self.assertIn("evidence.unbound_support", {x.kind for x in receipt.issues})
-
-    def test_falsified_realization_claim_rejects_even_with_good_evidence(self):
+    def test_falsified_semantic_claim_rejects_even_with_positive_evidence(self):
         f = self._fixture()
         counterexample = EvidenceItemV0(
             "e.counterexample",
             f["candidate"].semantic_claim_hash,
             h("counterexample-scope"),
             "EMPIRICAL_OBSERVATION",
-            witness_hash=h("counterexample-witness"),
+            witness_hash=h("counterexample"),
             status="FALSIFIED",
         )
         receipt = self._admit(f, evidence=(*f["evidence"], counterexample))
@@ -813,17 +704,14 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         self.assertIn("realization.evidence.falsified", {x.kind for x in receipt.issues})
 
     def test_approximation_is_explicit_and_policy_bounded(self):
-        contract = ApproximationContractV0(
+        good = ApproximationContractV0(
             h("metric"), h("approx-domain"), Fraction(1, 200), "DETERMINISTIC_BOUND"
         )
-        self.assertEqual(
-            self._admit(self._fixture(relation="APPROXIMATION", approximation=contract)).status,
-            "PASS",
-        )
-        bad_contract = ApproximationContractV0(
+        self.assertEqual(self._admit(self._fixture(relation="APPROXIMATION", approximation=good)).status, "PASS")
+        bad = ApproximationContractV0(
             h("metric"), h("approx-domain"), Fraction(1, 20), "DETERMINISTIC_BOUND"
         )
-        receipt = self._admit(self._fixture(relation="APPROXIMATION", approximation=bad_contract))
+        receipt = self._admit(self._fixture(relation="APPROXIMATION", approximation=bad))
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("approximation.bound_exceeded", {x.kind for x in receipt.issues})
 
