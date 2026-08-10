@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 from .canonical import canonical_hash, canonical_json
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
 from .semantic_resource_algebra_v0 import ResourceVectorV0
 
 RESOURCE_ESTIMATE_CLAIM_SCHEMA_V0 = "TEV_SCRIPT_RESOURCE_ESTIMATE_CLAIM_V0"
+RESOURCE_ESTIMATE_RECORD_SCHEMA_V0 = "TEV_SCRIPT_RESOURCE_ESTIMATE_RECORD_V0"
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _HEX = frozenset("0123456789abcdef")
 _ESTIMATE_KINDS = frozenset(
@@ -39,6 +40,10 @@ def _hash64(value: str, what: str) -> str:
     return text
 
 
+def _hashes(values: Iterable[str], what: str) -> tuple[str, ...]:
+    return tuple(sorted(set(_hash64(value, what) for value in values)))
+
+
 @dataclass(frozen=True, slots=True)
 class ResourceEstimateClaimV0:
     realization_hash: str
@@ -48,7 +53,8 @@ class ResourceEstimateClaimV0:
     estimate_kind: str
     estimator_hash: str
     scope_hash: str
-    assumptions: Mapping[str, Any] | None = None
+    assumption_hashes: tuple[str, ...] = ()
+    detail: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         for name in (
@@ -62,11 +68,16 @@ class ResourceEstimateClaimV0:
             object.__setattr__(self, name, _hash64(getattr(self, name), name))
         if self.estimate_kind not in _ESTIMATE_KINDS:
             raise ResourceEvidenceError("unsupported estimate kind")
-        assumptions = {} if self.assumptions is None else dict(self.assumptions)
-        canonical_json(assumptions)
-        object.__setattr__(self, "assumptions", assumptions)
+        object.__setattr__(
+            self,
+            "assumption_hashes",
+            _hashes(self.assumption_hashes, "resource estimate assumption hash"),
+        )
+        detail = {} if self.detail is None else dict(self.detail)
+        canonical_json(detail)
+        object.__setattr__(self, "detail", detail)
 
-    def to_object(self) -> dict[str, object]:
+    def claim_object(self) -> dict[str, object]:
         return {
             "schema": RESOURCE_ESTIMATE_CLAIM_SCHEMA_V0,
             "realization_hash": self.realization_hash,
@@ -76,11 +87,23 @@ class ResourceEstimateClaimV0:
             "estimate_kind": self.estimate_kind,
             "estimator_hash": self.estimator_hash,
             "scope_hash": self.scope_hash,
-            "assumptions": dict(self.assumptions or {}),
+            "assumption_hashes": list(self.assumption_hashes),
         }
 
     @property
     def estimate_claim_hash(self) -> str:
+        return canonical_hash(self.claim_object())
+
+    def to_object(self) -> dict[str, object]:
+        return {
+            "schema": RESOURCE_ESTIMATE_RECORD_SCHEMA_V0,
+            "estimate_claim_hash": self.estimate_claim_hash,
+            **{key: value for key, value in self.claim_object().items() if key != "schema"},
+            "detail": dict(self.detail or {}),
+        }
+
+    @property
+    def record_hash(self) -> str:
         return canonical_hash(self.to_object())
 
     def to_field(self) -> SemanticFieldV0:
@@ -104,6 +127,7 @@ class ResourceEstimateClaimV0:
 
 __all__ = [
     "RESOURCE_ESTIMATE_CLAIM_SCHEMA_V0",
+    "RESOURCE_ESTIMATE_RECORD_SCHEMA_V0",
     "ResourceEvidenceError",
     "ResourceEstimateClaimV0",
 ]
