@@ -39,14 +39,12 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
         self.verifier = h("delivery-verifier")
         self.scope = h("delivery-scope")
         self.evidence_policy = EvidencePolicyV0(
-            (
-                EvidenceRequirementV0(
-                    "atomic-delivery",
-                    ("ATTESTATION", "PROOF"),
-                    scope_hash=self.scope,
-                    trusted_verifier_hashes=(self.verifier,),
-                ),
-            )
+            (EvidenceRequirementV0(
+                "atomic-delivery",
+                ("ATTESTATION", "PROOF"),
+                scope_hash=self.scope,
+                trusted_verifier_hashes=(self.verifier,),
+            ),)
         )
         self.policy = DeliveryGuaranteePolicyV0(
             self.evidence_policy.policy_hash,
@@ -58,40 +56,25 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
             "delivery.catalog",
             True,
             resources=(ResourceLawV1("drive"),),
-            capabilities=(
-                CapabilityLawV1(
-                    "motor.set",
-                    "effect",
-                    (ResourceAccessV1("drive", "write"),),
-                    effect_protocol="prepare_commit_abort",
-                    commit_total_after_prepare=commit_total,
-                    durable_recovery=durable,
-                ),
-            ),
+            capabilities=(CapabilityLawV1(
+                "motor.set",
+                "effect",
+                (ResourceAccessV1("drive", "write"),),
+                effect_protocol="prepare_commit_abort",
+                commit_total_after_prepare=commit_total,
+                durable_recovery=durable,
+            ),),
         )
 
     def prepared_reaction(self, catalog, *, atomicity="transactional"):
         before = {"schema": "TEST_CHECKPOINT_V0", "entities": [], "marker": "before"}
         after = {"schema": "TEST_CHECKPOINT_V0", "entities": [], "marker": "after"}
         return PreparedReactionV1(
-            h("program"),
-            h("source"),
-            h("contract"),
-            catalog.catalog_hash,
-            h("prepared-refinement"),
-            h("footprint"),
-            "entity.main",
-            "start",
-            (),
-            before,
-            canonical_hash(before),
-            after,
-            canonical_hash(after),
-            (),
-            ({"index": 0, "capability_id": "motor.set", "arguments": []},),
-            (),
-            atomicity,
-            ("test-prepared",),
+            h("program"), h("source"), h("contract"), catalog.catalog_hash,
+            h("prepared-refinement"), h("footprint"), "entity.main", "start", (),
+            before, canonical_hash(before), after, canonical_hash(after), (),
+            ({"index": 0, "capability_id": "motor.set", "arguments": []},), (),
+            atomicity, ("test-prepared",),
         )
 
     def prepared_execution(self, reaction):
@@ -114,13 +97,21 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
             issues=(),
         )
 
-    def dispatch(self, prepared_receipt):
+    def dispatch(self, prepared_receipt, requested_guarantee):
         request = h("dispatch-request")
         return ExecutionDispatchReceiptV0(
             dispatch_candidate_hash=h("dispatch-candidate"),
             dispatch_record_hash=h("dispatch-record"),
             dispatch_request_hash=request,
             dispatch_epoch_hash=h("dispatch-epoch"),
+            execution_request_receipt_hash=h("execution-request-receipt"),
+            execution_request_intent_hash=h("execution-intent"),
+            execution_request_validity_evaluation_hash=h("execution-request-validity"),
+            execution_request_authority_state_hash=h("execution-request-state"),
+            requester_principal_hash=h("requester"),
+            purpose_hash=h("purpose"),
+            requested_delivery_guarantee=requested_guarantee,
+            idempotency_scope="OCCURRENCE_SCOPED",
             activation_receipt_hash=self.activation_receipt_hash,
             activation_validity_evaluation_hash=h("activation-validity"),
             activation_authority_state_hash=h("activation-state"),
@@ -147,18 +138,10 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
 
     def consumption(self, dispatch_receipt):
         return DispatchConsumptionCommitReceiptV0(
-            h("commit-claim"),
-            h("commit-record"),
-            h("transition"),
-            dispatch_receipt.receipt_hash,
-            dispatch_receipt.dispatch_request_hash,
-            h("before-ledger"),
-            h("after-ledger"),
-            h("storage-authority"),
-            h("commit-epoch"),
-            h("commit-evidence"),
-            h("commit-policy"),
-            (),
+            h("commit-claim"), h("commit-record"), h("transition"),
+            dispatch_receipt.receipt_hash, dispatch_receipt.dispatch_request_hash,
+            h("before-ledger"), h("after-ledger"), h("storage-authority"),
+            h("commit-epoch"), h("commit-evidence"), h("commit-policy"), (),
         )
 
     def atomic_claim(self, consumption_receipt, prepared_receipt, *, durable=False, coordinator=None):
@@ -173,17 +156,23 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
 
     def evidence(self, atomic_claim):
         return EvidenceItemV0(
-            "e.atomic-delivery",
-            atomic_claim.claim_hash,
-            self.scope,
-            "ATTESTATION",
-            verifier_hash=self.verifier,
-            witness_hash=h("atomic-delivery-witness"),
+            "e.atomic-delivery", atomic_claim.claim_hash, self.scope, "ATTESTATION",
+            verifier_hash=self.verifier, witness_hash=h("atomic-delivery-witness"),
         )
 
-    def evaluate(self, guarantee, reaction, catalog, *, with_atomic=False, durable_atomic=False, coordinator=None):
+    def evaluate(
+        self,
+        guarantee,
+        reaction,
+        catalog,
+        *,
+        dispatch_guarantee=None,
+        with_atomic=False,
+        durable_atomic=False,
+        coordinator=None,
+    ):
         prepared_receipt = self.prepared_execution(reaction)
-        dispatch_receipt = self.dispatch(prepared_receipt)
+        dispatch_receipt = self.dispatch(prepared_receipt, dispatch_guarantee or guarantee)
         consumption_receipt = self.consumption(dispatch_receipt)
         atomic = None
         evidence = ()
@@ -219,8 +208,18 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
         catalog = self.law_catalog()
         receipt = self.evaluate("AT_MOST_ONCE_DISPATCH", self.prepared_reaction(catalog), catalog)
         self.assertEqual(receipt.status, "PASS")
-        self.assertEqual(receipt.requested_guarantee, "AT_MOST_ONCE_DISPATCH")
         self.assertEqual(parse_residual(residual_from_delivery_guarantee(receipt)).status, "CLOSED")
+
+    def test_delivery_verdict_must_match_execution_intent_requirement(self):
+        catalog = self.law_catalog()
+        receipt = self.evaluate(
+            "AT_MOST_ONCE_DISPATCH",
+            self.prepared_reaction(catalog),
+            catalog,
+            dispatch_guarantee="EXACTLY_ONCE_COMMIT",
+        )
+        self.assertEqual(receipt.status, "REJECT")
+        self.assertIn("delivery.requested_guarantee_mismatch", {item.kind for item in receipt.issues})
 
     def test_exactly_once_without_atomic_commit_witness_stays_open(self):
         catalog = self.law_catalog()
@@ -230,33 +229,19 @@ class DeliveryGuaranteeV0Tests(unittest.TestCase):
 
     def test_non_transactional_reaction_cannot_claim_exactly_once(self):
         catalog = self.law_catalog()
-        receipt = self.evaluate(
-            "EXACTLY_ONCE_COMMIT",
-            self.prepared_reaction(catalog, atomicity="state_atomic"),
-            catalog,
-        )
+        receipt = self.evaluate("EXACTLY_ONCE_COMMIT", self.prepared_reaction(catalog, atomicity="state_atomic"), catalog)
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("delivery.atomicity_insufficient", {item.kind for item in receipt.issues})
 
     def test_effect_without_commit_total_after_prepare_cannot_claim_exactly_once(self):
         catalog = self.law_catalog(commit_total=False)
-        receipt = self.evaluate(
-            "EXACTLY_ONCE_COMMIT",
-            self.prepared_reaction(catalog),
-            catalog,
-            with_atomic=True,
-        )
+        receipt = self.evaluate("EXACTLY_ONCE_COMMIT", self.prepared_reaction(catalog), catalog, with_atomic=True)
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("delivery.effect_not_exactly_once_capable", {item.kind for item in receipt.issues})
 
     def test_trusted_atomic_commit_witness_can_close_exactly_once(self):
         catalog = self.law_catalog()
-        receipt = self.evaluate(
-            "EXACTLY_ONCE_COMMIT",
-            self.prepared_reaction(catalog),
-            catalog,
-            with_atomic=True,
-        )
+        receipt = self.evaluate("EXACTLY_ONCE_COMMIT", self.prepared_reaction(catalog), catalog, with_atomic=True)
         self.assertEqual(receipt.status, "PASS")
         self.assertTrue(receipt.atomic_delivery_claim_hash)
         self.assertEqual(parse_residual(residual_from_delivery_guarantee(receipt)).status, "CLOSED")
