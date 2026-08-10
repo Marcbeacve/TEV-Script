@@ -163,11 +163,20 @@ class MachineFieldV0:
         capabilities = tuple(sorted(self.capabilities, key=lambda item: item.capability_id))
         if len({item.capability_id for item in capabilities}) != len(capabilities):
             raise MachineSemanticsError("duplicate machine capability id")
-        object.__setattr__(self, "capabilities", capabilities)
 
         numeric_models = tuple(sorted(self.numeric_models, key=lambda item: item.model_id))
         if len({item.model_id for item in numeric_models}) != len(numeric_models):
             raise MachineSemanticsError("duplicate numeric model id")
+        known_numeric_models = {item.model_id for item in numeric_models}
+        for capability in capabilities:
+            missing = set(capability.numeric_model_ids) - known_numeric_models
+            if missing:
+                raise MachineSemanticsError(
+                    "machine capability references undefined numeric models: "
+                    + ",".join(sorted(missing))
+                )
+
+        object.__setattr__(self, "capabilities", capabilities)
         object.__setattr__(self, "numeric_models", numeric_models)
 
         memory_spaces = tuple(sorted(self.memory_spaces, key=lambda item: item.space_id))
