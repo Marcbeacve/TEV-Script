@@ -109,17 +109,24 @@ def main() -> int:
         "AUTHORITY_RECEIPT_CONTRACT_HASH_V0",
         "execution_authority_receipt_hash",
         "execution_authority_validity_evaluation_hash",
+        "dispatch_consumption_domain_hash(candidate.dispatch_request_hash)",
+        "dispatch consumption domain not derived from request identity",
         "dispatch.execution_authority_not_current",
         "dispatch.execution_authority_realization_mismatch",
     )
     if any(token not in dispatch for token in required_dispatch):
-        return fail("just-in-time dual-authority dispatch surface incomplete")
-    print("R0_JIT_DISPATCH_DUAL_AUTHORITY=PASS")
+        return fail("just-in-time dual-authority/request-scoped dispatch surface incomplete")
+    if '"execution_authority_claim_hash": _hash64' in dispatch:
+        return fail("dispatch consumption domain must not be derived from execution authority")
+    print("R0_JIT_DISPATCH_DUAL_AUTHORITY_REQUEST_SCOPED=PASS")
 
     required_consumption = (
         "DispatchConsumptionStateV0",
         "DispatchConsumptionAttemptV0",
         "dispatch_consumption.replay",
+        "dispatch_consumption.request_domain_mismatch",
+        "dispatch_consumption.ledger_domain_mismatch",
+        "dispatch_receipt.dispatch_consumption_domain_hash",
         "before_state_hash",
         "after_state_hash",
         "trusted_storage_authority_hashes",
@@ -127,8 +134,8 @@ def main() -> int:
         "dispatch_consumption.evidence_policy_empty",
     )
     if any(token not in consumption for token in required_consumption):
-        return fail("one-shot dispatch consumption/CAS surface incomplete")
-    print("R0_DISPATCH_CONSUMPTION_CAS_CONTRACT=PASS")
+        return fail("request-scoped one-shot dispatch consumption/CAS surface incomplete")
+    print("R0_DISPATCH_CONSUMPTION_REQUEST_SCOPED_CAS=PASS")
 
     required_execution_authority = (
         "TransformationProgramBindingClaimV0",
