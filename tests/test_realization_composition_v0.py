@@ -3,11 +3,7 @@ from __future__ import annotations
 import unittest
 
 from tev_script.canonical import canonical_hash
-from tev_script.semantic_evidence_v0 import (
-    EvidenceItemV0,
-    EvidencePolicyV0,
-    EvidenceRequirementV0,
-)
+from tev_script.semantic_evidence_v0 import EvidenceItemV0, EvidencePolicyV0, EvidenceRequirementV0
 from tev_script.semantic_realization_composition_v0 import (
     RealizationCompositionClaimV0,
     RealizationCompositionPolicyV0,
@@ -15,10 +11,8 @@ from tev_script.semantic_realization_composition_v0 import (
     evaluate_realization_composition,
     residual_from_realization_composition,
 )
-from tev_script.semantic_realization_v0 import (
-    RealizationAdmissionReceiptV0,
-    RealizationIssueV0,
-)
+from tev_script.semantic_realization_v0 import RealizationAdmissionReceiptV0, RealizationIssueV0
+from tev_script.semantic_regime_v0 import TransformationRegimeBindingV0
 from tev_script.semantic_residual_v0 import parse_residual
 
 
@@ -57,12 +51,17 @@ def receipt(label: str, *, rejected: bool = False) -> RealizationAdmissionReceip
 
 
 class RealizationCompositionV0Tests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.left = receipt("left")
         self.right = receipt("right")
         self.scope = h("composition-scope")
         self.verifier = h("composition-verifier")
         self.assumption = h("composition-assumption")
+        self.target_binding = TransformationRegimeBindingV0(
+            h("target-transformation"),
+            h("target-regime"),
+            self.scope,
+        )
         self.evidence_policy = EvidencePolicyV0(
             (
                 EvidenceRequirementV0(
@@ -78,39 +77,39 @@ class RealizationCompositionV0Tests(unittest.TestCase):
             accepted_assumption_hashes=(self.assumption,),
         )
         self.claim = RealizationCompositionClaimV0(
-            h("target-transformation"),
-            h("target-binding"),
+            self.target_binding.transformation_semantic_hash,
+            self.target_binding.binding_hash,
             (self.left.receipt_hash, self.right.receipt_hash),
             h("composition-relation"),
             self.scope,
             assumption_hashes=(self.assumption,),
         )
 
-    def evidence(self, *, status="ACTIVE", assumptions=None):
+    def evidence(self, claim=None, *, status="ACTIVE", assumptions=None):
+        claim = claim or self.claim
         return EvidenceItemV0(
             "e.composition." + status.lower(),
-            self.claim.composition_claim_hash,
+            claim.composition_claim_hash,
             self.scope,
             "PROOF",
             verifier_hash=self.verifier,
             witness_hash=h("composition-witness-" + status.lower()),
-            assumption_hashes=(
-                (self.assumption,) if assumptions is None else tuple(assumptions)
-            ),
+            assumption_hashes=(self.assumption,) if assumptions is None else tuple(assumptions),
             status=status,
         )
 
-    def record(self, evidence_hashes=()):
+    def record(self, claim=None, evidence_hashes=()):
         return RealizationCompositionRecordV0(
-            self.claim,
+            claim or self.claim,
             self.evidence_policy.policy_hash,
             tuple(evidence_hashes),
             provenance={"producer": "test"},
         )
 
-    def evaluate(self, record, evidence=(), receipts=None, policy=None):
+    def evaluate(self, record, evidence=(), receipts=None, policy=None, target_binding=None):
         return evaluate_realization_composition(
             record,
+            target_binding=target_binding or self.target_binding,
             policy=policy or self.policy,
             evidence_policy=self.evidence_policy,
             component_receipts=(self.left, self.right) if receipts is None else receipts,
@@ -121,123 +120,105 @@ class RealizationCompositionV0Tests(unittest.TestCase):
         evaluation = self.evaluate(self.record())
         self.assertEqual(evaluation.status, "PROOF_REQUIRED")
         self.assertIn("composition.evidence.required", {x.kind for x in evaluation.issues})
-        self.assertEqual(
-            parse_residual(residual_from_realization_composition(evaluation)).status,
-            "OPEN",
-        )
+        self.assertEqual(parse_residual(residual_from_realization_composition(evaluation)).status, "OPEN")
 
     def test_composition_closes_only_with_bound_evidence(self):
         evidence = self.evidence()
-        evaluation = self.evaluate(self.record((evidence.evidence_hash,)), (evidence,))
+        evaluation = self.evaluate(self.record(evidence_hashes=(evidence.evidence_hash,)), (evidence,))
         self.assertEqual(evaluation.status, "PASS")
-        self.assertEqual(
-            parse_residual(residual_from_realization_composition(evaluation)).status,
-            "CLOSED",
-        )
+        self.assertEqual(parse_residual(residual_from_realization_composition(evaluation)).status, "CLOSED")
 
-    def test_non_admitted_component_rejects_composition_even_with_proof(self):
+    def test_target_binding_is_not_a_free_hash(self):
+        evidence = self.evidence()
+        wrong_binding = TransformationRegimeBindingV0(
+            self.target_binding.transformation_semantic_hash,
+            h("other-regime"),
+            self.scope,
+        )
+        evaluation = self.evaluate(
+            self.record(evidence_hashes=(evidence.evidence_hash,)),
+            (evidence,),
+            target_binding=wrong_binding,
+        )
+        self.assertEqual(evaluation.status, "REJECT")
+        self.assertIn("composition.target_binding_mismatch", {x.kind for x in evaluation.issues})
+
+    def test_scope_widening_rejects_even_with_valid_proof_for_narrow_scope(self):
+        evidence = self.evidence()
+        wider = TransformationRegimeBindingV0(
+            self.target_binding.transformation_semantic_hash,
+            self.target_binding.regime_hash,
+            h("wider-scope"),
+        )
+        evaluation = self.evaluate(
+            self.record(evidence_hashes=(evidence.evidence_hash,)),
+            (evidence,),
+            target_binding=wider,
+        )
+        self.assertEqual(evaluation.status, "REJECT")
+        self.assertIn("composition.target_scope_mismatch", {x.kind for x in evaluation.issues})
+
+    def test_non_admitted_component_rejects_even_with_composition_proof(self):
         bad = receipt("bad", rejected=True)
         claim = RealizationCompositionClaimV0(
-            h("target-transformation"),
-            h("target-binding"),
+            self.target_binding.transformation_semantic_hash,
+            self.target_binding.binding_hash,
             (self.left.receipt_hash, bad.receipt_hash),
             h("composition-relation"),
             self.scope,
             assumption_hashes=(self.assumption,),
         )
-        evidence = EvidenceItemV0(
-            "e.composition.bad",
-            claim.composition_claim_hash,
-            self.scope,
-            "PROOF",
-            verifier_hash=self.verifier,
-            witness_hash=h("bad-proof"),
-            assumption_hashes=(self.assumption,),
-        )
-        record = RealizationCompositionRecordV0(
-            claim,
-            self.evidence_policy.policy_hash,
-            (evidence.evidence_hash,),
-        )
-        evaluation = evaluate_realization_composition(
-            record,
-            policy=self.policy,
-            evidence_policy=self.evidence_policy,
-            component_receipts=(self.left, bad),
-            evidence=(evidence,),
-        )
+        evidence = self.evidence(claim)
+        record = self.record(claim, (evidence.evidence_hash,))
+        evaluation = self.evaluate(record, (evidence,), receipts=(self.left, bad))
         self.assertEqual(evaluation.status, "REJECT")
         self.assertIn("composition.component_not_admitted", {x.kind for x in evaluation.issues})
 
     def test_component_receipt_multiset_is_exact(self):
         evidence = self.evidence()
         evaluation = self.evaluate(
-            self.record((evidence.evidence_hash,)),
+            self.record(evidence_hashes=(evidence.evidence_hash,)),
             (evidence,),
             receipts=(self.left,),
         )
         self.assertEqual(evaluation.status, "REJECT")
-        self.assertIn(
-            "composition.component_receipt_set_mismatch",
-            {x.kind for x in evaluation.issues},
-        )
+        self.assertIn("composition.component_receipt_set_mismatch", {x.kind for x in evaluation.issues})
 
     def test_duplicate_component_use_preserves_multiplicity(self):
         claim = RealizationCompositionClaimV0(
-            h("target-transformation"),
-            h("target-binding"),
+            self.target_binding.transformation_semantic_hash,
+            self.target_binding.binding_hash,
             (self.left.receipt_hash, self.left.receipt_hash),
             h("composition-relation-duplicate"),
             self.scope,
             assumption_hashes=(self.assumption,),
         )
-        evidence = EvidenceItemV0(
-            "e.composition.duplicate",
-            claim.composition_claim_hash,
-            self.scope,
-            "PROOF",
-            verifier_hash=self.verifier,
-            witness_hash=h("duplicate-proof"),
-            assumption_hashes=(self.assumption,),
-        )
-        record = RealizationCompositionRecordV0(
-            claim,
-            self.evidence_policy.policy_hash,
-            (evidence.evidence_hash,),
-        )
-        evaluation = evaluate_realization_composition(
-            record,
-            policy=self.policy,
-            evidence_policy=self.evidence_policy,
-            component_receipts=(self.left, self.left),
-            evidence=(evidence,),
+        evidence = self.evidence(claim)
+        evaluation = self.evaluate(
+            self.record(claim, (evidence.evidence_hash,)),
+            (evidence,),
+            receipts=(self.left, self.left),
         )
         self.assertEqual(evaluation.status, "PASS")
 
-    def test_positive_composition_support_must_be_record_bound(self):
+    def test_positive_support_must_be_record_bound(self):
         evidence = self.evidence()
         evaluation = self.evaluate(self.record(), (evidence,))
         self.assertEqual(evaluation.status, "REJECT")
-        self.assertIn(
-            "composition.evidence_unbound_support",
-            {x.kind for x in evaluation.issues},
-        )
+        self.assertIn("composition.evidence_unbound_support", {x.kind for x in evaluation.issues})
 
     def test_composition_assumption_is_policy_governed(self):
         evidence = self.evidence()
-        strict_policy = RealizationCompositionPolicyV0(self.evidence_policy.policy_hash, ())
+        strict = RealizationCompositionPolicyV0(self.evidence_policy.policy_hash, ())
         evaluation = self.evaluate(
-            self.record((evidence.evidence_hash,)),
+            self.record(evidence_hashes=(evidence.evidence_hash,)),
             (evidence,),
-            policy=strict_policy,
+            policy=strict,
         )
         self.assertEqual(evaluation.status, "REJECT")
-        self.assertIn(
-            "composition.assumption_not_accepted",
-            {x.kind for x in evaluation.issues},
-        )
+        self.assertIn("composition.assumption_not_accepted", {x.kind for x in evaluation.issues})
 
-    def test_falsified_composition_claim_rejects_even_if_other_proof_exists(self):
+    def test_falsified_composition_claim_rejects_even_if_proof_exists(self):
         good = self.evidence()
         falsified = EvidenceItemV0(
             "e.composition.counterexample",
@@ -248,7 +229,7 @@ class RealizationCompositionV0Tests(unittest.TestCase):
             status="FALSIFIED",
         )
         evaluation = self.evaluate(
-            self.record((good.evidence_hash,)),
+            self.record(evidence_hashes=(good.evidence_hash,)),
             (good, falsified),
         )
         self.assertEqual(evaluation.status, "REJECT")
