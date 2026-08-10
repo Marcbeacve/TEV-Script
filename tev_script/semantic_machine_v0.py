@@ -217,18 +217,14 @@ class MachineFieldV0:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "machine_id", _stable(self.machine_id, "machine_id"))
-        numeric_models = tuple(sorted(self.numeric_models, key=lambda item: item.model_id))
+        numeric_models = tuple(sorted(self.numeric_models, key=lambda item: (item.model_id, item.record_hash)))
         if len({item.model_id for item in numeric_models}) != len(numeric_models):
             raise MachineSemanticsError("duplicate numeric model id")
-        if len({item.numeric_model_hash for item in numeric_models}) != len(numeric_models):
-            raise MachineSemanticsError("duplicate numeric model semantics")
         known_numeric = {item.numeric_model_hash for item in numeric_models}
 
-        capabilities = tuple(sorted(self.capabilities, key=lambda item: item.capability_id))
+        capabilities = tuple(sorted(self.capabilities, key=lambda item: (item.capability_id, item.record_hash)))
         if len({item.capability_id for item in capabilities}) != len(capabilities):
             raise MachineSemanticsError("duplicate machine capability id")
-        if len({item.capability_profile_hash for item in capabilities}) != len(capabilities):
-            raise MachineSemanticsError("duplicate capability semantics")
         for capability in capabilities:
             missing = set(capability.numeric_model_hashes) - known_numeric
             if missing:
@@ -236,17 +232,13 @@ class MachineFieldV0:
                     "machine capability references undefined numeric semantics: " + ",".join(sorted(missing))
                 )
 
-        memory_spaces = tuple(sorted(self.memory_spaces, key=lambda item: item.space_id))
+        memory_spaces = tuple(sorted(self.memory_spaces, key=lambda item: (item.space_id, item.record_hash)))
         if len({item.space_id for item in memory_spaces}) != len(memory_spaces):
             raise MachineSemanticsError("duplicate memory space id")
-        if len({item.memory_space_hash for item in memory_spaces}) != len(memory_spaces):
-            raise MachineSemanticsError("duplicate memory-space semantics")
 
-        formats = tuple(sorted(self.executable_formats, key=lambda item: item.format_id))
+        formats = tuple(sorted(self.executable_formats, key=lambda item: (item.format_id, item.record_hash)))
         if len({item.format_id for item in formats}) != len(formats):
             raise MachineSemanticsError("duplicate executable format id")
-        if len({item.format_hash for item in formats}) != len(formats):
-            raise MachineSemanticsError("duplicate executable-format semantics")
 
         object.__setattr__(self, "capabilities", capabilities)
         object.__setattr__(self, "numeric_models", numeric_models)
@@ -263,15 +255,15 @@ class MachineFieldV0:
 
     @property
     def numeric_model_hashes(self) -> tuple[str, ...]:
-        return tuple(sorted(item.numeric_model_hash for item in self.numeric_models))
+        return tuple(sorted(set(item.numeric_model_hash for item in self.numeric_models)))
 
     @property
     def executable_format_hashes(self) -> tuple[str, ...]:
-        return tuple(sorted(item.format_hash for item in self.executable_formats))
+        return tuple(sorted(set(item.format_hash for item in self.executable_formats)))
 
     @property
     def memory_space_hashes(self) -> tuple[str, ...]:
-        return tuple(sorted(item.memory_space_hash for item in self.memory_spaces))
+        return tuple(sorted(set(item.memory_space_hash for item in self.memory_spaces)))
 
     def supports_semantic_capability(self, semantic_hash: str) -> bool:
         return _hash64(semantic_hash, "semantic capability hash") in self.capability_semantic_hashes
@@ -339,12 +331,10 @@ class MachineRequirementV0:
 
     @property
     def required_numeric_model_ids(self) -> tuple[str, ...]:
-        """Deprecated read-only alias; values are semantic hashes, never ids."""
         return self.required_numeric_model_hashes
 
     @property
     def required_executable_formats(self) -> tuple[str, ...]:
-        """Deprecated read-only alias; values are semantic hashes, never ids."""
         return self.required_executable_format_hashes
 
     def to_object(self) -> dict[str, object]:
@@ -378,12 +368,10 @@ class MachineCompatibilityV0:
 
     @property
     def missing_numeric_model_ids(self) -> tuple[str, ...]:
-        """Deprecated read-only alias; values are semantic hashes, never ids."""
         return self.missing_numeric_model_hashes
 
     @property
     def missing_executable_formats(self) -> tuple[str, ...]:
-        """Deprecated read-only alias; values are semantic hashes, never ids."""
         return self.missing_executable_format_hashes
 
     def to_object(self) -> dict[str, object]:
