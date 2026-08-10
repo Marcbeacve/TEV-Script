@@ -51,6 +51,7 @@ def _hashes(values: Iterable[str], what: str) -> tuple[str, ...]:
 
 @dataclass(frozen=True, slots=True)
 class AtomicDeliveryCommitClaimV0:
+    delivery_plan_receipt_hash: str
     dispatch_consumption_commit_receipt_hash: str
     prepared_execution_receipt_hash: str
     atomic_commit_domain_hash: str
@@ -61,6 +62,7 @@ class AtomicDeliveryCommitClaimV0:
 
     def __post_init__(self) -> None:
         for name in (
+            "delivery_plan_receipt_hash",
             "dispatch_consumption_commit_receipt_hash",
             "prepared_execution_receipt_hash",
             "atomic_commit_domain_hash",
@@ -75,6 +77,7 @@ class AtomicDeliveryCommitClaimV0:
     def to_object(self) -> dict[str, object]:
         return {
             "schema": ATOMIC_DELIVERY_CLAIM_SCHEMA_V0,
+            "delivery_plan_receipt_hash": self.delivery_plan_receipt_hash,
             "dispatch_consumption_commit_receipt_hash": self.dispatch_consumption_commit_receipt_hash,
             "prepared_execution_receipt_hash": self.prepared_execution_receipt_hash,
             "atomic_commit_domain_hash": self.atomic_commit_domain_hash,
@@ -106,11 +109,7 @@ class DeliveryGuaranteeClaimV0:
             object.__setattr__(self, name, _hash64(getattr(self, name), name))
         if self.requested_guarantee not in DELIVERY_GUARANTEES_V0:
             raise DeliveryGuaranteeError("unsupported delivery guarantee")
-        object.__setattr__(
-            self,
-            "atomic_delivery_claim_hash",
-            _optional_hash(self.atomic_delivery_claim_hash, "atomic_delivery_claim_hash"),
-        )
+        object.__setattr__(self, "atomic_delivery_claim_hash", _optional_hash(self.atomic_delivery_claim_hash, "atomic_delivery_claim_hash"))
 
     def to_object(self) -> dict[str, object]:
         return {
@@ -179,6 +178,7 @@ class DeliveryGuaranteeReceiptV0:
     delivery_claim_hash: str
     requested_guarantee: str
     dispatch_receipt_hash: str
+    delivery_plan_receipt_hash: str
     dispatch_consumption_commit_receipt_hash: str
     prepared_execution_receipt_hash: str
     atomic_delivery_claim_hash: str
@@ -190,6 +190,7 @@ class DeliveryGuaranteeReceiptV0:
         for name in (
             "delivery_claim_hash",
             "dispatch_receipt_hash",
+            "delivery_plan_receipt_hash",
             "dispatch_consumption_commit_receipt_hash",
             "prepared_execution_receipt_hash",
             "policy_hash",
@@ -214,6 +215,7 @@ class DeliveryGuaranteeReceiptV0:
             "delivery_claim_hash": self.delivery_claim_hash,
             "requested_guarantee": self.requested_guarantee,
             "dispatch_receipt_hash": self.dispatch_receipt_hash,
+            "delivery_plan_receipt_hash": self.delivery_plan_receipt_hash,
             "dispatch_consumption_commit_receipt_hash": self.dispatch_consumption_commit_receipt_hash,
             "prepared_execution_receipt_hash": self.prepared_execution_receipt_hash,
             "atomic_delivery_claim_hash": self.atomic_delivery_claim_hash,
@@ -233,12 +235,7 @@ class DeliveryGuaranteeReceiptV0:
 def _upstream(kind: str, subject: str, status: str) -> DeliveryGuaranteeIssueV0 | None:
     if status == "PASS":
         return None
-    return DeliveryGuaranteeIssueV0(
-        kind,
-        "REJECT" if status == "REJECT" else "PROOF_REQUIRED",
-        subject,
-        {"status": status},
-    )
+    return DeliveryGuaranteeIssueV0(kind, "REJECT" if status == "REJECT" else "PROOF_REQUIRED", subject, {"status": status})
 
 
 def evaluate_delivery_guarantee(
@@ -266,14 +263,7 @@ def evaluate_delivery_guarantee(
             issues.append(DeliveryGuaranteeIssueV0(kind, "REJECT", expected, {"observed": observed}))
 
     if claim.requested_guarantee != dispatch_receipt.requested_delivery_guarantee:
-        issues.append(
-            DeliveryGuaranteeIssueV0(
-                "delivery.requested_guarantee_mismatch",
-                "REJECT",
-                claim.requested_guarantee,
-                {"execution_request": dispatch_receipt.requested_delivery_guarantee},
-            )
-        )
+        issues.append(DeliveryGuaranteeIssueV0("delivery.requested_guarantee_mismatch", "REJECT", claim.requested_guarantee, {"execution_request": dispatch_receipt.requested_delivery_guarantee}))
 
     for kind, subject, status in (
         ("delivery.dispatch_not_admitted", dispatch_receipt.receipt_hash, dispatch_receipt.status),
@@ -300,6 +290,7 @@ def evaluate_delivery_guarantee(
             claim.claim_hash,
             claim.requested_guarantee,
             dispatch_receipt.receipt_hash,
+            dispatch_receipt.delivery_plan_receipt_hash,
             consumption_commit_receipt.receipt_hash,
             prepared_execution_receipt.receipt_hash,
             "",
@@ -307,6 +298,9 @@ def evaluate_delivery_guarantee(
             policy.policy_hash,
             tuple(issues),
         )
+
+    if not dispatch_receipt.delivery_coordinator_hash or not dispatch_receipt.delivery_atomic_commit_domain_hash:
+        issues.append(DeliveryGuaranteeIssueV0("delivery.pre_dispatch_atomic_plan_missing", "REJECT", dispatch_receipt.delivery_plan_receipt_hash, {}))
 
     if prepared_reaction.atomicity not in {"transactional", "durable_transactional"}:
         issues.append(DeliveryGuaranteeIssueV0("delivery.atomicity_insufficient", "REJECT", prepared_reaction.atomicity, {"required": "transactional"}))
@@ -320,12 +314,7 @@ def evaluate_delivery_guarantee(
             issues.append(DeliveryGuaranteeIssueV0("delivery.effect_law_missing", "PROOF_REQUIRED", capability_id or "missing", {}))
             continue
         if law.effect_protocol != "prepare_commit_abort" or not law.commit_total_after_prepare:
-            issues.append(DeliveryGuaranteeIssueV0(
-                "delivery.effect_not_exactly_once_capable",
-                "REJECT",
-                capability_id,
-                {"effect_protocol": law.effect_protocol, "commit_total_after_prepare": law.commit_total_after_prepare},
-            ))
+            issues.append(DeliveryGuaranteeIssueV0("delivery.effect_not_exactly_once_capable", "REJECT", capability_id, {"effect_protocol": law.effect_protocol, "commit_total_after_prepare": law.commit_total_after_prepare}))
         if claim.requested_guarantee == "DURABLE_EXACTLY_ONCE_COMMIT" and not law.durable_recovery:
             issues.append(DeliveryGuaranteeIssueV0("delivery.effect_not_durably_recoverable", "REJECT", capability_id, {}))
 
@@ -337,10 +326,19 @@ def evaluate_delivery_guarantee(
         atomic_hash = atomic_delivery_claim.claim_hash
         if claim.atomic_delivery_claim_hash != atomic_hash:
             issues.append(DeliveryGuaranteeIssueV0("delivery.atomic_claim_mismatch", "REJECT", claim.atomic_delivery_claim_hash or "missing", {"observed": atomic_hash}))
-        if atomic_delivery_claim.dispatch_consumption_commit_receipt_hash != consumption_commit_receipt.receipt_hash:
-            issues.append(DeliveryGuaranteeIssueV0("delivery.atomic_claim_consumption_mismatch", "REJECT", atomic_delivery_claim.dispatch_consumption_commit_receipt_hash, {"observed": consumption_commit_receipt.receipt_hash}))
-        if atomic_delivery_claim.prepared_execution_receipt_hash != prepared_execution_receipt.receipt_hash:
-            issues.append(DeliveryGuaranteeIssueV0("delivery.atomic_claim_prepared_mismatch", "REJECT", atomic_delivery_claim.prepared_execution_receipt_hash, {"observed": prepared_execution_receipt.receipt_hash}))
+
+        continuity = (
+            ("delivery.atomic_claim_plan_mismatch", atomic_delivery_claim.delivery_plan_receipt_hash, dispatch_receipt.delivery_plan_receipt_hash),
+            ("delivery.atomic_claim_consumption_mismatch", atomic_delivery_claim.dispatch_consumption_commit_receipt_hash, consumption_commit_receipt.receipt_hash),
+            ("delivery.atomic_claim_prepared_mismatch", atomic_delivery_claim.prepared_execution_receipt_hash, prepared_execution_receipt.receipt_hash),
+            ("delivery.atomic_claim_participant_manifest_mismatch", atomic_delivery_claim.participant_manifest_hash, dispatch_receipt.delivery_participant_manifest_hash),
+            ("delivery.atomic_claim_coordinator_mismatch", atomic_delivery_claim.coordinator_hash, dispatch_receipt.delivery_coordinator_hash),
+            ("delivery.atomic_claim_domain_mismatch", atomic_delivery_claim.atomic_commit_domain_hash, dispatch_receipt.delivery_atomic_commit_domain_hash),
+        )
+        for kind, observed, expected in continuity:
+            if observed != expected:
+                issues.append(DeliveryGuaranteeIssueV0(kind, "REJECT", observed, {"expected": expected}))
+
         if atomic_delivery_claim.coordinator_hash not in policy.trusted_coordinator_hashes:
             issues.append(DeliveryGuaranteeIssueV0("delivery.coordinator_untrusted", "REJECT", atomic_delivery_claim.coordinator_hash, {"trusted": list(policy.trusted_coordinator_hashes)}))
         if claim.requested_guarantee == "DURABLE_EXACTLY_ONCE_COMMIT" and not atomic_delivery_claim.durable:
@@ -360,17 +358,13 @@ def evaluate_delivery_guarantee(
             evaluation = evaluate_evidence(atomic_hash, atomic_evidence_policy, tuple(evidence))
             evidence_hash = evaluation.evaluation_hash
             for item in evaluation.issues:
-                issues.append(DeliveryGuaranteeIssueV0(
-                    "delivery." + item.kind,
-                    "REJECT" if item.kind == "evidence.falsified" else "PROOF_REQUIRED",
-                    item.requirement_id,
-                    {"evidence_hash": item.evidence_hash, **dict(item.detail)},
-                ))
+                issues.append(DeliveryGuaranteeIssueV0("delivery." + item.kind, "REJECT" if item.kind == "evidence.falsified" else "PROOF_REQUIRED", item.requirement_id, {"evidence_hash": item.evidence_hash, **dict(item.detail)}))
 
     return DeliveryGuaranteeReceiptV0(
         claim.claim_hash,
         claim.requested_guarantee,
         dispatch_receipt.receipt_hash,
+        dispatch_receipt.delivery_plan_receipt_hash,
         consumption_commit_receipt.receipt_hash,
         prepared_execution_receipt.receipt_hash,
         atomic_hash,
@@ -393,7 +387,7 @@ def residual_from_delivery_guarantee(receipt: DeliveryGuaranteeReceiptV0) -> Sem
                 "resolved",
                 item.severity,
                 dict(item.detail),
-                dependency_refs=(receipt.delivery_claim_hash, receipt.dispatch_receipt_hash, receipt.dispatch_consumption_commit_receipt_hash, receipt.prepared_execution_receipt_hash),
+                dependency_refs=(receipt.delivery_claim_hash, receipt.dispatch_receipt_hash, receipt.delivery_plan_receipt_hash, receipt.dispatch_consumption_commit_receipt_hash, receipt.prepared_execution_receipt_hash),
             )
             for item in receipt.issues
         ),
