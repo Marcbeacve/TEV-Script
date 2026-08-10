@@ -24,6 +24,17 @@ _METHODS = frozenset(
         "ASSUMPTION",
     }
 )
+_WITNESS_REQUIRED = _METHODS - {"ASSUMPTION"}
+_VERIFIER_REQUIRED = frozenset(
+    {
+        "PROOF",
+        "EXHAUSTIVE",
+        "TRANSLATION_VALIDATION",
+        "DIFFERENTIAL_TEST",
+        "STATISTICAL_VALIDATION",
+        "ATTESTATION",
+    }
+)
 _STATUSES = frozenset({"ACTIVE", "REVOKED", "FALSIFIED"})
 _PROOF_METHOD_MAP = {
     "proved": "PROOF",
@@ -84,6 +95,12 @@ class EvidenceItemV0:
             raise EvidenceSemanticsError("unsupported evidence status")
         object.__setattr__(self, "verifier_hash", _optional_hash(self.verifier_hash, "verifier_hash"))
         object.__setattr__(self, "witness_hash", _optional_hash(self.witness_hash, "witness_hash"))
+        if self.method in _WITNESS_REQUIRED and not self.witness_hash:
+            raise EvidenceSemanticsError(f"{self.method} requires witness_hash")
+        if self.method in _VERIFIER_REQUIRED and not self.verifier_hash:
+            raise EvidenceSemanticsError(f"{self.method} requires verifier_hash")
+        if self.status == "FALSIFIED" and not self.witness_hash:
+            raise EvidenceSemanticsError("FALSIFIED evidence requires witness_hash")
         object.__setattr__(
             self,
             "assumption_hashes",
