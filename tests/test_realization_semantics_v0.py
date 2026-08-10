@@ -35,10 +35,12 @@ from tev_script.semantic_realization_v0 import (
     RealizationProblemV0,
     admit_realization,
     pareto_front,
+    realization_identity_hash,
     realization_semantic_claim_hash,
     residual_from_realization_admission,
     semantic_memoization_key,
 )
+from tev_script.semantic_resource_evidence_v0 import ResourceEstimateClaimV0
 from tev_script.semantic_residual_v0 import parse_residual
 from tev_script.semantic_resource_algebra_v0 import (
     ResourceAlgebraError,
@@ -107,6 +109,15 @@ class ResourceAlgebraV0Tests(unittest.TestCase):
         self.assertIsNone(combined.bound("latency").upper)
         self.assertIsNone(combined.bound("energy").upper)
         self.assertIsNone(combined.bound("peak_memory").upper)
+
+    def test_empty_composition_is_explicit_zero_identity_over_catalog(self):
+        result = compose_resource_vectors((), self.catalog, mode="SEQUENTIAL")
+        self.assertTrue(result.complete)
+        self.assertEqual(
+            tuple(item.dimension_id for item in result.bounds),
+            self.catalog.dimension_ids,
+        )
+        self.assertTrue(all(item.exact_value == 0 for item in result.bounds))
 
     def test_complete_vector_must_cover_exact_catalog(self):
         incomplete_surface = self.vector((ResourceBoundV0.exact("energy", 4),), complete=True)
@@ -263,6 +274,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
     def _fixture(self, *, latency_upper=5, relation="EXACT_EQUIVALENT", approximation=None):
         transformation = h("transformation")
         scope = h("semantic-scope")
+        context = h("context")
         assumption = h("assumption")
         constraint_hash = h("constraint")
         invariant_hash = h("invariant")
@@ -302,6 +314,17 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
                 ),
             )
         )
+        resource_scope = h("resource-scope")
+        resource_evidence_policy = EvidencePolicyV0(
+            (
+                EvidenceRequirementV0(
+                    "resource-bound",
+                    ("PROOF", "EXHAUSTIVE"),
+                    scope_hash=resource_scope,
+                    trusted_verifier_hashes=(verifier,),
+                ),
+            )
+        )
         resource_catalog = ResourceCatalogV0(
             (ResourceDimensionV0("latency", "ms", "SUM", "MAX"),)
         )
@@ -317,6 +340,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             (relation,),
             realization_evidence_policy.policy_hash,
             regime_evidence_policy.policy_hash,
+            resource_evidence_policy.policy_hash,
             resource_catalog.catalog_hash,
             accepted_assumption_hashes=(assumption,),
             resource_ceilings=(
@@ -331,25 +355,51 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             executable_formats=("tev.binary",),
         )
         requirement = MachineRequirementV0((operation_hash,), (), ("tev.binary",))
+        artifact_hash = h("artifact")
         problem = RealizationProblemV0(
             transformation,
             binding.binding_hash,
-            h("context"),
+            context,
             policy.policy_hash,
             (machine.machine_hash,),
         )
-        claim_hash = realization_semantic_claim_hash(
+        semantic_claim_hash = realization_semantic_claim_hash(
             transformation_semantic_hash=transformation,
             transformation_regime_binding_hash=binding.binding_hash,
             machine_hash=machine.machine_hash,
-            artifact_hashes=(h("artifact"),),
+            artifact_hashes=(artifact_hash,),
             machine_requirement=requirement,
             semantic_relation=relation,
             approximation_contract=approximation,
             assumption_hashes=(assumption,),
         )
+        realization_hash = realization_identity_hash(
+            realization_kind="tev.realization.test",
+            transformation_semantic_hash=transformation,
+            transformation_regime_binding_hash=binding.binding_hash,
+            machine_hash=machine.machine_hash,
+            artifact_hashes=(artifact_hash,),
+            machine_requirement=requirement,
+            semantic_relation=relation,
+            approximation_contract=approximation,
+            assumption_hashes=(assumption,),
+        )
+        predicted_resources = ResourceVectorV0(
+            (ResourceBoundV0("latency", 1, latency_upper),),
+            complete=True,
+            catalog_hash=resource_catalog.catalog_hash,
+        )
+        resource_estimate = ResourceEstimateClaimV0(
+            realization_hash,
+            context,
+            predicted_resources.vector_hash,
+            resource_catalog.catalog_hash,
+            "ANALYTIC_BOUND",
+            h("resource-estimator"),
+            resource_scope,
+        )
         preservation = RegimePreservationClaimV0(
-            claim_hash,
+            semantic_claim_hash,
             binding.binding_hash,
             regime.regime_hash,
             relation,
@@ -360,7 +410,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         )
         semantic_evidence = EvidenceItemV0(
             "e.semantic",
-            claim_hash,
+            semantic_claim_hash,
             scope,
             "TRANSLATION_VALIDATION",
             verifier_hash=verifier,
@@ -374,37 +424,49 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             verifier_hash=verifier,
             witness_hash=h("regime-witness"),
         )
+        resource_evidence = EvidenceItemV0(
+            "e.resource",
+            resource_estimate.estimate_claim_hash,
+            resource_scope,
+            "PROOF",
+            verifier_hash=verifier,
+            witness_hash=h("resource-bound-witness"),
+        )
         candidate = RealizationCandidateV0(
             transformation,
             binding.binding_hash,
             "tev.realization.test",
             machine.machine_hash,
-            (h("artifact"),),
+            (artifact_hash,),
             requirement,
             relation,
             approximation_contract=approximation,
             assumption_hashes=(assumption,),
-            predicted_resources=ResourceVectorV0(
-                (ResourceBoundV0("latency", 1, latency_upper),),
-                complete=True,
-                catalog_hash=resource_catalog.catalog_hash,
+            predicted_resources=predicted_resources,
+            resource_estimate_claim_hash=resource_estimate.estimate_claim_hash,
+            evidence_hashes=(
+                semantic_evidence.evidence_hash,
+                regime_evidence.evidence_hash,
+                resource_evidence.evidence_hash,
             ),
-            evidence_hashes=(semantic_evidence.evidence_hash, regime_evidence.evidence_hash),
             regime_preservation_claim_hash=preservation.preservation_claim_hash,
         )
-        self.assertEqual(candidate.semantic_claim_hash, claim_hash)
+        self.assertEqual(candidate.semantic_claim_hash, semantic_claim_hash)
+        self.assertEqual(candidate.realization_hash, realization_hash)
         return {
             "problem": problem,
             "candidate": candidate,
             "machine": machine,
             "policy": policy,
             "resource_catalog": resource_catalog,
+            "resource_estimate_claim": resource_estimate,
             "regime": regime,
             "binding": binding,
             "preservation": preservation,
             "realization_evidence_policy": realization_evidence_policy,
             "regime_evidence_policy": regime_evidence_policy,
-            "evidence": (semantic_evidence, regime_evidence),
+            "resource_evidence_policy": resource_evidence_policy,
+            "evidence": (semantic_evidence, regime_evidence, resource_evidence),
         }
 
     def _admit(self, fixture, **overrides):
@@ -447,6 +509,10 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         receipt = self._admit(f)
         self.assertEqual(receipt.status, "PASS")
         self.assertEqual(receipt.resource_catalog_hash, f["resource_catalog"].catalog_hash)
+        self.assertEqual(
+            receipt.resource_estimate_claim_hash,
+            f["resource_estimate_claim"].estimate_claim_hash,
+        )
         residual = parse_residual(residual_from_realization_admission(receipt))
         self.assertEqual(residual.status, "CLOSED")
 
@@ -476,6 +542,31 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         self.assertEqual(receipt.status, "REJECT")
         self.assertIn("resource.ceiling_exceeded", {item.kind for item in receipt.issues})
 
+    def test_resource_bound_without_accepted_evidence_remains_open(self):
+        f = self._fixture()
+        receipt = self._admit(f, evidence=f["evidence"][:2])
+        self.assertEqual(receipt.status, "PROOF_REQUIRED")
+        self.assertIn("resource.evidence.required", {item.kind for item in receipt.issues})
+
+    def test_resource_estimate_must_bind_realization_context_and_vector(self):
+        f = self._fixture()
+        bad_estimate = ResourceEstimateClaimV0(
+            f["candidate"].realization_hash,
+            h("wrong-context"),
+            f["candidate"].predicted_resources.vector_hash,
+            f["resource_catalog"].catalog_hash,
+            "ANALYTIC_BOUND",
+            h("resource-estimator"),
+            h("resource-scope"),
+        )
+        receipt = self._admit(f, resource_estimate_claim=bad_estimate)
+        self.assertEqual(receipt.status, "REJECT")
+        kinds = {item.kind for item in receipt.issues}
+        self.assertTrue(
+            "resource.estimate_claim_mismatch" in kinds
+            or "resource.estimate_binding_mismatch" in kinds
+        )
+
     def test_resource_catalog_mismatch_rejects(self):
         f = self._fixture()
         other_catalog = ResourceCatalogV0(
@@ -491,7 +582,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
 
     def test_missing_realization_evidence_remains_open(self):
         f = self._fixture()
-        receipt = self._admit(f, evidence=(f["evidence"][1],))
+        receipt = self._admit(f, evidence=f["evidence"][1:])
         self.assertEqual(receipt.status, "PROOF_REQUIRED")
         kinds = {item.kind for item in receipt.issues}
         self.assertTrue(
@@ -511,6 +602,7 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
             f["candidate"].semantic_relation,
             assumption_hashes=f["candidate"].assumption_hashes,
             predicted_resources=f["candidate"].predicted_resources,
+            resource_estimate_claim_hash=f["candidate"].resource_estimate_claim_hash,
             evidence_hashes=(),
             regime_preservation_claim_hash=f["candidate"].regime_preservation_claim_hash,
         )
@@ -553,7 +645,30 @@ class RegimeAndRealizationAdmissionV0Tests(unittest.TestCase):
         self.assertEqual(low.transformation_semantic_hash, high.transformation_semantic_hash)
         self.assertEqual(low.semantic_claim_hash, high.semantic_claim_hash)
         self.assertEqual(low.realization_hash, high.realization_hash)
+        self.assertNotEqual(low.resource_estimate_claim_hash, high.resource_estimate_claim_hash)
         self.assertNotEqual(low.candidate_hash, high.candidate_hash)
+
+    def test_provenance_changes_candidate_not_realization_identity(self):
+        f = self._fixture()
+        base = f["candidate"]
+        with_provenance = RealizationCandidateV0(
+            base.transformation_semantic_hash,
+            base.transformation_regime_binding_hash,
+            base.realization_kind,
+            base.machine_hash,
+            base.artifact_hashes,
+            base.machine_requirement,
+            base.semantic_relation,
+            assumption_hashes=base.assumption_hashes,
+            provenance_hashes=(h("compiler-provenance"),),
+            predicted_resources=base.predicted_resources,
+            resource_estimate_claim_hash=base.resource_estimate_claim_hash,
+            evidence_hashes=base.evidence_hashes,
+            regime_preservation_claim_hash=base.regime_preservation_claim_hash,
+        )
+        self.assertEqual(base.realization_hash, with_provenance.realization_hash)
+        self.assertEqual(base.semantic_claim_hash, with_provenance.semantic_claim_hash)
+        self.assertNotEqual(base.candidate_hash, with_provenance.candidate_hash)
 
     def test_pareto_front_uses_only_admitted_candidates(self):
         fast = self._fixture(latency_upper=2)
