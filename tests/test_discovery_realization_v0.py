@@ -13,7 +13,11 @@ from tev_script.semantic_discovery_realization_v0 import (
     evaluate_discovery_realization_cycle,
     residual_from_discovery_realization_cycle,
 )
-from tev_script.semantic_evidence_v0 import EvidenceItemV0, EvidencePolicyV0, EvidenceRequirementV0
+from tev_script.semantic_evidence_v0 import (
+    EvidenceItemV0,
+    EvidencePolicyV0,
+    EvidenceRequirementV0,
+)
 from tev_script.semantic_realization_v0 import RealizationAdmissionReceiptV0, RealizationIssueV0
 from tev_script.semantic_residual_v0 import parse_residual
 
@@ -23,34 +27,65 @@ def h(label: str) -> str:
 
 
 class StructuralLawIdentityV0Tests(unittest.TestCase):
-    def _law(self, law_id: str, *, transformation=None, boundary=None, formulation=None, provenance=None):
+    def _law(
+        self,
+        law_id: str,
+        *,
+        regime=None,
+        transformation=None,
+        boundary=None,
+        assumption=None,
+        falsifier=None,
+        formulation=None,
+        provenance=None,
+    ):
         return StructuralLawClaimV0(
             law_id,
-            h("regime"),
+            regime or h("regime"),
             transformation or h("transformation"),
             boundary or h("boundary"),
-            h("falsifiers"),
+            falsifier or h("falsifiers"),
             EvidencePolicyV0(()).policy_hash,
-            assumption_hashes=(h("assumption"),),
+            assumption_hashes=(assumption or h("assumption"),),
             formulation_hash=formulation or h("formulation-" + law_id),
             provenance=provenance or {"source": law_id},
         )
 
-    def test_notation_and_provenance_do_not_define_law_semantics(self):
-        left = self._law("law.alpha", formulation=h("text-a"), provenance={"notation": "a"})
-        right = self._law("law.beta", formulation=h("text-b"), provenance={"notation": "b"})
+    def test_notation_provenance_and_falsification_profile_do_not_define_law_semantics(self):
+        left = self._law(
+            "law.alpha",
+            falsifier=h("falsifier-a"),
+            formulation=h("text-a"),
+            provenance={"notation": "a"},
+        )
+        right = self._law(
+            "law.beta",
+            falsifier=h("falsifier-b"),
+            formulation=h("text-b"),
+            provenance={"notation": "b"},
+        )
         self.assertEqual(left.law_semantic_hash, right.law_semantic_hash)
         self.assertNotEqual(left.law_claim_hash, right.law_claim_hash)
 
-    def test_transformation_and_validity_boundary_are_semantic(self):
+    def test_transformation_validity_boundary_regime_and_assumptions_are_semantic(self):
         base = self._law("law.base")
-        self.assertNotEqual(
-            base.law_semantic_hash,
-            self._law("law.other", transformation=h("other-transformation")).law_semantic_hash,
+        variants = (
+            self._law("law.t", transformation=h("other-transformation")),
+            self._law("law.b", boundary=h("other-boundary")),
+            self._law("law.r", regime=h("other-regime")),
+            self._law("law.a", assumption=h("other-assumption")),
         )
+        self.assertTrue(all(base.law_semantic_hash != item.law_semantic_hash for item in variants))
+
+    def test_law_realization_scope_binds_boundary_and_assumptions(self):
+        base = self._law("law.base")
+        other_boundary = self._law("law.boundary", boundary=h("other-boundary"))
+        other_assumption = self._law("law.assumption", assumption=h("other-assumption"))
+        self.assertNotEqual(base.law_realization_scope_hash, other_boundary.law_realization_scope_hash)
+        self.assertNotEqual(base.law_realization_scope_hash, other_assumption.law_realization_scope_hash)
         self.assertNotEqual(
-            base.law_semantic_hash,
-            self._law("law.boundary", boundary=h("other-boundary")).law_semantic_hash,
+            base.expected_realization_binding_hash,
+            other_boundary.expected_realization_binding_hash,
         )
 
     def test_distinct_concrete_structures_need_explicit_equivalence_claim(self):
@@ -90,10 +125,11 @@ class StructuralLawIdentityV0Tests(unittest.TestCase):
         claim = ModelCompatibilityClaimV0(
             law.law_semantic_hash,
             h("generated-model"),
-            h("regime"),
-            h("boundary"),
+            law.regime_hash,
+            law.validity_boundary_hash,
             h("satisfies-relation"),
             EvidencePolicyV0(()).policy_hash,
+            assumption_hashes=law.assumption_hashes,
         )
         self.assertEqual(len(claim.compatibility_claim_hash), 64)
 
@@ -123,25 +159,41 @@ class DiscoveryRealizationCycleV0Tests(unittest.TestCase):
             )
         )
 
-    def _law(self, *, transformation=h("cycle-transformation"), regime=h("cycle-regime")):
+    def _law(
+        self,
+        *,
+        law_id="law.cycle",
+        transformation=None,
+        regime=None,
+        boundary=None,
+        assumption=None,
+    ):
         return StructuralLawClaimV0(
-            "law.cycle",
-            regime,
-            transformation,
-            h("boundary"),
-            h("falsifiers"),
+            law_id,
+            regime or h("cycle-regime"),
+            transformation or h("cycle-transformation"),
+            boundary or h("boundary"),
+            h("falsifiers-" + law_id),
             EvidencePolicyV0(()).policy_hash,
-            assumption_hashes=(h("assumption"),),
+            assumption_hashes=(assumption or h("assumption"),),
         )
 
-    def _receipt(self, law: StructuralLawClaimV0, *, issues=(), transformation=None, regime=None):
+    def _receipt(
+        self,
+        law: StructuralLawClaimV0,
+        *,
+        issues=(),
+        transformation=None,
+        regime=None,
+        binding=None,
+    ):
         return RealizationAdmissionReceiptV0(
             h("problem"),
             h("candidate"),
             h("realization"),
             h("semantic-claim"),
             transformation or law.transformation_semantic_hash,
-            h("regime-binding"),
+            binding or law.expected_realization_binding_hash,
             "EXACT_EQUIVALENT",
             h("preservation-claim"),
             h("resource-estimate-claim"),
@@ -157,17 +209,26 @@ class DiscoveryRealizationCycleV0Tests(unittest.TestCase):
             tuple(issues),
         )
 
-    def _discovery_claim(self, law_hash: str):
+    def _discovery_claim(
+        self,
+        law: StructuralLawClaimV0,
+        *,
+        boundary=None,
+        assumptions=None,
+        candidate_hash=None,
+    ):
         policy = self._discovery_policy()
         return DiscoveryClaimV0(
             h("experience-space"),
             h("observations"),
             h("interventions"),
-            law_hash,
+            candidate_hash or law.law_semantic_hash,
             h("discovery-context"),
-            h("boundary"),
+            boundary or law.validity_boundary_hash,
             policy.policy_hash,
-            assumption_hashes=(h("assumption"),),
+            assumption_hashes=(
+                law.assumption_hashes if assumptions is None else tuple(assumptions)
+            ),
         )
 
     def _discovery_evidence(self, claim: DiscoveryClaimV0, *, status="ACTIVE"):
@@ -181,35 +242,55 @@ class DiscoveryRealizationCycleV0Tests(unittest.TestCase):
             status=status,
         )
 
-    def _cycle(self, source_law, receipt, claim, *, equivalence_hash=""):
+    def _cycle(self, source_law, receipt, claim, rediscovered_law, *, equivalence_hash=""):
         return DiscoveryRealizationCycleV0(
             source_law.law_semantic_hash,
             receipt.receipt_hash,
             h("observed-history"),
             claim.discovery_claim_hash,
-            claim.candidate_law_semantic_hash,
+            rediscovered_law.law_semantic_hash,
             equivalence_hash,
         )
 
-    def _evaluate(self, cycle, source_law, receipt, claim, evidence, **kwargs):
+    def _evaluate(
+        self,
+        cycle,
+        source_law,
+        receipt,
+        rediscovered_law,
+        claim,
+        evidence,
+        **kwargs,
+    ):
         return evaluate_discovery_realization_cycle(
             cycle,
             source_law=source_law,
             realization_receipt=receipt,
+            rediscovered_law=rediscovered_law,
             rediscovery_claim=claim,
             discovery_evidence_policy=self._discovery_policy(),
             evidence=evidence,
             **kwargs,
         )
 
-    def test_same_law_round_trip_passes_only_with_admitted_realization_and_rediscovery_evidence(self):
+    def test_same_law_round_trip_passes_only_with_admitted_scoped_realization_and_evidence(self):
         law = self._law()
         receipt = self._receipt(law)
-        claim = self._discovery_claim(law.law_semantic_hash)
-        cycle = self._cycle(law, receipt, claim)
-        evaluation = self._evaluate(cycle, law, receipt, claim, (self._discovery_evidence(claim),))
+        claim = self._discovery_claim(law)
+        cycle = self._cycle(law, receipt, claim, law)
+        evaluation = self._evaluate(
+            cycle,
+            law,
+            receipt,
+            law,
+            claim,
+            (self._discovery_evidence(claim),),
+        )
         self.assertEqual(evaluation.status, "PASS")
-        self.assertEqual(parse_residual(residual_from_discovery_realization_cycle(evaluation)).status, "CLOSED")
+        self.assertEqual(
+            parse_residual(residual_from_discovery_realization_cycle(evaluation)).status,
+            "CLOSED",
+        )
 
     def test_non_pass_realization_cannot_enter_successful_round_trip(self):
         law = self._law()
@@ -217,25 +298,28 @@ class DiscoveryRealizationCycleV0Tests(unittest.TestCase):
             law,
             issues=(RealizationIssueV0("machine.operation_missing", "REJECT", h("op"), {}),),
         )
-        claim = self._discovery_claim(law.law_semantic_hash)
+        claim = self._discovery_claim(law)
         evaluation = self._evaluate(
-            self._cycle(law, receipt, claim),
+            self._cycle(law, receipt, claim, law),
             law,
             receipt,
+            law,
             claim,
             (self._discovery_evidence(claim),),
         )
         self.assertEqual(evaluation.status, "REJECT")
         self.assertIn("cycle.realization_not_admitted", {item.kind for item in evaluation.issues})
 
-    def test_realization_must_match_source_law_transformation_and_regime(self):
+    def test_realization_must_match_source_law_transformation_regime_and_scope(self):
         law = self._law()
-        claim = self._discovery_claim(law.law_semantic_hash)
+        claim = self._discovery_claim(law)
+
         wrong_t = self._receipt(law, transformation=h("other-transformation"))
         evaluation = self._evaluate(
-            self._cycle(law, wrong_t, claim),
+            self._cycle(law, wrong_t, claim, law),
             law,
             wrong_t,
+            law,
             claim,
             (self._discovery_evidence(claim),),
         )
@@ -243,22 +327,89 @@ class DiscoveryRealizationCycleV0Tests(unittest.TestCase):
 
         wrong_r = self._receipt(law, regime=h("other-regime"))
         evaluation = self._evaluate(
-            self._cycle(law, wrong_r, claim),
+            self._cycle(law, wrong_r, claim, law),
             law,
             wrong_r,
+            law,
             claim,
             (self._discovery_evidence(claim),),
         )
         self.assertIn("cycle.realization_regime_mismatch", {item.kind for item in evaluation.issues})
 
-    def test_different_concrete_law_stays_open_without_equivalence_claim(self):
+        wrong_scope = self._receipt(law, binding=h("wrong-binding"))
+        evaluation = self._evaluate(
+            self._cycle(law, wrong_scope, claim, law),
+            law,
+            wrong_scope,
+            law,
+            claim,
+            (self._discovery_evidence(claim),),
+        )
+        self.assertIn("cycle.realization_scope_mismatch", {item.kind for item in evaluation.issues})
+
+    def test_rediscovery_claim_must_match_rediscovered_law_boundary_and_assumptions(self):
         law = self._law()
         receipt = self._receipt(law)
-        claim = self._discovery_claim(h("law-recoded"))
+
+        bad_boundary = self._discovery_claim(law, boundary=h("wrong-boundary"))
         evaluation = self._evaluate(
-            self._cycle(law, receipt, claim),
+            self._cycle(law, receipt, bad_boundary, law),
             law,
             receipt,
+            law,
+            bad_boundary,
+            (self._discovery_evidence(bad_boundary),),
+        )
+        self.assertEqual(evaluation.status, "REJECT")
+        self.assertIn("cycle.rediscovery_boundary_mismatch", {item.kind for item in evaluation.issues})
+
+        bad_assumptions = self._discovery_claim(law, assumptions=(h("wrong-assumption"),))
+        evaluation = self._evaluate(
+            self._cycle(law, receipt, bad_assumptions, law),
+            law,
+            receipt,
+            law,
+            bad_assumptions,
+            (self._discovery_evidence(bad_assumptions),),
+        )
+        self.assertEqual(evaluation.status, "REJECT")
+        self.assertIn("cycle.rediscovery_assumption_mismatch", {item.kind for item in evaluation.issues})
+
+    def test_rediscovery_claim_cannot_label_a_different_law_hash(self):
+        law = self._law()
+        receipt = self._receipt(law)
+        claim = self._discovery_claim(law, candidate_hash=h("different-law"))
+        cycle = DiscoveryRealizationCycleV0(
+            law.law_semantic_hash,
+            receipt.receipt_hash,
+            h("observed-history"),
+            claim.discovery_claim_hash,
+            law.law_semantic_hash,
+        )
+        evaluation = self._evaluate(
+            cycle,
+            law,
+            receipt,
+            law,
+            claim,
+            (self._discovery_evidence(claim),),
+        )
+        self.assertEqual(evaluation.status, "REJECT")
+        self.assertIn("cycle.rediscovery_claim_law_mismatch", {item.kind for item in evaluation.issues})
+
+    def test_different_concrete_law_stays_open_without_equivalence_claim(self):
+        source = self._law(law_id="law.source")
+        rediscovered = self._law(
+            law_id="law.recoded",
+            transformation=h("law-recoded-transformation"),
+        )
+        receipt = self._receipt(source)
+        claim = self._discovery_claim(rediscovered)
+        evaluation = self._evaluate(
+            self._cycle(source, receipt, claim, rediscovered),
+            source,
+            receipt,
+            rediscovered,
             claim,
             (self._discovery_evidence(claim),),
         )
@@ -266,30 +417,44 @@ class DiscoveryRealizationCycleV0Tests(unittest.TestCase):
         self.assertIn("cycle.law_equivalence_required", {item.kind for item in evaluation.issues})
 
     def test_isomorphic_recode_needs_explicit_equivalence_evidence(self):
-        law = self._law()
-        receipt = self._receipt(law)
-        claim = self._discovery_claim(h("law-recoded"))
+        source = self._law(law_id="law.source")
+        rediscovered = self._law(
+            law_id="law.recoded",
+            transformation=h("law-recoded-transformation"),
+        )
+        receipt = self._receipt(source)
+        claim = self._discovery_claim(rediscovered)
         eq_policy = self._equivalence_policy()
         eq_claim = LawEquivalenceClaimV0(
-            law.law_semantic_hash,
-            claim.candidate_law_semantic_hash,
+            source.law_semantic_hash,
+            rediscovered.law_semantic_hash,
             h("isomorphism"),
             h("equivalence-scope"),
             eq_policy.policy_hash,
         )
-        cycle = self._cycle(law, receipt, claim, equivalence_hash=eq_claim.equivalence_claim_hash)
+        cycle = self._cycle(
+            source,
+            receipt,
+            claim,
+            rediscovered,
+            equivalence_hash=eq_claim.equivalence_claim_hash,
+        )
 
         without_eq_evidence = self._evaluate(
             cycle,
-            law,
+            source,
             receipt,
+            rediscovered,
             claim,
             (self._discovery_evidence(claim),),
             law_equivalence_claim=eq_claim,
             equivalence_evidence_policy=eq_policy,
         )
         self.assertEqual(without_eq_evidence.status, "PROOF_REQUIRED")
-        self.assertIn("equivalence.evidence.required", {item.kind for item in without_eq_evidence.issues})
+        self.assertIn(
+            "equivalence.evidence.required",
+            {item.kind for item in without_eq_evidence.issues},
+        )
 
         eq_evidence = EvidenceItemV0(
             "e.isomorphism",
@@ -301,8 +466,9 @@ class DiscoveryRealizationCycleV0Tests(unittest.TestCase):
         )
         closed = self._evaluate(
             cycle,
-            law,
+            source,
             receipt,
+            rediscovered,
             claim,
             (self._discovery_evidence(claim), eq_evidence),
             law_equivalence_claim=eq_claim,
@@ -313,7 +479,7 @@ class DiscoveryRealizationCycleV0Tests(unittest.TestCase):
     def test_falsified_rediscovery_rejects_round_trip(self):
         law = self._law()
         receipt = self._receipt(law)
-        claim = self._discovery_claim(law.law_semantic_hash)
+        claim = self._discovery_claim(law)
         falsified = EvidenceItemV0(
             "e.rediscovery.counterexample",
             claim.discovery_claim_hash,
@@ -323,9 +489,10 @@ class DiscoveryRealizationCycleV0Tests(unittest.TestCase):
             status="FALSIFIED",
         )
         evaluation = self._evaluate(
-            self._cycle(law, receipt, claim),
+            self._cycle(law, receipt, claim, law),
             law,
             receipt,
+            law,
             claim,
             (self._discovery_evidence(claim), falsified),
         )
@@ -335,7 +502,7 @@ class DiscoveryRealizationCycleV0Tests(unittest.TestCase):
     def test_cycle_binding_mismatch_is_reject_and_open_residual(self):
         law = self._law()
         receipt = self._receipt(law)
-        claim = self._discovery_claim(law.law_semantic_hash)
+        claim = self._discovery_claim(law)
         cycle = DiscoveryRealizationCycleV0(
             law.law_semantic_hash,
             receipt.receipt_hash,
@@ -343,10 +510,20 @@ class DiscoveryRealizationCycleV0Tests(unittest.TestCase):
             h("wrong-discovery-claim"),
             law.law_semantic_hash,
         )
-        evaluation = self._evaluate(cycle, law, receipt, claim, (self._discovery_evidence(claim),))
+        evaluation = self._evaluate(
+            cycle,
+            law,
+            receipt,
+            law,
+            claim,
+            (self._discovery_evidence(claim),),
+        )
         self.assertEqual(evaluation.status, "REJECT")
         self.assertIn("cycle.rediscovery_claim_mismatch", {item.kind for item in evaluation.issues})
-        self.assertEqual(parse_residual(residual_from_discovery_realization_cycle(evaluation)).status, "OPEN")
+        self.assertEqual(
+            parse_residual(residual_from_discovery_realization_cycle(evaluation)).status,
+            "OPEN",
+        )
 
 
 if __name__ == "__main__":
