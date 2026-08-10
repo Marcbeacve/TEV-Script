@@ -15,10 +15,16 @@ def h(label: str) -> str:
 
 
 class MachineProfileIdentityV0Tests(unittest.TestCase):
-    def _profile(self, machine_id: str, *, operation_hash: str | None = None):
+    def _profile(
+        self,
+        machine_id: str,
+        *,
+        capability_id: str = "opaque.compute",
+        operation_hash: str | None = None,
+    ):
         numeric = NumericModelV0("exact.int", h("exact-int"), True)
         capability = MachineCapabilityV0(
-            "opaque.compute",
+            capability_id,
             operation_hash or h("operation"),
             "compute",
             ("exact.int",),
@@ -37,6 +43,12 @@ class MachineProfileIdentityV0Tests(unittest.TestCase):
         right = self._profile("machine.beta")
         self.assertEqual(left.machine_hash, right.machine_hash)
         self.assertEqual(left.machine_profile_hash, right.machine_profile_hash)
+        self.assertNotEqual(left.record_hash, right.record_hash)
+
+    def test_local_capability_alias_does_not_change_profile_identity(self):
+        left = self._profile("machine.alpha", capability_id="adapter.compute.a")
+        right = self._profile("machine.alpha", capability_id="adapter.compute.b")
+        self.assertEqual(left.machine_hash, right.machine_hash)
         self.assertNotEqual(left.record_hash, right.record_hash)
 
     def test_semantic_operation_change_changes_machine_profile(self):
