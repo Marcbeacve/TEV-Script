@@ -20,6 +20,7 @@ HOST_INTERFACE_SCHEMA_V1 = "TEV_SCRIPT_PROGRAM_IR_V3_HOST_INTERFACE_V1"
 HOST_RUNTIME_ROLE_SCHEMA_V1 = "TEV_SCRIPT_HOST_RUNTIME_ROLE_V1"
 HOST_CONFORMANCE_COVERAGE_SCHEMA_V1 = "TEV_SCRIPT_HOST_CONFORMANCE_COVERAGE_V1"
 PROGRAM_IR_V3_MATERIALIZATION_SCHEMA_V1 = "TEV_SCRIPT_PROGRAM_IR_V3_MATERIALIZATION_V1"
+HOST_EVIDENCE_AUTHORITY_SCHEMA_V1 = "TEV_SCRIPT_HOST_EVIDENCE_AUTHORITY_V1"
 HOST_EXECUTION_EVIDENCE_SCHEMA_V1 = "TEV_SCRIPT_HOST_EXECUTION_EVIDENCE_V1"
 HOST_EXECUTION_ADMISSION_SCHEMA_V1 = "TEV_SCRIPT_HOST_EXECUTION_ADMISSION_V1"
 CROSS_HOST_EQUIVALENCE_SCHEMA_V1 = "TEV_SCRIPT_CROSS_HOST_EQUIVALENCE_V1"
@@ -171,6 +172,44 @@ UNITY_WEBGL_RUNTIME_CAPABILITY_HASH_V1 = _capability_semantics(
 WEBGL2_CAPABILITY_HASH_V1 = _capability_semantics(
     "graphics_context",
     contract="webgl2",
+)
+
+THREE_RUNTIME_RECEIPT_BYTES_VERIFIER_CONTRACT_HASH_V1 = canonical_hash(
+    {
+        "schema": HOST_EVIDENCE_AUTHORITY_SCHEMA_V1,
+        "authority": "python_javascript_csharp_ir_v3_cross_runtime",
+        "maximum_level": EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
+        "obligations": [
+            "execute_same_program_ir_v3",
+            "execute_same_conformance_scenario",
+            "compare_python_javascript_csharp_receipt_bytes_exactly",
+        ],
+    }
+)
+BROWSER_WASM_RECEIPT_HASH_VERIFIER_CONTRACT_HASH_V1 = canonical_hash(
+    {
+        "schema": HOST_EVIDENCE_AUTHORITY_SCHEMA_V1,
+        "authority": "browser_wasm_ir_v3_conformance",
+        "maximum_level": EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
+        "obligations": [
+            "execute_program_ir_v3_in_browser_wasm",
+            "compare_observed_receipt_hash_to_reference",
+            "compare_checkpoint_hash_to_reference",
+        ],
+    }
+)
+WASI_RECEIPT_HASH_VERIFIER_CONTRACT_HASH_V1 = canonical_hash(
+    {
+        "schema": HOST_EVIDENCE_AUTHORITY_SCHEMA_V1,
+        "authority": "wasi_ir_v3_conformance",
+        "maximum_level": EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
+        "obligations": [
+            "execute_program_ir_v3_in_wasi",
+            "compare_observed_receipt_hash_to_reference",
+            "compare_checkpoint_hash_and_canonical_bytes_to_reference",
+            "verify_fresh_restore_identity",
+        ],
+    }
 )
 
 
@@ -558,7 +597,7 @@ def admitted_ir_v3_host_profiles_v1() -> tuple[HostRuntimeProfileV1, ...]:
     )
 
 
-def ir_v3_evidence_ceiling_for_profile_v1(profile: HostRuntimeProfileV1) -> str | None:
+def ir_v3_evidence_authority_for_profile_v1(profile: HostRuntimeProfileV1) -> tuple[str, str] | None:
     profile_hash = profile.profile_hash
     byte_parity = (
         python_reference_host_profile_v1(),
@@ -566,15 +605,32 @@ def ir_v3_evidence_ceiling_for_profile_v1(profile: HostRuntimeProfileV1) -> str 
         csharp_reference_host_profile_v1(),
     )
     if any(profile_hash == item.profile_hash for item in byte_parity):
-        return EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1
-    hash_parity = (browser_wasm_host_profile_v1(), wasi_host_profile_v1())
-    if any(profile_hash == item.profile_hash for item in hash_parity):
-        return EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1
+        return (
+            EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
+            THREE_RUNTIME_RECEIPT_BYTES_VERIFIER_CONTRACT_HASH_V1,
+        )
+    browser = browser_wasm_host_profile_v1()
+    if profile_hash == browser.profile_hash:
+        return (
+            EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
+            BROWSER_WASM_RECEIPT_HASH_VERIFIER_CONTRACT_HASH_V1,
+        )
+    wasi = wasi_host_profile_v1()
+    if profile_hash == wasi.profile_hash:
+        return (
+            EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
+            WASI_RECEIPT_HASH_VERIFIER_CONTRACT_HASH_V1,
+        )
     return None
 
 
+def ir_v3_evidence_ceiling_for_profile_v1(profile: HostRuntimeProfileV1) -> str | None:
+    authority = ir_v3_evidence_authority_for_profile_v1(profile)
+    return None if authority is None else authority[0]
+
+
 def is_ir_v3_admitted_host_profile_v1(profile: HostRuntimeProfileV1) -> bool:
-    return ir_v3_evidence_ceiling_for_profile_v1(profile) is not None
+    return ir_v3_evidence_authority_for_profile_v1(profile) is not None
 
 
 def _verify_ir_v3_conformance_receipt_identity(
@@ -604,7 +660,9 @@ def _verify_ir_v3_conformance_receipt_identity(
     program_hash = _hash64(str(item["program_semantic_hash"]), "IR V3 conformance program hash")
     if program_hash != program.target_semantic_hash:
         raise HostRealizationError("IR V3 conformance receipt program mismatch")
-    _hash64(str(item["source_semantic_hash"]), "IR V3 conformance source hash")
+    source_hash = _hash64(str(item["source_semantic_hash"]), "IR V3 conformance source hash")
+    if source_hash != program.source_semantic_hash:
+        raise HostRealizationError("IR V3 conformance receipt source mismatch")
     _hash64(str(item["initial_state_hash"]), "IR V3 conformance initial state hash")
     _hash64(str(item["final_state_hash"]), "IR V3 conformance final state hash")
     receipt_hash = _hash64(str(item["receipt_hash"]), "IR V3 conformance receipt hash")
@@ -616,7 +674,11 @@ def _verify_ir_v3_conformance_receipt_identity(
 
 @dataclass(frozen=True, slots=True, init=False)
 class HostExecutionEvidenceV1:
-    """Content-addressed host witness record, not yet admitted to a program receipt."""
+    """Content-addressed host witness record, not yet admitted to a program receipt.
+
+    The semantic verifier contract is derived from the host profile; callers
+    can only supply the concrete verifier artifact hash and witness hash.
+    """
 
     program_materialization_hash: str
     host_profile_hash: str
@@ -624,7 +686,8 @@ class HostExecutionEvidenceV1:
     scenario_hash: str
     evidence_level: str
     observed_receipt_hash: str
-    verifier_hash: str
+    verifier_contract_hash: str
+    verifier_artifact_sha256: str
     witness_hash: str
 
     def __init__(
@@ -635,12 +698,13 @@ class HostExecutionEvidenceV1:
         scenario_hash: str,
         evidence_level: str,
         observed_receipt_hash: str,
-        verifier_hash: str,
+        verifier_artifact_sha256: str,
         witness_hash: str,
     ) -> None:
-        ceiling = ir_v3_evidence_ceiling_for_profile_v1(host.profile)
-        if ceiling is None:
+        authority = ir_v3_evidence_authority_for_profile_v1(host.profile)
+        if authority is None:
             raise HostRealizationError("host profile is not admitted for IR V3 execution evidence")
+        ceiling, verifier_contract_hash = authority
         level = _evidence_level(evidence_level)
         if _EVIDENCE_LEVEL_RANK[level] > _EVIDENCE_LEVEL_RANK[ceiling]:
             raise HostRealizationError("host execution evidence exceeds the profile gate ceiling")
@@ -650,7 +714,8 @@ class HostExecutionEvidenceV1:
         object.__setattr__(self, "scenario_hash", _hash64(scenario_hash, "host execution scenario hash"))
         object.__setattr__(self, "evidence_level", level)
         object.__setattr__(self, "observed_receipt_hash", _hash64(observed_receipt_hash, "observed conformance receipt hash"))
-        object.__setattr__(self, "verifier_hash", _hash64(verifier_hash, "host execution verifier hash"))
+        object.__setattr__(self, "verifier_contract_hash", verifier_contract_hash)
+        object.__setattr__(self, "verifier_artifact_sha256", _hash64(verifier_artifact_sha256, "host execution verifier artifact sha256"))
         object.__setattr__(self, "witness_hash", _hash64(witness_hash, "host execution witness hash"))
 
     def semantic_object(self) -> dict[str, object]:
@@ -663,7 +728,8 @@ class HostExecutionEvidenceV1:
             "scenario_hash": self.scenario_hash,
             "evidence_level": self.evidence_level,
             "observed_receipt_hash": self.observed_receipt_hash,
-            "verifier_hash": self.verifier_hash,
+            "verifier_contract_hash": self.verifier_contract_hash,
+            "verifier_artifact_sha256": self.verifier_artifact_sha256,
             "witness_hash": self.witness_hash,
         }
 
@@ -704,6 +770,9 @@ class HostExecutionAdmissionV1:
             raise HostRealizationError("host execution evidence profile binding mismatch")
         if evidence.host_materialization_hash != host.materialization_hash:
             raise HostRealizationError("host execution evidence materialization binding mismatch")
+        authority = ir_v3_evidence_authority_for_profile_v1(host.profile)
+        if authority is None or evidence.verifier_contract_hash != authority[1]:
+            raise HostRealizationError("host execution evidence verifier contract mismatch")
         scenario_hash, receipt_hash = _verify_ir_v3_conformance_receipt_identity(reference_receipt, program)
         if evidence.scenario_hash != scenario_hash:
             raise HostRealizationError("host execution evidence scenario binding mismatch")
@@ -825,6 +894,7 @@ __all__ = [
     "HOST_RUNTIME_ROLE_SCHEMA_V1",
     "HOST_CONFORMANCE_COVERAGE_SCHEMA_V1",
     "PROGRAM_IR_V3_MATERIALIZATION_SCHEMA_V1",
+    "HOST_EVIDENCE_AUTHORITY_SCHEMA_V1",
     "HOST_EXECUTION_EVIDENCE_SCHEMA_V1",
     "HOST_EXECUTION_ADMISSION_SCHEMA_V1",
     "CROSS_HOST_EQUIVALENCE_SCHEMA_V1",
@@ -844,6 +914,9 @@ __all__ = [
     "WASI_HTTP_LINKAGE_CAPABILITY_HASH_V1",
     "UNITY_WEBGL_RUNTIME_CAPABILITY_HASH_V1",
     "WEBGL2_CAPABILITY_HASH_V1",
+    "THREE_RUNTIME_RECEIPT_BYTES_VERIFIER_CONTRACT_HASH_V1",
+    "BROWSER_WASM_RECEIPT_HASH_VERIFIER_CONTRACT_HASH_V1",
+    "WASI_RECEIPT_HASH_VERIFIER_CONTRACT_HASH_V1",
     "ProgramIRV3MaterializationV1",
     "HostRuntimeProfileV1",
     "HostRuntimeMaterializationV1",
@@ -859,6 +932,7 @@ __all__ = [
     "unity_webgl_host_profile_v1",
     "known_v1_host_profiles",
     "admitted_ir_v3_host_profiles_v1",
+    "ir_v3_evidence_authority_for_profile_v1",
     "ir_v3_evidence_ceiling_for_profile_v1",
     "is_ir_v3_admitted_host_profile_v1",
 ]
