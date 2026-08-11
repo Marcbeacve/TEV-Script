@@ -816,6 +816,7 @@ class CrossHostEquivalenceV1:
 
     program_materialization_hash: str
     scenario_hash: str
+    receipt_hash: str
     equivalence_level: str
     member_bindings: tuple[tuple[str, str, str, str], ...]
 
@@ -834,6 +835,9 @@ class CrossHostEquivalenceV1:
         scenario_hashes = {item.scenario_hash for item in members}
         if len(scenario_hashes) != 1:
             raise HostRealizationError("cross-host admissions mix scenarios")
+        receipt_hashes = {item.receipt_hash for item in members}
+        if len(receipt_hashes) != 1:
+            raise HostRealizationError("cross-host admissions disagree on canonical receipt")
         profile_hashes = [item.host_profile_hash for item in members]
         if len(set(profile_hashes)) != len(profile_hashes):
             raise HostRealizationError("cross-host admissions repeat one host profile")
@@ -854,6 +858,7 @@ class CrossHostEquivalenceV1:
         )
         object.__setattr__(self, "program_materialization_hash", next(iter(program_hashes)))
         object.__setattr__(self, "scenario_hash", next(iter(scenario_hashes)))
+        object.__setattr__(self, "receipt_hash", next(iter(receipt_hashes)))
         object.__setattr__(self, "equivalence_level", claim)
         object.__setattr__(self, "member_bindings", bindings)
 
@@ -863,6 +868,7 @@ class CrossHostEquivalenceV1:
             "execution_transformation_hash": EXECUTE_PROGRAM_IR_V3_TRANSFORMATION_HASH_V1,
             "program_materialization_hash": self.program_materialization_hash,
             "scenario_hash": self.scenario_hash,
+            "receipt_hash": self.receipt_hash,
             "equivalence_level": self.equivalence_level,
             "members": [
                 {

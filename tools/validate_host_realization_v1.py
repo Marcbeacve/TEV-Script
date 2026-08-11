@@ -65,6 +65,7 @@ CROSS_HOST_EQUIVALENCE_FIELDS = frozenset(
     {
         "program_materialization_hash",
         "scenario_hash",
+        "receipt_hash",
         "equivalence_level",
         "member_bindings",
     }
@@ -194,6 +195,8 @@ def main() -> int:
         "evidence.observed_receipt_hash != receipt_hash",
         "evidence.verifier_contract_hash != authority[1]",
         "verifier_artifact_sha256",
+        "receipt_hashes = {item.receipt_hash for item in members}",
+        "cross-host admissions disagree on canonical receipt",
         "cross-host equivalence level must equal the weakest admitted member",
         "admissions: Iterable[HostExecutionAdmissionV1]",
         "init=False",
@@ -309,6 +312,7 @@ def main() -> int:
         "test_cross_host_bytes_parity_accepts_python_javascript_csharp_admissions",
         "test_cross_host_hash_parity_accepts_browser_and_wasi_admissions",
         "test_cross_host_rejects_false_hash_to_bytes_promotion",
+        "test_cross_host_rejects_same_program_scenario_with_different_receipts",
         "test_cross_host_rejects_mixed_program_admissions",
         "test_cross_host_rejects_mixed_scenario_admissions",
         "test_cross_host_rejects_duplicate_host_profile_admissions",
@@ -328,6 +332,7 @@ def main() -> int:
     print("R1_BROWSER_WASM_WASI_EVIDENCE_CEILING=CANONICAL_RECEIPT_HASH_PARITY")
     print("R1_EVIDENCE_VERIFIER_CONTRACT_BOUND=PASS")
     print("R1_RECEIPT_SOURCE_SEMANTIC_BOUND=PASS")
+    print("R1_CROSS_HOST_RECEIPT_IDENTITY_BOUND=PASS")
     print("R1_HOST_EVIDENCE_PROGRAM_RECEIPT_ADMISSION=PASS")
     print("R1_CROSS_HOST_EQUIVALENCE_INPUT=ADMITTED_EVIDENCE_ONLY")
     print("R1_CROSS_HOST_EQUIVALENCE_FLOOR=WEAKEST_ADMITTED_MEMBER")

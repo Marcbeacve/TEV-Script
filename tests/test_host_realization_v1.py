@@ -591,6 +591,7 @@ entity E {
             equivalence.equivalence_level,
             EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
         )
+        self.assertEqual(equivalence.receipt_hash, self.conformance_receipt(program)["receipt_hash"])
         self.assertEqual(len(equivalence.member_bindings), 3)
 
     def test_cross_host_hash_parity_accepts_browser_and_wasi_admissions(self):
@@ -619,6 +620,8 @@ entity E {
             equivalence.equivalence_level,
             EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
         )
+        self.assertEqual(browser.receipt_hash, wasi.receipt_hash)
+        self.assertEqual(equivalence.receipt_hash, browser.receipt_hash)
 
     def test_cross_host_rejects_false_hash_to_bytes_promotion(self):
         _, _, _, program = self.program_materialization()
@@ -638,6 +641,42 @@ entity E {
             CrossHostEquivalenceV1(
                 admissions=(python, browser),
                 claimed_level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
+            )
+
+    def test_cross_host_rejects_same_program_scenario_with_different_receipts(self):
+        _, _, _, program = self.program_materialization()
+        python = self.host_execution_admission(
+            profile=python_reference_host_profile_v1(),
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
+            program=program,
+            runtime="python-runtime",
+        )[3]
+        alternate_receipt = self.conformance_receipt(program)
+        alternate_receipt["final_state_hash"] = h("alternate-final-state")
+        alternate_receipt["receipt_hash"] = canonical_hash(
+            {key: value for key, value in alternate_receipt.items() if key != "receipt_hash"}
+        )
+        javascript_host = self.materialization(javascript_reference_host_profile_v1(), "javascript-runtime")
+        javascript_evidence = HostExecutionEvidenceV1(
+            program=program,
+            host=javascript_host,
+            scenario_hash=alternate_receipt["scenario_hash"],
+            evidence_level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
+            observed_receipt_hash=alternate_receipt["receipt_hash"],
+            verifier_artifact_sha256=h("javascript-parity-verifier"),
+            witness_hash=h("javascript-alternate-witness"),
+        )
+        javascript = HostExecutionAdmissionV1(
+            program=program,
+            host=javascript_host,
+            evidence=javascript_evidence,
+            reference_receipt=alternate_receipt,
+        )
+        self.assertNotEqual(python.receipt_hash, javascript.receipt_hash)
+        with self.assertRaises(HostRealizationError):
+            CrossHostEquivalenceV1(
+                admissions=(python, javascript),
+                claimed_level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             )
 
     def test_cross_host_rejects_mixed_program_admissions(self):
