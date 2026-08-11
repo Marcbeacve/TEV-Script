@@ -20,6 +20,18 @@ HOST_INTERFACE_SCHEMA_V1 = "TEV_SCRIPT_PROGRAM_IR_V3_HOST_INTERFACE_V1"
 HOST_RUNTIME_ROLE_SCHEMA_V1 = "TEV_SCRIPT_HOST_RUNTIME_ROLE_V1"
 HOST_CONFORMANCE_COVERAGE_SCHEMA_V1 = "TEV_SCRIPT_HOST_CONFORMANCE_COVERAGE_V1"
 PROGRAM_IR_V3_MATERIALIZATION_SCHEMA_V1 = "TEV_SCRIPT_PROGRAM_IR_V3_MATERIALIZATION_V1"
+HOST_EXECUTION_EVIDENCE_SCHEMA_V1 = "TEV_SCRIPT_HOST_EXECUTION_EVIDENCE_V1"
+CROSS_HOST_EQUIVALENCE_SCHEMA_V1 = "TEV_SCRIPT_CROSS_HOST_EQUIVALENCE_V1"
+
+EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1 = "PHYSICAL_EXECUTION"
+EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1 = "CANONICAL_RECEIPT_HASH_PARITY"
+EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1 = "CANONICAL_RECEIPT_BYTES_PARITY"
+
+_EVIDENCE_LEVEL_RANK = {
+    EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1: 1,
+    EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1: 2,
+    EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1: 3,
+}
 
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _HEX = frozenset("0123456789abcdef")
@@ -58,6 +70,13 @@ def _mapping(value: Mapping[str, Any] | None, what: str) -> dict[str, Any]:
 
 def _semantic_hash(kind: str, **payload: object) -> str:
     return canonical_hash({"schema": "TEV_SCRIPT_HOST_SEMANTIC_IDENTITY_V1", "kind": kind, **payload})
+
+
+def _evidence_level(value: str) -> str:
+    level = str(value)
+    if level not in _EVIDENCE_LEVEL_RANK:
+        raise HostRealizationError("unknown host execution evidence level")
+    return level
 
 
 EXECUTE_PROGRAM_IR_V3_TRANSFORMATION_HASH_V1 = canonical_hash(
@@ -161,9 +180,9 @@ class ProgramIRV3MaterializationV1:
     """Exact V1 linked-program -> IR V3 materialization authenticated by receipt V2.
 
     Program identity is deliberately independent from host runtime, machine,
-    deployment path and provider identity. Construction succeeds only after the
-    normative lowering-receipt verifier proves the exact linked source, IR V3
-    target and canonical bytes supplied by the caller.
+    deployment location and provider identity. Construction succeeds only after
+    the normative lowering-receipt verifier proves the exact linked source,
+    IR V3 target and canonical bytes supplied by the caller.
     """
 
     receipt_profile: str
@@ -223,11 +242,13 @@ class ProgramIRV3MaterializationV1:
 
 @dataclass(frozen=True, slots=True)
 class HostRuntimeProfileV1:
-    """Provider-neutral execution profile for an existing V1 host.
+    """Provider-neutral target profile for an IR V3 execution host.
 
-    `profile_id` and `metadata` are records only. Semantic identity comes from
-    the common execution Transformation, executable-format semantics,
-    interface and substrate-capability semantics.
+    A profile describes semantic requirements; it does not by itself prove that
+    an implementation exists or has passed a gate. `profile_id` and `metadata`
+    are records only. Semantic identity comes from the common execution
+    Transformation, executable-format semantics, interface and substrate
+    capability semantics.
     """
 
     profile_id: str
@@ -322,12 +343,11 @@ class HostRuntimeProfileV1:
 
 @dataclass(frozen=True, slots=True)
 class HostRuntimeMaterializationV1:
-    """Exact deployment closure for one host runtime profile.
+    """Exact deployment closure for one host runtime target profile.
 
     `runtime_closure_sha256` must hash the complete deployable closure consumed
-    by the host gate (wheel/tarball/publish bundle/WebGL build closure), not a
-    convenient source filename. Physical paths and filenames remain outside
-    semantic identity.
+    by the host gate, not a convenient source file. Physical locations and
+    filenames remain outside semantic identity.
     """
 
     profile: HostRuntimeProfileV1
@@ -426,6 +446,8 @@ def conformance_evidence_for_candidate(
         raise HostRealizationError("host conformance evidence candidate transformation mismatch")
     if candidate.machine_hash != profile.machine.machine_hash:
         raise HostRealizationError("host conformance evidence machine mismatch")
+    if status == "ACTIVE" and not is_ir_v3_admitted_host_profile_v1(profile):
+        raise HostRealizationError("active IR V3 conformance evidence requires an admitted host profile")
     return EvidenceItemV0(
         evidence_id=evidence_id,
         claim_hash=candidate.semantic_claim_hash,
@@ -495,6 +517,12 @@ def wasi_host_profile_v1() -> HostRuntimeProfileV1:
 
 
 def unity_webgl_host_profile_v1() -> HostRuntimeProfileV1:
+    """IR V3 target profile for Unity-WebGL.
+
+    Gate 6A currently exercises the legacy portable Unity surface, so this
+    target is intentionally excluded from IR V3 admission until a V3 Unity
+    runtime gate supplies matching evidence.
+    """
     return HostRuntimeProfileV1(
         "unity.webgl.reference.ir_v3",
         _format_semantics("unity_webgl_deployment_bundle", interface="program_ir_v3_host_v1"),
@@ -509,6 +537,7 @@ def unity_webgl_host_profile_v1() -> HostRuntimeProfileV1:
 
 
 def known_v1_host_profiles() -> tuple[HostRuntimeProfileV1, ...]:
+    """All known R1 host target profiles, including targets not yet admitted."""
     return (
         python_reference_host_profile_v1(),
         javascript_reference_host_profile_v1(),
@@ -519,6 +548,177 @@ def known_v1_host_profiles() -> tuple[HostRuntimeProfileV1, ...]:
     )
 
 
+def admitted_ir_v3_host_profiles_v1() -> tuple[HostRuntimeProfileV1, ...]:
+    """Profiles backed by an existing IR V3 execution/parity gate."""
+    return (
+        python_reference_host_profile_v1(),
+        javascript_reference_host_profile_v1(),
+        csharp_reference_host_profile_v1(),
+        browser_wasm_host_profile_v1(),
+        wasi_host_profile_v1(),
+    )
+
+
+def ir_v3_evidence_ceiling_for_profile_v1(profile: HostRuntimeProfileV1) -> str | None:
+    profile_hash = profile.profile_hash
+    byte_parity = (
+        python_reference_host_profile_v1(),
+        javascript_reference_host_profile_v1(),
+        csharp_reference_host_profile_v1(),
+    )
+    if any(profile_hash == item.profile_hash for item in byte_parity):
+        return EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1
+    hash_parity = (browser_wasm_host_profile_v1(), wasi_host_profile_v1())
+    if any(profile_hash == item.profile_hash for item in hash_parity):
+        return EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1
+    return None
+
+
+def is_ir_v3_admitted_host_profile_v1(profile: HostRuntimeProfileV1) -> bool:
+    return ir_v3_evidence_ceiling_for_profile_v1(profile) is not None
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class HostExecutionEvidenceV1:
+    """Content-addressed binding from one program to one admitted host witness.
+
+    The object does not execute the verifier. It binds the verifier and witness
+    identities and refuses evidence levels above the strongest parity contract
+    that the repository currently exposes for the host profile.
+    """
+
+    program_materialization_hash: str
+    host_profile_hash: str
+    host_materialization_hash: str
+    scenario_hash: str
+    evidence_level: str
+    verifier_hash: str
+    witness_hash: str
+
+    def __init__(
+        self,
+        *,
+        program: ProgramIRV3MaterializationV1,
+        host: HostRuntimeMaterializationV1,
+        scenario_hash: str,
+        evidence_level: str,
+        verifier_hash: str,
+        witness_hash: str,
+    ) -> None:
+        ceiling = ir_v3_evidence_ceiling_for_profile_v1(host.profile)
+        if ceiling is None:
+            raise HostRealizationError("host profile is not admitted for IR V3 execution evidence")
+        level = _evidence_level(evidence_level)
+        if _EVIDENCE_LEVEL_RANK[level] > _EVIDENCE_LEVEL_RANK[ceiling]:
+            raise HostRealizationError("host execution evidence exceeds the profile gate ceiling")
+        object.__setattr__(self, "program_materialization_hash", program.materialization_hash)
+        object.__setattr__(self, "host_profile_hash", host.profile.profile_hash)
+        object.__setattr__(self, "host_materialization_hash", host.materialization_hash)
+        object.__setattr__(self, "scenario_hash", _hash64(scenario_hash, "host execution scenario hash"))
+        object.__setattr__(self, "evidence_level", level)
+        object.__setattr__(self, "verifier_hash", _hash64(verifier_hash, "host execution verifier hash"))
+        object.__setattr__(self, "witness_hash", _hash64(witness_hash, "host execution witness hash"))
+
+    def semantic_object(self) -> dict[str, object]:
+        return {
+            "schema": HOST_EXECUTION_EVIDENCE_SCHEMA_V1,
+            "execution_transformation_hash": EXECUTE_PROGRAM_IR_V3_TRANSFORMATION_HASH_V1,
+            "program_materialization_hash": self.program_materialization_hash,
+            "host_profile_hash": self.host_profile_hash,
+            "host_materialization_hash": self.host_materialization_hash,
+            "scenario_hash": self.scenario_hash,
+            "evidence_level": self.evidence_level,
+            "verifier_hash": self.verifier_hash,
+            "witness_hash": self.witness_hash,
+        }
+
+    @property
+    def evidence_hash(self) -> str:
+        return canonical_hash(self.semantic_object())
+
+    def to_object(self) -> dict[str, object]:
+        return {**self.semantic_object(), "evidence_hash": self.evidence_hash}
+
+    def to_field(self) -> SemanticFieldV0:
+        return field_from_mapping("tev.realization.host_execution_evidence.v1", self.to_object())
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class CrossHostEquivalenceV1:
+    """Fail-closed equivalence claim over independent admitted host evidence."""
+
+    program_materialization_hash: str
+    scenario_hash: str
+    equivalence_level: str
+    member_bindings: tuple[tuple[str, str, str, str], ...]
+
+    def __init__(
+        self,
+        *,
+        evidence: Iterable[HostExecutionEvidenceV1],
+        claimed_level: str,
+    ) -> None:
+        members = tuple(evidence)
+        if len(members) < 2:
+            raise HostRealizationError("cross-host equivalence requires at least two host witnesses")
+        program_hashes = {item.program_materialization_hash for item in members}
+        if len(program_hashes) != 1:
+            raise HostRealizationError("cross-host evidence mixes program materializations")
+        scenario_hashes = {item.scenario_hash for item in members}
+        if len(scenario_hashes) != 1:
+            raise HostRealizationError("cross-host evidence mixes scenarios")
+        profile_hashes = [item.host_profile_hash for item in members]
+        if len(set(profile_hashes)) != len(profile_hashes):
+            raise HostRealizationError("cross-host evidence repeats one host profile")
+        floor = min(members, key=lambda item: _EVIDENCE_LEVEL_RANK[item.evidence_level]).evidence_level
+        claim = _evidence_level(claimed_level)
+        if claim != floor:
+            raise HostRealizationError("cross-host equivalence level must equal the weakest member evidence")
+        bindings = tuple(
+            sorted(
+                (
+                    item.host_profile_hash,
+                    item.host_materialization_hash,
+                    item.evidence_hash,
+                    item.evidence_level,
+                )
+                for item in members
+            )
+        )
+        object.__setattr__(self, "program_materialization_hash", next(iter(program_hashes)))
+        object.__setattr__(self, "scenario_hash", next(iter(scenario_hashes)))
+        object.__setattr__(self, "equivalence_level", claim)
+        object.__setattr__(self, "member_bindings", bindings)
+
+    def semantic_object(self) -> dict[str, object]:
+        return {
+            "schema": CROSS_HOST_EQUIVALENCE_SCHEMA_V1,
+            "execution_transformation_hash": EXECUTE_PROGRAM_IR_V3_TRANSFORMATION_HASH_V1,
+            "program_materialization_hash": self.program_materialization_hash,
+            "scenario_hash": self.scenario_hash,
+            "equivalence_level": self.equivalence_level,
+            "members": [
+                {
+                    "host_profile_hash": profile_hash,
+                    "host_materialization_hash": materialization_hash,
+                    "evidence_hash": evidence_hash,
+                    "evidence_level": evidence_level,
+                }
+                for profile_hash, materialization_hash, evidence_hash, evidence_level in self.member_bindings
+            ],
+        }
+
+    @property
+    def equivalence_hash(self) -> str:
+        return canonical_hash(self.semantic_object())
+
+    def to_object(self) -> dict[str, object]:
+        return {**self.semantic_object(), "equivalence_hash": self.equivalence_hash}
+
+    def to_field(self) -> SemanticFieldV0:
+        return field_from_mapping("tev.realization.cross_host_equivalence.v1", self.to_object())
+
+
 __all__ = [
     "HOST_RUNTIME_PROFILE_SCHEMA_V1",
     "HOST_RUNTIME_MATERIALIZATION_SCHEMA_V1",
@@ -527,6 +727,11 @@ __all__ = [
     "HOST_RUNTIME_ROLE_SCHEMA_V1",
     "HOST_CONFORMANCE_COVERAGE_SCHEMA_V1",
     "PROGRAM_IR_V3_MATERIALIZATION_SCHEMA_V1",
+    "HOST_EXECUTION_EVIDENCE_SCHEMA_V1",
+    "CROSS_HOST_EQUIVALENCE_SCHEMA_V1",
+    "EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1",
+    "EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1",
+    "EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1",
     "HostRealizationError",
     "EXECUTE_PROGRAM_IR_V3_TRANSFORMATION_HASH_V1",
     "PROGRAM_IR_V3_HOST_INTERFACE_HASH_V1",
@@ -544,6 +749,8 @@ __all__ = [
     "ProgramIRV3MaterializationV1",
     "HostRuntimeProfileV1",
     "HostRuntimeMaterializationV1",
+    "HostExecutionEvidenceV1",
+    "CrossHostEquivalenceV1",
     "conformance_evidence_for_candidate",
     "python_reference_host_profile_v1",
     "javascript_reference_host_profile_v1",
@@ -552,4 +759,7 @@ __all__ = [
     "wasi_host_profile_v1",
     "unity_webgl_host_profile_v1",
     "known_v1_host_profiles",
+    "admitted_ir_v3_host_profiles_v1",
+    "ir_v3_evidence_ceiling_for_profile_v1",
+    "is_ir_v3_admitted_host_profile_v1",
 ]
