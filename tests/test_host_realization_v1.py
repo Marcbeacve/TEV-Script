@@ -14,9 +14,10 @@ from tev_script.semantic_host_realization_v1 import (
     CROSS_HOST_EQUIVALENCE_SCHEMA_V1,
     EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
     EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
-    EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1,
     EXECUTE_PROGRAM_IR_V3_TRANSFORMATION_HASH_V1,
+    HOST_EXECUTION_ADMISSION_SCHEMA_V1,
     CrossHostEquivalenceV1,
+    HostExecutionAdmissionV1,
     HostExecutionEvidenceV1,
     HostRealizationError,
     HostRuntimeMaterializationV1,
@@ -93,7 +94,49 @@ entity E {
         )
         return linked, target, receipt, materialization
 
+    def conformance_receipt(self, program, scenario="scenario-a"):
+        body = {
+            "schema": "TEV_SCRIPT_IR_V3_CONFORMANCE_RECEIPT_V1",
+            "scenario_id": "scenario.a",
+            "scenario_hash": h(scenario),
+            "program_semantic_hash": program.target_semantic_hash,
+            "source_semantic_hash": program.source_semantic_hash,
+            "initial_state_hash": h("initial-state"),
+            "steps": [],
+            "capability_calls": [],
+            "final_state": [],
+            "final_state_hash": h("final-state"),
+        }
+        return {**body, "receipt_hash": canonical_hash(body)}
+
     def host_execution_evidence(
+        self,
+        *,
+        profile,
+        level,
+        program=None,
+        scenario="scenario-a",
+        runtime="runtime-a",
+        verifier="verifier-a",
+        witness="witness-a",
+        observed_receipt_hash=None,
+    ):
+        if program is None:
+            _, _, _, program = self.program_materialization()
+        receipt = self.conformance_receipt(program, scenario)
+        host = self.materialization(profile, runtime)
+        evidence = HostExecutionEvidenceV1(
+            program=program,
+            host=host,
+            scenario_hash=receipt["scenario_hash"],
+            evidence_level=level,
+            observed_receipt_hash=observed_receipt_hash or receipt["receipt_hash"],
+            verifier_hash=h(verifier),
+            witness_hash=h(witness),
+        )
+        return host, evidence, receipt
+
+    def host_execution_admission(
         self,
         *,
         profile,
@@ -106,16 +149,22 @@ entity E {
     ):
         if program is None:
             _, _, _, program = self.program_materialization()
-        host = self.materialization(profile, runtime)
-        evidence = HostExecutionEvidenceV1(
+        host, evidence, receipt = self.host_execution_evidence(
+            profile=profile,
+            level=level,
+            program=program,
+            scenario=scenario,
+            runtime=runtime,
+            verifier=verifier,
+            witness=witness,
+        )
+        admission = HostExecutionAdmissionV1(
             program=program,
             host=host,
-            scenario_hash=h(scenario),
-            evidence_level=level,
-            verifier_hash=h(verifier),
-            witness_hash=h(witness),
+            evidence=evidence,
+            reference_receipt=receipt,
         )
-        return host, evidence
+        return host, evidence, receipt, admission
 
     def test_program_ir_v3_materialization_accepts_verified_lowering(self):
         linked, target, receipt, materialization = self.program_materialization()
@@ -332,9 +381,9 @@ entity E {
         self.assertEqual(left.evidence_hash, right.evidence_hash)
         self.assertNotEqual(left.record_hash, right.record_hash)
 
-    def test_host_execution_evidence_binds_program_host_scenario_verifier_and_witness(self):
+    def test_host_execution_evidence_binds_observed_receipt_identity(self):
         _, _, _, program = self.program_materialization()
-        host, evidence = self.host_execution_evidence(
+        host, evidence, receipt = self.host_execution_evidence(
             profile=python_reference_host_profile_v1(),
             level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
             program=program,
@@ -342,7 +391,8 @@ entity E {
         self.assertEqual(evidence.program_materialization_hash, program.materialization_hash)
         self.assertEqual(evidence.host_profile_hash, host.profile.profile_hash)
         self.assertEqual(evidence.host_materialization_hash, host.materialization_hash)
-        self.assertEqual(evidence.scenario_hash, h("scenario-a"))
+        self.assertEqual(evidence.scenario_hash, receipt["scenario_hash"])
+        self.assertEqual(evidence.observed_receipt_hash, receipt["receipt_hash"])
         self.assertEqual(evidence.evidence_hash, canonical_hash(evidence.semantic_object()))
 
     def test_evidence_level_cannot_exceed_browser_or_wasi_gate_ceiling(self):
@@ -360,13 +410,96 @@ entity E {
         with self.assertRaises(HostRealizationError):
             self.host_execution_evidence(
                 profile=unity_webgl_host_profile_v1(),
-                level=EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1,
+                level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
                 program=program,
             )
 
-    def test_cross_host_bytes_parity_accepts_python_javascript_csharp(self):
+    def test_host_execution_admission_accepts_exact_program_host_scenario_receipt(self):
         _, _, _, program = self.program_materialization()
-        evidence = []
+        host, evidence, receipt, admission = self.host_execution_admission(
+            profile=python_reference_host_profile_v1(),
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
+            program=program,
+        )
+        self.assertEqual(admission.semantic_object()["schema"], HOST_EXECUTION_ADMISSION_SCHEMA_V1)
+        self.assertEqual(admission.program_materialization_hash, program.materialization_hash)
+        self.assertEqual(admission.host_profile_hash, host.profile.profile_hash)
+        self.assertEqual(admission.host_materialization_hash, host.materialization_hash)
+        self.assertEqual(admission.scenario_hash, receipt["scenario_hash"])
+        self.assertEqual(admission.evidence_hash, evidence.evidence_hash)
+        self.assertEqual(admission.receipt_hash, receipt["receipt_hash"])
+        self.assertEqual(admission.admission_hash, canonical_hash(admission.semantic_object()))
+
+    def test_host_execution_admission_rejects_receipt_for_other_program(self):
+        _, _, _, program = self.program_materialization(self.PROGRAM_SOURCE)
+        _, _, _, other_program = self.program_materialization(self.PROGRAM_SOURCE.replace("Some(3)", "Some(4)"))
+        host, evidence, _ = self.host_execution_evidence(
+            profile=python_reference_host_profile_v1(),
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
+            program=program,
+        )
+        other_receipt = self.conformance_receipt(other_program)
+        with self.assertRaises(HostRealizationError):
+            HostExecutionAdmissionV1(
+                program=program,
+                host=host,
+                evidence=evidence,
+                reference_receipt=other_receipt,
+            )
+
+    def test_host_execution_admission_rejects_tampered_reference_receipt(self):
+        _, _, _, program = self.program_materialization()
+        host, evidence, receipt = self.host_execution_evidence(
+            profile=python_reference_host_profile_v1(),
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
+            program=program,
+        )
+        tampered = dict(receipt)
+        tampered["final_state_hash"] = h("tampered-final-state")
+        with self.assertRaises(HostRealizationError):
+            HostExecutionAdmissionV1(
+                program=program,
+                host=host,
+                evidence=evidence,
+                reference_receipt=tampered,
+            )
+
+    def test_host_execution_admission_rejects_scenario_mismatch(self):
+        _, _, _, program = self.program_materialization()
+        host, evidence, _ = self.host_execution_evidence(
+            profile=python_reference_host_profile_v1(),
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
+            program=program,
+            scenario="scenario-a",
+        )
+        other_receipt = self.conformance_receipt(program, "scenario-b")
+        with self.assertRaises(HostRealizationError):
+            HostExecutionAdmissionV1(
+                program=program,
+                host=host,
+                evidence=evidence,
+                reference_receipt=other_receipt,
+            )
+
+    def test_host_execution_admission_rejects_observed_receipt_mismatch(self):
+        _, _, _, program = self.program_materialization()
+        host, evidence, receipt = self.host_execution_evidence(
+            profile=python_reference_host_profile_v1(),
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
+            program=program,
+            observed_receipt_hash=h("wrong-observed-receipt"),
+        )
+        with self.assertRaises(HostRealizationError):
+            HostExecutionAdmissionV1(
+                program=program,
+                host=host,
+                evidence=evidence,
+                reference_receipt=receipt,
+            )
+
+    def test_cross_host_bytes_parity_accepts_python_javascript_csharp_admissions(self):
+        _, _, _, program = self.program_materialization()
+        admissions = []
         for index, profile in enumerate(
             (
                 python_reference_host_profile_v1(),
@@ -374,17 +507,17 @@ entity E {
                 csharp_reference_host_profile_v1(),
             )
         ):
-            _, item = self.host_execution_evidence(
+            admission = self.host_execution_admission(
                 profile=profile,
                 level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
                 program=program,
                 runtime=f"runtime-{index}",
                 verifier="three-runtime-parity-verifier",
                 witness="three-runtime-parity-witness",
-            )
-            evidence.append(item)
+            )[3]
+            admissions.append(admission)
         equivalence = CrossHostEquivalenceV1(
-            evidence=evidence,
+            admissions=admissions,
             claimed_level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
         )
         self.assertEqual(equivalence.semantic_object()["schema"], CROSS_HOST_EQUIVALENCE_SCHEMA_V1)
@@ -394,26 +527,26 @@ entity E {
         )
         self.assertEqual(len(equivalence.member_bindings), 3)
 
-    def test_cross_host_hash_parity_accepts_browser_and_wasi(self):
+    def test_cross_host_hash_parity_accepts_browser_and_wasi_admissions(self):
         _, _, _, program = self.program_materialization()
-        browser = self.host_execution_evidence(
+        browser = self.host_execution_admission(
             profile=browser_wasm_host_profile_v1(),
             level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             program=program,
             runtime="browser-runtime",
             verifier="browser-parity-verifier",
             witness="browser-parity-witness",
-        )[1]
-        wasi = self.host_execution_evidence(
+        )[3]
+        wasi = self.host_execution_admission(
             profile=wasi_host_profile_v1(),
             level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             program=program,
             runtime="wasi-runtime",
             verifier="wasi-parity-verifier",
             witness="wasi-parity-witness",
-        )[1]
+        )[3]
         equivalence = CrossHostEquivalenceV1(
-            evidence=(browser, wasi),
+            admissions=(browser, wasi),
             claimed_level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
         )
         self.assertEqual(
@@ -423,87 +556,100 @@ entity E {
 
     def test_cross_host_rejects_false_hash_to_bytes_promotion(self):
         _, _, _, program = self.program_materialization()
-        python = self.host_execution_evidence(
+        python = self.host_execution_admission(
             profile=python_reference_host_profile_v1(),
             level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
             program=program,
             runtime="python-runtime",
-        )[1]
-        browser = self.host_execution_evidence(
+        )[3]
+        browser = self.host_execution_admission(
             profile=browser_wasm_host_profile_v1(),
             level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             program=program,
             runtime="browser-runtime",
-        )[1]
+        )[3]
         with self.assertRaises(HostRealizationError):
             CrossHostEquivalenceV1(
-                evidence=(python, browser),
+                admissions=(python, browser),
                 claimed_level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
             )
 
-    def test_cross_host_rejects_mixed_program_materializations(self):
+    def test_cross_host_rejects_mixed_program_admissions(self):
         _, _, _, first_program = self.program_materialization(self.PROGRAM_SOURCE)
         _, _, _, second_program = self.program_materialization(self.PROGRAM_SOURCE.replace("Some(3)", "Some(4)"))
-        python = self.host_execution_evidence(
+        python = self.host_execution_admission(
             profile=python_reference_host_profile_v1(),
-            level=EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1,
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             program=first_program,
             runtime="python-runtime",
-        )[1]
-        javascript = self.host_execution_evidence(
+        )[3]
+        javascript = self.host_execution_admission(
             profile=javascript_reference_host_profile_v1(),
-            level=EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1,
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             program=second_program,
             runtime="javascript-runtime",
-        )[1]
+        )[3]
         with self.assertRaises(HostRealizationError):
             CrossHostEquivalenceV1(
-                evidence=(python, javascript),
-                claimed_level=EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1,
+                admissions=(python, javascript),
+                claimed_level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             )
 
-    def test_cross_host_rejects_mixed_scenarios(self):
+    def test_cross_host_rejects_mixed_scenario_admissions(self):
         _, _, _, program = self.program_materialization()
-        python = self.host_execution_evidence(
+        python = self.host_execution_admission(
             profile=python_reference_host_profile_v1(),
-            level=EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1,
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             program=program,
             scenario="scenario-a",
             runtime="python-runtime",
-        )[1]
-        javascript = self.host_execution_evidence(
+        )[3]
+        javascript = self.host_execution_admission(
             profile=javascript_reference_host_profile_v1(),
-            level=EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1,
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             program=program,
             scenario="scenario-b",
             runtime="javascript-runtime",
-        )[1]
+        )[3]
         with self.assertRaises(HostRealizationError):
             CrossHostEquivalenceV1(
-                evidence=(python, javascript),
-                claimed_level=EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1,
+                admissions=(python, javascript),
+                claimed_level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             )
 
-    def test_cross_host_rejects_duplicate_host_profile(self):
+    def test_cross_host_rejects_duplicate_host_profile_admissions(self):
         _, _, _, program = self.program_materialization()
-        left = self.host_execution_evidence(
+        left = self.host_execution_admission(
             profile=python_reference_host_profile_v1(),
-            level=EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1,
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             program=program,
             runtime="python-runtime-a",
             witness="python-witness-a",
-        )[1]
-        right = self.host_execution_evidence(
+        )[3]
+        right = self.host_execution_admission(
             profile=python_reference_host_profile_v1(),
-            level=EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1,
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             program=program,
             runtime="python-runtime-b",
             witness="python-witness-b",
-        )[1]
+        )[3]
         with self.assertRaises(HostRealizationError):
             CrossHostEquivalenceV1(
-                evidence=(left, right),
-                claimed_level=EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1,
+                admissions=(left, right),
+                claimed_level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
+            )
+
+    def test_cross_host_requires_at_least_two_admissions(self):
+        _, _, _, program = self.program_materialization()
+        python = self.host_execution_admission(
+            profile=python_reference_host_profile_v1(),
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
+            program=program,
+        )[3]
+        with self.assertRaises(HostRealizationError):
+            CrossHostEquivalenceV1(
+                admissions=(python,),
+                claimed_level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             )
 
     def test_known_profile_factories_are_deterministic(self):
