@@ -45,7 +45,8 @@ HOST_EXECUTION_EVIDENCE_FIELDS = frozenset(
         "scenario_hash",
         "evidence_level",
         "observed_receipt_hash",
-        "verifier_hash",
+        "verifier_contract_hash",
+        "verifier_artifact_sha256",
         "witness_hash",
     }
 )
@@ -155,6 +156,7 @@ def main() -> int:
         "unity_webgl_host_profile_v1",
         "known_v1_host_profiles",
         "admitted_ir_v3_host_profiles_v1",
+        "ir_v3_evidence_authority_for_profile_v1",
         "ir_v3_evidence_ceiling_for_profile_v1",
         "is_ir_v3_admitted_host_profile_v1",
         "conformance_evidence_for_candidate",
@@ -172,6 +174,10 @@ def main() -> int:
         "target_artifact_sha256",
         "lowering_receipt_hash",
         "tev.realization.program_ir_v3_materialization.v1",
+        "HOST_EVIDENCE_AUTHORITY_SCHEMA_V1",
+        "THREE_RUNTIME_RECEIPT_BYTES_VERIFIER_CONTRACT_HASH_V1",
+        "BROWSER_WASM_RECEIPT_HASH_VERIFIER_CONTRACT_HASH_V1",
+        "WASI_RECEIPT_HASH_VERIFIER_CONTRACT_HASH_V1",
         "HOST_EXECUTION_EVIDENCE_SCHEMA_V1",
         "HOST_EXECUTION_ADMISSION_SCHEMA_V1",
         "CROSS_HOST_EQUIVALENCE_SCHEMA_V1",
@@ -183,8 +189,11 @@ def main() -> int:
         "_verify_ir_v3_conformance_receipt_identity",
         "TEV_SCRIPT_IR_V3_CONFORMANCE_RECEIPT_V1",
         "program_hash != program.target_semantic_hash",
+        "source_hash != program.source_semantic_hash",
         "canonical_hash(body) != receipt_hash",
         "evidence.observed_receipt_hash != receipt_hash",
+        "evidence.verifier_contract_hash != authority[1]",
+        "verifier_artifact_sha256",
         "cross-host equivalence level must equal the weakest admitted member",
         "admissions: Iterable[HostExecutionAdmissionV1]",
         "init=False",
@@ -286,15 +295,17 @@ def main() -> int:
         "test_admitted_ir_v3_hosts_realize_one_execution_transformation",
         "test_unity_webgl_target_is_not_admitted_by_legacy_gate6a",
         "test_unity_webgl_cannot_issue_active_ir_v3_conformance_evidence",
-        "test_existing_gate_evidence_ceilings_are_exact",
+        "test_existing_gate_evidence_authorities_are_exact",
         "test_evidence_level_cannot_exceed_browser_or_wasi_gate_ceiling",
         "test_unity_webgl_cannot_issue_ir_v3_execution_evidence",
-        "test_host_execution_evidence_binds_observed_receipt_identity",
+        "test_host_execution_evidence_derives_verifier_contract_from_profile",
         "test_host_execution_admission_accepts_exact_program_host_scenario_receipt",
         "test_host_execution_admission_rejects_receipt_for_other_program",
+        "test_host_execution_admission_rejects_source_semantic_mismatch_even_with_rehashed_receipt",
         "test_host_execution_admission_rejects_tampered_reference_receipt",
         "test_host_execution_admission_rejects_scenario_mismatch",
         "test_host_execution_admission_rejects_observed_receipt_mismatch",
+        "test_host_execution_admission_rejects_forged_verifier_contract",
         "test_cross_host_bytes_parity_accepts_python_javascript_csharp_admissions",
         "test_cross_host_hash_parity_accepts_browser_and_wasi_admissions",
         "test_cross_host_rejects_false_hash_to_bytes_promotion",
@@ -302,6 +313,7 @@ def main() -> int:
         "test_cross_host_rejects_mixed_scenario_admissions",
         "test_cross_host_rejects_duplicate_host_profile_admissions",
         "test_cross_host_requires_at_least_two_admissions",
+        "verifier_artifact_sha256=",
         "admissions=admissions",
     )
     missing_tests = tuple(token for token in test_required if token not in test_source)
@@ -314,6 +326,8 @@ def main() -> int:
     print("R1_UNITY_WEBGL_IR_V3_ADMISSION=HOLD_LEGACY_GATE6A")
     print("R1_PYTHON_JS_CSHARP_EVIDENCE_CEILING=CANONICAL_RECEIPT_BYTES_PARITY")
     print("R1_BROWSER_WASM_WASI_EVIDENCE_CEILING=CANONICAL_RECEIPT_HASH_PARITY")
+    print("R1_EVIDENCE_VERIFIER_CONTRACT_BOUND=PASS")
+    print("R1_RECEIPT_SOURCE_SEMANTIC_BOUND=PASS")
     print("R1_HOST_EVIDENCE_PROGRAM_RECEIPT_ADMISSION=PASS")
     print("R1_CROSS_HOST_EQUIVALENCE_INPUT=ADMITTED_EVIDENCE_ONLY")
     print("R1_CROSS_HOST_EQUIVALENCE_FLOOR=WEAKEST_ADMITTED_MEMBER")

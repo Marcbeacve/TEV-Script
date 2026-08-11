@@ -10,12 +10,15 @@ from tev_script.linker_v1 import SourceInputV1, link_v1_sources
 from tev_script.lowering_ir_v3_linked_v1 import lower_linked_program_v1_to_ir_v3
 from tev_script.lowering_receipt_v2 import build_ir_v3_lowering_receipt
 from tev_script.semantic_host_realization_v1 import (
+    BROWSER_WASM_RECEIPT_HASH_VERIFIER_CONTRACT_HASH_V1,
     BROWSER_WEBASSEMBLY_CAPABILITY_HASH_V1,
     CROSS_HOST_EQUIVALENCE_SCHEMA_V1,
     EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
     EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
     EXECUTE_PROGRAM_IR_V3_TRANSFORMATION_HASH_V1,
     HOST_EXECUTION_ADMISSION_SCHEMA_V1,
+    THREE_RUNTIME_RECEIPT_BYTES_VERIFIER_CONTRACT_HASH_V1,
+    WASI_RECEIPT_HASH_VERIFIER_CONTRACT_HASH_V1,
     CrossHostEquivalenceV1,
     HostExecutionAdmissionV1,
     HostExecutionEvidenceV1,
@@ -30,6 +33,7 @@ from tev_script.semantic_host_realization_v1 import (
     browser_wasm_host_profile_v1,
     conformance_evidence_for_candidate,
     csharp_reference_host_profile_v1,
+    ir_v3_evidence_authority_for_profile_v1,
     ir_v3_evidence_ceiling_for_profile_v1,
     is_ir_v3_admitted_host_profile_v1,
     javascript_reference_host_profile_v1,
@@ -117,7 +121,7 @@ entity E {
         program=None,
         scenario="scenario-a",
         runtime="runtime-a",
-        verifier="verifier-a",
+        verifier_artifact="verifier-a",
         witness="witness-a",
         observed_receipt_hash=None,
     ):
@@ -131,7 +135,7 @@ entity E {
             scenario_hash=receipt["scenario_hash"],
             evidence_level=level,
             observed_receipt_hash=observed_receipt_hash or receipt["receipt_hash"],
-            verifier_hash=h(verifier),
+            verifier_artifact_sha256=h(verifier_artifact),
             witness_hash=h(witness),
         )
         return host, evidence, receipt
@@ -144,7 +148,7 @@ entity E {
         program=None,
         scenario="scenario-a",
         runtime="runtime-a",
-        verifier="verifier-a",
+        verifier_artifact="verifier-a",
         witness="witness-a",
     ):
         if program is None:
@@ -155,7 +159,7 @@ entity E {
             program=program,
             scenario=scenario,
             runtime=runtime,
-            verifier=verifier,
+            verifier_artifact=verifier_artifact,
             witness=witness,
         )
         admission = HostExecutionAdmissionV1(
@@ -268,6 +272,10 @@ entity E {
         self.assertEqual(original.machine.machine_hash, renamed.machine.machine_hash)
         self.assertNotEqual(original.record_hash, renamed.record_hash)
         self.assertTrue(is_ir_v3_admitted_host_profile_v1(renamed))
+        self.assertEqual(
+            ir_v3_evidence_authority_for_profile_v1(original),
+            ir_v3_evidence_authority_for_profile_v1(renamed),
+        )
 
     def test_runtime_closure_bytes_change_realization_not_machine_profile(self):
         first = self.materialization(content="runtime-a")
@@ -312,21 +320,38 @@ entity E {
         )
         self.assertNotEqual(browser.machine.machine_hash, wasi.machine.machine_hash)
 
-    def test_existing_gate_evidence_ceilings_are_exact(self):
+    def test_existing_gate_evidence_authorities_are_exact(self):
         for profile in (
             python_reference_host_profile_v1(),
             javascript_reference_host_profile_v1(),
             csharp_reference_host_profile_v1(),
         ):
             self.assertEqual(
+                ir_v3_evidence_authority_for_profile_v1(profile),
+                (
+                    EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
+                    THREE_RUNTIME_RECEIPT_BYTES_VERIFIER_CONTRACT_HASH_V1,
+                ),
+            )
+            self.assertEqual(
                 ir_v3_evidence_ceiling_for_profile_v1(profile),
                 EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
             )
-        for profile in (browser_wasm_host_profile_v1(), wasi_host_profile_v1()):
-            self.assertEqual(
-                ir_v3_evidence_ceiling_for_profile_v1(profile),
+        self.assertEqual(
+            ir_v3_evidence_authority_for_profile_v1(browser_wasm_host_profile_v1()),
+            (
                 EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
-            )
+                BROWSER_WASM_RECEIPT_HASH_VERIFIER_CONTRACT_HASH_V1,
+            ),
+        )
+        self.assertEqual(
+            ir_v3_evidence_authority_for_profile_v1(wasi_host_profile_v1()),
+            (
+                EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
+                WASI_RECEIPT_HASH_VERIFIER_CONTRACT_HASH_V1,
+            ),
+        )
+        self.assertIsNone(ir_v3_evidence_authority_for_profile_v1(unity_webgl_host_profile_v1()))
         self.assertIsNone(ir_v3_evidence_ceiling_for_profile_v1(unity_webgl_host_profile_v1()))
 
     def test_unity_webgl_target_is_not_admitted_by_legacy_gate6a(self):
@@ -381,7 +406,7 @@ entity E {
         self.assertEqual(left.evidence_hash, right.evidence_hash)
         self.assertNotEqual(left.record_hash, right.record_hash)
 
-    def test_host_execution_evidence_binds_observed_receipt_identity(self):
+    def test_host_execution_evidence_derives_verifier_contract_from_profile(self):
         _, _, _, program = self.program_materialization()
         host, evidence, receipt = self.host_execution_evidence(
             profile=python_reference_host_profile_v1(),
@@ -393,6 +418,11 @@ entity E {
         self.assertEqual(evidence.host_materialization_hash, host.materialization_hash)
         self.assertEqual(evidence.scenario_hash, receipt["scenario_hash"])
         self.assertEqual(evidence.observed_receipt_hash, receipt["receipt_hash"])
+        self.assertEqual(
+            evidence.verifier_contract_hash,
+            THREE_RUNTIME_RECEIPT_BYTES_VERIFIER_CONTRACT_HASH_V1,
+        )
+        self.assertEqual(evidence.verifier_artifact_sha256, h("verifier-a"))
         self.assertEqual(evidence.evidence_hash, canonical_hash(evidence.semantic_object()))
 
     def test_evidence_level_cannot_exceed_browser_or_wasi_gate_ceiling(self):
@@ -447,6 +477,26 @@ entity E {
                 reference_receipt=other_receipt,
             )
 
+    def test_host_execution_admission_rejects_source_semantic_mismatch_even_with_rehashed_receipt(self):
+        _, _, _, program = self.program_materialization()
+        host, evidence, receipt = self.host_execution_evidence(
+            profile=python_reference_host_profile_v1(),
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
+            program=program,
+        )
+        tampered = dict(receipt)
+        tampered["source_semantic_hash"] = h("wrong-source-semantic-hash")
+        tampered["receipt_hash"] = canonical_hash(
+            {key: value for key, value in tampered.items() if key != "receipt_hash"}
+        )
+        with self.assertRaises(HostRealizationError):
+            HostExecutionAdmissionV1(
+                program=program,
+                host=host,
+                evidence=evidence,
+                reference_receipt=tampered,
+            )
+
     def test_host_execution_admission_rejects_tampered_reference_receipt(self):
         _, _, _, program = self.program_materialization()
         host, evidence, receipt = self.host_execution_evidence(
@@ -497,6 +547,22 @@ entity E {
                 reference_receipt=receipt,
             )
 
+    def test_host_execution_admission_rejects_forged_verifier_contract(self):
+        _, _, _, program = self.program_materialization()
+        host, evidence, receipt = self.host_execution_evidence(
+            profile=python_reference_host_profile_v1(),
+            level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
+            program=program,
+        )
+        object.__setattr__(evidence, "verifier_contract_hash", h("forged-verifier-contract"))
+        with self.assertRaises(HostRealizationError):
+            HostExecutionAdmissionV1(
+                program=program,
+                host=host,
+                evidence=evidence,
+                reference_receipt=receipt,
+            )
+
     def test_cross_host_bytes_parity_accepts_python_javascript_csharp_admissions(self):
         _, _, _, program = self.program_materialization()
         admissions = []
@@ -512,7 +578,7 @@ entity E {
                 level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1,
                 program=program,
                 runtime=f"runtime-{index}",
-                verifier="three-runtime-parity-verifier",
+                verifier_artifact="three-runtime-parity-verifier",
                 witness="three-runtime-parity-witness",
             )[3]
             admissions.append(admission)
@@ -534,7 +600,7 @@ entity E {
             level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             program=program,
             runtime="browser-runtime",
-            verifier="browser-parity-verifier",
+            verifier_artifact="browser-parity-verifier",
             witness="browser-parity-witness",
         )[3]
         wasi = self.host_execution_admission(
@@ -542,7 +608,7 @@ entity E {
             level=EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1,
             program=program,
             runtime="wasi-runtime",
-            verifier="wasi-parity-verifier",
+            verifier_artifact="wasi-parity-verifier",
             witness="wasi-parity-witness",
         )[3]
         equivalence = CrossHostEquivalenceV1(
