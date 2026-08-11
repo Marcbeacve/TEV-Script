@@ -37,6 +37,25 @@ PROGRAM_MATERIALIZATION_FIELDS = frozenset(
         "lowering_receipt_hash",
     }
 )
+HOST_EXECUTION_EVIDENCE_FIELDS = frozenset(
+    {
+        "program_materialization_hash",
+        "host_profile_hash",
+        "host_materialization_hash",
+        "scenario_hash",
+        "evidence_level",
+        "verifier_hash",
+        "witness_hash",
+    }
+)
+CROSS_HOST_EQUIVALENCE_FIELDS = frozenset(
+    {
+        "program_materialization_hash",
+        "scenario_hash",
+        "equivalence_level",
+        "member_bindings",
+    }
+)
 FORBIDDEN_PROGRAM_HOST_FIELDS = frozenset(
     {
         "profile_id",
@@ -63,6 +82,14 @@ def _class(tree: ast.Module, name: str) -> ast.ClassDef | None:
     return next(
         (node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == name),
         None,
+    )
+
+
+def _annotated_fields(class_node: ast.ClassDef) -> frozenset[str]:
+    return frozenset(
+        node.target.id
+        for node in class_node.body
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name)
     )
 
 
@@ -114,7 +141,12 @@ def main() -> int:
         "browser_wasm_host_profile_v1",
         "wasi_host_profile_v1",
         "unity_webgl_host_profile_v1",
+        "known_v1_host_profiles",
+        "admitted_ir_v3_host_profiles_v1",
+        "ir_v3_evidence_ceiling_for_profile_v1",
+        "is_ir_v3_admitted_host_profile_v1",
         "conformance_evidence_for_candidate",
+        'status == "ACTIVE" and not is_ir_v3_admitted_host_profile_v1(profile)',
         "candidate.semantic_claim_hash",
         "source_compilation_at_runtime",
         "PROGRAM_IR_V3_MATERIALIZATION_SCHEMA_V1",
@@ -128,11 +160,19 @@ def main() -> int:
         "target_artifact_sha256",
         "lowering_receipt_hash",
         "tev.realization.program_ir_v3_materialization.v1",
+        "HOST_EXECUTION_EVIDENCE_SCHEMA_V1",
+        "CROSS_HOST_EQUIVALENCE_SCHEMA_V1",
+        "HostExecutionEvidenceV1",
+        "CrossHostEquivalenceV1",
+        "EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1",
+        "EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1",
+        "EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1",
+        "cross-host equivalence level must equal the weakest member evidence",
         "init=False",
     )
     missing = tuple(token for token in required if token not in source)
     if missing:
-        return fail("required R1 host/program surface missing=" + ",".join(missing))
+        return fail("required R1 host/program/evidence surface missing=" + ",".join(missing))
 
     forbidden_identity_fields = (
         '"path"',
@@ -153,20 +193,26 @@ def main() -> int:
     program_class = _class(tree, "ProgramIRV3MaterializationV1")
     if program_class is None:
         return fail("ProgramIRV3MaterializationV1 class missing")
-
-    program_fields = frozenset(
-        node.target.id
-        for node in program_class.body
-        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name)
-    )
+    program_fields = _annotated_fields(program_class)
     if program_fields != PROGRAM_MATERIALIZATION_FIELDS:
-        return fail(
-            "program materialization field set mismatch="
-            + ",".join(sorted(program_fields))
-        )
+        return fail("program materialization field set mismatch=" + ",".join(sorted(program_fields)))
     leaked_fields = program_fields & FORBIDDEN_PROGRAM_HOST_FIELDS
     if leaked_fields:
         return fail("host identity leaked into program materialization fields=" + ",".join(sorted(leaked_fields)))
+
+    evidence_class = _class(tree, "HostExecutionEvidenceV1")
+    if evidence_class is None:
+        return fail("HostExecutionEvidenceV1 class missing")
+    evidence_fields = _annotated_fields(evidence_class)
+    if evidence_fields != HOST_EXECUTION_EVIDENCE_FIELDS:
+        return fail("host execution evidence field set mismatch=" + ",".join(sorted(evidence_fields)))
+
+    equivalence_class = _class(tree, "CrossHostEquivalenceV1")
+    if equivalence_class is None:
+        return fail("CrossHostEquivalenceV1 class missing")
+    equivalence_fields = _annotated_fields(equivalence_class)
+    if equivalence_fields != CROSS_HOST_EQUIVALENCE_FIELDS:
+        return fail("cross-host equivalence field set mismatch=" + ",".join(sorted(equivalence_fields)))
 
     local_verifier_defs = tuple(
         node
@@ -188,6 +234,9 @@ def main() -> int:
         return fail(f"program materialization must invoke normative lowering verifier exactly once count={len(verifier_calls)}")
 
     test_source = TEST.read_text(encoding="utf-8")
+    if "test_all_existing_hosts_realize_one_execution_transformation" in test_source:
+        return fail("obsolete six-host IR V3 overclaim test still present")
+
     test_required = (
         "test_program_ir_v3_materialization_accepts_verified_lowering",
         "test_program_ir_v3_materialization_rejects_tampered_receipt",
@@ -195,13 +244,31 @@ def main() -> int:
         "test_program_ir_v3_materialization_is_host_independent",
         "test_program_ir_v3_materialization_changes_with_program",
         'tampered["receipt_hash"] = canonical_hash',
+        "test_known_host_targets_are_separate_from_ir_v3_admission",
+        "test_admitted_ir_v3_hosts_realize_one_execution_transformation",
+        "test_unity_webgl_target_is_not_admitted_by_legacy_gate6a",
+        "test_unity_webgl_cannot_issue_active_ir_v3_conformance_evidence",
+        "test_existing_gate_evidence_ceilings_are_exact",
+        "test_evidence_level_cannot_exceed_browser_or_wasi_gate_ceiling",
+        "test_unity_webgl_cannot_issue_ir_v3_execution_evidence",
+        "test_cross_host_bytes_parity_accepts_python_javascript_csharp",
+        "test_cross_host_hash_parity_accepts_browser_and_wasi",
+        "test_cross_host_rejects_false_hash_to_bytes_promotion",
+        "test_cross_host_rejects_mixed_program_materializations",
+        "test_cross_host_rejects_mixed_scenarios",
+        "test_cross_host_rejects_duplicate_host_profile",
     )
     missing_tests = tuple(token for token in test_required if token not in test_source)
     if missing_tests:
-        return fail("required R1 program falsifier missing=" + ",".join(missing_tests))
+        return fail("required R1 falsifier missing=" + ",".join(missing_tests))
 
     print("R1_SINGLE_EXECUTION_TRANSFORMATION=PASS")
-    print("R1_EXISTING_HOST_PROFILES=6")
+    print("R1_KNOWN_HOST_TARGET_PROFILES=6")
+    print("R1_IR_V3_ADMITTED_HOST_PROFILES=5")
+    print("R1_UNITY_WEBGL_IR_V3_ADMISSION=HOLD_LEGACY_GATE6A")
+    print("R1_PYTHON_JS_CSHARP_EVIDENCE_CEILING=CANONICAL_RECEIPT_BYTES_PARITY")
+    print("R1_BROWSER_WASM_WASI_EVIDENCE_CEILING=CANONICAL_RECEIPT_HASH_PARITY")
+    print("R1_CROSS_HOST_EQUIVALENCE_FLOOR=WEAKEST_MEMBER")
     print("R1_RUNTIME_CLOSURE_CONTENT_ADDRESSED=PASS")
     print("R1_R0_ARTIFACT_MACHINE_REALIZATION_REUSE=PASS")
     print("R1_CONFORMANCE_EVIDENCE_CLAIM_BOUND=PASS")
