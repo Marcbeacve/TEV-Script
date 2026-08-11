@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, cast
 
 from .canonical import canonical_hash, canonical_json
+from .lowering_receipt_v2 import verify_ir_v3_lowering_receipt
 from .semantic_artifact_v0 import ArtifactDescriptorV0, ArtifactManifestV0
 from .semantic_evidence_v0 import EvidenceItemV0
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
@@ -18,6 +19,7 @@ HOST_EXECUTION_TRANSFORMATION_SCHEMA_V1 = "TEV_SCRIPT_EXECUTE_PROGRAM_IR_V3_TRAN
 HOST_INTERFACE_SCHEMA_V1 = "TEV_SCRIPT_PROGRAM_IR_V3_HOST_INTERFACE_V1"
 HOST_RUNTIME_ROLE_SCHEMA_V1 = "TEV_SCRIPT_HOST_RUNTIME_ROLE_V1"
 HOST_CONFORMANCE_COVERAGE_SCHEMA_V1 = "TEV_SCRIPT_HOST_CONFORMANCE_COVERAGE_V1"
+PROGRAM_IR_V3_MATERIALIZATION_SCHEMA_V1 = "TEV_SCRIPT_PROGRAM_IR_V3_MATERIALIZATION_V1"
 
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _HEX = frozenset("0123456789abcdef")
@@ -152,6 +154,71 @@ WEBGL2_CAPABILITY_HASH_V1 = _capability_semantics(
     "graphics_context",
     contract="webgl2",
 )
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class ProgramIRV3MaterializationV1:
+    """Exact V1 linked-program -> IR V3 materialization authenticated by receipt V2.
+
+    Program identity is deliberately independent from host runtime, machine,
+    deployment path and provider identity. Construction succeeds only after the
+    normative lowering-receipt verifier proves the exact linked source, IR V3
+    target and canonical bytes supplied by the caller.
+    """
+
+    receipt_profile: str
+    lowering_profile: str
+    source_semantic_hash: str
+    target_semantic_hash: str
+    source_artifact_sha256: str
+    target_artifact_sha256: str
+    lowering_receipt_hash: str
+
+    def __init__(
+        self,
+        *,
+        receipt: Mapping[str, object],
+        source: Any,
+        target: Any,
+    ) -> None:
+        verify_ir_v3_lowering_receipt(receipt, source, target)
+        source_receipt = cast(Mapping[str, object], receipt["source"])
+        target_receipt = cast(Mapping[str, object], receipt["target"])
+        object.__setattr__(self, "receipt_profile", _stable(str(receipt["profile"]), "lowering receipt profile"))
+        object.__setattr__(self, "lowering_profile", _stable(str(target_receipt["lowering_profile"]), "IR V3 lowering profile"))
+        object.__setattr__(self, "source_semantic_hash", _hash64(str(source_receipt["semantic_hash"]), "source semantic hash"))
+        object.__setattr__(self, "target_semantic_hash", _hash64(str(target_receipt["semantic_hash"]), "target semantic hash"))
+        object.__setattr__(self, "source_artifact_sha256", _hash64(str(source_receipt["artifact_sha256"]), "source artifact sha256"))
+        object.__setattr__(self, "target_artifact_sha256", _hash64(str(target_receipt["artifact_sha256"]), "target artifact sha256"))
+        object.__setattr__(self, "lowering_receipt_hash", _hash64(str(receipt["receipt_hash"]), "lowering receipt hash"))
+
+    def semantic_object(self) -> dict[str, object]:
+        return {
+            "schema": PROGRAM_IR_V3_MATERIALIZATION_SCHEMA_V1,
+            "source_schema": "TEV_SCRIPT_LINKED_PROGRAM_V1",
+            "target_schema": "TEV_SCRIPT_PROGRAM_IR_V3",
+            "language_version": "1.0.0",
+            "receipt_profile": self.receipt_profile,
+            "lowering_profile": self.lowering_profile,
+            "source_semantic_hash": self.source_semantic_hash,
+            "target_semantic_hash": self.target_semantic_hash,
+            "source_artifact_sha256": self.source_artifact_sha256,
+            "target_artifact_sha256": self.target_artifact_sha256,
+            "lowering_receipt_hash": self.lowering_receipt_hash,
+        }
+
+    @property
+    def materialization_hash(self) -> str:
+        return canonical_hash(self.semantic_object())
+
+    def to_object(self) -> dict[str, object]:
+        return {
+            **self.semantic_object(),
+            "materialization_hash": self.materialization_hash,
+        }
+
+    def to_field(self) -> SemanticFieldV0:
+        return field_from_mapping("tev.realization.program_ir_v3_materialization.v1", self.to_object())
 
 
 @dataclass(frozen=True, slots=True)
@@ -459,6 +526,7 @@ __all__ = [
     "HOST_INTERFACE_SCHEMA_V1",
     "HOST_RUNTIME_ROLE_SCHEMA_V1",
     "HOST_CONFORMANCE_COVERAGE_SCHEMA_V1",
+    "PROGRAM_IR_V3_MATERIALIZATION_SCHEMA_V1",
     "HostRealizationError",
     "EXECUTE_PROGRAM_IR_V3_TRANSFORMATION_HASH_V1",
     "PROGRAM_IR_V3_HOST_INTERFACE_HASH_V1",
@@ -473,6 +541,7 @@ __all__ = [
     "WASI_HTTP_LINKAGE_CAPABILITY_HASH_V1",
     "UNITY_WEBGL_RUNTIME_CAPABILITY_HASH_V1",
     "WEBGL2_CAPABILITY_HASH_V1",
+    "ProgramIRV3MaterializationV1",
     "HostRuntimeProfileV1",
     "HostRuntimeMaterializationV1",
     "conformance_evidence_for_candidate",
