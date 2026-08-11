@@ -21,16 +21,15 @@ HOST_RUNTIME_ROLE_SCHEMA_V1 = "TEV_SCRIPT_HOST_RUNTIME_ROLE_V1"
 HOST_CONFORMANCE_COVERAGE_SCHEMA_V1 = "TEV_SCRIPT_HOST_CONFORMANCE_COVERAGE_V1"
 PROGRAM_IR_V3_MATERIALIZATION_SCHEMA_V1 = "TEV_SCRIPT_PROGRAM_IR_V3_MATERIALIZATION_V1"
 HOST_EXECUTION_EVIDENCE_SCHEMA_V1 = "TEV_SCRIPT_HOST_EXECUTION_EVIDENCE_V1"
+HOST_EXECUTION_ADMISSION_SCHEMA_V1 = "TEV_SCRIPT_HOST_EXECUTION_ADMISSION_V1"
 CROSS_HOST_EQUIVALENCE_SCHEMA_V1 = "TEV_SCRIPT_CROSS_HOST_EQUIVALENCE_V1"
 
-EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1 = "PHYSICAL_EXECUTION"
 EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1 = "CANONICAL_RECEIPT_HASH_PARITY"
 EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1 = "CANONICAL_RECEIPT_BYTES_PARITY"
 
 _EVIDENCE_LEVEL_RANK = {
-    EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1: 1,
-    EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1: 2,
-    EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1: 3,
+    EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1: 1,
+    EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1: 2,
 }
 
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
@@ -578,20 +577,53 @@ def is_ir_v3_admitted_host_profile_v1(profile: HostRuntimeProfileV1) -> bool:
     return ir_v3_evidence_ceiling_for_profile_v1(profile) is not None
 
 
+def _verify_ir_v3_conformance_receipt_identity(
+    receipt: Mapping[str, object],
+    program: ProgramIRV3MaterializationV1,
+) -> tuple[str, str]:
+    item = dict(receipt)
+    required = {
+        "schema",
+        "scenario_id",
+        "scenario_hash",
+        "program_semantic_hash",
+        "source_semantic_hash",
+        "initial_state_hash",
+        "steps",
+        "capability_calls",
+        "final_state",
+        "final_state_hash",
+        "receipt_hash",
+    }
+    if set(item) != required:
+        raise HostRealizationError("IR V3 conformance receipt field set mismatch")
+    if item["schema"] != "TEV_SCRIPT_IR_V3_CONFORMANCE_RECEIPT_V1":
+        raise HostRealizationError("IR V3 conformance receipt schema mismatch")
+    _stable(str(item["scenario_id"]), "IR V3 conformance scenario id")
+    scenario_hash = _hash64(str(item["scenario_hash"]), "IR V3 conformance scenario hash")
+    program_hash = _hash64(str(item["program_semantic_hash"]), "IR V3 conformance program hash")
+    if program_hash != program.target_semantic_hash:
+        raise HostRealizationError("IR V3 conformance receipt program mismatch")
+    _hash64(str(item["source_semantic_hash"]), "IR V3 conformance source hash")
+    _hash64(str(item["initial_state_hash"]), "IR V3 conformance initial state hash")
+    _hash64(str(item["final_state_hash"]), "IR V3 conformance final state hash")
+    receipt_hash = _hash64(str(item["receipt_hash"]), "IR V3 conformance receipt hash")
+    body = {key: value for key, value in item.items() if key != "receipt_hash"}
+    if canonical_hash(body) != receipt_hash:
+        raise HostRealizationError("IR V3 conformance receipt integrity mismatch")
+    return scenario_hash, receipt_hash
+
+
 @dataclass(frozen=True, slots=True, init=False)
 class HostExecutionEvidenceV1:
-    """Content-addressed binding from one program to one admitted host witness.
-
-    The object does not execute the verifier. It binds the verifier and witness
-    identities and refuses evidence levels above the strongest parity contract
-    that the repository currently exposes for the host profile.
-    """
+    """Content-addressed host witness record, not yet admitted to a program receipt."""
 
     program_materialization_hash: str
     host_profile_hash: str
     host_materialization_hash: str
     scenario_hash: str
     evidence_level: str
+    observed_receipt_hash: str
     verifier_hash: str
     witness_hash: str
 
@@ -602,6 +634,7 @@ class HostExecutionEvidenceV1:
         host: HostRuntimeMaterializationV1,
         scenario_hash: str,
         evidence_level: str,
+        observed_receipt_hash: str,
         verifier_hash: str,
         witness_hash: str,
     ) -> None:
@@ -616,6 +649,7 @@ class HostExecutionEvidenceV1:
         object.__setattr__(self, "host_materialization_hash", host.materialization_hash)
         object.__setattr__(self, "scenario_hash", _hash64(scenario_hash, "host execution scenario hash"))
         object.__setattr__(self, "evidence_level", level)
+        object.__setattr__(self, "observed_receipt_hash", _hash64(observed_receipt_hash, "observed conformance receipt hash"))
         object.__setattr__(self, "verifier_hash", _hash64(verifier_hash, "host execution verifier hash"))
         object.__setattr__(self, "witness_hash", _hash64(witness_hash, "host execution witness hash"))
 
@@ -628,6 +662,7 @@ class HostExecutionEvidenceV1:
             "host_materialization_hash": self.host_materialization_hash,
             "scenario_hash": self.scenario_hash,
             "evidence_level": self.evidence_level,
+            "observed_receipt_hash": self.observed_receipt_hash,
             "verifier_hash": self.verifier_hash,
             "witness_hash": self.witness_hash,
         }
@@ -644,8 +679,71 @@ class HostExecutionEvidenceV1:
 
 
 @dataclass(frozen=True, slots=True, init=False)
+class HostExecutionAdmissionV1:
+    """Admission of one host witness against the exact canonical V3 receipt identity."""
+
+    program_materialization_hash: str
+    host_profile_hash: str
+    host_materialization_hash: str
+    scenario_hash: str
+    evidence_hash: str
+    receipt_hash: str
+    admitted_level: str
+
+    def __init__(
+        self,
+        *,
+        program: ProgramIRV3MaterializationV1,
+        host: HostRuntimeMaterializationV1,
+        evidence: HostExecutionEvidenceV1,
+        reference_receipt: Mapping[str, object],
+    ) -> None:
+        if evidence.program_materialization_hash != program.materialization_hash:
+            raise HostRealizationError("host execution evidence program binding mismatch")
+        if evidence.host_profile_hash != host.profile.profile_hash:
+            raise HostRealizationError("host execution evidence profile binding mismatch")
+        if evidence.host_materialization_hash != host.materialization_hash:
+            raise HostRealizationError("host execution evidence materialization binding mismatch")
+        scenario_hash, receipt_hash = _verify_ir_v3_conformance_receipt_identity(reference_receipt, program)
+        if evidence.scenario_hash != scenario_hash:
+            raise HostRealizationError("host execution evidence scenario binding mismatch")
+        if evidence.observed_receipt_hash != receipt_hash:
+            raise HostRealizationError("host execution evidence observed receipt mismatch")
+        object.__setattr__(self, "program_materialization_hash", program.materialization_hash)
+        object.__setattr__(self, "host_profile_hash", host.profile.profile_hash)
+        object.__setattr__(self, "host_materialization_hash", host.materialization_hash)
+        object.__setattr__(self, "scenario_hash", scenario_hash)
+        object.__setattr__(self, "evidence_hash", evidence.evidence_hash)
+        object.__setattr__(self, "receipt_hash", receipt_hash)
+        object.__setattr__(self, "admitted_level", evidence.evidence_level)
+
+    def semantic_object(self) -> dict[str, object]:
+        return {
+            "schema": HOST_EXECUTION_ADMISSION_SCHEMA_V1,
+            "execution_transformation_hash": EXECUTE_PROGRAM_IR_V3_TRANSFORMATION_HASH_V1,
+            "program_materialization_hash": self.program_materialization_hash,
+            "host_profile_hash": self.host_profile_hash,
+            "host_materialization_hash": self.host_materialization_hash,
+            "scenario_hash": self.scenario_hash,
+            "evidence_hash": self.evidence_hash,
+            "receipt_hash": self.receipt_hash,
+            "admitted_level": self.admitted_level,
+        }
+
+    @property
+    def admission_hash(self) -> str:
+        return canonical_hash(self.semantic_object())
+
+    def to_object(self) -> dict[str, object]:
+        return {**self.semantic_object(), "admission_hash": self.admission_hash}
+
+    def to_field(self) -> SemanticFieldV0:
+        return field_from_mapping("tev.realization.host_execution_admission.v1", self.to_object())
+
+
+@dataclass(frozen=True, slots=True, init=False)
 class CrossHostEquivalenceV1:
-    """Fail-closed equivalence claim over independent admitted host evidence."""
+    """Fail-closed equivalence claim over independently admitted host evidence."""
 
     program_materialization_hash: str
     scenario_hash: str
@@ -655,32 +753,32 @@ class CrossHostEquivalenceV1:
     def __init__(
         self,
         *,
-        evidence: Iterable[HostExecutionEvidenceV1],
+        admissions: Iterable[HostExecutionAdmissionV1],
         claimed_level: str,
     ) -> None:
-        members = tuple(evidence)
+        members = tuple(admissions)
         if len(members) < 2:
-            raise HostRealizationError("cross-host equivalence requires at least two host witnesses")
+            raise HostRealizationError("cross-host equivalence requires at least two host admissions")
         program_hashes = {item.program_materialization_hash for item in members}
         if len(program_hashes) != 1:
-            raise HostRealizationError("cross-host evidence mixes program materializations")
+            raise HostRealizationError("cross-host admissions mix program materializations")
         scenario_hashes = {item.scenario_hash for item in members}
         if len(scenario_hashes) != 1:
-            raise HostRealizationError("cross-host evidence mixes scenarios")
+            raise HostRealizationError("cross-host admissions mix scenarios")
         profile_hashes = [item.host_profile_hash for item in members]
         if len(set(profile_hashes)) != len(profile_hashes):
-            raise HostRealizationError("cross-host evidence repeats one host profile")
-        floor = min(members, key=lambda item: _EVIDENCE_LEVEL_RANK[item.evidence_level]).evidence_level
+            raise HostRealizationError("cross-host admissions repeat one host profile")
+        floor = min(members, key=lambda item: _EVIDENCE_LEVEL_RANK[item.admitted_level]).admitted_level
         claim = _evidence_level(claimed_level)
         if claim != floor:
-            raise HostRealizationError("cross-host equivalence level must equal the weakest member evidence")
+            raise HostRealizationError("cross-host equivalence level must equal the weakest admitted member")
         bindings = tuple(
             sorted(
                 (
                     item.host_profile_hash,
                     item.host_materialization_hash,
-                    item.evidence_hash,
-                    item.evidence_level,
+                    item.admission_hash,
+                    item.admitted_level,
                 )
                 for item in members
             )
@@ -701,10 +799,10 @@ class CrossHostEquivalenceV1:
                 {
                     "host_profile_hash": profile_hash,
                     "host_materialization_hash": materialization_hash,
-                    "evidence_hash": evidence_hash,
-                    "evidence_level": evidence_level,
+                    "admission_hash": admission_hash,
+                    "admitted_level": admitted_level,
                 }
-                for profile_hash, materialization_hash, evidence_hash, evidence_level in self.member_bindings
+                for profile_hash, materialization_hash, admission_hash, admitted_level in self.member_bindings
             ],
         }
 
@@ -728,8 +826,8 @@ __all__ = [
     "HOST_CONFORMANCE_COVERAGE_SCHEMA_V1",
     "PROGRAM_IR_V3_MATERIALIZATION_SCHEMA_V1",
     "HOST_EXECUTION_EVIDENCE_SCHEMA_V1",
+    "HOST_EXECUTION_ADMISSION_SCHEMA_V1",
     "CROSS_HOST_EQUIVALENCE_SCHEMA_V1",
-    "EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1",
     "EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1",
     "EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1",
     "HostRealizationError",
@@ -750,6 +848,7 @@ __all__ = [
     "HostRuntimeProfileV1",
     "HostRuntimeMaterializationV1",
     "HostExecutionEvidenceV1",
+    "HostExecutionAdmissionV1",
     "CrossHostEquivalenceV1",
     "conformance_evidence_for_candidate",
     "python_reference_host_profile_v1",
