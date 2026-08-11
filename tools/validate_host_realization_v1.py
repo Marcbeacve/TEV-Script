@@ -44,8 +44,20 @@ HOST_EXECUTION_EVIDENCE_FIELDS = frozenset(
         "host_materialization_hash",
         "scenario_hash",
         "evidence_level",
+        "observed_receipt_hash",
         "verifier_hash",
         "witness_hash",
+    }
+)
+HOST_EXECUTION_ADMISSION_FIELDS = frozenset(
+    {
+        "program_materialization_hash",
+        "host_profile_hash",
+        "host_materialization_hash",
+        "scenario_hash",
+        "evidence_hash",
+        "receipt_hash",
+        "admitted_level",
     }
 )
 CROSS_HOST_EQUIVALENCE_FIELDS = frozenset(
@@ -161,18 +173,28 @@ def main() -> int:
         "lowering_receipt_hash",
         "tev.realization.program_ir_v3_materialization.v1",
         "HOST_EXECUTION_EVIDENCE_SCHEMA_V1",
+        "HOST_EXECUTION_ADMISSION_SCHEMA_V1",
         "CROSS_HOST_EQUIVALENCE_SCHEMA_V1",
         "HostExecutionEvidenceV1",
+        "HostExecutionAdmissionV1",
         "CrossHostEquivalenceV1",
-        "EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1",
         "EVIDENCE_LEVEL_CANONICAL_RECEIPT_HASH_PARITY_V1",
         "EVIDENCE_LEVEL_CANONICAL_RECEIPT_BYTES_PARITY_V1",
-        "cross-host equivalence level must equal the weakest member evidence",
+        "_verify_ir_v3_conformance_receipt_identity",
+        "TEV_SCRIPT_IR_V3_CONFORMANCE_RECEIPT_V1",
+        "program_hash != program.target_semantic_hash",
+        "canonical_hash(body) != receipt_hash",
+        "evidence.observed_receipt_hash != receipt_hash",
+        "cross-host equivalence level must equal the weakest admitted member",
+        "admissions: Iterable[HostExecutionAdmissionV1]",
         "init=False",
     )
     missing = tuple(token for token in required if token not in source)
     if missing:
-        return fail("required R1 host/program/evidence surface missing=" + ",".join(missing))
+        return fail("required R1 host/program/evidence/admission surface missing=" + ",".join(missing))
+
+    if "EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1" in source:
+        return fail("physical execution is incorrectly promoted to cross-host equivalence evidence")
 
     forbidden_identity_fields = (
         '"path"',
@@ -207,6 +229,13 @@ def main() -> int:
     if evidence_fields != HOST_EXECUTION_EVIDENCE_FIELDS:
         return fail("host execution evidence field set mismatch=" + ",".join(sorted(evidence_fields)))
 
+    admission_class = _class(tree, "HostExecutionAdmissionV1")
+    if admission_class is None:
+        return fail("HostExecutionAdmissionV1 class missing")
+    admission_fields = _annotated_fields(admission_class)
+    if admission_fields != HOST_EXECUTION_ADMISSION_FIELDS:
+        return fail("host execution admission field set mismatch=" + ",".join(sorted(admission_fields)))
+
     equivalence_class = _class(tree, "CrossHostEquivalenceV1")
     if equivalence_class is None:
         return fail("CrossHostEquivalenceV1 class missing")
@@ -223,19 +252,28 @@ def main() -> int:
     if local_verifier_defs:
         return fail("R1 duplicates normative lowering verifier")
 
-    verifier_calls = tuple(
+    lowering_verifier_calls = tuple(
         node
         for node in ast.walk(program_class)
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Name)
         and node.func.id == "verify_ir_v3_lowering_receipt"
     )
-    if len(verifier_calls) != 1:
-        return fail(f"program materialization must invoke normative lowering verifier exactly once count={len(verifier_calls)}")
+    if len(lowering_verifier_calls) != 1:
+        return fail(
+            "program materialization must invoke normative lowering verifier exactly once count="
+            + str(len(lowering_verifier_calls))
+        )
 
     test_source = TEST.read_text(encoding="utf-8")
-    if "test_all_existing_hosts_realize_one_execution_transformation" in test_source:
-        return fail("obsolete six-host IR V3 overclaim test still present")
+    obsolete_test_tokens = (
+        "test_all_existing_hosts_realize_one_execution_transformation",
+        "EVIDENCE_LEVEL_PHYSICAL_EXECUTION_V1",
+        "CrossHostEquivalenceV1(\n            evidence=",
+    )
+    present_obsolete = tuple(token for token in obsolete_test_tokens if token in test_source)
+    if present_obsolete:
+        return fail("obsolete R1 evidence model still present=" + ",".join(present_obsolete))
 
     test_required = (
         "test_program_ir_v3_materialization_accepts_verified_lowering",
@@ -251,12 +289,20 @@ def main() -> int:
         "test_existing_gate_evidence_ceilings_are_exact",
         "test_evidence_level_cannot_exceed_browser_or_wasi_gate_ceiling",
         "test_unity_webgl_cannot_issue_ir_v3_execution_evidence",
-        "test_cross_host_bytes_parity_accepts_python_javascript_csharp",
-        "test_cross_host_hash_parity_accepts_browser_and_wasi",
+        "test_host_execution_evidence_binds_observed_receipt_identity",
+        "test_host_execution_admission_accepts_exact_program_host_scenario_receipt",
+        "test_host_execution_admission_rejects_receipt_for_other_program",
+        "test_host_execution_admission_rejects_tampered_reference_receipt",
+        "test_host_execution_admission_rejects_scenario_mismatch",
+        "test_host_execution_admission_rejects_observed_receipt_mismatch",
+        "test_cross_host_bytes_parity_accepts_python_javascript_csharp_admissions",
+        "test_cross_host_hash_parity_accepts_browser_and_wasi_admissions",
         "test_cross_host_rejects_false_hash_to_bytes_promotion",
-        "test_cross_host_rejects_mixed_program_materializations",
-        "test_cross_host_rejects_mixed_scenarios",
-        "test_cross_host_rejects_duplicate_host_profile",
+        "test_cross_host_rejects_mixed_program_admissions",
+        "test_cross_host_rejects_mixed_scenario_admissions",
+        "test_cross_host_rejects_duplicate_host_profile_admissions",
+        "test_cross_host_requires_at_least_two_admissions",
+        "admissions=admissions",
     )
     missing_tests = tuple(token for token in test_required if token not in test_source)
     if missing_tests:
@@ -268,7 +314,9 @@ def main() -> int:
     print("R1_UNITY_WEBGL_IR_V3_ADMISSION=HOLD_LEGACY_GATE6A")
     print("R1_PYTHON_JS_CSHARP_EVIDENCE_CEILING=CANONICAL_RECEIPT_BYTES_PARITY")
     print("R1_BROWSER_WASM_WASI_EVIDENCE_CEILING=CANONICAL_RECEIPT_HASH_PARITY")
-    print("R1_CROSS_HOST_EQUIVALENCE_FLOOR=WEAKEST_MEMBER")
+    print("R1_HOST_EVIDENCE_PROGRAM_RECEIPT_ADMISSION=PASS")
+    print("R1_CROSS_HOST_EQUIVALENCE_INPUT=ADMITTED_EVIDENCE_ONLY")
+    print("R1_CROSS_HOST_EQUIVALENCE_FLOOR=WEAKEST_ADMITTED_MEMBER")
     print("R1_RUNTIME_CLOSURE_CONTENT_ADDRESSED=PASS")
     print("R1_R0_ARTIFACT_MACHINE_REALIZATION_REUSE=PASS")
     print("R1_CONFORMANCE_EVIDENCE_CLAIM_BOUND=PASS")
