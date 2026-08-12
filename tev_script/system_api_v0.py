@@ -129,6 +129,13 @@ from .semantic_grounded_discovery_v0 import (
     ExecutionGroundedDiscoveryEvaluationV0,
     evaluate_execution_grounded_discovery_cycle,
 )
+from .system_integration_receipt_v0 import (
+    SYSTEM_INTEGRATION_RECEIPT_SCHEMA_V0,
+    SystemIntegrationReceiptError,
+    SystemIntegrationReceiptV0,
+    build_system_integration_receipt_v0,
+    verify_system_integration_receipt_v0,
+)
 
 SYSTEM_API_SCHEMA_V0 = "TEV_SCRIPT_SYSTEM_API_V0"
 SYSTEM_API_PROFILE_V0 = "POST_V1_REALIZATION_SYSTEM_V0"
@@ -185,6 +192,10 @@ _SYSTEM_SURFACES_V0 = {
         "evaluate_execution_observation",
         "evaluate_execution_grounded_discovery_cycle",
     ),
+    "integration_binding": (
+        "SystemIntegrationReceiptV0",
+        "verify_system_integration_receipt_v0",
+    ),
 }
 
 SYSTEM_API_EXPORTS_V0 = tuple(
@@ -198,6 +209,11 @@ SYSTEM_API_EXPORTS_V0 = tuple(
             "SYSTEM_API_CONTRACT_HASH_V0",
             "SYSTEM_API_EXPORTS_V0",
             "system_api_contract_object_v0",
+            "SYSTEM_INTEGRATION_RECEIPT_SCHEMA_V0",
+            "SystemIntegrationReceiptError",
+            "SystemIntegrationReceiptV0",
+            "build_system_integration_receipt_v0",
+            "verify_system_integration_receipt_v0",
             "V1AnalysisBundle",
             "V1AutoCompilationBundle",
             "V1IrV2CompilationBundle",
