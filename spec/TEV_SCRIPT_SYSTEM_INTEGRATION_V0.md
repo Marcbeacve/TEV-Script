@@ -126,7 +126,27 @@ The loaders accept only ids already present in their registries. A consumer ther
 
 The causal registry does not make Semantic Calculus the authority of Causal Reaction or vice versa. Their one-directional bridge and independent authorities remain unchanged.
 
-## 6. Authority direction
+## 6. Complete physical package closure
+
+Complete transport is stronger than complete consumer API exposure.
+
+The source package closure is the exact set:
+
+```text
+all tev_script/**/*.py files in the admitted HEAD
+```
+
+The exact wheel MUST contain the same set of Python module paths and no additional `tev_script/*.py` paths. Internal V1 tooling such as signed-update, descriptor, LSP, CLI and implementation modules therefore travels with the distribution without becoming new public API.
+
+The artifact gate independently compares source paths with ZIP entries after building the wheel. The integration receipt MUST bind:
+
+```text
+wheel_complete_python_module_closure=PASS
+```
+
+Omission, missing modules, extra Python modules or degradation of this field invalidates the handoff.
+
+## 7. Authority direction
 
 The required dependency direction is:
 
@@ -147,7 +167,7 @@ TEV Script MUST NOT import consumer-specific packages, paths, policies, models, 
 
 External metatheories and provers remain optional evidence providers only. They are not runtime, build or semantic authorities.
 
-## 7. Fail-closed integration
+## 8. Fail-closed integration
 
 A consumer MUST preserve TEV Script outcomes without upgrading them:
 
@@ -160,7 +180,7 @@ NO_ADMISSIBLE_REALIZATION -> not implicit fallback
 
 A consumer MAY request additional evidence, search additional candidates or provide an explicit selection policy. It MUST NOT forge a successful receipt by replacing an unresolved result with a local heuristic.
 
-## 8. Governed realization resolution
+## 9. Governed realization resolution
 
 Automatic realization resolution is distinct from validating a caller-supplied decision.
 
@@ -192,7 +212,7 @@ Open admission/evidence obligations remain `PROOF_REQUIRED` and prevent a fabric
 
 `NO_ADMISSIBLE_REALIZATION` is a successful resolution of the question "is there an admitted realization?"; it is not permission to choose an unadmitted fallback.
 
-## 9. Backend neutrality
+## 10. Backend neutrality
 
 Backend/provider identity is realization metadata, not Transformation semantic identity.
 
@@ -205,7 +225,7 @@ if backend == wasm: semantics B
 
 unless the requested Transformation itself explicitly makes that distinction semantically observable.
 
-## 10. Exact artifact binding
+## 11. Exact artifact binding
 
 The system API hash does not replace artifact integrity. A deployment binds the exact installed wheel/archive SHA-256 independently.
 
@@ -236,7 +256,7 @@ verify_system_integration_receipt_v0(
 
 The verifier fails closed on schema/field-set changes, canonical receipt tampering, wrong API identity, wrong wheel SHA-256 or mismatched source identity.
 
-## 11. System canonical index
+## 12. System canonical index
 
 The historical `CANONICAL_INDEX.json` remains the language/release authority and is not reinterpreted by this post-V1 system profile.
 
@@ -252,9 +272,9 @@ with schema:
 TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0
 ```
 
-It binds the system facade, stable-public-API preservation, closed causal and semantic registries, receipt contract, realization/host/action-loop implementation surfaces and all integration gates while preserving `stable=false` for the post-V1 system profile.
+It binds the system facade, stable-public-API preservation, exact Python module closure, closed causal and semantic registries, receipt contract, realization/host/action-loop implementation surfaces and all integration gates while preserving `stable=false` for the post-V1 system profile.
 
-## 12. Stable V1 root remains unchanged
+## 13. Stable V1 root remains unchanged
 
 This integration profile is intentionally not injected into the historical unversioned package root. Consumers opt into:
 
@@ -264,15 +284,15 @@ import tev_script.system_api_v0
 
 `tev_script/__init__.py`, language semantics, release metadata and historical V1 identity are not rewritten by this integration profile.
 
-## 13. Distribution rule
+## 14. Distribution rule
 
-The in-tree wheel backend packages all Python modules under `tev_script/`. Therefore the historical public API implementation, system facade, causal and semantic subsystems, receipt verifier and implementation modules are transported together by a wheel built from the same source identity.
+The in-tree wheel backend packages all Python modules under `tev_script/`. Therefore the historical public API implementation, system facade, causal and semantic subsystems, receipt verifier and internal implementation modules are transported together by a wheel built from the same source identity.
 
 A production consumer MUST pin the exact wheel bytes. Distribution/package version remains insufficient as a post-V1 system identity by itself; `SYSTEM_API_CONTRACT_HASH_V0` plus exact artifact SHA-256 and the integration receipt close that ambiguity.
 
 A later public post-V1 release may introduce a distinct distribution version/profile, but that release operation is outside this V0 integration contract.
 
-## 14. Exact artifact admission
+## 15. Exact artifact admission
 
 `RUN_TEV_SCRIPT_SYSTEM_INTEGRATION_V0.py` is the exact-artifact integration gate. It does not publish, merge, tag, promote, mutate `Current` or modify a consumer.
 
@@ -286,8 +306,10 @@ runs the system focal
   -> proves source semantic registry is non-empty and closed
   -> builds two independent deterministic wheels
   -> requires byte identity between both builds
+  -> compares exact source Python module paths to exact wheel Python module paths
   -> installs exact wheel into a clean venv with --no-deps
   -> imports complete system API from installed wheel
+  -> proves installed stable-public object identity
   -> loads every registered Causal Reaction V1 module
   -> loads every registered semantic subsystem
   -> requires installed/source registry cardinality identity
@@ -299,7 +321,7 @@ runs the system focal
 
 The receipt is the final admission artifact. A wheel without its matching admitted receipt is not a complete system handoff.
 
-## 15. Readiness gate
+## 16. Readiness gate
 
 A candidate is ready for external-system integration only when focal and exact-artifact gates prove:
 
@@ -316,8 +338,10 @@ SYSTEM_ZERO_RUNTIME_DEPENDENCIES=PASS
 SYSTEM_CAUSAL_REACTION=PASS
 SYSTEM_CAUSAL_SEMANTIC_BRIDGE=PASS
 SYSTEM_WHEEL_DETERMINISTIC_BYTES=PASS
+SYSTEM_WHEEL_COMPLETE_PYTHON_MODULE_CLOSURE=PASS
 SYSTEM_INSTALLED_WHEEL_IMPORT=PASS
 SYSTEM_INSTALLED_API_IDENTITY=PASS
+SYSTEM_INSTALLED_STABLE_PUBLIC_API=PASS
 SYSTEM_INSTALLED_COMPLETE_CAUSAL_REGISTRY=PASS
 SYSTEM_INSTALLED_COMPLETE_SEMANTIC_REGISTRY=PASS
 SYSTEM_INSTALLED_RECEIPT_VERIFIER=PASS
