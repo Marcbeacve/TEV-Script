@@ -26,7 +26,7 @@
       "path": "formal/smt/tev_script_axioms_theorems_v0.smt2",
       "expected_outcome": "unsat",
       "negative_control": false,
-      "expected_checks": 4
+      "expected_checks": 5
     },
     {
       "id": "Z3_NONCOLLAPSE_MODEL",
@@ -54,7 +54,8 @@
     "Four_value_evidence": "tev_script/semantic_paraconsistent_v0.py:FourValueV0",
     "Selection": "tev_script/semantic_realization_selection_v0.py:evaluate_realization_selection",
     "Resolution": "tev_script/semantic_realization_resolution_v0.py:resolve_realization_selection",
-    "Proof_boundary": "tev_script/semantic_proof_boundary_v0.py:ProofBoundaryWitnessV0"
+    "Proof_boundary": "tev_script/semantic_proof_boundary_v0.py:ProofBoundaryWitnessV0",
+    "Resolution_semantics": "NO_ADMISSIBLE_REALIZATION only after closed rejection; open admission -> INDETERMINATE"
   },
   "repotalk": {
     "tool": "repotalk_formal_verify",

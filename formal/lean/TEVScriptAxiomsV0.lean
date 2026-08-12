@@ -20,6 +20,7 @@ structure Theory (Field : Type u) (Transformation : Type v) where
   discover : Transformation
   zeroResidual : Field → Field → Prop
 
+  candidateOf : Field → Field → Prop
   admitted : Field → Field → Prop
   selected : Field → Field → Prop
   proofRequired : Field → Field → Prop
@@ -63,6 +64,10 @@ structure Theory (Field : Type u) (Transformation : Type v) where
       zeroResidual theory theory' →
       fieldEq theory theory'
 
+  selected_candidate :
+    ∀ {problem candidate},
+      selected problem candidate → candidateOf problem candidate
+
   selected_admitted :
     ∀ {problem candidate},
       selected problem candidate → admitted problem candidate
@@ -77,7 +82,14 @@ structure Theory (Field : Type u) (Transformation : Type v) where
 
   noAdmissible_iff :
     ∀ {problem},
-      noAdmissible problem ↔ ∀ candidate, ¬ admitted problem candidate
+      noAdmissible problem ↔
+        ∀ candidate, candidateOf problem candidate → rejected problem candidate
+
+  open_admission_indeterminate :
+    ∀ {problem},
+      (∃ candidate,
+        candidateOf problem candidate ∧ proofRequired problem candidate) →
+      indeterminate problem
 
   indeterminate_no_selection :
     ∀ {problem},
@@ -140,9 +152,20 @@ theorem noAdmissible_no_selection
     (hnone : T.noAdmissible problem) :
     ¬ T.selected problem candidate := by
   intro hselected
-  have hadmitted := T.selected_admitted hselected
-  have hnoneAdmitted := (T.noAdmissible_iff.mp hnone) candidate
-  exact hnoneAdmitted hadmitted
+  have hcandidate := T.selected_candidate hselected
+  have hrejected := (T.noAdmissible_iff.mp hnone) candidate hcandidate
+  exact (T.selected_not_rejected hselected) hrejected
+
+theorem open_admission_no_selection
+    {Field : Type u} {Transformation : Type v}
+    (T : Theory Field Transformation)
+    {problem openCandidate candidate : Field}
+    (hcandidate : T.candidateOf problem openCandidate)
+    (hopen : T.proofRequired problem openCandidate) :
+    ¬ T.selected problem candidate := by
+  have hindeterminate :=
+    T.open_admission_indeterminate ⟨openCandidate, hcandidate, hopen⟩
+  exact T.indeterminate_no_selection hindeterminate candidate
 
 theorem tied_distinct_best_no_selection
     {Field : Type u} {Transformation : Type v}
@@ -164,10 +187,12 @@ theorem selected_is_fail_closed
     (T : Theory Field Transformation)
     {problem candidate : Field}
     (hselected : T.selected problem candidate) :
-    T.admitted problem candidate ∧
+    T.candidateOf problem candidate ∧
+      T.admitted problem candidate ∧
       ¬ T.proofRequired problem candidate ∧
       ¬ T.rejected problem candidate := by
   exact ⟨
+    T.selected_candidate hselected,
     T.selected_admitted hselected,
     T.selected_not_proofRequired hselected,
     T.selected_not_rejected hselected

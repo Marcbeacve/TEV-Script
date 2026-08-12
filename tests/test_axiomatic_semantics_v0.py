@@ -84,6 +84,21 @@ def test_selection_fail_closed_truth_table() -> None:
             assert not rejected
 
 
+def test_no_admissible_is_closed_not_merely_no_pass() -> None:
+    # One proof-required candidate means admission is still open.
+    candidate_of = True
+    admitted = False
+    proof_required = True
+    rejected = False
+
+    no_current_pass = not admitted
+    closed_no_admissible = (not candidate_of) or rejected
+    admission_open = candidate_of and proof_required
+
+    assert no_current_pass
+    assert admission_open
+    assert not closed_no_admissible
+
 def test_metadata_noncollapse_model() -> None:
     a = {"semantic": 0, "backend": 0, "cost": 0}
     b = {"semantic": 0, "backend": 1, "cost": 1}

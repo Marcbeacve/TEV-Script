@@ -97,6 +97,8 @@ def validate(root: Path) -> tuple[str, ...]:
                 failures.append(f"manifest:outcome:{key}")
             if bool(row.get("negative_control", False)) is not negative:
                 failures.append(f"manifest:negative_control:{key}")
+            if key == "Z3_THEOREMS" and row.get("expected_checks") != 5:
+                failures.append("manifest:theorem_check_count")
 
         promotion = manifest.get("promotion")
         if not isinstance(promotion, dict) or promotion.get(
@@ -115,6 +117,7 @@ def validate(root: Path) -> tuple[str, ...]:
             "structure Theory",
             "governed_compose_associative",
             "noAdmissible_no_selection",
+            "open_admission_no_selection",
             "tied_distinct_best_no_selection",
             "fourValue_negate_involutive",
             "metadata_noncollapse_same_semantics",
@@ -123,7 +126,7 @@ def validate(root: Path) -> tuple[str, ...]:
                 failures.append(f"lean:missing:{token}")
 
     smt_expectations = {
-        "formal/smt/tev_script_axioms_theorems_v0.smt2": 4,
+        "formal/smt/tev_script_axioms_theorems_v0.smt2": 5,
         "formal/smt/tev_script_axioms_model_v0.smt2": 1,
         "formal/smt/tev_script_axioms_negative_control_v0.smt2": 1,
     }

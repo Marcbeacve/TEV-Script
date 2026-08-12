@@ -135,7 +135,7 @@ global inverses.
 
 For a selection problem Field `p` and candidate Field `c`:
 
-`Selected(p,c) → Admitted(p,c)`.
+`Selected(p,c) → CandidateOf(p,c) ∧ Admitted(p,c)`.
 
 Also:
 
@@ -146,7 +146,16 @@ Unknown evidence or unresolved proof cannot be upgraded to a selection.
 
 ### A7 — Honest resolution
 
-`NoAdmissible(p) ↔ ∀c. ¬Admitted(p,c)`.
+`NO_ADMISSIBLE_REALIZATION` is a **closed negative result**, not merely the absence
+of a current `PASS`.
+
+`NoAdmissible(p) ↔ ∀c. CandidateOf(p,c) → Rejected(p,c)`.
+
+An open admission prevents that conclusion:
+
+`(∃c. CandidateOf(p,c) ∧ ProofRequired(p,c)) → Indeterminate(p)`.
+
+And every indeterminate resolution has no selected candidate:
 
 `Indeterminate(p) → ∀c. ¬Selected(p,c)`.
 
@@ -235,23 +244,24 @@ The machine-checkable V0 campaign must establish at least:
 - **T1**: Transformation equivalence is an equivalence relation.
 - **T2**: governed relational composition is conditionally associative.
 - **T3**: `Selected → Admitted`.
-- **T4**: `NoAdmissible → no Selected`.
-- **T5**: distinct tied best candidates force `Indeterminate → no Selected`.
-- **T6**: selected candidates cannot be `PROOF_REQUIRED` or `REJECT`.
-- **T7**: zero-residual discovery/realization cycles are semantically closed.
-- **T8**: four-valued negation is involutive; conjunction/disjunction are associative
+- **T4**: closed `NoAdmissible → no Selected`.
+- **T5**: an open (`PROOF_REQUIRED`) admission forces `Indeterminate → no Selected`.
+- **T6**: distinct tied best candidates force `Indeterminate → no Selected`.
+- **T7**: selected candidates cannot be `PROOF_REQUIRED` or `REJECT`.
+- **T8**: zero-residual discovery/realization cycles are semantically closed.
+- **T9**: four-valued negation is involutive; conjunction/disjunction are associative
   and commutative; De Morgan laws hold.
-- **T9**: a non-trivial finite model exists.
-- **T10**: semantic identity does not collapse to backend or cost metadata.
-- **T11**: an intentionally weakened selection theory admits the forbidden state;
+- **T10**: a non-trivial finite model exists.
+- **T11**: semantic identity does not collapse to backend or cost metadata.
+- **T12**: an intentionally weakened selection theory admits the forbidden state;
   this is the Z3 negative control proving that the safety axiom is doing work.
-- **T12**: implementation correspondence finds the expected Field, rule/application,
+- **T13**: implementation correspondence finds the expected Field, rule/application,
   residual, paraconsistent, selection/resolution, proof-boundary and composition
   surfaces.
-- **T13**: Lean source typechecks with no `sorry`/`admit`.
-- **T14**: all Z3 theorem queries close as `unsat`; the model query is `sat`; the
+- **T14**: Lean source typechecks with no `sorry`/`admit`.
+- **T15**: all Z3 theorem queries close as `unsat`; the model query is `sat`; the
   negative control rejects its intentionally false expected outcome.
-- **T15**: TEVProver accepts only proof objects whose supported finite goal kinds and
+- **T16**: TEVProver accepts only proof objects whose supported finite goal kinds and
   exact scope bindings match the obligation; unsupported goals remain blocked.
 
 ## 6. Formal engine allocation
