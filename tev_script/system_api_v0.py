@@ -142,6 +142,13 @@ SYSTEM_API_PROFILE_V0 = "POST_V1_REALIZATION_SYSTEM_V0"
 SYSTEM_API_AUTHORITY_V0 = "TEV_SCRIPT_STANDALONE"
 SYSTEM_CANONICAL_INDEX_SCHEMA_V0 = "TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0"
 
+SYSTEM_CAUSAL_MODULE_PATHS_V0 = {
+    "causal_analysis_v1": "tev_script.causal_analysis_v1",
+    "causal_model_v1": "tev_script.causal_model_v1",
+    "causal_refinement_v1": "tev_script.causal_refinement_v1",
+    "causal_runtime_v1": "tev_script.causal_runtime_v1",
+}
+
 SYSTEM_SUBSYSTEM_MODULE_PATHS_V0 = {
     "semantic_abstraction_v0": "tev_script.semantic_abstraction_v0",
     "semantic_activation_v0": "tev_script.semantic_activation_v0",
@@ -203,13 +210,21 @@ SYSTEM_SUBSYSTEM_MODULE_PATHS_V0 = {
 }
 
 
-def load_system_subsystem_v0(subsystem_id: str):
-    path = SYSTEM_SUBSYSTEM_MODULE_PATHS_V0.get(str(subsystem_id))
+def _load_registered_module_v0(registry: dict[str, str], subsystem_id: str):
+    path = registry.get(str(subsystem_id))
     if path is None:
         raise KeyError("unknown TEV Script system subsystem: " + str(subsystem_id))
     from importlib import import_module
 
     return import_module(path)
+
+
+def load_system_causal_subsystem_v0(subsystem_id: str):
+    return _load_registered_module_v0(SYSTEM_CAUSAL_MODULE_PATHS_V0, subsystem_id)
+
+
+def load_system_subsystem_v0(subsystem_id: str):
+    return _load_registered_module_v0(SYSTEM_SUBSYSTEM_MODULE_PATHS_V0, subsystem_id)
 
 
 _SYSTEM_SURFACES_V0 = {
@@ -234,6 +249,10 @@ _SYSTEM_SURFACES_V0 = {
         "run_ir_v3_conformance",
         "ScriptRuntimeV3",
         "RuntimeCheckpointV2",
+    ),
+    "causal_reaction_registry": (
+        "SYSTEM_CAUSAL_MODULE_PATHS_V0",
+        "load_system_causal_subsystem_v0",
     ),
     "semantic_calculus": (
         "SemanticFieldV0",
@@ -282,7 +301,9 @@ SYSTEM_API_EXPORTS_V0 = tuple(
             "SYSTEM_CANONICAL_INDEX_SCHEMA_V0",
             "SYSTEM_API_CONTRACT_HASH_V0",
             "SYSTEM_API_EXPORTS_V0",
+            "SYSTEM_CAUSAL_MODULE_PATHS_V0",
             "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0",
+            "load_system_causal_subsystem_v0",
             "load_system_subsystem_v0",
             "system_api_contract_object_v0",
             "SYSTEM_INTEGRATION_RECEIPT_SCHEMA_V0",
@@ -411,13 +432,16 @@ def system_api_contract_object_v0() -> dict[str, object]:
         "host_execution_transformation_hash": EXECUTE_PROGRAM_IR_V3_TRANSFORMATION_HASH_V1,
         "host_interface_hash": PROGRAM_IR_V3_HOST_INTERFACE_HASH_V1,
         "surfaces": {key: list(_SYSTEM_SURFACES_V0[key]) for key in sorted(_SYSTEM_SURFACES_V0)},
+        "causal_modules": {key: SYSTEM_CAUSAL_MODULE_PATHS_V0[key] for key in sorted(SYSTEM_CAUSAL_MODULE_PATHS_V0)},
         "subsystem_modules": {key: SYSTEM_SUBSYSTEM_MODULE_PATHS_V0[key] for key in sorted(SYSTEM_SUBSYSTEM_MODULE_PATHS_V0)},
         "exports": list(SYSTEM_API_EXPORTS_V0),
         "consumer_requirements": [
             "bind_exact_system_api_contract_hash",
             "bind_exact_distribution_artifact_sha256",
+            "verify_system_integration_receipt_before_use",
             "treat_tev_script_as_semantic_authority_for_tev_script",
             "do_not_upgrade_proof_required_or_indeterminate_to_pass",
+            "do_not_treat_no_admissible_realization_as_selection",
             "do_not_use_backend_identity_as_semantic_identity",
         ],
     }
