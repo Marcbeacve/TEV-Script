@@ -45,6 +45,7 @@ class SystemIntegrationReceiptV0Tests(unittest.TestCase):
             expected_source_tree="b" * 40,
         )
         self.assertEqual(verified.receipt_hash, receipt.receipt_hash)
+        self.assertEqual(receipt.to_object()["verification"]["stable_public_api_preserved"], "PASS")
 
     def test_wrong_distribution_artifact_is_rejected(self):
         receipt = self.build()
@@ -95,6 +96,26 @@ class SystemIntegrationReceiptV0Tests(unittest.TestCase):
         document = deepcopy(self.build().to_object())
         verification = dict(document["verification"])
         verification["certify_full"] = "PASS"
+        document["verification"] = verification
+        body = {key: value for key, value in document.items() if key != "receipt_hash"}
+        document["receipt_hash"] = canonical_hash(body)
+        with self.assertRaises(SystemIntegrationReceiptError):
+            SystemIntegrationReceiptV0(document)
+
+    def test_stable_public_api_preservation_cannot_be_downgraded(self):
+        document = deepcopy(self.build().to_object())
+        verification = dict(document["verification"])
+        verification["stable_public_api_preserved"] = "PROOF_REQUIRED"
+        document["verification"] = verification
+        body = {key: value for key, value in document.items() if key != "receipt_hash"}
+        document["receipt_hash"] = canonical_hash(body)
+        with self.assertRaises(SystemIntegrationReceiptError):
+            SystemIntegrationReceiptV0(document)
+
+    def test_stable_public_api_preservation_field_is_mandatory(self):
+        document = deepcopy(self.build().to_object())
+        verification = dict(document["verification"])
+        verification.pop("stable_public_api_preserved")
         document["verification"] = verification
         body = {key: value for key, value in document.items() if key != "receipt_hash"}
         document["receipt_hash"] = canonical_hash(body)
