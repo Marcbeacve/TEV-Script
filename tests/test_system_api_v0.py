@@ -80,14 +80,8 @@ class SystemApiV0Tests(unittest.TestCase):
         for subsystem_id, module_path in system_api.SYSTEM_SUBSYSTEM_MODULE_PATHS_V0.items():
             self.assertEqual(module_path, "tev_script." + subsystem_id)
 
-    def test_semantic_subsystem_loader_is_closed_and_can_load_non_facade_layers(self):
-        for subsystem_id in (
-            "semantic_cost_model_v0",
-            "semantic_dispatch_v0",
-            "semantic_receipt_validity_v0",
-            "semantic_resource_calibration_v0",
-            "semantic_realization_resolution_v0",
-        ):
+    def test_semantic_subsystem_loader_is_closed_and_loads_every_registered_layer(self):
+        for subsystem_id in sorted(system_api.SYSTEM_SUBSYSTEM_MODULE_PATHS_V0):
             loaded = system_api.load_system_subsystem_v0(subsystem_id)
             self.assertEqual(loaded.__name__, system_api.SYSTEM_SUBSYSTEM_MODULE_PATHS_V0[subsystem_id])
         with self.assertRaises(KeyError):
