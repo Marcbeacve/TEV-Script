@@ -275,6 +275,7 @@ def main() -> int:
             )
             verify_system_integration_receipt_v0(
                 receipt_record.to_object(),
+                expected_receipt_hash=receipt_record.receipt_hash,
                 expected_language_version=V1_LANGUAGE_VERSION,
                 expected_system_api_contract_hash=SYSTEM_API_CONTRACT_HASH_V0,
                 expected_distribution_artifact_sha256=wheel_a_sha,
@@ -289,10 +290,11 @@ def main() -> int:
                 "import json,sys; import tev_script.system_api_v0 as api; "
                 "doc=json.load(open(sys.argv[1],encoding='utf-8')); "
                 "r=api.verify_system_integration_receipt_v0(doc,"
+                "expected_receipt_hash=sys.argv[2],"
                 "expected_language_version=api.V1_LANGUAGE_VERSION,"
                 "expected_system_api_contract_hash=api.SYSTEM_API_CONTRACT_HASH_V0,"
-                "expected_distribution_artifact_sha256=sys.argv[2],"
-                "expected_source_head=sys.argv[3],expected_source_tree=sys.argv[4]); "
+                "expected_distribution_artifact_sha256=sys.argv[3],"
+                "expected_source_head=sys.argv[4],expected_source_tree=sys.argv[5]); "
                 "print(r.receipt_hash)"
             )
             receipt_smoke = run(
@@ -302,6 +304,7 @@ def main() -> int:
                     "-c",
                     receipt_smoke_code,
                     str(staged_receipt),
+                    receipt_record.receipt_hash,
                     wheel_a_sha,
                     head,
                     tree,
@@ -314,6 +317,7 @@ def main() -> int:
             if receipt_smoke.stdout.strip().splitlines()[-1] != receipt_record.receipt_hash:
                 raise RuntimeError("installed receipt verifier identity mismatch")
             print("SYSTEM_INSTALLED_RECEIPT_VERIFIER=PASS")
+            print("SYSTEM_PINNED_RECEIPT_IDENTITY=PASS")
 
             target_wheel = out_dir / wheel_a.name
             shutil.copyfile(wheel_a, target_wheel)
