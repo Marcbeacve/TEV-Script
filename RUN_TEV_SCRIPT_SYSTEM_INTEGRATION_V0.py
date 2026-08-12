@@ -74,10 +74,6 @@ def venv_python(directory: Path) -> Path:
     return directory / "bin" / "python"
 
 
-def canonical_json_bytes(value: object) -> bytes:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build and verify an exact TEV Script complete-system integration artifact.")
     parser.add_argument("--artifact-out-dir", required=True)
@@ -108,6 +104,7 @@ def main() -> int:
             raise RuntimeError("system focal gate failed")
         print("SYSTEM_SOURCE_FOCAL=PASS")
 
+        from tev_script.canonical import canonical_hash, canonical_json  # noqa: PLC0415
         from tev_script.system_api_v0 import (  # noqa: PLC0415
             SYSTEM_API_CONTRACT_HASH_V0,
             SYSTEM_CANONICAL_INDEX_SCHEMA_V0,
@@ -122,7 +119,7 @@ def main() -> int:
         if system_index.get("language_version") != V1_LANGUAGE_VERSION:
             raise RuntimeError("system canonical index language version mismatch")
 
-        if hashlib.sha256(canonical_json_bytes(system_api_contract_object_v0())).hexdigest() != SYSTEM_API_CONTRACT_HASH_V0:
+        if canonical_hash(system_api_contract_object_v0()) != SYSTEM_API_CONTRACT_HASH_V0:
             raise RuntimeError("system api contract hash mismatch")
         print("SYSTEM_API_CONTRACT_HASH=PASS")
 
@@ -228,15 +225,17 @@ def main() -> int:
                 "public_release": "DEFERRED",
             },
         }
-        receipt_hash = hashlib.sha256(canonical_json_bytes(receipt_body)).hexdigest()
+        receipt_hash = canonical_hash(receipt_body)
         receipt = {**receipt_body, "receipt_hash": receipt_hash}
         receipt_path = out_dir / "TEV_SCRIPT_SYSTEM_INTEGRATION_V0.receipt.json"
-        receipt_path.write_bytes(canonical_json_bytes(receipt) + b"\n")
+        receipt_path.write_bytes(canonical_json(receipt).encode("utf-8") + b"\n")
+        receipt_file_sha = sha256_file(receipt_path)
 
         print("SYSTEM_DISTRIBUTION_WHEEL=" + target_wheel.name)
         print("SYSTEM_DISTRIBUTION_WHEEL_SHA256=" + target_wheel_sha)
         print("SYSTEM_API_CONTRACT_HASH_V0=" + SYSTEM_API_CONTRACT_HASH_V0)
         print("SYSTEM_INTEGRATION_RECEIPT_SHA256=" + receipt_hash)
+        print("SYSTEM_INTEGRATION_RECEIPT_FILE_SHA256=" + receipt_file_sha)
         print("CERTIFY_FULL=DEFERRED_BY_DESIGN")
         print("UNITY_VALIDATION=DEFERRED_BY_PRIORITY")
         print("TEV_SCRIPT_SYSTEM_INTEGRATION_ARTIFACT=PASS")
