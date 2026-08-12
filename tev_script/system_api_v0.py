@@ -553,6 +553,7 @@ def system_api_contract_object_v0() -> dict[str, object]:
         "consumer_requirements": [
             "bind_exact_system_api_contract_hash",
             "bind_exact_distribution_artifact_sha256",
+            "bind_exact_system_integration_receipt_hash",
             "verify_system_integration_receipt_before_use",
             "preserve_stable_public_api_surface",
             "treat_tev_script_as_semantic_authority_for_tev_script",
