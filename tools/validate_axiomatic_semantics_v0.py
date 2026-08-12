@@ -13,7 +13,10 @@ _REQUIRED = {
     "formal/smt/tev_script_axioms_theorems_v0.smt2",
     "formal/smt/tev_script_axioms_model_v0.smt2",
     "formal/smt/tev_script_axioms_negative_control_v0.smt2",
+    "formal/repotalk/TEVScriptAxiomsV0.campaign.json",
     "formal/tevprover/TEVScriptAxiomsV0.plan.json",
+    "formal/tevprover/TEVScriptFourValueV0.proof.json",
+    "tools/validate_axiomatic_system_correspondence_v0.py",
 }
 
 _CORRESPONDENCE = {
@@ -100,11 +103,31 @@ def validate(root: Path) -> tuple[str, ...]:
             if key == "Z3_THEOREMS" and row.get("expected_checks") != 5:
                 failures.append("manifest:theorem_check_count")
 
+        repotalk = manifest.get("repotalk")
+        if not isinstance(repotalk, dict):
+            failures.append("manifest:repotalk")
+        else:
+            if repotalk.get("status") != "PREPARED_NOT_EXECUTED":
+                failures.append("manifest:repotalk_status")
+            if repotalk.get("campaign_path") != "formal/repotalk/TEVScriptAxiomsV0.campaign.json":
+                failures.append("manifest:repotalk_campaign")
+
+        tevprover = manifest.get("tevprover")
+        if not isinstance(tevprover, dict):
+            failures.append("manifest:tevprover")
+        else:
+            if tevprover.get("status") != "MATERIALIZED_NOT_EXECUTED":
+                failures.append("manifest:tevprover_status")
+            if tevprover.get("logical_selection_countermodel_engine") != "z3":
+                failures.append("manifest:selection_countermodel_scope")
+
         promotion = manifest.get("promotion")
         if not isinstance(promotion, dict) or promotion.get(
             "bind_to_system_canonical_index_before_formal_pass"
         ) is not False:
             failures.append("manifest:premature_authority_binding")
+        elif promotion.get("requires_tevprover_structural_replay") is not True:
+            failures.append("manifest:tevprover_replay_not_required")
 
     lean = root / "formal/lean/TEVScriptAxiomsV0.lean"
     if lean.is_file():
@@ -157,16 +180,30 @@ def validate(root: Path) -> tuple[str, ...]:
             plan = {}
         if plan.get("schema") != "TEV_SCRIPT_TEVPROVER_AXIOM_PLAN_V0":
             failures.append("tevprover:schema")
-        if plan.get("status") != "PREPARED_NOT_EXECUTED":
-            failures.append("tevprover:premature_execution_claim")
+        if plan.get("status") != "MATERIALIZED_NOT_EXECUTED":
+            failures.append("tevprover:execution_state")
         if plan.get("semantic_authority") is not False:
             failures.append("tevprover:authority_inversion")
+        obligations = {
+            row.get("id"): row
+            for row in plan.get("obligations", [])
+            if isinstance(row, dict)
+        }
+        tvp0 = obligations.get("TVP0_FOUR_VALUE_FINITE_CARRIER")
+        if not isinstance(tvp0, dict) or tvp0.get("status") != "MATERIALIZED_NOT_EXECUTED":
+            failures.append("tevprover:four_value_not_materialized")
+        tvp1 = obligations.get("TVP1_SELECTION_FINITE_COUNTERMODEL")
+        if not isinstance(tvp1, dict) or tvp1.get("status") != "DEFERRED_TO_Z3_NEGATIVE_CONTROL":
+            failures.append("tevprover:selection_scope_overclaim")
 
-    historical = root / "CANONICAL_INDEX.json"
-    if historical.is_file():
-        text = historical.read_text(encoding="utf-8")
-        if "TEV_SCRIPT_AXIOMATIC_SEMANTICS_V0" in text:
-            failures.append("historical_v1:axiom_candidate_leaked")
+    for index_path in (
+        root / "CANONICAL_INDEX.json",
+        root / "spec/TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0.json",
+    ):
+        if index_path.is_file():
+            text = index_path.read_text(encoding="utf-8")
+            if "TEV_SCRIPT_AXIOMATIC_SEMANTICS_V0" in text:
+                failures.append(f"authority:axiom_candidate_leaked:{index_path.name}")
 
     return tuple(sorted(set(failures)))
 

@@ -55,27 +55,35 @@
     "Selection": "tev_script/semantic_realization_selection_v0.py:evaluate_realization_selection",
     "Resolution": "tev_script/semantic_realization_resolution_v0.py:resolve_realization_selection",
     "Proof_boundary": "tev_script/semantic_proof_boundary_v0.py:ProofBoundaryWitnessV0",
-    "Resolution_semantics": "NO_ADMISSIBLE_REALIZATION only after closed rejection; open admission -> INDETERMINATE"
+    "Resolution_semantics": "NO_ADMISSIBLE_REALIZATION only after closed rejection; open admission -> INDETERMINATE",
+    "Constitutive_C0_C8": "tools/validate_axiomatic_system_correspondence_v0.py"
   },
   "repotalk": {
     "tool": "repotalk_formal_verify",
+    "campaign_path": "formal/repotalk/TEVScriptAxiomsV0.campaign.json",
     "requires_exact_head": true,
     "fixed_argv_only": true,
-    "workspace_snapshot_required": true
+    "workspace_snapshot_required": true,
+    "status": "PREPARED_NOT_EXECUTED"
   },
   "tevprover": {
     "role": "EXTERNAL_FINITE_PROOF_VERIFIER",
     "semantic_authority": false,
     "installed_port": "tevprover_cuofc.installed_proof_port:tevprover_verify_installed",
     "allowed_strategy": "ONLY_SUPPORTED_GOAL_KINDS_WITH_EXACT_SCOPE_BINDING",
-    "status": "PREPARED_NOT_EXECUTED",
-    "plan_path": "formal/tevprover/TEVScriptAxiomsV0.plan.json"
+    "status": "MATERIALIZED_NOT_EXECUTED",
+    "plan_path": "formal/tevprover/TEVScriptAxiomsV0.plan.json",
+    "finite_four_value_proof_path": "formal/tevprover/TEVScriptFourValueV0.proof.json",
+    "finite_four_value_proof_sha256": "bccfa155218e5d068a0301b4b5728d985fb3bc968c587b9d9302dbf324a686b3",
+    "logical_selection_countermodel_engine": "z3"
   },
   "promotion": {
     "bind_to_system_canonical_index_before_formal_pass": false,
     "rewrite_historical_v1_identity": false,
     "requires_repotalk_lean": true,
     "requires_repotalk_z3": true,
-    "requires_static_correspondence": true
+    "requires_tevprover_structural_replay": true,
+    "requires_static_correspondence": true,
+    "requires_constitutive_c0_c8_correspondence": true
   }
 }
