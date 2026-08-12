@@ -9,7 +9,11 @@
     "implementation": "tev_script/system_api_v0.py",
     "schema": "TEV_SCRIPT_SYSTEM_API_V0",
     "contract_hash_symbol": "SYSTEM_API_CONTRACT_HASH_V0",
-    "root_api_redefined": false
+    "root_api_redefined": false,
+    "stable_public_api_source": "tev_script.__all__",
+    "stable_public_api_surface": "stable_public_api",
+    "stable_public_api_superset_required": true,
+    "stable_public_api_object_identity_preserved": true
   },
   "complete_causal_registry": {
     "source_glob": "tev_script/causal_*_v1.py",
@@ -74,6 +78,7 @@
     "system_api_contract_hash_required": true,
     "distribution_artifact_sha256_required": true,
     "integration_receipt_verification_required": true,
+    "stable_public_api_preservation_required": true,
     "package_version_alone_is_identity": false,
     "consumer_is_semantic_authority": false,
     "proof_required_may_be_upgraded": false,
