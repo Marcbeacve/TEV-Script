@@ -45,7 +45,9 @@ class SystemIntegrationReceiptV0Tests(unittest.TestCase):
             expected_source_tree="b" * 40,
         )
         self.assertEqual(verified.receipt_hash, receipt.receipt_hash)
-        self.assertEqual(receipt.to_object()["verification"]["stable_public_api_preserved"], "PASS")
+        verification = receipt.to_object()["verification"]
+        self.assertEqual(verification["stable_public_api_preserved"], "PASS")
+        self.assertEqual(verification["wheel_complete_python_module_closure"], "PASS")
 
     def test_wrong_distribution_artifact_is_rejected(self):
         receipt = self.build()
@@ -116,6 +118,26 @@ class SystemIntegrationReceiptV0Tests(unittest.TestCase):
         document = deepcopy(self.build().to_object())
         verification = dict(document["verification"])
         verification.pop("stable_public_api_preserved")
+        document["verification"] = verification
+        body = {key: value for key, value in document.items() if key != "receipt_hash"}
+        document["receipt_hash"] = canonical_hash(body)
+        with self.assertRaises(SystemIntegrationReceiptError):
+            SystemIntegrationReceiptV0(document)
+
+    def test_wheel_module_closure_cannot_be_downgraded(self):
+        document = deepcopy(self.build().to_object())
+        verification = dict(document["verification"])
+        verification["wheel_complete_python_module_closure"] = "PROOF_REQUIRED"
+        document["verification"] = verification
+        body = {key: value for key, value in document.items() if key != "receipt_hash"}
+        document["receipt_hash"] = canonical_hash(body)
+        with self.assertRaises(SystemIntegrationReceiptError):
+            SystemIntegrationReceiptV0(document)
+
+    def test_wheel_module_closure_field_is_mandatory(self):
+        document = deepcopy(self.build().to_object())
+        verification = dict(document["verification"])
+        verification.pop("wheel_complete_python_module_closure")
         document["verification"] = verification
         body = {key: value for key, value in document.items() if key != "receipt_hash"}
         document["receipt_hash"] = canonical_hash(body)
