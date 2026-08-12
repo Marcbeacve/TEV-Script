@@ -57,7 +57,19 @@ activation
 execution observation
 grounded discovery after execution
 integration receipt construction and verification
+complete post-V1 semantic subsystem registry
 ```
+
+The direct high-level facade is not the entire semantic module set. Completeness is closed by:
+
+```text
+SYSTEM_SUBSYSTEM_MODULE_PATHS_V0
+load_system_subsystem_v0(subsystem_id)
+```
+
+`SYSTEM_SUBSYSTEM_MODULE_PATHS_V0` MUST contain exactly every `tev_script/semantic_*.py` module in the admitted source tree. The registry is part of `SYSTEM_API_CONTRACT_HASH_V0`; adding, deleting or renaming a semantic subsystem without updating the registry makes the system gate fail closed.
+
+The loader accepts only ids already present in that registry. A consumer therefore does not invent package paths to reach cost models, placement, dispatch, delivery, resource calibration, receipt validity, realization composition or other post-V1 semantic layers.
 
 ## 4. Authority direction
 
@@ -147,7 +159,7 @@ with schema:
 TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0
 ```
 
-It binds the system facade, receipt contract, realization/host/action-loop implementation surfaces and all system integration gates while preserving `stable=false` for the post-V1 system profile.
+It binds the system facade, the closed semantic registry, receipt contract, realization/host/action-loop implementation surfaces and all system integration gates while preserving `stable=false` for the post-V1 system profile.
 
 ## 9. Stable V1 root API remains unchanged
 
@@ -161,7 +173,7 @@ This prevents an additive post-V1 integration surface from silently redefining t
 
 ## 10. Distribution rule
 
-The in-tree wheel backend packages all Python modules under `tev_script/`. Therefore the system facade, receipt verifier and implementation modules are transported together by a wheel built from the same source identity.
+The in-tree wheel backend packages all Python modules under `tev_script/`. Therefore the system facade, all registered semantic subsystems, receipt verifier and implementation modules are transported together by a wheel built from the same source identity.
 
 A production consumer MUST pin the exact wheel bytes. The distribution/package version remains insufficient as a post-V1 system identity by itself; `SYSTEM_API_CONTRACT_HASH_V0` plus the exact artifact SHA-256 and integration receipt close that ambiguity.
 
@@ -176,10 +188,13 @@ The gate requires a clean named-branch checkout and an empty output directory ou
 ```text
 runs the system focal
   -> validates the system API contract
+  -> proves the source semantic registry is non-empty and closed
   -> builds two independent deterministic wheels
   -> requires byte identity between both builds
   -> installs the exact wheel into a clean venv with --no-deps
   -> imports the complete system API from the installed wheel
+  -> loads representative non-facade semantic subsystems through the registry
+  -> requires installed/source registry cardinality identity
   -> constructs the canonical integration receipt
   -> makes the installed wheel verify that receipt
   -> copies the exact wheel to the output directory
@@ -196,12 +211,14 @@ A candidate is ready for external-system integration only when the focal and exa
 SYSTEM_API_IMPORT_BOUNDARY=PASS
 SYSTEM_API_CONTRACT_HASH=PASS
 SYSTEM_API_REQUIRED_SURFACE=PASS
+SYSTEM_COMPLETE_SEMANTIC_REGISTRY_CLOSED=PASS
 SYSTEM_CANONICAL_INDEX_SCHEMA=PASS
 V1_ROOT_API_NOT_REDEFINED=PASS
 SYSTEM_ZERO_RUNTIME_DEPENDENCIES=PASS
 SYSTEM_WHEEL_DETERMINISTIC_BYTES=PASS
 SYSTEM_INSTALLED_WHEEL_IMPORT=PASS
 SYSTEM_INSTALLED_API_IDENTITY=PASS
+SYSTEM_INSTALLED_COMPLETE_SEMANTIC_REGISTRY=PASS
 SYSTEM_INSTALLED_RECEIPT_VERIFIER=PASS
 SYSTEM_ARTIFACT_RECEIPT_LAST=PASS
 R2_INDETERMINACY_PRESERVED=PASS
