@@ -133,6 +133,7 @@ from .semantic_grounded_discovery_v0 import (
 SYSTEM_API_SCHEMA_V0 = "TEV_SCRIPT_SYSTEM_API_V0"
 SYSTEM_API_PROFILE_V0 = "POST_V1_REALIZATION_SYSTEM_V0"
 SYSTEM_API_AUTHORITY_V0 = "TEV_SCRIPT_STANDALONE"
+SYSTEM_CANONICAL_INDEX_SCHEMA_V0 = "TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0"
 
 _SYSTEM_SURFACES_V0 = {
     "language": (
@@ -186,29 +187,6 @@ _SYSTEM_SURFACES_V0 = {
     ),
 }
 
-
-def system_api_contract_object_v0() -> dict[str, object]:
-    return {
-        "schema": SYSTEM_API_SCHEMA_V0,
-        "profile": SYSTEM_API_PROFILE_V0,
-        "authority": SYSTEM_API_AUTHORITY_V0,
-        "language_version": V1_LANGUAGE_VERSION,
-        "primitive_families": ["Field", "Transformation"],
-        "host_execution_transformation_hash": EXECUTE_PROGRAM_IR_V3_TRANSFORMATION_HASH_V1,
-        "host_interface_hash": PROGRAM_IR_V3_HOST_INTERFACE_HASH_V1,
-        "surfaces": {key: list(_SYSTEM_SURFACES_V0[key]) for key in sorted(_SYSTEM_SURFACES_V0)},
-        "consumer_requirements": [
-            "bind_exact_system_api_contract_hash",
-            "bind_exact_distribution_artifact_sha256",
-            "treat_tev_script_as_semantic_authority_for_tev_script",
-            "do_not_upgrade_proof_required_or_indeterminate_to_pass",
-            "do_not_use_backend_identity_as_semantic_identity",
-        ],
-    }
-
-
-SYSTEM_API_CONTRACT_HASH_V0 = canonical_hash(system_api_contract_object_v0())
-
 SYSTEM_API_EXPORTS_V0 = tuple(
     sorted(
         {
@@ -216,6 +194,7 @@ SYSTEM_API_EXPORTS_V0 = tuple(
             "SYSTEM_API_SCHEMA_V0",
             "SYSTEM_API_PROFILE_V0",
             "SYSTEM_API_AUTHORITY_V0",
+            "SYSTEM_CANONICAL_INDEX_SCHEMA_V0",
             "SYSTEM_API_CONTRACT_HASH_V0",
             "SYSTEM_API_EXPORTS_V0",
             "system_api_contract_object_v0",
@@ -327,5 +306,30 @@ SYSTEM_API_EXPORTS_V0 = tuple(
         }
     )
 )
+
+
+def system_api_contract_object_v0() -> dict[str, object]:
+    return {
+        "schema": SYSTEM_API_SCHEMA_V0,
+        "profile": SYSTEM_API_PROFILE_V0,
+        "authority": SYSTEM_API_AUTHORITY_V0,
+        "language_version": V1_LANGUAGE_VERSION,
+        "system_canonical_index_schema": SYSTEM_CANONICAL_INDEX_SCHEMA_V0,
+        "primitive_families": ["Field", "Transformation"],
+        "host_execution_transformation_hash": EXECUTE_PROGRAM_IR_V3_TRANSFORMATION_HASH_V1,
+        "host_interface_hash": PROGRAM_IR_V3_HOST_INTERFACE_HASH_V1,
+        "surfaces": {key: list(_SYSTEM_SURFACES_V0[key]) for key in sorted(_SYSTEM_SURFACES_V0)},
+        "exports": list(SYSTEM_API_EXPORTS_V0),
+        "consumer_requirements": [
+            "bind_exact_system_api_contract_hash",
+            "bind_exact_distribution_artifact_sha256",
+            "treat_tev_script_as_semantic_authority_for_tev_script",
+            "do_not_upgrade_proof_required_or_indeterminate_to_pass",
+            "do_not_use_backend_identity_as_semantic_identity",
+        ],
+    }
+
+
+SYSTEM_API_CONTRACT_HASH_V0 = canonical_hash(system_api_contract_object_v0())
 
 __all__ = list(SYSTEM_API_EXPORTS_V0)
