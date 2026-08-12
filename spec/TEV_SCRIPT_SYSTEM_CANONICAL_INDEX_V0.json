@@ -11,6 +11,13 @@
     "contract_hash_symbol": "SYSTEM_API_CONTRACT_HASH_V0",
     "root_api_redefined": false
   },
+  "complete_semantic_registry": {
+    "source_glob": "tev_script/semantic_*.py",
+    "api_symbol": "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0",
+    "loader_symbol": "load_system_subsystem_v0",
+    "closed_world": true,
+    "backend_identity_is_semantic_identity": false
+  },
   "system_integration_receipt": {
     "implementation": "tev_script/system_integration_receipt_v0.py",
     "schema": "TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0",
@@ -60,7 +67,8 @@
     "package_version_alone_is_identity": false,
     "consumer_is_semantic_authority": false,
     "proof_required_may_be_upgraded": false,
-    "indeterminate_may_be_implicitly_selected": false
+    "indeterminate_may_be_implicitly_selected": false,
+    "no_admissible_realization_may_implicitly_fallback": false
   },
   "distribution": {
     "python_runtime_dependencies": 0,
