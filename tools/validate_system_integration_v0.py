@@ -47,6 +47,8 @@ FORBIDDEN_ARTIFACT_GATE_TOKENS = (
 REQUIRED_SYSTEM_TOKENS = (
     "SYSTEM_API_CONTRACT_HASH_V0",
     "SYSTEM_CANONICAL_INDEX_SCHEMA_V0",
+    "SYSTEM_CAUSAL_MODULE_PATHS_V0",
+    "load_system_causal_subsystem_v0",
     "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0",
     "load_system_subsystem_v0",
     "compile_v1_sources_to_ir_v3",
@@ -128,23 +130,36 @@ def main() -> int:
         contract_required = (
             "bind_exact_system_api_contract_hash",
             "bind_exact_distribution_artifact_sha256",
+            "verify_system_integration_receipt_before_use",
             "do_not_upgrade_proof_required_or_indeterminate_to_pass",
+            "do_not_treat_no_admissible_realization_as_selection",
             "do_not_use_backend_identity_as_semantic_identity",
             '"exports": list(SYSTEM_API_EXPORTS_V0)',
+            '"causal_modules"',
             '"subsystem_modules"',
-            '"integration_binding"',
+            '"causal_reaction_registry"',
             '"complete_semantic_registry"',
+            '"integration_binding"',
         )
         require_tokens(source, contract_required, "SYSTEM_API_FAIL_CLOSED_CONSUMER_CONTRACT")
 
-        registry = literal_assignment(tree, "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0")
-        require(isinstance(registry, dict), "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_OBJECT")
         package_root = ROOT / "tev_script"
+
+        causal_registry = literal_assignment(tree, "SYSTEM_CAUSAL_MODULE_PATHS_V0")
+        require(isinstance(causal_registry, dict), "SYSTEM_COMPLETE_CAUSAL_REGISTRY_OBJECT")
+        causal_files = tuple(sorted(package_root.glob("causal_*_v1.py")))
+        expected_causal_registry = {path.stem: "tev_script." + path.stem for path in causal_files}
+        require(bool(expected_causal_registry), "SYSTEM_COMPLETE_CAUSAL_REGISTRY_NONEMPTY")
+        require(causal_registry == expected_causal_registry, "SYSTEM_COMPLETE_CAUSAL_REGISTRY_CLOSED")
+        require(len(set(causal_registry.values())) == len(causal_registry), "SYSTEM_COMPLETE_CAUSAL_REGISTRY_UNIQUE_PATHS")
+
+        semantic_registry = literal_assignment(tree, "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0")
+        require(isinstance(semantic_registry, dict), "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_OBJECT")
         semantic_files = tuple(sorted(package_root.glob("semantic_*.py")))
-        expected_registry = {path.stem: "tev_script." + path.stem for path in semantic_files}
-        require(bool(expected_registry), "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_NONEMPTY")
-        require(registry == expected_registry, "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_CLOSED")
-        require(len(set(registry.values())) == len(registry), "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_UNIQUE_PATHS")
+        expected_semantic_registry = {path.stem: "tev_script." + path.stem for path in semantic_files}
+        require(bool(expected_semantic_registry), "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_NONEMPTY")
+        require(semantic_registry == expected_semantic_registry, "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_CLOSED")
+        require(len(set(semantic_registry.values())) == len(semantic_registry), "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_UNIQUE_PATHS")
 
         receipt_source = SYSTEM_RECEIPT.read_text(encoding="utf-8")
         require_tokens(
@@ -156,6 +171,7 @@ def main() -> int:
                 "expected_distribution_artifact_sha256",
                 "expected_source_head",
                 "expected_source_tree",
+                "installed_complete_causal_registry",
                 "installed_complete_semantic_registry",
                 "installed_receipt_verifier",
                 "package version must not be sole system identity",
@@ -177,13 +193,21 @@ def main() -> int:
         require(api_index.get("contract_hash_symbol") == "SYSTEM_API_CONTRACT_HASH_V0", "SYSTEM_CANONICAL_INDEX_API_HASH_SYMBOL")
         require(api_index.get("root_api_redefined") is False, "SYSTEM_CANONICAL_INDEX_ROOT_API_UNCHANGED")
 
-        registry_index = system_index.get("complete_semantic_registry")
-        require(isinstance(registry_index, dict), "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_OBJECT")
-        require(registry_index.get("source_glob") == "tev_script/semantic_*.py", "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_GLOB")
-        require(registry_index.get("api_symbol") == "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0", "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_SYMBOL")
-        require(registry_index.get("loader_symbol") == "load_system_subsystem_v0", "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_LOADER")
-        require(registry_index.get("closed_world") is True, "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_CLOSED")
-        require(registry_index.get("backend_identity_is_semantic_identity") is False, "SYSTEM_CANONICAL_INDEX_BACKEND_NOT_SEMANTIC_IDENTITY")
+        causal_index = system_index.get("complete_causal_registry")
+        require(isinstance(causal_index, dict), "SYSTEM_CANONICAL_INDEX_CAUSAL_REGISTRY_OBJECT")
+        require(causal_index.get("source_glob") == "tev_script/causal_*_v1.py", "SYSTEM_CANONICAL_INDEX_CAUSAL_REGISTRY_GLOB")
+        require(causal_index.get("api_symbol") == "SYSTEM_CAUSAL_MODULE_PATHS_V0", "SYSTEM_CANONICAL_INDEX_CAUSAL_REGISTRY_SYMBOL")
+        require(causal_index.get("loader_symbol") == "load_system_causal_subsystem_v0", "SYSTEM_CANONICAL_INDEX_CAUSAL_REGISTRY_LOADER")
+        require(causal_index.get("closed_world") is True, "SYSTEM_CANONICAL_INDEX_CAUSAL_REGISTRY_CLOSED")
+        require(causal_index.get("semantic_authority_replaced") is False, "SYSTEM_CANONICAL_INDEX_CAUSAL_AUTHORITY_PRESERVED")
+
+        semantic_index = system_index.get("complete_semantic_registry")
+        require(isinstance(semantic_index, dict), "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_OBJECT")
+        require(semantic_index.get("source_glob") == "tev_script/semantic_*.py", "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_GLOB")
+        require(semantic_index.get("api_symbol") == "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0", "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_SYMBOL")
+        require(semantic_index.get("loader_symbol") == "load_system_subsystem_v0", "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_LOADER")
+        require(semantic_index.get("closed_world") is True, "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_CLOSED")
+        require(semantic_index.get("backend_identity_is_semantic_identity") is False, "SYSTEM_CANONICAL_INDEX_BACKEND_NOT_SEMANTIC_IDENTITY")
 
         receipt_index = system_index.get("system_integration_receipt")
         require(isinstance(receipt_index, dict), "SYSTEM_CANONICAL_INDEX_RECEIPT_OBJECT")
@@ -217,6 +241,8 @@ def main() -> int:
         require(gates.get("system_focal") == "tests/run_system_integration_v0_focal.py", "SYSTEM_CANONICAL_INDEX_FOCAL_GATE")
         require(gates.get("system_static") == "tools/validate_system_integration_v0.py", "SYSTEM_CANONICAL_INDEX_STATIC_GATE")
         require(gates.get("system_artifact") == "RUN_TEV_SCRIPT_SYSTEM_INTEGRATION_V0.py", "SYSTEM_CANONICAL_INDEX_ARTIFACT_GATE")
+        require(gates.get("causal_reaction") == "tests/run_causal_reaction_campaign.py", "SYSTEM_CANONICAL_INDEX_CAUSAL_GATE")
+        require(gates.get("post_v1_causal_semantic") == "tests/run_post_v1_integration_campaign.py", "SYSTEM_CANONICAL_INDEX_CAUSAL_SEMANTIC_GATE")
 
         consumer = system_index.get("consumer_binding")
         require(isinstance(consumer, dict), "SYSTEM_CANONICAL_INDEX_CONSUMER_BINDING")
@@ -238,6 +264,8 @@ def main() -> int:
         require(distribution.get("python_runtime_dependencies") == 0, "SYSTEM_CANONICAL_INDEX_ZERO_DEPENDENCIES")
         require(distribution.get("whole_tev_script_python_package_required") is True, "SYSTEM_CANONICAL_INDEX_WHOLE_PACKAGE")
         require(distribution.get("exact_artifact_hash_required") is True, "SYSTEM_CANONICAL_INDEX_EXACT_ARTIFACT")
+        require(distribution.get("installed_complete_causal_registry_required") is True, "SYSTEM_CANONICAL_INDEX_INSTALLED_CAUSAL_REGISTRY")
+        require(distribution.get("installed_complete_semantic_registry_required") is True, "SYSTEM_CANONICAL_INDEX_INSTALLED_SEMANTIC_REGISTRY")
         require(distribution.get("installed_receipt_verifier_required") is True, "SYSTEM_CANONICAL_INDEX_INSTALLED_RECEIPT_VERIFIER")
         require(distribution.get("receipt_is_final_admission_artifact") is True, "SYSTEM_CANONICAL_INDEX_RECEIPT_LAST")
 
@@ -274,6 +302,11 @@ def main() -> int:
             require(token in host, "R1_HOST_EVIDENCE_BOUNDARY_PRESENT", token)
 
         for path_text in (
+            "tev_script/causal_analysis_v1.py",
+            "tev_script/causal_model_v1.py",
+            "tev_script/causal_refinement_v1.py",
+            "tev_script/causal_runtime_v1.py",
+            "tev_script/semantic_causal_bridge_v0.py",
             "tev_script/semantic_execution_request_v0.py",
             "tev_script/semantic_activation_v0.py",
             "tev_script/semantic_execution_observation_v0.py",
@@ -294,6 +327,9 @@ def main() -> int:
                 "venv.EnvBuilder(with_pip=True, clear=True)",
                 '"--no-index"',
                 '"--no-deps"',
+                "SYSTEM_CAUSAL_MODULE_PATHS_V0",
+                "load_system_causal_subsystem_v0",
+                "SYSTEM_INSTALLED_COMPLETE_CAUSAL_REGISTRY=PASS",
                 "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0",
                 "load_system_subsystem_v0",
                 "SYSTEM_INSTALLED_COMPLETE_SEMANTIC_REGISTRY=PASS",
@@ -314,6 +350,7 @@ def main() -> int:
         require("TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0" in spec, "SYSTEM_RECEIPT_DOCUMENTED")
         require("RUN_TEV_SCRIPT_SYSTEM_INTEGRATION_V0.py" in spec, "SYSTEM_ARTIFACT_GATE_DOCUMENTED")
         require("receipt last" in spec.lower(), "SYSTEM_RECEIPT_LAST_DOCUMENTED")
+        require("SYSTEM_CAUSAL_MODULE_PATHS_V0" in spec, "SYSTEM_COMPLETE_CAUSAL_REGISTRY_DOCUMENTED")
         require("SYSTEM_SUBSYSTEM_MODULE_PATHS_V0" in spec, "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_DOCUMENTED")
 
         print("SYSTEM_PUBLIC_RELEASE_PROMOTION=DEFERRED")
