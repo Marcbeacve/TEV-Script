@@ -163,6 +163,7 @@ def main() -> int:
             "bind_exact_system_api_contract_hash",
             "bind_exact_distribution_artifact_sha256",
             "verify_system_integration_receipt_before_use",
+            "preserve_stable_public_api_surface",
             "do_not_upgrade_proof_required_or_indeterminate_to_pass",
             "do_not_treat_no_admissible_realization_as_selection",
             "do_not_use_backend_identity_as_semantic_identity",
@@ -220,6 +221,7 @@ def main() -> int:
                 "expected_source_head",
                 "expected_source_tree",
                 "stable_public_api_preserved",
+                "wheel_complete_python_module_closure",
                 "installed_complete_causal_registry",
                 "installed_complete_semantic_registry",
                 "installed_receipt_verifier",
@@ -269,6 +271,8 @@ def main() -> int:
         require(receipt_index.get("verifier") == "verify_system_integration_receipt_v0", "SYSTEM_CANONICAL_INDEX_RECEIPT_VERIFIER")
         require(receipt_index.get("canonical_hash_required") is True, "SYSTEM_CANONICAL_INDEX_RECEIPT_CANONICAL")
         require(receipt_index.get("exact_distribution_sha256_required") is True, "SYSTEM_CANONICAL_INDEX_RECEIPT_ARTIFACT_BINDING")
+        require(receipt_index.get("stable_public_api_preserved_required") is True, "SYSTEM_CANONICAL_INDEX_RECEIPT_STABLE_API")
+        require(receipt_index.get("wheel_complete_python_module_closure_required") is True, "SYSTEM_CANONICAL_INDEX_RECEIPT_MODULE_CLOSURE")
 
         implementation_surfaces = system_index.get("implementation_surfaces")
         require(isinstance(implementation_surfaces, dict), "SYSTEM_CANONICAL_INDEX_IMPLEMENTATION_SURFACES")
@@ -317,6 +321,7 @@ def main() -> int:
         require(isinstance(distribution, dict), "SYSTEM_CANONICAL_INDEX_DISTRIBUTION")
         require(distribution.get("python_runtime_dependencies") == 0, "SYSTEM_CANONICAL_INDEX_ZERO_DEPENDENCIES")
         require(distribution.get("whole_tev_script_python_package_required") is True, "SYSTEM_CANONICAL_INDEX_WHOLE_PACKAGE")
+        require(distribution.get("exact_python_module_closure_required") is True, "SYSTEM_CANONICAL_INDEX_EXACT_PYTHON_MODULE_CLOSURE")
         require(distribution.get("exact_artifact_hash_required") is True, "SYSTEM_CANONICAL_INDEX_EXACT_ARTIFACT")
         require(distribution.get("installed_complete_causal_registry_required") is True, "SYSTEM_CANONICAL_INDEX_INSTALLED_CAUSAL_REGISTRY")
         require(distribution.get("installed_complete_semantic_registry_required") is True, "SYSTEM_CANONICAL_INDEX_INSTALLED_SEMANTIC_REGISTRY")
@@ -377,9 +382,13 @@ def main() -> int:
                 "SOURCE_DATE_EPOCH",
                 'build_wheel(str(build_a))',
                 'build_wheel(str(build_b))',
+                "source_python_module_paths",
+                "wheel_python_module_paths",
+                "SYSTEM_WHEEL_COMPLETE_PYTHON_MODULE_CLOSURE=PASS",
                 "venv.EnvBuilder(with_pip=True, clear=True)",
                 '"--no-index"',
                 '"--no-deps"',
+                "SYSTEM_INSTALLED_STABLE_PUBLIC_API=PASS",
                 "SYSTEM_CAUSAL_MODULE_PATHS_V0",
                 "load_system_causal_subsystem_v0",
                 "SYSTEM_INSTALLED_COMPLETE_CAUSAL_REGISTRY=PASS",
@@ -407,6 +416,7 @@ def main() -> int:
         require("SYSTEM_SUBSYSTEM_MODULE_PATHS_V0" in spec, "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_DOCUMENTED")
         require("stable_public_api" in spec, "SYSTEM_STABLE_PUBLIC_API_DOCUMENTED")
         require("stable_public_api_preserved" in spec, "SYSTEM_STABLE_PUBLIC_API_RECEIPT_DOCUMENTED")
+        require("wheel_complete_python_module_closure" in spec, "SYSTEM_WHEEL_MODULE_CLOSURE_RECEIPT_DOCUMENTED")
 
         print("SYSTEM_PUBLIC_RELEASE_PROMOTION=DEFERRED")
         print("LONG_VALIDATION_DEFERRED=PASS")
