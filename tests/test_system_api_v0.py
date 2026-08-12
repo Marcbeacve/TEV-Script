@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 import unittest
 
 import tev_script
@@ -43,6 +44,33 @@ class SystemApiV0Tests(unittest.TestCase):
         self.assertIn("evaluate_execution_grounded_discovery_cycle", surfaces["execution_governance"])
         self.assertIn("SystemIntegrationReceiptV0", surfaces["integration_binding"])
         self.assertIn("verify_system_integration_receipt_v0", surfaces["integration_binding"])
+        self.assertIn("SYSTEM_SUBSYSTEM_MODULE_PATHS_V0", surfaces["complete_semantic_registry"])
+        self.assertIn("load_system_subsystem_v0", surfaces["complete_semantic_registry"])
+
+    def test_complete_semantic_registry_matches_package_semantic_modules(self):
+        package_root = Path(system_api.__file__).resolve().parent
+        observed = {path.stem for path in package_root.glob("semantic_*.py")}
+        registered = set(system_api.SYSTEM_SUBSYSTEM_MODULE_PATHS_V0)
+        self.assertEqual(registered, observed)
+        self.assertEqual(
+            system_api.system_api_contract_object_v0()["subsystem_modules"],
+            {key: system_api.SYSTEM_SUBSYSTEM_MODULE_PATHS_V0[key] for key in sorted(registered)},
+        )
+        for subsystem_id, module_path in system_api.SYSTEM_SUBSYSTEM_MODULE_PATHS_V0.items():
+            self.assertEqual(module_path, "tev_script." + subsystem_id)
+
+    def test_semantic_subsystem_loader_is_closed_and_can_load_non_facade_layers(self):
+        for subsystem_id in (
+            "semantic_cost_model_v0",
+            "semantic_dispatch_v0",
+            "semantic_receipt_validity_v0",
+            "semantic_resource_calibration_v0",
+            "semantic_realization_resolution_v0",
+        ):
+            loaded = system_api.load_system_subsystem_v0(subsystem_id)
+            self.assertEqual(loaded.__name__, system_api.SYSTEM_SUBSYSTEM_MODULE_PATHS_V0[subsystem_id])
+        with self.assertRaises(KeyError):
+            system_api.load_system_subsystem_v0("consumer_private_module")
 
     def test_consumer_contract_requires_exact_artifact_and_fail_closed_outcomes(self):
         requirements = set(system_api.system_api_contract_object_v0()["consumer_requirements"])
@@ -56,6 +84,7 @@ class SystemApiV0Tests(unittest.TestCase):
         self.assertNotIn("SYSTEM_API_CONTRACT_HASH_V0", root_exports)
         self.assertNotIn("resolve_realization_selection", root_exports)
         self.assertNotIn("verify_system_integration_receipt_v0", root_exports)
+        self.assertNotIn("load_system_subsystem_v0", root_exports)
 
     def test_no_release_or_repository_mutation_authority_is_exported(self):
         lowered = tuple(name.lower() for name in system_api.SYSTEM_API_EXPORTS_V0)
