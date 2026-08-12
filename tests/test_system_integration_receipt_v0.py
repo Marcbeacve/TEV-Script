@@ -34,13 +34,20 @@ class SystemIntegrationReceiptV0Tests(unittest.TestCase):
             wheel_sha256=h("wheel"),
         )
 
+    def verify(self, receipt: SystemIntegrationReceiptV0, **overrides) -> SystemIntegrationReceiptV0:
+        arguments = {
+            "expected_receipt_hash": receipt.receipt_hash,
+            "expected_language_version": "1.0.0",
+            "expected_system_api_contract_hash": h("system-api"),
+            "expected_distribution_artifact_sha256": h("wheel"),
+        }
+        arguments.update(overrides)
+        return verify_system_integration_receipt_v0(receipt.to_object(), **arguments)
+
     def test_valid_receipt_verifies_exact_binding(self):
         receipt = self.build()
-        verified = verify_system_integration_receipt_v0(
-            receipt.to_object(),
-            expected_language_version="1.0.0",
-            expected_system_api_contract_hash=h("system-api"),
-            expected_distribution_artifact_sha256=h("wheel"),
+        verified = self.verify(
+            receipt,
             expected_source_head="a" * 40,
             expected_source_tree="b" * 40,
         )
@@ -49,36 +56,25 @@ class SystemIntegrationReceiptV0Tests(unittest.TestCase):
         self.assertEqual(verification["stable_public_api_preserved"], "PASS")
         self.assertEqual(verification["wheel_complete_python_module_closure"], "PASS")
 
+    def test_wrong_pinned_receipt_identity_is_rejected(self):
+        receipt = self.build()
+        with self.assertRaises(SystemIntegrationReceiptError):
+            self.verify(receipt, expected_receipt_hash=h("other-receipt"))
+
     def test_wrong_distribution_artifact_is_rejected(self):
         receipt = self.build()
         with self.assertRaises(SystemIntegrationReceiptError):
-            verify_system_integration_receipt_v0(
-                receipt.to_object(),
-                expected_language_version="1.0.0",
-                expected_system_api_contract_hash=h("system-api"),
-                expected_distribution_artifact_sha256=h("other-wheel"),
-            )
+            self.verify(receipt, expected_distribution_artifact_sha256=h("other-wheel"))
 
     def test_wrong_system_api_contract_is_rejected(self):
         receipt = self.build()
         with self.assertRaises(SystemIntegrationReceiptError):
-            verify_system_integration_receipt_v0(
-                receipt.to_object(),
-                expected_language_version="1.0.0",
-                expected_system_api_contract_hash=h("other-system-api"),
-                expected_distribution_artifact_sha256=h("wheel"),
-            )
+            self.verify(receipt, expected_system_api_contract_hash=h("other-system-api"))
 
     def test_wrong_source_identity_is_rejected(self):
         receipt = self.build()
         with self.assertRaises(SystemIntegrationReceiptError):
-            verify_system_integration_receipt_v0(
-                receipt.to_object(),
-                expected_language_version="1.0.0",
-                expected_system_api_contract_hash=h("system-api"),
-                expected_distribution_artifact_sha256=h("wheel"),
-                expected_source_head="c" * 40,
-            )
+            self.verify(receipt, expected_source_head="c" * 40)
 
     def test_tampered_receipt_body_is_rejected(self):
         document = deepcopy(self.build().to_object())
@@ -87,6 +83,25 @@ class SystemIntegrationReceiptV0Tests(unittest.TestCase):
         document["distribution"] = distribution
         with self.assertRaises(SystemIntegrationReceiptError):
             SystemIntegrationReceiptV0(document)
+
+    def test_rehashed_alternative_receipt_is_rejected_by_pinned_identity(self):
+        original = self.build()
+        document = deepcopy(original.to_object())
+        source = dict(document["source"])
+        source["branch"] = "other-branch"
+        document["source"] = source
+        body = {key: value for key, value in document.items() if key != "receipt_hash"}
+        document["receipt_hash"] = canonical_hash(body)
+        alternative = SystemIntegrationReceiptV0(document)
+        self.assertNotEqual(alternative.receipt_hash, original.receipt_hash)
+        with self.assertRaises(SystemIntegrationReceiptError):
+            verify_system_integration_receipt_v0(
+                alternative.to_object(),
+                expected_receipt_hash=original.receipt_hash,
+                expected_language_version="1.0.0",
+                expected_system_api_contract_hash=h("system-api"),
+                expected_distribution_artifact_sha256=h("wheel"),
+            )
 
     def test_extra_unbound_field_is_rejected(self):
         document = self.build().to_object()
