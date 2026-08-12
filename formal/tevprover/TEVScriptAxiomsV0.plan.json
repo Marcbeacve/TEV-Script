@@ -1,6 +1,6 @@
 {
   "schema": "TEV_SCRIPT_TEVPROVER_AXIOM_PLAN_V0",
-  "status": "PREPARED_NOT_EXECUTED",
+  "status": "MATERIALIZED_NOT_EXECUTED",
   "semantic_authority": false,
   "installed_port": "tevprover_cuofc.installed_proof_port:tevprover_verify_installed",
   "required_frame": "TEV_NATIVE_EXACT_FINITE",
@@ -16,20 +16,23 @@
   "obligations": [
     {
       "id": "TVP0_FOUR_VALUE_FINITE_CARRIER",
-      "preferred_goal_kind": "finite_relation_graph",
-      "purpose": "Certify the finite four-value carrier/transition graph after the exact graph certificate is generated.",
-      "status": "NOT_MATERIALIZED"
+      "goal_kind": "finite_relation_graph",
+      "strength": "STRUCTURAL_CHECK",
+      "purpose": "Certify the exact finite four-value carrier, total closed operation tables, and bound negation relation graph.",
+      "proof_object_path": "formal/tevprover/TEVScriptFourValueV0.proof.json",
+      "proof_object_sha256": "bccfa155218e5d068a0301b4b5728d985fb3bc968c587b9d9302dbf324a686b3",
+      "status": "MATERIALIZED_NOT_EXECUTED"
     },
     {
       "id": "TVP1_SELECTION_FINITE_COUNTERMODEL",
-      "preferred_goal_kind": "finite_relation_graph",
-      "purpose": "Bind the finite negative-control countermodel showing Selected without Admitted is possible only when the safety law is removed.",
-      "status": "NOT_MATERIALIZED"
+      "engine": "z3",
+      "purpose": "The selection countermodel is a logical obligation, so V0 keeps it in Z3 rather than overstating finite_relation_graph as a logic prover.",
+      "status": "DEFERRED_TO_Z3_NEGATIVE_CONTROL"
     },
     {
       "id": "TVP2_FORMAL_RECEIPT_SCOPE",
       "preferred_goal_kind": "eq",
-      "purpose": "Bind the exact formal receipt/scope identity only after RepoTalk Lean/Z3 receipts exist.",
+      "purpose": "Bind exact formal receipt/scope identity only after RepoTalk Lean/Z3 receipts exist.",
       "status": "BLOCKED_ON_FORMAL_RECEIPTS"
     }
   ],
