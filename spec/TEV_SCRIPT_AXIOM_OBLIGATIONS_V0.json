@@ -3,6 +3,7 @@
   "status": "AXIOMATIC_CANDIDATE",
   "language_version": "1.0.0",
   "system_profile": "POST_V1_REALIZATION_SYSTEM_V0",
+  "system_layer_spec": "spec/TEV_SCRIPT_AXIOMATIC_SYSTEM_LAYERS_V0.md",
   "primitive_families": [
     "Field",
     "Transformation"
@@ -46,6 +47,25 @@
       "required_witness": "EXPECTED_OUTCOME_REJECTED"
     }
   ],
+  "operational_formal_sources": [
+    {
+      "id": "Z3_OPERATIONAL_THEOREMS",
+      "engine": "z3",
+      "path": "formal/smt/tev_script_operational_axioms_v0.smt2",
+      "expected_outcome": "unsat",
+      "negative_control": false,
+      "expected_checks": 7
+    },
+    {
+      "id": "Z3_EFFECT_NEGATIVE_CONTROL",
+      "engine": "z3",
+      "path": "formal/smt/tev_script_effect_negative_control_v0.smt2",
+      "expected_outcome": "unsat",
+      "negative_control": true,
+      "expected_checks": 1,
+      "required_witness": "EXPECTED_OUTCOME_REJECTED"
+    }
+  ],
   "implementation_correspondence": {
     "Field": "tev_script/semantic_kernel_v0.py:SemanticFieldV0",
     "Transformation_action": "tev_script/semantic_apply_v0.py:apply_rule",
@@ -56,11 +76,13 @@
     "Resolution": "tev_script/semantic_realization_resolution_v0.py:resolve_realization_selection",
     "Proof_boundary": "tev_script/semantic_proof_boundary_v0.py:ProofBoundaryWitnessV0",
     "Resolution_semantics": "NO_ADMISSIBLE_REALIZATION only after closed rejection; open admission -> INDETERMINATE",
-    "Constitutive_C0_C8": "tools/validate_axiomatic_system_correspondence_v0.py"
+    "Constitutive_C0_C8": "tools/validate_axiomatic_system_correspondence_v0.py",
+    "Operational_L0_L8": "tools/validate_axiomatic_operational_v0.py"
   },
   "repotalk": {
     "tool": "repotalk_formal_verify",
     "campaign_path": "formal/repotalk/TEVScriptAxiomsV0.campaign.json",
+    "operational_campaign_path": "formal/repotalk/TEVScriptOperationalAxiomsV0.campaign.json",
     "requires_exact_head": true,
     "fixed_argv_only": true,
     "workspace_snapshot_required": true,
@@ -82,8 +104,10 @@
     "rewrite_historical_v1_identity": false,
     "requires_repotalk_lean": true,
     "requires_repotalk_z3": true,
+    "requires_repotalk_operational_z3": true,
     "requires_tevprover_structural_replay": true,
     "requires_static_correspondence": true,
-    "requires_constitutive_c0_c8_correspondence": true
+    "requires_constitutive_c0_c8_correspondence": true,
+    "requires_operational_l0_l8_correspondence": true
   }
 }

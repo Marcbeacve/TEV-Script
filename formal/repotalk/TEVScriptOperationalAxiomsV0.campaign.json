@@ -1,0 +1,37 @@
+{
+  "schema": "TEV_SCRIPT_REPOTALK_OPERATIONAL_FORMAL_CAMPAIGN_V0",
+  "status": "PREPARED_NOT_EXECUTED",
+  "tool": "repotalk_formal_verify",
+  "workspace_root_runtime_required": true,
+  "expected_head_sha_runtime_required": true,
+  "fixed_argv_only": true,
+  "tasks": [
+    {
+      "id": "Z3_OPERATIONAL_THEOREMS",
+      "engine": "z3",
+      "source_path": "formal/smt/tev_script_operational_axioms_v0.smt2",
+      "expected_outcome": "unsat",
+      "negative_control": false,
+      "timeout_seconds": 120,
+      "max_output_bytes": 1000000,
+      "required_observed_count": 7
+    },
+    {
+      "id": "Z3_EFFECT_NEGATIVE_CONTROL",
+      "engine": "z3",
+      "source_path": "formal/smt/tev_script_effect_negative_control_v0.smt2",
+      "expected_outcome": "unsat",
+      "negative_control": true,
+      "timeout_seconds": 120,
+      "max_output_bytes": 1000000,
+      "required_observed_count": 1,
+      "required_negative_control_witness": "EXPECTED_OUTCOME_REJECTED"
+    }
+  ],
+  "authority": {
+    "semantic_authority": false,
+    "truth_authority": false,
+    "write_authority": false,
+    "promotion_authority": false
+  }
+}
