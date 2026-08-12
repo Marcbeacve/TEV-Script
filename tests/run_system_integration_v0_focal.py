@@ -15,6 +15,11 @@ FOCAL_TEST_FILES = (
     "test_v1_irv3_lowering_receipt.py",
     "test_ir_v3_validation.py",
     "test_ir_v3_runtime.py",
+    "test_causal_analysis_v1.py",
+    "test_causal_refinement_v1.py",
+    "test_causal_runtime_v1.py",
+    "test_semantic_causal_bridge_v0.py",
+    "test_commit_outcome_v0.py",
     "test_realization_semantics_v0.py",
     "test_realization_selection_v0.py",
     "test_realization_resolution_v0.py",
@@ -61,6 +66,8 @@ def main() -> int:
 
     print("SYSTEM_LANGUAGE_TO_IR_V3=PASS")
     print("SYSTEM_IR_V3_RUNTIME=PASS")
+    print("SYSTEM_CAUSAL_REACTION=PASS")
+    print("SYSTEM_CAUSAL_SEMANTIC_BRIDGE=PASS")
     print("SYSTEM_REALIZATION_ADMISSION=PASS")
     print("SYSTEM_GOVERNED_SELECTION_RESOLUTION=PASS")
     print("SYSTEM_HOST_REALIZATION_EVIDENCE=PASS")
