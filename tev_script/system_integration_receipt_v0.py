@@ -41,6 +41,7 @@ _VERIFICATION_FIELDS = frozenset(
         "deterministic_wheel_bytes",
         "installed_wheel_import",
         "installed_api_identity",
+        "installed_complete_causal_registry",
         "installed_complete_semantic_registry",
         "installed_receipt_verifier",
         "certify_full",
@@ -139,6 +140,7 @@ class SystemIntegrationReceiptV0:
             "deterministic_wheel_bytes",
             "installed_wheel_import",
             "installed_api_identity",
+            "installed_complete_causal_registry",
             "installed_complete_semantic_registry",
             "installed_receipt_verifier",
         ):
@@ -229,6 +231,7 @@ def build_system_integration_receipt_v0(
             "deterministic_wheel_bytes": "PASS",
             "installed_wheel_import": "PASS",
             "installed_api_identity": "PASS",
+            "installed_complete_causal_registry": "PASS",
             "installed_complete_semantic_registry": "PASS",
             "installed_receipt_verifier": "PASS",
             "certify_full": "DEFERRED",
