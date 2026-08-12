@@ -27,10 +27,13 @@ A consumer MUST bind all of:
 V1_LANGUAGE_VERSION
 SYSTEM_API_CONTRACT_HASH_V0
 exact distribution artifact SHA-256
+exact SYSTEM_INTEGRATION_RECEIPT_SHA256
 TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0
 ```
 
-The language version identifies the governed TEV Script language contract. The system API contract hash identifies the additive integration surface. The artifact SHA-256 identifies the exact installed bytes. The integration receipt binds those identities to source HEAD/TREE and the integration gates that admitted the artifact.
+The language version identifies the governed TEV Script language contract. The system API contract hash identifies the additive integration surface. The artifact SHA-256 identifies the exact installed bytes. The receipt hash identifies the exact admitted handoff receipt. The receipt document binds those identities to source HEAD/TREE and the integration gates that admitted the artifact.
+
+A self-consistent receipt hash proves content integrity, but does not by itself choose which receipt a consumer trusts. The expected `SYSTEM_INTEGRATION_RECEIPT_SHA256` MUST therefore be pinned by the consumer from the trusted handoff channel and supplied to the receipt verifier.
 
 Package version text alone is insufficient to identify an experimental post-V1 system artifact.
 
@@ -225,7 +228,7 @@ if backend == wasm: semantics B
 
 unless the requested Transformation itself explicitly makes that distinction semantically observable.
 
-## 11. Exact artifact binding
+## 11. Exact artifact and receipt binding
 
 The system API hash does not replace artifact integrity. A deployment binds the exact installed wheel/archive SHA-256 independently.
 
@@ -241,11 +244,12 @@ Its implementation and verifier live in:
 tev_script/system_integration_receipt_v0.py
 ```
 
-A consumer verifies the receipt using the installed TEV Script distribution itself:
+A consumer verifies the receipt using the installed TEV Script distribution itself and the pinned receipt identity:
 
 ```python
 verify_system_integration_receipt_v0(
     receipt,
+    expected_receipt_hash=SYSTEM_INTEGRATION_RECEIPT_SHA256,
     expected_language_version=V1_LANGUAGE_VERSION,
     expected_system_api_contract_hash=SYSTEM_API_CONTRACT_HASH_V0,
     expected_distribution_artifact_sha256=wheel_sha256,
@@ -254,7 +258,9 @@ verify_system_integration_receipt_v0(
 )
 ```
 
-The verifier fails closed on schema/field-set changes, canonical receipt tampering, wrong API identity, wrong wheel SHA-256 or mismatched source identity.
+The verifier fails closed on a wrong pinned receipt identity, schema/field-set changes, canonical receipt tampering, wrong API identity, wrong wheel SHA-256 or mismatched source identity.
+
+This V0 handoff uses explicit trusted hash pinning; it does not claim public PKI/code-signing protection against a hostile provisioning channel. Such signing remains a separate deployment/release concern.
 
 ## 12. System canonical index
 
@@ -272,7 +278,7 @@ with schema:
 TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0
 ```
 
-It binds the system facade, stable-public-API preservation, exact Python module closure, closed causal and semantic registries, receipt contract, realization/host/action-loop implementation surfaces and all integration gates while preserving `stable=false` for the post-V1 system profile.
+It binds the system facade, stable-public-API preservation, exact Python module closure, closed causal and semantic registries, exact receipt-hash requirement, receipt contract, realization/host/action-loop implementation surfaces and all integration gates while preserving `stable=false` for the post-V1 system profile.
 
 ## 13. Stable V1 root remains unchanged
 
@@ -288,7 +294,7 @@ import tev_script.system_api_v0
 
 The in-tree wheel backend packages all Python modules under `tev_script/`. Therefore the historical public API implementation, system facade, causal and semantic subsystems, receipt verifier and internal implementation modules are transported together by a wheel built from the same source identity.
 
-A production consumer MUST pin the exact wheel bytes. Distribution/package version remains insufficient as a post-V1 system identity by itself; `SYSTEM_API_CONTRACT_HASH_V0` plus exact artifact SHA-256 and the integration receipt close that ambiguity.
+A production consumer MUST pin the exact wheel bytes and the exact integration-receipt hash. Distribution/package version remains insufficient as a post-V1 system identity by itself; `SYSTEM_API_CONTRACT_HASH_V0`, exact artifact SHA-256, exact receipt hash and the receipt document close that ambiguity.
 
 A later public post-V1 release may introduce a distinct distribution version/profile, but that release operation is outside this V0 integration contract.
 
@@ -314,12 +320,13 @@ runs the system focal
   -> loads every registered semantic subsystem
   -> requires installed/source registry cardinality identity
   -> constructs canonical integration receipt
-  -> makes installed wheel verify that receipt
+  -> verifies that exact receipt against its pinned receipt hash
+  -> makes installed wheel verify that same pinned receipt identity
   -> copies exact wheel to output directory
   -> copies receipt last
 ```
 
-The receipt is the final admission artifact. A wheel without its matching admitted receipt is not a complete system handoff.
+The receipt is the final admission artifact. A wheel without its matching admitted receipt and pinned receipt hash is not a complete system handoff.
 
 ## 16. Readiness gate
 
@@ -345,6 +352,7 @@ SYSTEM_INSTALLED_STABLE_PUBLIC_API=PASS
 SYSTEM_INSTALLED_COMPLETE_CAUSAL_REGISTRY=PASS
 SYSTEM_INSTALLED_COMPLETE_SEMANTIC_REGISTRY=PASS
 SYSTEM_INSTALLED_RECEIPT_VERIFIER=PASS
+SYSTEM_PINNED_RECEIPT_IDENTITY=PASS
 SYSTEM_ARTIFACT_RECEIPT_LAST=PASS
 R2_INDETERMINACY_PRESERVED=PASS
 R1_HOST_EVIDENCE_BOUNDARY_PRESENT=PASS
@@ -359,7 +367,7 @@ The exact handoff consists of:
 TEV_SCRIPT_SYSTEM_INTEGRATION_V0.receipt.json
 ```
 
-plus:
+plus the pinned identities:
 
 ```text
 SYSTEM_DISTRIBUTION_WHEEL_SHA256
