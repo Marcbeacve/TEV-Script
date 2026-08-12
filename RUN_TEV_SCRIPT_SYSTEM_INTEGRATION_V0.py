@@ -109,6 +109,7 @@ def main() -> int:
         from tev_script.system_api_v0 import (  # noqa: PLC0415
             SYSTEM_API_CONTRACT_HASH_V0,
             SYSTEM_CANONICAL_INDEX_SCHEMA_V0,
+            SYSTEM_SUBSYSTEM_MODULE_PATHS_V0,
             V1_LANGUAGE_VERSION,
             build_system_integration_receipt_v0,
             system_api_contract_object_v0,
@@ -123,7 +124,10 @@ def main() -> int:
             raise RuntimeError("system canonical index language version mismatch")
         if canonical_hash(system_api_contract_object_v0()) != SYSTEM_API_CONTRACT_HASH_V0:
             raise RuntimeError("system api contract hash mismatch")
+        if not SYSTEM_SUBSYSTEM_MODULE_PATHS_V0:
+            raise RuntimeError("complete semantic subsystem registry is empty")
         print("SYSTEM_API_CONTRACT_HASH=PASS")
+        print("SYSTEM_SOURCE_COMPLETE_SEMANTIC_REGISTRY=PASS")
 
         with tempfile.TemporaryDirectory(prefix="tev-script-system-") as temporary:
             temp = Path(temporary)
@@ -169,10 +173,14 @@ def main() -> int:
                 "required=('compile_v1_sources_to_ir_v3','verify_ir_v3_lowering_receipt','ScriptRuntimeV3',"
                 "'admit_realization','resolve_realization_selection','HostExecutionAdmissionV1',"
                 "'evaluate_execution_activation','evaluate_execution_observation',"
-                "'verify_system_integration_receipt_v0'); "
+                "'verify_system_integration_receipt_v0','load_system_subsystem_v0'); "
                 "assert all(hasattr(api,n) for n in required); "
+                "probe=('semantic_cost_model_v0','semantic_dispatch_v0','semantic_receipt_validity_v0',"
+                "'semantic_resource_calibration_v0','semantic_realization_resolution_v0'); "
+                "assert all(api.load_system_subsystem_v0(n).__name__==api.SYSTEM_SUBSYSTEM_MODULE_PATHS_V0[n] for n in probe); "
                 "print(json.dumps({'language_version':api.V1_LANGUAGE_VERSION,"
-                "'contract_hash':api.SYSTEM_API_CONTRACT_HASH_V0,'exports':len(api.SYSTEM_API_EXPORTS_V0)},sort_keys=True))"
+                "'contract_hash':api.SYSTEM_API_CONTRACT_HASH_V0,'exports':len(api.SYSTEM_API_EXPORTS_V0),"
+                "'semantic_subsystems':len(api.SYSTEM_SUBSYSTEM_MODULE_PATHS_V0)},sort_keys=True))"
             )
             smoke = run([str(python_executable), "-I", "-c", smoke_code], cwd=temp, capture=True)
             if smoke.returncode:
@@ -184,8 +192,11 @@ def main() -> int:
                 raise RuntimeError("installed system api contract hash mismatch")
             if int(installed.get("exports", 0)) <= 0:
                 raise RuntimeError("installed system api export surface empty")
+            if int(installed.get("semantic_subsystems", 0)) != len(SYSTEM_SUBSYSTEM_MODULE_PATHS_V0):
+                raise RuntimeError("installed semantic subsystem registry cardinality mismatch")
             print("SYSTEM_INSTALLED_WHEEL_IMPORT=PASS")
             print("SYSTEM_INSTALLED_API_IDENTITY=PASS")
+            print("SYSTEM_INSTALLED_COMPLETE_SEMANTIC_REGISTRY=PASS")
 
             receipt_record = build_system_integration_receipt_v0(
                 branch=branch,
