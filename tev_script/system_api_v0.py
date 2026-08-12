@@ -142,6 +142,76 @@ SYSTEM_API_PROFILE_V0 = "POST_V1_REALIZATION_SYSTEM_V0"
 SYSTEM_API_AUTHORITY_V0 = "TEV_SCRIPT_STANDALONE"
 SYSTEM_CANONICAL_INDEX_SCHEMA_V0 = "TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0"
 
+SYSTEM_SUBSYSTEM_MODULE_PATHS_V0 = {
+    "semantic_abstraction_v0": "tev_script.semantic_abstraction_v0",
+    "semantic_activation_v0": "tev_script.semantic_activation_v0",
+    "semantic_apply_v0": "tev_script.semantic_apply_v0",
+    "semantic_artifact_v0": "tev_script.semantic_artifact_v0",
+    "semantic_causal_bridge_v0": "tev_script.semantic_causal_bridge_v0",
+    "semantic_causality_v0": "tev_script.semantic_causality_v0",
+    "semantic_commit_outcome_v0": "tev_script.semantic_commit_outcome_v0",
+    "semantic_composition_theorem_v0": "tev_script.semantic_composition_theorem_v0",
+    "semantic_composition_v0": "tev_script.semantic_composition_v0",
+    "semantic_computation_v0": "tev_script.semantic_computation_v0",
+    "semantic_cost_model_update_v0": "tev_script.semantic_cost_model_update_v0",
+    "semantic_cost_model_v0": "tev_script.semantic_cost_model_v0",
+    "semantic_cost_prediction_v0": "tev_script.semantic_cost_prediction_v0",
+    "semantic_delivery_guarantee_v0": "tev_script.semantic_delivery_guarantee_v0",
+    "semantic_delivery_plan_v0": "tev_script.semantic_delivery_plan_v0",
+    "semantic_delivery_satisfaction_v0": "tev_script.semantic_delivery_satisfaction_v0",
+    "semantic_discovery_realization_v0": "tev_script.semantic_discovery_realization_v0",
+    "semantic_dispatch_consumption_v0": "tev_script.semantic_dispatch_consumption_v0",
+    "semantic_dispatch_observation_v0": "tev_script.semantic_dispatch_observation_v0",
+    "semantic_dispatch_v0": "tev_script.semantic_dispatch_v0",
+    "semantic_dispatched_grounded_discovery_v0": "tev_script.semantic_dispatched_grounded_discovery_v0",
+    "semantic_effects_v0": "tev_script.semantic_effects_v0",
+    "semantic_epistemic_v0": "tev_script.semantic_epistemic_v0",
+    "semantic_evidence_v0": "tev_script.semantic_evidence_v0",
+    "semantic_execution_authority_v0": "tev_script.semantic_execution_authority_v0",
+    "semantic_execution_observation_v0": "tev_script.semantic_execution_observation_v0",
+    "semantic_execution_request_v0": "tev_script.semantic_execution_request_v0",
+    "semantic_governance_v0": "tev_script.semantic_governance_v0",
+    "semantic_grounded_discovery_v0": "tev_script.semantic_grounded_discovery_v0",
+    "semantic_host_realization_v1": "tev_script.semantic_host_realization_v1",
+    "semantic_kernel_v0": "tev_script.semantic_kernel_v0",
+    "semantic_liveness_v0": "tev_script.semantic_liveness_v0",
+    "semantic_machine_v0": "tev_script.semantic_machine_v0",
+    "semantic_paraconsistent_v0": "tev_script.semantic_paraconsistent_v0",
+    "semantic_placement_v0": "tev_script.semantic_placement_v0",
+    "semantic_prepared_execution_v0": "tev_script.semantic_prepared_execution_v0",
+    "semantic_projection_v0": "tev_script.semantic_projection_v0",
+    "semantic_proof_boundary_v0": "tev_script.semantic_proof_boundary_v0",
+    "semantic_realization_composition_v0": "tev_script.semantic_realization_composition_v0",
+    "semantic_realization_resolution_v0": "tev_script.semantic_realization_resolution_v0",
+    "semantic_realization_search_v0": "tev_script.semantic_realization_search_v0",
+    "semantic_realization_selection_v0": "tev_script.semantic_realization_selection_v0",
+    "semantic_realization_v0": "tev_script.semantic_realization_v0",
+    "semantic_receipt_validity_v0": "tev_script.semantic_receipt_validity_v0",
+    "semantic_reflection_v0": "tev_script.semantic_reflection_v0",
+    "semantic_regime_v0": "tev_script.semantic_regime_v0",
+    "semantic_residual_adapters_v0": "tev_script.semantic_residual_adapters_v0",
+    "semantic_residual_v0": "tev_script.semantic_residual_v0",
+    "semantic_resource_algebra_v0": "tev_script.semantic_resource_algebra_v0",
+    "semantic_resource_calibration_v0": "tev_script.semantic_resource_calibration_v0",
+    "semantic_resource_evidence_v0": "tev_script.semantic_resource_evidence_v0",
+    "semantic_resource_measurement_v0": "tev_script.semantic_resource_measurement_v0",
+    "semantic_runtime_state_v0": "tev_script.semantic_runtime_state_v0",
+    "semantic_security_v0": "tev_script.semantic_security_v0",
+    "semantic_trace_v0": "tev_script.semantic_trace_v0",
+    "semantic_types_v1": "tev_script.semantic_types_v1",
+    "semantic_universality_v0": "tev_script.semantic_universality_v0",
+}
+
+
+def load_system_subsystem_v0(subsystem_id: str):
+    path = SYSTEM_SUBSYSTEM_MODULE_PATHS_V0.get(str(subsystem_id))
+    if path is None:
+        raise KeyError("unknown TEV Script system subsystem: " + str(subsystem_id))
+    from importlib import import_module
+
+    return import_module(path)
+
+
 _SYSTEM_SURFACES_V0 = {
     "language": (
         "analyze_v1_sources",
@@ -196,6 +266,10 @@ _SYSTEM_SURFACES_V0 = {
         "SystemIntegrationReceiptV0",
         "verify_system_integration_receipt_v0",
     ),
+    "complete_semantic_registry": (
+        "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0",
+        "load_system_subsystem_v0",
+    ),
 }
 
 SYSTEM_API_EXPORTS_V0 = tuple(
@@ -208,6 +282,8 @@ SYSTEM_API_EXPORTS_V0 = tuple(
             "SYSTEM_CANONICAL_INDEX_SCHEMA_V0",
             "SYSTEM_API_CONTRACT_HASH_V0",
             "SYSTEM_API_EXPORTS_V0",
+            "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0",
+            "load_system_subsystem_v0",
             "system_api_contract_object_v0",
             "SYSTEM_INTEGRATION_RECEIPT_SCHEMA_V0",
             "SystemIntegrationReceiptError",
@@ -335,6 +411,7 @@ def system_api_contract_object_v0() -> dict[str, object]:
         "host_execution_transformation_hash": EXECUTE_PROGRAM_IR_V3_TRANSFORMATION_HASH_V1,
         "host_interface_hash": PROGRAM_IR_V3_HOST_INTERFACE_HASH_V1,
         "surfaces": {key: list(_SYSTEM_SURFACES_V0[key]) for key in sorted(_SYSTEM_SURFACES_V0)},
+        "subsystem_modules": {key: SYSTEM_SUBSYSTEM_MODULE_PATHS_V0[key] for key in sorted(SYSTEM_SUBSYSTEM_MODULE_PATHS_V0)},
         "exports": list(SYSTEM_API_EXPORTS_V0),
         "consumer_requirements": [
             "bind_exact_system_api_contract_hash",
