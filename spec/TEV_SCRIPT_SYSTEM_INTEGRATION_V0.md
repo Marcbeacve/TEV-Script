@@ -11,6 +11,7 @@ The integration boundary is:
 ```text
 TEV Script distribution
   -> versioned system API contract
+  -> exact integration receipt
   -> consumer
 ```
 
@@ -26,9 +27,10 @@ A consumer MUST bind all of:
 V1_LANGUAGE_VERSION
 SYSTEM_API_CONTRACT_HASH_V0
 exact distribution artifact SHA-256
+TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0
 ```
 
-The language version identifies the governed TEV Script language contract. The system API contract hash identifies the additive integration surface. The artifact SHA-256 identifies the exact installed bytes.
+The language version identifies the governed TEV Script language contract. The system API contract hash identifies the additive integration surface. The artifact SHA-256 identifies the exact installed bytes. The integration receipt binds those identities to the source HEAD/TREE and the integration gates that admitted the artifact.
 
 Package version text alone is insufficient to identify an experimental post-V1 system artifact.
 
@@ -54,6 +56,7 @@ execution request governance
 activation
 execution observation
 grounded discovery after execution
+integration receipt construction and verification
 ```
 
 ## 4. Authority direction
@@ -107,22 +110,46 @@ unless the requested Transformation itself explicitly makes that distinction sem
 
 The system API hash does not replace artifact integrity. A deployment binds the exact installed wheel/archive hash independently.
 
-Recommended consumer record:
+The canonical handoff record is `TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0`. Its implementation and verifier live in:
 
 ```text
-TEV_SCRIPT_SYSTEM_BINDING_V0
-  language_version
-  system_api_contract_hash
-  distribution_name
-  distribution_version
-  distribution_artifact_sha256
-  optional source_commit
-  optional source_tree
+tev_script/system_integration_receipt_v0.py
 ```
 
-Repository commit/tree provenance is useful for reconstruction but does not replace the artifact SHA-256 consumed at runtime.
+A consumer verifies the receipt using the installed TEV Script distribution itself:
 
-## 8. Stable V1 root API remains unchanged
+```python
+verify_system_integration_receipt_v0(
+    receipt,
+    expected_language_version=V1_LANGUAGE_VERSION,
+    expected_system_api_contract_hash=SYSTEM_API_CONTRACT_HASH_V0,
+    expected_distribution_artifact_sha256=wheel_sha256,
+    expected_source_head=source_head,      # optional but recommended
+    expected_source_tree=source_tree,      # optional but recommended
+)
+```
+
+The verifier fails closed on schema/field-set changes, canonical receipt tampering, wrong API identity, wrong wheel SHA-256 or mismatched source identity.
+
+## 8. System canonical index
+
+The historical `CANONICAL_INDEX.json` remains the language/release authority and is not reinterpreted by this post-V1 system profile.
+
+The additive system authority index is:
+
+```text
+spec/TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0.json
+```
+
+with schema:
+
+```text
+TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0
+```
+
+It binds the system facade, receipt contract, realization/host/action-loop implementation surfaces and all system integration gates while preserving `stable=false` for the post-V1 system profile.
+
+## 9. Stable V1 root API remains unchanged
 
 This integration profile is intentionally not injected into the historical unversioned package root. Consumers opt into:
 
@@ -132,29 +159,70 @@ import tev_script.system_api_v0
 
 This prevents an additive post-V1 integration surface from silently redefining the already governed V1 package root.
 
-## 9. Distribution rule
+## 10. Distribution rule
 
-The in-tree wheel backend packages all Python modules under `tev_script/`. Therefore the system facade and its implementation modules are transported together by a wheel built from the same source identity.
+The in-tree wheel backend packages all Python modules under `tev_script/`. Therefore the system facade, receipt verifier and implementation modules are transported together by a wheel built from the same source identity.
 
-A production consumer MUST pin the exact wheel bytes. A later public post-V1 release may introduce a distinct distribution version/profile, but that release operation is outside this V0 integration contract.
+A production consumer MUST pin the exact wheel bytes. The distribution/package version remains insufficient as a post-V1 system identity by itself; `SYSTEM_API_CONTRACT_HASH_V0` plus the exact artifact SHA-256 and integration receipt close that ambiguity.
 
-## 10. Readiness gate
+A later public post-V1 release may introduce a distinct distribution version/profile, but that release operation is outside this V0 integration contract.
 
-A candidate is ready for external-system integration only when the focal integration gate proves:
+## 11. Artifact admission
+
+`RUN_TEV_SCRIPT_SYSTEM_INTEGRATION_V0.py` is the exact-artifact integration gate. It does not publish, merge, tag, promote or modify a consumer.
+
+The gate requires a clean named-branch checkout and an empty output directory outside the repository. It:
 
 ```text
-SYSTEM_API_IMPORT=PASS
-SYSTEM_API_CONTRACT_HASH=PASS
-SYSTEM_API_REQUIRED_SURFACES=PASS
-V1_ROOT_API_NOT_REDEFINED=PASS
-ZERO_RUNTIME_DEPENDENCIES=PASS
-SYSTEM_WHEEL_INCLUDES_TEV_SCRIPT_PYTHON_MODULES=PASS
-NO_CONSUMER_AUTHORITY_IMPORT=PASS
-NO_BACKEND_SEMANTIC_AUTHORITY=PASS
-R2_INDETERMINACY_PRESERVED=PASS
-R1_HOST_EVIDENCE_BOUNDARY_PRESENT=PASS
-ACTION_LOOP_BINDING_PRESENT=PASS
-LONG_VALIDATION_DEFERRED=PASS
+runs the system focal
+  -> validates the system API contract
+  -> builds two independent deterministic wheels
+  -> requires byte identity between both builds
+  -> installs the exact wheel into a clean venv with --no-deps
+  -> imports the complete system API from the installed wheel
+  -> constructs the canonical integration receipt
+  -> makes the installed wheel verify that receipt
+  -> copies the exact wheel to the output directory
+  -> copies the receipt last
 ```
 
-`CERTIFY_FULL`, cross-host campaigns and public release/promotion remain separate final-stage obligations.
+The receipt is therefore the final admission artifact. A wheel without its matching admitted receipt is not a complete system handoff.
+
+## 12. Readiness gate
+
+A candidate is ready for external-system integration only when the focal and exact-artifact integration gates prove:
+
+```text
+SYSTEM_API_IMPORT_BOUNDARY=PASS
+SYSTEM_API_CONTRACT_HASH=PASS
+SYSTEM_API_REQUIRED_SURFACE=PASS
+SYSTEM_CANONICAL_INDEX_SCHEMA=PASS
+V1_ROOT_API_NOT_REDEFINED=PASS
+SYSTEM_ZERO_RUNTIME_DEPENDENCIES=PASS
+SYSTEM_WHEEL_DETERMINISTIC_BYTES=PASS
+SYSTEM_INSTALLED_WHEEL_IMPORT=PASS
+SYSTEM_INSTALLED_API_IDENTITY=PASS
+SYSTEM_INSTALLED_RECEIPT_VERIFIER=PASS
+SYSTEM_ARTIFACT_RECEIPT_LAST=PASS
+R2_INDETERMINACY_PRESERVED=PASS
+R1_HOST_EVIDENCE_BOUNDARY_PRESENT=PASS
+SYSTEM_ACTION_LOOP_BOUNDARY_PRESENT=PASS
+TEV_SCRIPT_SYSTEM_INTEGRATION_ARTIFACT=PASS
+```
+
+The exact handoff consists of:
+
+```text
+<exact wheel>
+TEV_SCRIPT_SYSTEM_INTEGRATION_V0.receipt.json
+```
+
+plus the three printed identities:
+
+```text
+SYSTEM_DISTRIBUTION_WHEEL_SHA256
+SYSTEM_API_CONTRACT_HASH_V0
+SYSTEM_INTEGRATION_RECEIPT_SHA256
+```
+
+`CERTIFY_FULL`, cross-host long campaigns, public release/promotion and Unity validation remain separate final-stage obligations.
