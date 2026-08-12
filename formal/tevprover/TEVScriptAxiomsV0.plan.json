@@ -2,7 +2,7 @@
   "schema": "TEV_SCRIPT_TEVPROVER_AXIOM_PLAN_V0",
   "status": "MATERIALIZED_NOT_EXECUTED",
   "semantic_authority": false,
-  "installed_port": "tevprover_cuofc.installed_proof_port:tevprover_verify_installed",
+  "installed_port": "tevprover_cuofc.verify_proof",
   "required_frame": "TEV_NATIVE_EXACT_FINITE",
   "rules": {
     "supported_goal_kind_required": true,
