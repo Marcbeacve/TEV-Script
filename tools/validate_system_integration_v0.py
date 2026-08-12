@@ -162,6 +162,7 @@ def main() -> int:
         contract_required = (
             "bind_exact_system_api_contract_hash",
             "bind_exact_distribution_artifact_sha256",
+            "bind_exact_system_integration_receipt_hash",
             "verify_system_integration_receipt_before_use",
             "preserve_stable_public_api_surface",
             "do_not_upgrade_proof_required_or_indeterminate_to_pass",
@@ -216,6 +217,7 @@ def main() -> int:
             (
                 'SYSTEM_INTEGRATION_RECEIPT_SCHEMA_V0 = "TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0"',
                 "canonical_hash(body)",
+                "expected_receipt_hash",
                 "expected_system_api_contract_hash",
                 "expected_distribution_artifact_sha256",
                 "expected_source_head",
@@ -270,6 +272,7 @@ def main() -> int:
         require(receipt_index.get("schema") == "TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0", "SYSTEM_CANONICAL_INDEX_RECEIPT_SCHEMA")
         require(receipt_index.get("verifier") == "verify_system_integration_receipt_v0", "SYSTEM_CANONICAL_INDEX_RECEIPT_VERIFIER")
         require(receipt_index.get("canonical_hash_required") is True, "SYSTEM_CANONICAL_INDEX_RECEIPT_CANONICAL")
+        require(receipt_index.get("exact_receipt_hash_required") is True, "SYSTEM_CANONICAL_INDEX_RECEIPT_EXACT_HASH")
         require(receipt_index.get("exact_distribution_sha256_required") is True, "SYSTEM_CANONICAL_INDEX_RECEIPT_ARTIFACT_BINDING")
         require(receipt_index.get("stable_public_api_preserved_required") is True, "SYSTEM_CANONICAL_INDEX_RECEIPT_STABLE_API")
         require(receipt_index.get("wheel_complete_python_module_closure_required") is True, "SYSTEM_CANONICAL_INDEX_RECEIPT_MODULE_CLOSURE")
@@ -307,6 +310,7 @@ def main() -> int:
             "language_version_required",
             "system_api_contract_hash_required",
             "distribution_artifact_sha256_required",
+            "integration_receipt_hash_required",
             "integration_receipt_verification_required",
             "stable_public_api_preservation_required",
         ):
@@ -397,7 +401,9 @@ def main() -> int:
                 "SYSTEM_INSTALLED_COMPLETE_SEMANTIC_REGISTRY=PASS",
                 "build_system_integration_receipt_v0",
                 "verify_system_integration_receipt_v0",
+                "expected_receipt_hash",
                 "SYSTEM_INSTALLED_RECEIPT_VERIFIER=PASS",
+                "SYSTEM_PINNED_RECEIPT_IDENTITY=PASS",
                 "SYSTEM_ARTIFACT_RECEIPT_LAST=PASS",
             ),
             "SYSTEM_ARTIFACT_GATE_BOUNDARY",
@@ -409,6 +415,8 @@ def main() -> int:
         spec = SYSTEM_SPEC.read_text(encoding="utf-8")
         require("Package version text alone is insufficient" in spec, "SYSTEM_ARTIFACT_IDENTITY_NOT_VERSION_ONLY")
         require("SYSTEM_API_CONTRACT_HASH_V0" in spec, "SYSTEM_CONTRACT_DOCUMENTED")
+        require("SYSTEM_INTEGRATION_RECEIPT_SHA256" in spec, "SYSTEM_PINNED_RECEIPT_HASH_DOCUMENTED")
+        require("expected_receipt_hash" in spec, "SYSTEM_PINNED_RECEIPT_VERIFIER_DOCUMENTED")
         require("TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0" in spec, "SYSTEM_RECEIPT_DOCUMENTED")
         require("RUN_TEV_SCRIPT_SYSTEM_INTEGRATION_V0.py" in spec, "SYSTEM_ARTIFACT_GATE_DOCUMENTED")
         require("receipt last" in spec.lower(), "SYSTEM_RECEIPT_LAST_DOCUMENTED")
