@@ -203,7 +203,7 @@ runs the system focal
   -> installs the exact wheel into a clean venv with --no-deps
   -> imports the complete system API from the installed wheel
   -> loads every registered Causal Reaction V1 module
-  -> loads representative non-facade semantic subsystems through the registry
+  -> loads every registered semantic subsystem through the closed registry
   -> requires installed/source causal registry cardinality identity
   -> requires installed/source semantic registry cardinality identity
   -> constructs the canonical integration receipt
