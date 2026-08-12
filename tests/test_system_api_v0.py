@@ -23,6 +23,10 @@ class SystemApiV0Tests(unittest.TestCase):
         for name in system_api.SYSTEM_API_EXPORTS_V0:
             self.assertTrue(hasattr(system_api, name), name)
         self.assertEqual(set(system_api.__all__), set(system_api.SYSTEM_API_EXPORTS_V0))
+        self.assertEqual(
+            system_api.system_api_contract_object_v0()["exports"],
+            list(system_api.SYSTEM_API_EXPORTS_V0),
+        )
 
     def test_complete_high_level_surfaces_are_bound(self):
         contract = system_api.system_api_contract_object_v0()
@@ -37,6 +41,8 @@ class SystemApiV0Tests(unittest.TestCase):
         self.assertIn("evaluate_execution_activation", surfaces["execution_governance"])
         self.assertIn("evaluate_execution_observation", surfaces["execution_governance"])
         self.assertIn("evaluate_execution_grounded_discovery_cycle", surfaces["execution_governance"])
+        self.assertIn("SystemIntegrationReceiptV0", surfaces["integration_binding"])
+        self.assertIn("verify_system_integration_receipt_v0", surfaces["integration_binding"])
 
     def test_consumer_contract_requires_exact_artifact_and_fail_closed_outcomes(self):
         requirements = set(system_api.system_api_contract_object_v0()["consumer_requirements"])
@@ -49,6 +55,7 @@ class SystemApiV0Tests(unittest.TestCase):
         root_exports = set(getattr(tev_script, "__all__", ()))
         self.assertNotIn("SYSTEM_API_CONTRACT_HASH_V0", root_exports)
         self.assertNotIn("resolve_realization_selection", root_exports)
+        self.assertNotIn("verify_system_integration_receipt_v0", root_exports)
 
     def test_no_release_or_repository_mutation_authority_is_exported(self):
         lowered = tuple(name.lower() for name in system_api.SYSTEM_API_EXPORTS_V0)
@@ -65,6 +72,10 @@ class SystemApiV0Tests(unittest.TestCase):
         self.assertEqual(
             contract["host_interface_hash"],
             system_api.PROGRAM_IR_V3_HOST_INTERFACE_HASH_V1,
+        )
+        self.assertEqual(
+            contract["system_canonical_index_schema"],
+            system_api.SYSTEM_CANONICAL_INDEX_SCHEMA_V0,
         )
 
 
