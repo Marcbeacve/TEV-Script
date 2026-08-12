@@ -24,6 +24,7 @@ FOCAL_TEST_FILES = (
     "test_realization_activation_v0.py",
     "test_realization_execution_observation_v0.py",
     "test_execution_grounded_discovery_v0.py",
+    "test_system_integration_receipt_v0.py",
     "test_system_api_v0.py",
 )
 
@@ -64,6 +65,7 @@ def main() -> int:
     print("SYSTEM_GOVERNED_SELECTION_RESOLUTION=PASS")
     print("SYSTEM_HOST_REALIZATION_EVIDENCE=PASS")
     print("SYSTEM_EXECUTION_OBSERVATION_LOOP=PASS")
+    print("SYSTEM_INTEGRATION_RECEIPT_BINDING=PASS")
     print("CERTIFY_FULL=DEFERRED_BY_DESIGN")
     print("PYTHON_CERTIFY_FULL=DEFERRED_BY_DESIGN")
     print("UNITY_VALIDATION=DEFERRED_BY_PRIORITY")
