@@ -34,6 +34,8 @@ class SystemApiV0Tests(unittest.TestCase):
         surfaces = contract["surfaces"]
         self.assertIn("compile_v1_sources_to_ir_v3", surfaces["language"])
         self.assertIn("verify_ir_v3_lowering_receipt", surfaces["ir_v3"])
+        self.assertIn("SYSTEM_CAUSAL_MODULE_PATHS_V0", surfaces["causal_reaction_registry"])
+        self.assertIn("load_system_causal_subsystem_v0", surfaces["causal_reaction_registry"])
         self.assertIn("apply_rule", surfaces["semantic_calculus"])
         self.assertIn("admit_realization", surfaces["realization"])
         self.assertIn("resolve_realization_selection", surfaces["realization"])
@@ -46,6 +48,25 @@ class SystemApiV0Tests(unittest.TestCase):
         self.assertIn("verify_system_integration_receipt_v0", surfaces["integration_binding"])
         self.assertIn("SYSTEM_SUBSYSTEM_MODULE_PATHS_V0", surfaces["complete_semantic_registry"])
         self.assertIn("load_system_subsystem_v0", surfaces["complete_semantic_registry"])
+
+    def test_complete_causal_registry_matches_package_causal_modules(self):
+        package_root = Path(system_api.__file__).resolve().parent
+        observed = {path.stem for path in package_root.glob("causal_*_v1.py")}
+        registered = set(system_api.SYSTEM_CAUSAL_MODULE_PATHS_V0)
+        self.assertEqual(registered, observed)
+        self.assertEqual(
+            system_api.system_api_contract_object_v0()["causal_modules"],
+            {key: system_api.SYSTEM_CAUSAL_MODULE_PATHS_V0[key] for key in sorted(registered)},
+        )
+        for subsystem_id, module_path in system_api.SYSTEM_CAUSAL_MODULE_PATHS_V0.items():
+            self.assertEqual(module_path, "tev_script." + subsystem_id)
+
+    def test_causal_subsystem_loader_is_closed_and_loads_complete_reaction_line(self):
+        for subsystem_id in sorted(system_api.SYSTEM_CAUSAL_MODULE_PATHS_V0):
+            loaded = system_api.load_system_causal_subsystem_v0(subsystem_id)
+            self.assertEqual(loaded.__name__, system_api.SYSTEM_CAUSAL_MODULE_PATHS_V0[subsystem_id])
+        with self.assertRaises(KeyError):
+            system_api.load_system_causal_subsystem_v0("consumer_causal_override")
 
     def test_complete_semantic_registry_matches_package_semantic_modules(self):
         package_root = Path(system_api.__file__).resolve().parent
@@ -72,11 +93,13 @@ class SystemApiV0Tests(unittest.TestCase):
         with self.assertRaises(KeyError):
             system_api.load_system_subsystem_v0("consumer_private_module")
 
-    def test_consumer_contract_requires_exact_artifact_and_fail_closed_outcomes(self):
+    def test_consumer_contract_requires_exact_artifact_receipt_and_fail_closed_outcomes(self):
         requirements = set(system_api.system_api_contract_object_v0()["consumer_requirements"])
         self.assertIn("bind_exact_system_api_contract_hash", requirements)
         self.assertIn("bind_exact_distribution_artifact_sha256", requirements)
+        self.assertIn("verify_system_integration_receipt_before_use", requirements)
         self.assertIn("do_not_upgrade_proof_required_or_indeterminate_to_pass", requirements)
+        self.assertIn("do_not_treat_no_admissible_realization_as_selection", requirements)
         self.assertIn("do_not_use_backend_identity_as_semantic_identity", requirements)
 
     def test_system_api_is_opt_in_and_does_not_redefine_v1_package_root(self):
@@ -84,6 +107,7 @@ class SystemApiV0Tests(unittest.TestCase):
         self.assertNotIn("SYSTEM_API_CONTRACT_HASH_V0", root_exports)
         self.assertNotIn("resolve_realization_selection", root_exports)
         self.assertNotIn("verify_system_integration_receipt_v0", root_exports)
+        self.assertNotIn("load_system_causal_subsystem_v0", root_exports)
         self.assertNotIn("load_system_subsystem_v0", root_exports)
 
     def test_no_release_or_repository_mutation_authority_is_exported(self):
