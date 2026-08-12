@@ -15,9 +15,6 @@ FOCAL_TEST_FILES = (
     "test_v1_irv3_lowering_receipt.py",
     "test_ir_v3_validation.py",
     "test_ir_v3_runtime.py",
-    "test_causal_analysis_v1.py",
-    "test_causal_refinement_v1.py",
-    "test_causal_runtime_v1.py",
     "test_semantic_causal_bridge_v0.py",
     "test_commit_outcome_v0.py",
     "test_realization_semantics_v0.py",
@@ -43,6 +40,15 @@ def run_tests() -> tuple[bool, int, int, int]:
     return result.wasSuccessful(), result.testsRun, len(result.failures), len(result.errors)
 
 
+def run_gate(path: Path, pass_label: str, fail_label: str) -> bool:
+    completed = subprocess.run([sys.executable, str(path)], cwd=ROOT, text=True)
+    if completed.returncode:
+        print(fail_label + "=FAIL")
+        return False
+    print(pass_label + "=PASS")
+    return True
+
+
 def main() -> int:
     ok, count, failures, errors = run_tests()
     print(f"SYSTEM_INTEGRATION_FOCAL_TEST_COUNT={count}")
@@ -53,20 +59,24 @@ def main() -> int:
         print("TEV_SCRIPT_SYSTEM_INTEGRATION_V0=FAIL")
         return 1
 
-    completed = subprocess.run(
-        [sys.executable, str(ROOT / "tools" / "validate_system_integration_v0.py")],
-        cwd=ROOT,
-        text=True,
-    )
-    if completed.returncode:
-        print("SYSTEM_INTEGRATION_STATIC_AUTHORITY=FAIL")
+    if not run_gate(
+        ROOT / "tests" / "run_causal_reaction_campaign.py",
+        "SYSTEM_CAUSAL_REACTION",
+        "SYSTEM_CAUSAL_REACTION",
+    ):
         print("TEV_SCRIPT_SYSTEM_INTEGRATION_V0=FAIL")
         return 2
-    print("SYSTEM_INTEGRATION_STATIC_AUTHORITY=PASS")
+
+    if not run_gate(
+        ROOT / "tools" / "validate_system_integration_v0.py",
+        "SYSTEM_INTEGRATION_STATIC_AUTHORITY",
+        "SYSTEM_INTEGRATION_STATIC_AUTHORITY",
+    ):
+        print("TEV_SCRIPT_SYSTEM_INTEGRATION_V0=FAIL")
+        return 3
 
     print("SYSTEM_LANGUAGE_TO_IR_V3=PASS")
     print("SYSTEM_IR_V3_RUNTIME=PASS")
-    print("SYSTEM_CAUSAL_REACTION=PASS")
     print("SYSTEM_CAUSAL_SEMANTIC_BRIDGE=PASS")
     print("SYSTEM_REALIZATION_ADMISSION=PASS")
     print("SYSTEM_GOVERNED_SELECTION_RESOLUTION=PASS")
