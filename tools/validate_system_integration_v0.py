@@ -16,7 +16,8 @@ ROOT_INIT = ROOT / "tev_script" / "__init__.py"
 PYPROJECT = ROOT / "pyproject.toml"
 BUILDER = ROOT / "tools" / "tev_script_build_backend.py"
 
-FORBIDDEN_ABSOLUTE_IMPORTS = frozenset(
+ALLOWED_ABSOLUTE_IMPORT_ROOTS = frozenset({"__future__", "importlib"})
+FORBIDDEN_HOST_INTROSPECTION_IMPORTS = frozenset(
     {
         "os",
         "platform",
@@ -46,6 +47,8 @@ FORBIDDEN_ARTIFACT_GATE_TOKENS = (
 REQUIRED_SYSTEM_TOKENS = (
     "SYSTEM_API_CONTRACT_HASH_V0",
     "SYSTEM_CANONICAL_INDEX_SCHEMA_V0",
+    "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0",
+    "load_system_subsystem_v0",
     "compile_v1_sources_to_ir_v3",
     "verify_ir_v3_lowering_receipt",
     "ScriptRuntimeV3",
@@ -78,6 +81,13 @@ def require_tokens(text: str, tokens: tuple[str, ...], label: str) -> None:
         require(token in text, label, token)
 
 
+def literal_assignment(tree: ast.Module, name: str):
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == name for target in node.targets):
+            return ast.literal_eval(node.value)
+    raise RuntimeError("missing literal assignment: " + name)
+
+
 def main() -> int:
     try:
         for path in (
@@ -101,10 +111,12 @@ def main() -> int:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     root = alias.name.split(".", 1)[0]
-                    require(root not in FORBIDDEN_ABSOLUTE_IMPORTS, "SYSTEM_API_NO_HOST_INTROSPECTION", alias.name)
+                    require(root not in FORBIDDEN_HOST_INTROSPECTION_IMPORTS, "SYSTEM_API_NO_HOST_INTROSPECTION", alias.name)
+                    require(root in ALLOWED_ABSOLUTE_IMPORT_ROOTS, "SYSTEM_API_ABSOLUTE_IMPORT_ALLOWLIST", alias.name)
             elif isinstance(node, ast.ImportFrom) and node.level == 0:
                 root = (node.module or "").split(".", 1)[0]
-                require(root == "__future__", "SYSTEM_API_ONLY_RELATIVE_PACKAGE_IMPORTS", node.module or "")
+                require(root not in FORBIDDEN_HOST_INTROSPECTION_IMPORTS, "SYSTEM_API_NO_HOST_INTROSPECTION", node.module or "")
+                require(root in ALLOWED_ABSOLUTE_IMPORT_ROOTS, "SYSTEM_API_ABSOLUTE_IMPORT_ALLOWLIST", node.module or "")
         print("SYSTEM_API_IMPORT_BOUNDARY=PASS")
 
         for token in FORBIDDEN_AUTHORITY_TOKENS:
@@ -119,9 +131,20 @@ def main() -> int:
             "do_not_upgrade_proof_required_or_indeterminate_to_pass",
             "do_not_use_backend_identity_as_semantic_identity",
             '"exports": list(SYSTEM_API_EXPORTS_V0)',
+            '"subsystem_modules"',
             '"integration_binding"',
+            '"complete_semantic_registry"',
         )
         require_tokens(source, contract_required, "SYSTEM_API_FAIL_CLOSED_CONSUMER_CONTRACT")
+
+        registry = literal_assignment(tree, "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0")
+        require(isinstance(registry, dict), "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_OBJECT")
+        package_root = ROOT / "tev_script"
+        semantic_files = tuple(sorted(package_root.glob("semantic_*.py")))
+        expected_registry = {path.stem: "tev_script." + path.stem for path in semantic_files}
+        require(bool(expected_registry), "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_NONEMPTY")
+        require(registry == expected_registry, "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_CLOSED")
+        require(len(set(registry.values())) == len(registry), "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_UNIQUE_PATHS")
 
         receipt_source = SYSTEM_RECEIPT.read_text(encoding="utf-8")
         require_tokens(
@@ -133,6 +156,7 @@ def main() -> int:
                 "expected_distribution_artifact_sha256",
                 "expected_source_head",
                 "expected_source_tree",
+                "installed_complete_semantic_registry",
                 "installed_receipt_verifier",
                 "package version must not be sole system identity",
             ),
@@ -152,6 +176,14 @@ def main() -> int:
         require(api_index.get("schema") == "TEV_SCRIPT_SYSTEM_API_V0", "SYSTEM_CANONICAL_INDEX_API_SCHEMA")
         require(api_index.get("contract_hash_symbol") == "SYSTEM_API_CONTRACT_HASH_V0", "SYSTEM_CANONICAL_INDEX_API_HASH_SYMBOL")
         require(api_index.get("root_api_redefined") is False, "SYSTEM_CANONICAL_INDEX_ROOT_API_UNCHANGED")
+
+        registry_index = system_index.get("complete_semantic_registry")
+        require(isinstance(registry_index, dict), "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_OBJECT")
+        require(registry_index.get("source_glob") == "tev_script/semantic_*.py", "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_GLOB")
+        require(registry_index.get("api_symbol") == "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0", "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_SYMBOL")
+        require(registry_index.get("loader_symbol") == "load_system_subsystem_v0", "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_LOADER")
+        require(registry_index.get("closed_world") is True, "SYSTEM_CANONICAL_INDEX_COMPLETE_REGISTRY_CLOSED")
+        require(registry_index.get("backend_identity_is_semantic_identity") is False, "SYSTEM_CANONICAL_INDEX_BACKEND_NOT_SEMANTIC_IDENTITY")
 
         receipt_index = system_index.get("system_integration_receipt")
         require(isinstance(receipt_index, dict), "SYSTEM_CANONICAL_INDEX_RECEIPT_OBJECT")
@@ -199,6 +231,7 @@ def main() -> int:
         require(consumer.get("consumer_is_semantic_authority") is False, "SYSTEM_CANONICAL_INDEX_CONSUMER_NOT_AUTHORITY")
         require(consumer.get("proof_required_may_be_upgraded") is False, "SYSTEM_CANONICAL_INDEX_PROOF_REQUIRED_PRESERVED")
         require(consumer.get("indeterminate_may_be_implicitly_selected") is False, "SYSTEM_CANONICAL_INDEX_INDETERMINACY_PRESERVED")
+        require(consumer.get("no_admissible_realization_may_implicitly_fallback") is False, "SYSTEM_CANONICAL_INDEX_NO_ADMISSIBLE_FALLBACK_FORBIDDEN")
 
         distribution = system_index.get("distribution")
         require(isinstance(distribution, dict), "SYSTEM_CANONICAL_INDEX_DISTRIBUTION")
@@ -261,6 +294,9 @@ def main() -> int:
                 "venv.EnvBuilder(with_pip=True, clear=True)",
                 '"--no-index"',
                 '"--no-deps"',
+                "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0",
+                "load_system_subsystem_v0",
+                "SYSTEM_INSTALLED_COMPLETE_SEMANTIC_REGISTRY=PASS",
                 "build_system_integration_receipt_v0",
                 "verify_system_integration_receipt_v0",
                 "SYSTEM_INSTALLED_RECEIPT_VERIFIER=PASS",
@@ -278,6 +314,7 @@ def main() -> int:
         require("TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0" in spec, "SYSTEM_RECEIPT_DOCUMENTED")
         require("RUN_TEV_SCRIPT_SYSTEM_INTEGRATION_V0.py" in spec, "SYSTEM_ARTIFACT_GATE_DOCUMENTED")
         require("receipt last" in spec.lower(), "SYSTEM_RECEIPT_LAST_DOCUMENTED")
+        require("SYSTEM_SUBSYSTEM_MODULE_PATHS_V0" in spec, "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_DOCUMENTED")
 
         print("SYSTEM_PUBLIC_RELEASE_PROMOTION=DEFERRED")
         print("LONG_VALIDATION_DEFERRED=PASS")
