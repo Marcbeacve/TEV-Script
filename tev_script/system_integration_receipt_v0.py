@@ -38,6 +38,7 @@ _DISTRIBUTION_FIELDS = frozenset(
 _VERIFICATION_FIELDS = frozenset(
     {
         "source_focal",
+        "stable_public_api_preserved",
         "deterministic_wheel_bytes",
         "installed_wheel_import",
         "installed_api_identity",
@@ -137,6 +138,7 @@ class SystemIntegrationReceiptV0:
         _fields(verification, _VERIFICATION_FIELDS, "verification")
         for key in (
             "source_focal",
+            "stable_public_api_preserved",
             "deterministic_wheel_bytes",
             "installed_wheel_import",
             "installed_api_identity",
@@ -228,6 +230,7 @@ def build_system_integration_receipt_v0(
         },
         "verification": {
             "source_focal": "PASS",
+            "stable_public_api_preserved": "PASS",
             "deterministic_wheel_bytes": "PASS",
             "installed_wheel_import": "PASS",
             "installed_api_identity": "PASS",
