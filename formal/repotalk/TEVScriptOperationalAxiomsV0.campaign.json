@@ -2,9 +2,16 @@
   "schema": "TEV_SCRIPT_REPOTALK_OPERATIONAL_FORMAL_CAMPAIGN_V0",
   "status": "PREPARED_NOT_EXECUTED",
   "tool": "repotalk_formal_verify",
-  "workspace_root_runtime_required": true,
+  "source_mode": "REPOTALK_REMOTE_EXACT_REPOSITORY",
+  "repository": "Marcbeacve/TEV-Script",
+  "ref_runtime_required": true,
+  "local_root_for_certification_allowed": false,
   "expected_head_sha_runtime_required": true,
+  "expected_tree_sha_bound_by_remote_receipt": true,
   "fixed_argv_only": true,
+  "expected_tool_versions": {
+    "z3": "4.16.0"
+  },
   "tasks": [
     {
       "id": "Z3_OPERATIONAL_THEOREMS",

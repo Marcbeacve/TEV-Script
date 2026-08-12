@@ -79,15 +79,25 @@
     "Resolution_semantics": "NO_ADMISSIBLE_REALIZATION only after closed rejection; open admission -> INDETERMINATE",
     "Constitutive_C0_C8": "tools/validate_axiomatic_system_correspondence_v0.py",
     "Operational_L0_L8": "tools/validate_axiomatic_operational_v0.py",
-    "Closed_module_coverage": "tools/validate_axiomatic_coverage_v0.py"
+    "Closed_module_coverage": "tools/validate_axiomatic_coverage_v0.py",
+    "Formal_evidence_contract": "tools/validate_axiomatic_evidence_contract_v0.py"
   },
   "repotalk": {
     "tool": "repotalk_formal_verify",
     "campaign_path": "formal/repotalk/TEVScriptAxiomsV0.campaign.json",
     "operational_campaign_path": "formal/repotalk/TEVScriptOperationalAxiomsV0.campaign.json",
+    "certification_source_mode": "REPOTALK_REMOTE_EXACT_REPOSITORY",
+    "repository": "Marcbeacve/TEV-Script",
+    "local_root_for_certification_allowed": false,
     "requires_exact_head": true,
+    "requires_exact_tree_from_remote_receipt": true,
     "fixed_argv_only": true,
     "workspace_snapshot_required": true,
+    "lean_toolchain_tree_hash_required": true,
+    "expected_tool_versions": {
+      "z3": "4.16.0",
+      "lean": "4.32.2"
+    },
     "status": "PREPARED_NOT_EXECUTED"
   },
   "tevprover": {
@@ -101,6 +111,20 @@
     "finite_four_value_proof_sha256": "bccfa155218e5d068a0301b4b5728d985fb3bc968c587b9d9302dbf324a686b3",
     "logical_selection_countermodel_engine": "z3"
   },
+  "formal_evidence_receipt": {
+    "schema": "TEV_SCRIPT_AXIOMATIC_FORMAL_RECEIPT_V0",
+    "implementation": "tev_script/axiomatic_formal_receipt_v0.py",
+    "evidence_validator": "tools/validate_axiomatic_formal_evidence_v0.py",
+    "admission_gate": "RUN_TEV_SCRIPT_AXIOMATIC_FORMAL_ADMISSION_V0.py",
+    "output_location": "OUTSIDE_REPOSITORY",
+    "receipt_written_last": true,
+    "artifact_file_hash_distinct_from_canonical_proof_hash": true,
+    "repotalk_result_hashes_bound": true,
+    "remote_head_and_tree_required": true,
+    "formal_tool_hashes_required": true,
+    "lean_toolchain_tree_hash_required": true,
+    "status": "BLOCKED_ON_FORMAL_EXECUTION"
+  },
   "promotion": {
     "bind_to_system_canonical_index_before_formal_pass": false,
     "rewrite_historical_v1_identity": false,
@@ -111,6 +135,7 @@
     "requires_static_correspondence": true,
     "requires_constitutive_c0_c8_correspondence": true,
     "requires_operational_l0_l8_correspondence": true,
-    "requires_closed_module_axiom_coverage": true
+    "requires_closed_module_axiom_coverage": true,
+    "requires_axiomatic_formal_receipt": true
   }
 }
