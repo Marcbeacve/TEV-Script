@@ -16,7 +16,6 @@ ROOT = Path(__file__).resolve().parent
 FOCAL = ROOT / "tests" / "run_system_integration_v0_focal.py"
 SYSTEM_INDEX = ROOT / "spec" / "TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0.json"
 SYSTEM_SPEC = ROOT / "spec" / "TEV_SCRIPT_SYSTEM_INTEGRATION_V0.md"
-RECEIPT_SCHEMA = "TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0"
 
 
 def sha256_file(path: Path) -> str:
@@ -53,6 +52,8 @@ def require_clean_checkout() -> tuple[str, str, str, str]:
     head = git_text("rev-parse", "HEAD")
     tree = git_text("rev-parse", "HEAD^{tree}")
     epoch = git_text("show", "-s", "--format=%ct", "HEAD")
+    if not branch:
+        raise RuntimeError("system integration artifact requires a named branch")
     if not epoch.isdigit():
         raise RuntimeError("invalid git commit epoch")
     return branch, head, tree, epoch
@@ -109,7 +110,9 @@ def main() -> int:
             SYSTEM_API_CONTRACT_HASH_V0,
             SYSTEM_CANONICAL_INDEX_SCHEMA_V0,
             V1_LANGUAGE_VERSION,
+            build_system_integration_receipt_v0,
             system_api_contract_object_v0,
+            verify_system_integration_receipt_v0,
         )
         from tools.tev_script_build_backend import build_wheel  # noqa: PLC0415
 
@@ -118,7 +121,6 @@ def main() -> int:
             raise RuntimeError("system canonical index schema mismatch")
         if system_index.get("language_version") != V1_LANGUAGE_VERSION:
             raise RuntimeError("system canonical index language version mismatch")
-
         if canonical_hash(system_api_contract_object_v0()) != SYSTEM_API_CONTRACT_HASH_V0:
             raise RuntimeError("system api contract hash mismatch")
         print("SYSTEM_API_CONTRACT_HASH=PASS")
@@ -151,17 +153,11 @@ def main() -> int:
                 raise RuntimeError("independent system wheel builds are not byte-identical")
             print("SYSTEM_WHEEL_DETERMINISTIC_BYTES=PASS")
 
-            target_wheel = out_dir / wheel_a_name
-            shutil.copyfile(wheel_a, target_wheel)
-            target_wheel_sha = sha256_file(target_wheel)
-            if target_wheel_sha != wheel_a_sha:
-                raise RuntimeError("copied wheel hash mismatch")
-
             env_dir = temp / "installed-env"
             venv.EnvBuilder(with_pip=True, clear=True).create(env_dir)
             python_executable = venv_python(env_dir)
             install = run(
-                [str(python_executable), "-m", "pip", "install", "--no-index", "--no-deps", str(target_wheel)],
+                [str(python_executable), "-m", "pip", "install", "--no-index", "--no-deps", str(wheel_a)],
                 cwd=temp,
                 capture=True,
             )
@@ -172,7 +168,8 @@ def main() -> int:
                 "import json; import tev_script.system_api_v0 as api; "
                 "required=('compile_v1_sources_to_ir_v3','verify_ir_v3_lowering_receipt','ScriptRuntimeV3',"
                 "'admit_realization','resolve_realization_selection','HostExecutionAdmissionV1',"
-                "'evaluate_execution_activation','evaluate_execution_observation'); "
+                "'evaluate_execution_activation','evaluate_execution_observation',"
+                "'verify_system_integration_receipt_v0'); "
                 "assert all(hasattr(api,n) for n in required); "
                 "print(json.dumps({'language_version':api.V1_LANGUAGE_VERSION,"
                 "'contract_hash':api.SYSTEM_API_CONTRACT_HASH_V0,'exports':len(api.SYSTEM_API_EXPORTS_V0)},sort_keys=True))"
@@ -190,51 +187,80 @@ def main() -> int:
             print("SYSTEM_INSTALLED_WHEEL_IMPORT=PASS")
             print("SYSTEM_INSTALLED_API_IDENTITY=PASS")
 
-        receipt_body = {
-            "schema": RECEIPT_SCHEMA,
-            "status": "PASS",
-            "source": {
-                "branch": branch,
-                "head": head,
-                "tree": tree,
-                "source_date_epoch": epoch,
-            },
-            "language_version": V1_LANGUAGE_VERSION,
-            "system_api_contract_hash": SYSTEM_API_CONTRACT_HASH_V0,
-            "system_canonical_index": {
-                "schema": SYSTEM_CANONICAL_INDEX_SCHEMA_V0,
-                "file_sha256": sha256_file(SYSTEM_INDEX),
-            },
-            "system_integration_spec_sha256": sha256_file(SYSTEM_SPEC),
-            "distribution": {
-                "name": str(project.get("name")),
-                "version": str(project.get("version")),
-                "wheel": target_wheel.name,
-                "wheel_sha256": target_wheel_sha,
-                "runtime_dependencies": 0,
-                "package_version_alone_is_identity": False,
-            },
-            "verification": {
-                "source_focal": "PASS",
-                "deterministic_wheel_bytes": "PASS",
-                "installed_wheel_import": "PASS",
-                "installed_api_identity": "PASS",
-                "certify_full": "DEFERRED",
-                "python_certify_full": "DEFERRED",
-                "unity": "DEFERRED_BY_PRIORITY",
-                "public_release": "DEFERRED",
-            },
-        }
-        receipt_hash = canonical_hash(receipt_body)
-        receipt = {**receipt_body, "receipt_hash": receipt_hash}
-        receipt_path = out_dir / "TEV_SCRIPT_SYSTEM_INTEGRATION_V0.receipt.json"
-        receipt_path.write_bytes(canonical_json(receipt).encode("utf-8") + b"\n")
-        receipt_file_sha = sha256_file(receipt_path)
+            receipt_record = build_system_integration_receipt_v0(
+                branch=branch,
+                head=head,
+                tree=tree,
+                source_date_epoch=epoch,
+                language_version=V1_LANGUAGE_VERSION,
+                system_api_contract_hash=SYSTEM_API_CONTRACT_HASH_V0,
+                system_canonical_index_schema=SYSTEM_CANONICAL_INDEX_SCHEMA_V0,
+                system_canonical_index_file_sha256=sha256_file(SYSTEM_INDEX),
+                system_integration_spec_sha256=sha256_file(SYSTEM_SPEC),
+                distribution_name=str(project.get("name")),
+                distribution_version=str(project.get("version")),
+                wheel_name=wheel_a.name,
+                wheel_sha256=wheel_a_sha,
+            )
+            verify_system_integration_receipt_v0(
+                receipt_record.to_object(),
+                expected_language_version=V1_LANGUAGE_VERSION,
+                expected_system_api_contract_hash=SYSTEM_API_CONTRACT_HASH_V0,
+                expected_distribution_artifact_sha256=wheel_a_sha,
+                expected_source_head=head,
+                expected_source_tree=tree,
+            )
 
+            staged_receipt = temp / "TEV_SCRIPT_SYSTEM_INTEGRATION_V0.receipt.json"
+            staged_receipt.write_bytes(canonical_json(receipt_record.to_object()).encode("utf-8") + b"\n")
+
+            receipt_smoke_code = (
+                "import json,sys; import tev_script.system_api_v0 as api; "
+                "doc=json.load(open(sys.argv[1],encoding='utf-8')); "
+                "r=api.verify_system_integration_receipt_v0(doc,"
+                "expected_language_version=api.V1_LANGUAGE_VERSION,"
+                "expected_system_api_contract_hash=api.SYSTEM_API_CONTRACT_HASH_V0,"
+                "expected_distribution_artifact_sha256=sys.argv[2],"
+                "expected_source_head=sys.argv[3],expected_source_tree=sys.argv[4]); "
+                "print(r.receipt_hash)"
+            )
+            receipt_smoke = run(
+                [
+                    str(python_executable),
+                    "-I",
+                    "-c",
+                    receipt_smoke_code,
+                    str(staged_receipt),
+                    wheel_a_sha,
+                    head,
+                    tree,
+                ],
+                cwd=temp,
+                capture=True,
+            )
+            if receipt_smoke.returncode:
+                raise RuntimeError("installed receipt verifier failed: " + receipt_smoke.stderr.strip())
+            if receipt_smoke.stdout.strip().splitlines()[-1] != receipt_record.receipt_hash:
+                raise RuntimeError("installed receipt verifier identity mismatch")
+            print("SYSTEM_INSTALLED_RECEIPT_VERIFIER=PASS")
+
+            target_wheel = out_dir / wheel_a.name
+            shutil.copyfile(wheel_a, target_wheel)
+            target_wheel_sha = sha256_file(target_wheel)
+            if target_wheel_sha != wheel_a_sha:
+                raise RuntimeError("copied wheel hash mismatch")
+
+            receipt_path = out_dir / staged_receipt.name
+            shutil.copyfile(staged_receipt, receipt_path)
+            receipt_file_sha = sha256_file(receipt_path)
+            if receipt_file_sha != sha256_file(staged_receipt):
+                raise RuntimeError("copied integration receipt hash mismatch")
+
+        print("SYSTEM_ARTIFACT_RECEIPT_LAST=PASS")
         print("SYSTEM_DISTRIBUTION_WHEEL=" + target_wheel.name)
         print("SYSTEM_DISTRIBUTION_WHEEL_SHA256=" + target_wheel_sha)
         print("SYSTEM_API_CONTRACT_HASH_V0=" + SYSTEM_API_CONTRACT_HASH_V0)
-        print("SYSTEM_INTEGRATION_RECEIPT_SHA256=" + receipt_hash)
+        print("SYSTEM_INTEGRATION_RECEIPT_SHA256=" + receipt_record.receipt_hash)
         print("SYSTEM_INTEGRATION_RECEIPT_FILE_SHA256=" + receipt_file_sha)
         print("CERTIFY_FULL=DEFERRED_BY_DESIGN")
         print("UNITY_VALIDATION=DEFERRED_BY_PRIORITY")
