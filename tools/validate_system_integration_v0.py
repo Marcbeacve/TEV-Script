@@ -6,8 +6,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SYSTEM_API = ROOT / "tev_script" / "system_api_v0.py"
+SYSTEM_RECEIPT = ROOT / "tev_script" / "system_integration_receipt_v0.py"
 SYSTEM_SPEC = ROOT / "spec" / "TEV_SCRIPT_SYSTEM_INTEGRATION_V0.md"
 SYSTEM_INDEX = ROOT / "spec" / "TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0.json"
+SYSTEM_ARTIFACT_GATE = ROOT / "RUN_TEV_SCRIPT_SYSTEM_INTEGRATION_V0.py"
 RESOLUTION = ROOT / "tev_script" / "semantic_realization_resolution_v0.py"
 HOST = ROOT / "tev_script" / "semantic_host_realization_v1.py"
 ROOT_INIT = ROOT / "tev_script" / "__init__.py"
@@ -33,6 +35,14 @@ FORBIDDEN_AUTHORITY_TOKENS = (
     "from cuofc",
     "import cuofc",
 )
+FORBIDDEN_ARTIFACT_GATE_TOKENS = (
+    "merge_pull_request",
+    "git push",
+    "git tag",
+    "manage_library",
+    "/TEV-Script/Current",
+    "\\TEV-Script\\Current",
+)
 REQUIRED_SYSTEM_TOKENS = (
     "SYSTEM_API_CONTRACT_HASH_V0",
     "SYSTEM_CANONICAL_INDEX_SCHEMA_V0",
@@ -47,6 +57,7 @@ REQUIRED_SYSTEM_TOKENS = (
     "evaluate_execution_activation",
     "evaluate_execution_observation",
     "evaluate_execution_grounded_discovery_cycle",
+    "verify_system_integration_receipt_v0",
 )
 
 
@@ -62,9 +73,25 @@ def require(condition: bool, label: str, detail: str = "") -> None:
     print(label + "=PASS")
 
 
+def require_tokens(text: str, tokens: tuple[str, ...], label: str) -> None:
+    for token in tokens:
+        require(token in text, label, token)
+
+
 def main() -> int:
     try:
-        for path in (SYSTEM_API, SYSTEM_SPEC, SYSTEM_INDEX, RESOLUTION, HOST, ROOT_INIT, PYPROJECT, BUILDER):
+        for path in (
+            SYSTEM_API,
+            SYSTEM_RECEIPT,
+            SYSTEM_SPEC,
+            SYSTEM_INDEX,
+            SYSTEM_ARTIFACT_GATE,
+            RESOLUTION,
+            HOST,
+            ROOT_INIT,
+            PYPROJECT,
+            BUILDER,
+        ):
             require(path.is_file(), "SYSTEM_INTEGRATION_REQUIRED_PATH", path.relative_to(ROOT).as_posix())
 
         source = SYSTEM_API.read_text(encoding="utf-8")
@@ -92,21 +119,47 @@ def main() -> int:
             "do_not_upgrade_proof_required_or_indeterminate_to_pass",
             "do_not_use_backend_identity_as_semantic_identity",
             '"exports": list(SYSTEM_API_EXPORTS_V0)',
+            '"integration_binding"',
         )
-        for token in contract_required:
-            require(token in source, "SYSTEM_API_FAIL_CLOSED_CONSUMER_CONTRACT", token)
+        require_tokens(source, contract_required, "SYSTEM_API_FAIL_CLOSED_CONSUMER_CONTRACT")
+
+        receipt_source = SYSTEM_RECEIPT.read_text(encoding="utf-8")
+        require_tokens(
+            receipt_source,
+            (
+                'SYSTEM_INTEGRATION_RECEIPT_SCHEMA_V0 = "TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0"',
+                "canonical_hash(body)",
+                "expected_system_api_contract_hash",
+                "expected_distribution_artifact_sha256",
+                "expected_source_head",
+                "expected_source_tree",
+                "installed_receipt_verifier",
+                "package version must not be sole system identity",
+            ),
+            "SYSTEM_RECEIPT_CONTRACT_BOUND",
+        )
 
         system_index = json.loads(SYSTEM_INDEX.read_text(encoding="utf-8"))
         require(system_index.get("schema") == "TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0", "SYSTEM_CANONICAL_INDEX_SCHEMA")
         require(system_index.get("profile") == "POST_V1_REALIZATION_SYSTEM_V0", "SYSTEM_CANONICAL_INDEX_PROFILE")
         require(system_index.get("stable") is False, "SYSTEM_CANONICAL_INDEX_NOT_STABLE")
         require(system_index.get("language_version") == "1.0.0", "SYSTEM_CANONICAL_INDEX_LANGUAGE_VERSION")
+        require(system_index.get("language_authority_index") == "CANONICAL_INDEX.json", "SYSTEM_LANGUAGE_AUTHORITY_INDEX_PRESERVED")
+
         api_index = system_index.get("system_api")
         require(isinstance(api_index, dict), "SYSTEM_CANONICAL_INDEX_API_OBJECT")
         require(api_index.get("implementation") == "tev_script/system_api_v0.py", "SYSTEM_CANONICAL_INDEX_API_BINDING")
         require(api_index.get("schema") == "TEV_SCRIPT_SYSTEM_API_V0", "SYSTEM_CANONICAL_INDEX_API_SCHEMA")
         require(api_index.get("contract_hash_symbol") == "SYSTEM_API_CONTRACT_HASH_V0", "SYSTEM_CANONICAL_INDEX_API_HASH_SYMBOL")
         require(api_index.get("root_api_redefined") is False, "SYSTEM_CANONICAL_INDEX_ROOT_API_UNCHANGED")
+
+        receipt_index = system_index.get("system_integration_receipt")
+        require(isinstance(receipt_index, dict), "SYSTEM_CANONICAL_INDEX_RECEIPT_OBJECT")
+        require(receipt_index.get("implementation") == "tev_script/system_integration_receipt_v0.py", "SYSTEM_CANONICAL_INDEX_RECEIPT_BINDING")
+        require(receipt_index.get("schema") == "TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0", "SYSTEM_CANONICAL_INDEX_RECEIPT_SCHEMA")
+        require(receipt_index.get("verifier") == "verify_system_integration_receipt_v0", "SYSTEM_CANONICAL_INDEX_RECEIPT_VERIFIER")
+        require(receipt_index.get("canonical_hash_required") is True, "SYSTEM_CANONICAL_INDEX_RECEIPT_CANONICAL")
+        require(receipt_index.get("exact_distribution_sha256_required") is True, "SYSTEM_CANONICAL_INDEX_RECEIPT_ARTIFACT_BINDING")
 
         implementation_surfaces = system_index.get("implementation_surfaces")
         require(isinstance(implementation_surfaces, dict), "SYSTEM_CANONICAL_INDEX_IMPLEMENTATION_SURFACES")
@@ -122,6 +175,7 @@ def main() -> int:
             "activation",
             "execution_observation",
             "grounded_discovery",
+            "system_integration_receipt",
         ):
             relative = str(implementation_surfaces.get(key, ""))
             require(bool(relative) and (ROOT / relative).is_file(), "SYSTEM_CANONICAL_INDEX_SURFACE_FILE", key)
@@ -130,6 +184,7 @@ def main() -> int:
         require(isinstance(gates, dict), "SYSTEM_CANONICAL_INDEX_GATES")
         require(gates.get("system_focal") == "tests/run_system_integration_v0_focal.py", "SYSTEM_CANONICAL_INDEX_FOCAL_GATE")
         require(gates.get("system_static") == "tools/validate_system_integration_v0.py", "SYSTEM_CANONICAL_INDEX_STATIC_GATE")
+        require(gates.get("system_artifact") == "RUN_TEV_SCRIPT_SYSTEM_INTEGRATION_V0.py", "SYSTEM_CANONICAL_INDEX_ARTIFACT_GATE")
 
         consumer = system_index.get("consumer_binding")
         require(isinstance(consumer, dict), "SYSTEM_CANONICAL_INDEX_CONSUMER_BINDING")
@@ -137,12 +192,21 @@ def main() -> int:
             "language_version_required",
             "system_api_contract_hash_required",
             "distribution_artifact_sha256_required",
+            "integration_receipt_verification_required",
         ):
             require(consumer.get(key) is True, "SYSTEM_CANONICAL_INDEX_REQUIRED_BINDING", key)
         require(consumer.get("package_version_alone_is_identity") is False, "SYSTEM_CANONICAL_INDEX_NOT_VERSION_ONLY")
         require(consumer.get("consumer_is_semantic_authority") is False, "SYSTEM_CANONICAL_INDEX_CONSUMER_NOT_AUTHORITY")
         require(consumer.get("proof_required_may_be_upgraded") is False, "SYSTEM_CANONICAL_INDEX_PROOF_REQUIRED_PRESERVED")
         require(consumer.get("indeterminate_may_be_implicitly_selected") is False, "SYSTEM_CANONICAL_INDEX_INDETERMINACY_PRESERVED")
+
+        distribution = system_index.get("distribution")
+        require(isinstance(distribution, dict), "SYSTEM_CANONICAL_INDEX_DISTRIBUTION")
+        require(distribution.get("python_runtime_dependencies") == 0, "SYSTEM_CANONICAL_INDEX_ZERO_DEPENDENCIES")
+        require(distribution.get("whole_tev_script_python_package_required") is True, "SYSTEM_CANONICAL_INDEX_WHOLE_PACKAGE")
+        require(distribution.get("exact_artifact_hash_required") is True, "SYSTEM_CANONICAL_INDEX_EXACT_ARTIFACT")
+        require(distribution.get("installed_receipt_verifier_required") is True, "SYSTEM_CANONICAL_INDEX_INSTALLED_RECEIPT_VERIFIER")
+        require(distribution.get("receipt_is_final_admission_artifact") is True, "SYSTEM_CANONICAL_INDEX_RECEIPT_LAST")
 
         root_init = ROOT_INIT.read_text(encoding="utf-8")
         require("system_api_v0" not in root_init, "V1_ROOT_API_NOT_REDEFINED")
@@ -184,10 +248,36 @@ def main() -> int:
         ):
             require((ROOT / path_text).is_file(), "SYSTEM_ACTION_LOOP_BOUNDARY_PRESENT", path_text)
 
+        artifact_gate = SYSTEM_ARTIFACT_GATE.read_text(encoding="utf-8")
+        for token in FORBIDDEN_ARTIFACT_GATE_TOKENS:
+            require(token not in artifact_gate, "SYSTEM_ARTIFACT_GATE_NO_PUBLICATION_OR_CURRENT_MUTATION", token)
+        require_tokens(
+            artifact_gate,
+            (
+                "require_clean_checkout",
+                "SOURCE_DATE_EPOCH",
+                'build_wheel(str(build_a))',
+                'build_wheel(str(build_b))',
+                "venv.EnvBuilder(with_pip=True, clear=True)",
+                '"--no-index"',
+                '"--no-deps"',
+                "build_system_integration_receipt_v0",
+                "verify_system_integration_receipt_v0",
+                "SYSTEM_INSTALLED_RECEIPT_VERIFIER=PASS",
+                "SYSTEM_ARTIFACT_RECEIPT_LAST=PASS",
+            ),
+            "SYSTEM_ARTIFACT_GATE_BOUNDARY",
+        )
+        wheel_copy = artifact_gate.find("shutil.copyfile(wheel_a, target_wheel)")
+        receipt_copy = artifact_gate.find("shutil.copyfile(staged_receipt, receipt_path)")
+        require(wheel_copy >= 0 and receipt_copy > wheel_copy, "SYSTEM_ARTIFACT_RECEIPT_LAST_ORDER")
+
         spec = SYSTEM_SPEC.read_text(encoding="utf-8")
         require("Package version text alone is insufficient" in spec, "SYSTEM_ARTIFACT_IDENTITY_NOT_VERSION_ONLY")
         require("SYSTEM_API_CONTRACT_HASH_V0" in spec, "SYSTEM_CONTRACT_DOCUMENTED")
-        require("exact distribution artifact SHA-256" in spec, "SYSTEM_ARTIFACT_HASH_DOCUMENTED")
+        require("TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0" in spec, "SYSTEM_RECEIPT_DOCUMENTED")
+        require("RUN_TEV_SCRIPT_SYSTEM_INTEGRATION_V0.py" in spec, "SYSTEM_ARTIFACT_GATE_DOCUMENTED")
+        require("receipt last" in spec.lower(), "SYSTEM_RECEIPT_LAST_DOCUMENTED")
 
         print("SYSTEM_PUBLIC_RELEASE_PROMOTION=DEFERRED")
         print("LONG_VALIDATION_DEFERRED=PASS")
