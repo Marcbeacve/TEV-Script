@@ -11,6 +11,7 @@ import sys
 import tempfile
 import tomllib
 import venv
+import zipfile
 
 ROOT = Path(__file__).resolve().parent
 FOCAL = ROOT / "tests" / "run_system_integration_v0_focal.py"
@@ -75,6 +76,31 @@ def venv_python(directory: Path) -> Path:
     return directory / "bin" / "python"
 
 
+def source_python_module_paths() -> tuple[str, ...]:
+    package_root = ROOT / "tev_script"
+    modules = tuple(
+        sorted(
+            path.relative_to(ROOT).as_posix()
+            for path in package_root.rglob("*.py")
+            if path.is_file() and "__pycache__" not in path.parts
+        )
+    )
+    if not modules:
+        raise RuntimeError("TEV Script Python package closure is empty")
+    return modules
+
+
+def wheel_python_module_paths(path: Path) -> tuple[str, ...]:
+    with zipfile.ZipFile(path, "r") as archive:
+        return tuple(
+            sorted(
+                name
+                for name in archive.namelist()
+                if name.startswith("tev_script/") and name.endswith(".py")
+            )
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build and verify an exact TEV Script complete-system integration artifact.")
     parser.add_argument("--artifact-out-dir", required=True)
@@ -94,6 +120,7 @@ def main() -> int:
 
         branch, head, tree, epoch = require_clean_checkout()
         project = load_project_metadata()
+        source_python_modules = source_python_module_paths()
 
         print("SYSTEM_SOURCE_CLEAN=PASS")
         print("SYSTEM_SOURCE_BRANCH=" + branch)
@@ -118,18 +145,23 @@ def main() -> int:
         )
         from tools.tev_script_build_backend import build_wheel  # noqa: PLC0415
 
+        system_contract = system_api_contract_object_v0()
         system_index = json.loads(SYSTEM_INDEX.read_text(encoding="utf-8"))
         if system_index.get("schema") != SYSTEM_CANONICAL_INDEX_SCHEMA_V0:
             raise RuntimeError("system canonical index schema mismatch")
         if system_index.get("language_version") != V1_LANGUAGE_VERSION:
             raise RuntimeError("system canonical index language version mismatch")
-        if canonical_hash(system_api_contract_object_v0()) != SYSTEM_API_CONTRACT_HASH_V0:
+        if canonical_hash(system_contract) != SYSTEM_API_CONTRACT_HASH_V0:
             raise RuntimeError("system api contract hash mismatch")
         if not SYSTEM_CAUSAL_MODULE_PATHS_V0:
             raise RuntimeError("complete causal subsystem registry is empty")
         if not SYSTEM_SUBSYSTEM_MODULE_PATHS_V0:
             raise RuntimeError("complete semantic subsystem registry is empty")
+        stable_public_api = tuple(system_contract["surfaces"]["stable_public_api"])
+        if not stable_public_api:
+            raise RuntimeError("stable public API surface is empty")
         print("SYSTEM_API_CONTRACT_HASH=PASS")
+        print("SYSTEM_SOURCE_STABLE_PUBLIC_API=PASS")
         print("SYSTEM_SOURCE_COMPLETE_CAUSAL_REGISTRY=PASS")
         print("SYSTEM_SOURCE_COMPLETE_SEMANTIC_REGISTRY=PASS")
 
@@ -161,6 +193,18 @@ def main() -> int:
                 raise RuntimeError("independent system wheel builds are not byte-identical")
             print("SYSTEM_WHEEL_DETERMINISTIC_BYTES=PASS")
 
+            wheel_python_modules = wheel_python_module_paths(wheel_a)
+            if wheel_python_modules != source_python_modules:
+                missing = sorted(set(source_python_modules) - set(wheel_python_modules))
+                extra = sorted(set(wheel_python_modules) - set(source_python_modules))
+                raise RuntimeError(
+                    "system wheel Python module closure mismatch missing="
+                    + repr(missing)
+                    + " extra="
+                    + repr(extra)
+                )
+            print("SYSTEM_WHEEL_COMPLETE_PYTHON_MODULE_CLOSURE=PASS")
+
             env_dir = temp / "installed-env"
             venv.EnvBuilder(with_pip=True, clear=True).create(env_dir)
             python_executable = venv_python(env_dir)
@@ -173,18 +217,22 @@ def main() -> int:
                 raise RuntimeError("installed wheel failed: " + install.stderr.strip())
 
             smoke_code = (
-                "import json; import tev_script.system_api_v0 as api; "
+                "import json; import tev_script; import tev_script.system_api_v0 as api; "
                 "required=('compile_v1_sources_to_ir_v3','verify_ir_v3_lowering_receipt','ScriptRuntimeV3',"
-                "'admit_realization','resolve_realization_selection','HostExecutionAdmissionV1',"
+                "'PythonRuntimeHostV1','admit_realization','resolve_realization_selection','HostExecutionAdmissionV1',"
                 "'evaluate_execution_activation','evaluate_execution_observation',"
                 "'verify_system_integration_receipt_v0','load_system_causal_subsystem_v0','load_system_subsystem_v0'); "
                 "assert all(hasattr(api,n) for n in required); "
+                "root_api=tuple(tev_script.__all__); "
+                "assert tuple(api.system_api_contract_object_v0()['surfaces']['stable_public_api'])==root_api; "
+                "assert all(hasattr(api,n) and getattr(api,n) is getattr(tev_script,n) for n in root_api); "
                 "assert all(api.load_system_causal_subsystem_v0(n).__name__==api.SYSTEM_CAUSAL_MODULE_PATHS_V0[n] "
                 "for n in api.SYSTEM_CAUSAL_MODULE_PATHS_V0); "
                 "assert all(api.load_system_subsystem_v0(n).__name__==api.SYSTEM_SUBSYSTEM_MODULE_PATHS_V0[n] "
                 "for n in api.SYSTEM_SUBSYSTEM_MODULE_PATHS_V0); "
                 "print(json.dumps({'language_version':api.V1_LANGUAGE_VERSION,"
                 "'contract_hash':api.SYSTEM_API_CONTRACT_HASH_V0,'exports':len(api.SYSTEM_API_EXPORTS_V0),"
+                "'stable_public_api':len(root_api),"
                 "'causal_subsystems':len(api.SYSTEM_CAUSAL_MODULE_PATHS_V0),"
                 "'semantic_subsystems':len(api.SYSTEM_SUBSYSTEM_MODULE_PATHS_V0)},sort_keys=True))"
             )
@@ -198,12 +246,15 @@ def main() -> int:
                 raise RuntimeError("installed system api contract hash mismatch")
             if int(installed.get("exports", 0)) <= 0:
                 raise RuntimeError("installed system api export surface empty")
+            if int(installed.get("stable_public_api", 0)) != len(stable_public_api):
+                raise RuntimeError("installed stable public API cardinality mismatch")
             if int(installed.get("causal_subsystems", 0)) != len(SYSTEM_CAUSAL_MODULE_PATHS_V0):
                 raise RuntimeError("installed causal subsystem registry cardinality mismatch")
             if int(installed.get("semantic_subsystems", 0)) != len(SYSTEM_SUBSYSTEM_MODULE_PATHS_V0):
                 raise RuntimeError("installed semantic subsystem registry cardinality mismatch")
             print("SYSTEM_INSTALLED_WHEEL_IMPORT=PASS")
             print("SYSTEM_INSTALLED_API_IDENTITY=PASS")
+            print("SYSTEM_INSTALLED_STABLE_PUBLIC_API=PASS")
             print("SYSTEM_INSTALLED_COMPLETE_CAUSAL_REGISTRY=PASS")
             print("SYSTEM_INSTALLED_COMPLETE_SEMANTIC_REGISTRY=PASS")
 
