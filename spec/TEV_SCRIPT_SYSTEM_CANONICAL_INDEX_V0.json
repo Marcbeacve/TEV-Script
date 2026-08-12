@@ -11,6 +11,14 @@
     "contract_hash_symbol": "SYSTEM_API_CONTRACT_HASH_V0",
     "root_api_redefined": false
   },
+  "system_integration_receipt": {
+    "implementation": "tev_script/system_integration_receipt_v0.py",
+    "schema": "TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0",
+    "verifier": "verify_system_integration_receipt_v0",
+    "canonical_hash_required": true,
+    "exact_distribution_sha256_required": true,
+    "exact_source_identity_supported": true
+  },
   "authority_files": [
     "spec/TEV_SCRIPT_STANDALONE_SEMANTIC_AUTHORITY_V0.md",
     "spec/TEV_SCRIPT_REALIZATION_SEMANTICS_V0.md",
@@ -33,11 +41,13 @@
     "execution_request": "tev_script/semantic_execution_request_v0.py",
     "activation": "tev_script/semantic_activation_v0.py",
     "execution_observation": "tev_script/semantic_execution_observation_v0.py",
-    "grounded_discovery": "tev_script/semantic_grounded_discovery_v0.py"
+    "grounded_discovery": "tev_script/semantic_grounded_discovery_v0.py",
+    "system_integration_receipt": "tev_script/system_integration_receipt_v0.py"
   },
   "gates": {
     "system_focal": "tests/run_system_integration_v0_focal.py",
     "system_static": "tools/validate_system_integration_v0.py",
+    "system_artifact": "RUN_TEV_SCRIPT_SYSTEM_INTEGRATION_V0.py",
     "r0_realization": "tests/run_realization_semantics_campaign.py",
     "r1_host_realization": "tests/run_host_realization_r1_focal.py",
     "action_loop": "tests/run_realization_action_loop_campaign.py"
@@ -46,6 +56,7 @@
     "language_version_required": true,
     "system_api_contract_hash_required": true,
     "distribution_artifact_sha256_required": true,
+    "integration_receipt_verification_required": true,
     "package_version_alone_is_identity": false,
     "consumer_is_semantic_authority": false,
     "proof_required_may_be_upgraded": false,
@@ -55,6 +66,8 @@
     "python_runtime_dependencies": 0,
     "whole_tev_script_python_package_required": true,
     "exact_artifact_hash_required": true,
+    "installed_receipt_verifier_required": true,
+    "receipt_is_final_admission_artifact": true,
     "public_post_v1_release": "DEFERRED"
   },
   "deferred": [
