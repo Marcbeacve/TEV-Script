@@ -51,9 +51,11 @@ REQUIRED_SYSTEM_TOKENS = (
     "load_system_causal_subsystem_v0",
     "SYSTEM_SUBSYSTEM_MODULE_PATHS_V0",
     "load_system_subsystem_v0",
+    "stable_public_api",
     "compile_v1_sources_to_ir_v3",
     "verify_ir_v3_lowering_receipt",
     "ScriptRuntimeV3",
+    "PythonRuntimeHostV1",
     "SemanticFieldV0",
     "admit_realization",
     "resolve_realization_selection",
@@ -83,11 +85,41 @@ def require_tokens(text: str, tokens: tuple[str, ...], label: str) -> None:
         require(token in text, label, token)
 
 
-def literal_assignment(tree: ast.Module, name: str):
+def assignment_node(tree: ast.Module, name: str) -> ast.AST:
     for node in tree.body:
         if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == name for target in node.targets):
-            return ast.literal_eval(node.value)
-    raise RuntimeError("missing literal assignment: " + name)
+            return node.value
+    raise RuntimeError("missing assignment: " + name)
+
+
+def literal_assignment(tree: ast.Module, name: str):
+    return ast.literal_eval(assignment_node(tree, name))
+
+
+def sorted_set_assignment(tree: ast.Module, name: str) -> set[str]:
+    value = assignment_node(tree, name)
+    if not isinstance(value, ast.Call) or not isinstance(value.func, ast.Name) or value.func.id != "tuple" or len(value.args) != 1:
+        raise RuntimeError(name + " must be tuple(sorted({...}))")
+    sorted_call = value.args[0]
+    if not isinstance(sorted_call, ast.Call) or not isinstance(sorted_call.func, ast.Name) or sorted_call.func.id != "sorted" or len(sorted_call.args) != 1:
+        raise RuntimeError(name + " must be tuple(sorted({...}))")
+    set_node = sorted_call.args[0]
+    observed = ast.literal_eval(set_node)
+    if not isinstance(observed, set) or any(not isinstance(item, str) for item in observed):
+        raise RuntimeError(name + " must contain string literals")
+    return observed
+
+
+def imported_names(tree: ast.Module) -> set[str]:
+    names: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                names.add(alias.asname or alias.name.split(".", 1)[0])
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                names.add(alias.asname or alias.name)
+    return names
 
 
 def main() -> int:
@@ -137,11 +169,27 @@ def main() -> int:
             '"exports": list(SYSTEM_API_EXPORTS_V0)',
             '"causal_modules"',
             '"subsystem_modules"',
+            '"stable_public_api"',
             '"causal_reaction_registry"',
             '"complete_semantic_registry"',
             '"integration_binding"',
         )
         require_tokens(source, contract_required, "SYSTEM_API_FAIL_CLOSED_CONSUMER_CONTRACT")
+
+        root_source = ROOT_INIT.read_text(encoding="utf-8")
+        root_tree = ast.parse(root_source, filename=str(ROOT_INIT))
+        stable_root_exports = tuple(literal_assignment(root_tree, "__all__"))
+        require(bool(stable_root_exports), "SYSTEM_STABLE_PUBLIC_API_NONEMPTY")
+        require(len(set(stable_root_exports)) == len(stable_root_exports), "SYSTEM_STABLE_PUBLIC_API_UNIQUE")
+        surfaces = literal_assignment(tree, "_SYSTEM_SURFACES_V0")
+        require(isinstance(surfaces, dict), "SYSTEM_API_SURFACES_OBJECT")
+        stable_surface = tuple(surfaces.get("stable_public_api", ()))
+        require(stable_surface == stable_root_exports, "SYSTEM_STABLE_PUBLIC_API_EXACT_SURFACE")
+        system_export_literals = sorted_set_assignment(tree, "SYSTEM_API_EXPORTS_V0")
+        require(set(stable_root_exports).issubset(system_export_literals), "SYSTEM_STABLE_PUBLIC_API_EXPORT_SUPERSET")
+        bound_imports = imported_names(tree)
+        require(set(stable_root_exports).issubset(bound_imports), "SYSTEM_STABLE_PUBLIC_API_IMPORT_SUPERSET")
+        print("SYSTEM_STABLE_PUBLIC_API_PRESERVATION=PASS")
 
         package_root = ROOT / "tev_script"
 
@@ -171,6 +219,7 @@ def main() -> int:
                 "expected_distribution_artifact_sha256",
                 "expected_source_head",
                 "expected_source_tree",
+                "stable_public_api_preserved",
                 "installed_complete_causal_registry",
                 "installed_complete_semantic_registry",
                 "installed_receipt_verifier",
@@ -192,6 +241,10 @@ def main() -> int:
         require(api_index.get("schema") == "TEV_SCRIPT_SYSTEM_API_V0", "SYSTEM_CANONICAL_INDEX_API_SCHEMA")
         require(api_index.get("contract_hash_symbol") == "SYSTEM_API_CONTRACT_HASH_V0", "SYSTEM_CANONICAL_INDEX_API_HASH_SYMBOL")
         require(api_index.get("root_api_redefined") is False, "SYSTEM_CANONICAL_INDEX_ROOT_API_UNCHANGED")
+        require(api_index.get("stable_public_api_source") == "tev_script.__all__", "SYSTEM_CANONICAL_INDEX_STABLE_API_SOURCE")
+        require(api_index.get("stable_public_api_surface") == "stable_public_api", "SYSTEM_CANONICAL_INDEX_STABLE_API_SURFACE")
+        require(api_index.get("stable_public_api_superset_required") is True, "SYSTEM_CANONICAL_INDEX_STABLE_API_SUPERSET")
+        require(api_index.get("stable_public_api_object_identity_preserved") is True, "SYSTEM_CANONICAL_INDEX_STABLE_API_IDENTITY")
 
         causal_index = system_index.get("complete_causal_registry")
         require(isinstance(causal_index, dict), "SYSTEM_CANONICAL_INDEX_CAUSAL_REGISTRY_OBJECT")
@@ -251,6 +304,7 @@ def main() -> int:
             "system_api_contract_hash_required",
             "distribution_artifact_sha256_required",
             "integration_receipt_verification_required",
+            "stable_public_api_preservation_required",
         ):
             require(consumer.get(key) is True, "SYSTEM_CANONICAL_INDEX_REQUIRED_BINDING", key)
         require(consumer.get("package_version_alone_is_identity") is False, "SYSTEM_CANONICAL_INDEX_NOT_VERSION_ONLY")
@@ -269,8 +323,7 @@ def main() -> int:
         require(distribution.get("installed_receipt_verifier_required") is True, "SYSTEM_CANONICAL_INDEX_INSTALLED_RECEIPT_VERIFIER")
         require(distribution.get("receipt_is_final_admission_artifact") is True, "SYSTEM_CANONICAL_INDEX_RECEIPT_LAST")
 
-        root_init = ROOT_INIT.read_text(encoding="utf-8")
-        require("system_api_v0" not in root_init, "V1_ROOT_API_NOT_REDEFINED")
+        require("system_api_v0" not in root_source, "V1_ROOT_API_NOT_REDEFINED")
 
         pyproject = PYPROJECT.read_text(encoding="utf-8")
         require("dependencies = []" in pyproject, "SYSTEM_ZERO_RUNTIME_DEPENDENCIES")
@@ -352,6 +405,8 @@ def main() -> int:
         require("receipt last" in spec.lower(), "SYSTEM_RECEIPT_LAST_DOCUMENTED")
         require("SYSTEM_CAUSAL_MODULE_PATHS_V0" in spec, "SYSTEM_COMPLETE_CAUSAL_REGISTRY_DOCUMENTED")
         require("SYSTEM_SUBSYSTEM_MODULE_PATHS_V0" in spec, "SYSTEM_COMPLETE_SEMANTIC_REGISTRY_DOCUMENTED")
+        require("stable_public_api" in spec, "SYSTEM_STABLE_PUBLIC_API_DOCUMENTED")
+        require("stable_public_api_preserved" in spec, "SYSTEM_STABLE_PUBLIC_API_RECEIPT_DOCUMENTED")
 
         print("SYSTEM_PUBLIC_RELEASE_PROMOTION=DEFERRED")
         print("LONG_VALIDATION_DEFERRED=PASS")
