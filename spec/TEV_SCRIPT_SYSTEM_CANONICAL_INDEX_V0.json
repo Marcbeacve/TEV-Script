@@ -1,0 +1,66 @@
+{
+  "schema": "TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0",
+  "profile": "POST_V1_REALIZATION_SYSTEM_V0",
+  "status": "INTEGRATION_CANDIDATE",
+  "stable": false,
+  "language_version": "1.0.0",
+  "language_authority_index": "CANONICAL_INDEX.json",
+  "system_api": {
+    "implementation": "tev_script/system_api_v0.py",
+    "schema": "TEV_SCRIPT_SYSTEM_API_V0",
+    "contract_hash_symbol": "SYSTEM_API_CONTRACT_HASH_V0",
+    "root_api_redefined": false
+  },
+  "authority_files": [
+    "spec/TEV_SCRIPT_STANDALONE_SEMANTIC_AUTHORITY_V0.md",
+    "spec/TEV_SCRIPT_REALIZATION_SEMANTICS_V0.md",
+    "spec/TEV_SCRIPT_REGIME_ADMISSIBILITY_V0.md",
+    "spec/TEV_SCRIPT_DISCOVERY_REALIZATION_DUALITY_V0.md",
+    "spec/TEV_SCRIPT_SYSTEM_INTEGRATION_V0.md",
+    "spec/TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0.json"
+  ],
+  "implementation_surfaces": {
+    "language_pipeline": "tev_script/pipeline_v1.py",
+    "ir_v3_lowering_receipt": "tev_script/lowering_receipt_v2.py",
+    "ir_v3_runtime": "tev_script/runtime_v3.py",
+    "semantic_kernel": "tev_script/semantic_kernel_v0.py",
+    "semantic_apply": "tev_script/semantic_apply_v0.py",
+    "realization": "tev_script/semantic_realization_v0.py",
+    "realization_selection": "tev_script/semantic_realization_selection_v0.py",
+    "realization_resolution": "tev_script/semantic_realization_resolution_v0.py",
+    "realization_search": "tev_script/semantic_realization_search_v0.py",
+    "host_realization": "tev_script/semantic_host_realization_v1.py",
+    "execution_request": "tev_script/semantic_execution_request_v0.py",
+    "activation": "tev_script/semantic_activation_v0.py",
+    "execution_observation": "tev_script/semantic_execution_observation_v0.py",
+    "grounded_discovery": "tev_script/semantic_grounded_discovery_v0.py"
+  },
+  "gates": {
+    "system_focal": "tests/run_system_integration_v0_focal.py",
+    "system_static": "tools/validate_system_integration_v0.py",
+    "r0_realization": "tests/run_realization_semantics_campaign.py",
+    "r1_host_realization": "tests/run_host_realization_r1_focal.py",
+    "action_loop": "tests/run_realization_action_loop_campaign.py"
+  },
+  "consumer_binding": {
+    "language_version_required": true,
+    "system_api_contract_hash_required": true,
+    "distribution_artifact_sha256_required": true,
+    "package_version_alone_is_identity": false,
+    "consumer_is_semantic_authority": false,
+    "proof_required_may_be_upgraded": false,
+    "indeterminate_may_be_implicitly_selected": false
+  },
+  "distribution": {
+    "python_runtime_dependencies": 0,
+    "whole_tev_script_python_package_required": true,
+    "exact_artifact_hash_required": true,
+    "public_post_v1_release": "DEFERRED"
+  },
+  "deferred": [
+    "CERTIFY_FULL",
+    "PYTHON_CERTIFY_FULL",
+    "PUBLIC_POST_V1_RELEASE",
+    "UNITY_PRIORITY_LANE"
+  ]
+}
