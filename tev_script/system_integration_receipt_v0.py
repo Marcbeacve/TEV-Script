@@ -252,6 +252,7 @@ def build_system_integration_receipt_v0(
 def verify_system_integration_receipt_v0(
     receipt: Mapping[str, object],
     *,
+    expected_receipt_hash: str,
     expected_language_version: str,
     expected_system_api_contract_hash: str,
     expected_distribution_artifact_sha256: str,
@@ -259,6 +260,8 @@ def verify_system_integration_receipt_v0(
     expected_source_tree: str = "",
 ) -> SystemIntegrationReceiptV0:
     parsed = SystemIntegrationReceiptV0(receipt)
+    if parsed.receipt_hash != _hash64(expected_receipt_hash, "expected system integration receipt hash"):
+        raise SystemIntegrationReceiptError("system integration receipt identity mismatch")
     if parsed.language_version != str(expected_language_version):
         raise SystemIntegrationReceiptError("system integration language version mismatch")
     if parsed.system_api_contract_hash != _hash64(expected_system_api_contract_hash, "expected system api contract hash"):
