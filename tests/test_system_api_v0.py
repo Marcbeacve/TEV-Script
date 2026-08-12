@@ -29,11 +29,24 @@ class SystemApiV0Tests(unittest.TestCase):
             list(system_api.SYSTEM_API_EXPORTS_V0),
         )
 
+    def test_system_api_preserves_exact_stable_public_surface(self):
+        root_exports = tuple(getattr(tev_script, "__all__", ()))
+        self.assertTrue(root_exports)
+        stable_surface = tuple(
+            system_api.system_api_contract_object_v0()["surfaces"]["stable_public_api"]
+        )
+        self.assertEqual(stable_surface, root_exports)
+        self.assertTrue(set(root_exports).issubset(set(system_api.SYSTEM_API_EXPORTS_V0)))
+        for name in root_exports:
+            self.assertIs(getattr(system_api, name), getattr(tev_script, name), name)
+
     def test_complete_high_level_surfaces_are_bound(self):
         contract = system_api.system_api_contract_object_v0()
         surfaces = contract["surfaces"]
-        self.assertIn("compile_v1_sources_to_ir_v3", surfaces["language"])
-        self.assertIn("verify_ir_v3_lowering_receipt", surfaces["ir_v3"])
+        self.assertIn("compile_v1_sources_to_ir_v3", surfaces["stable_public_api"])
+        self.assertIn("verify_ir_v3_lowering_receipt", surfaces["stable_public_api"])
+        self.assertIn("ScriptRuntimeV3", surfaces["stable_public_api"])
+        self.assertIn("PythonRuntimeHostV1", surfaces["stable_public_api"])
         self.assertIn("SYSTEM_CAUSAL_MODULE_PATHS_V0", surfaces["causal_reaction_registry"])
         self.assertIn("load_system_causal_subsystem_v0", surfaces["causal_reaction_registry"])
         self.assertIn("apply_rule", surfaces["semantic_calculus"])
