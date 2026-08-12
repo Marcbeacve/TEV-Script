@@ -1,0 +1,251 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+import tomllib
+import venv
+
+ROOT = Path(__file__).resolve().parent
+FOCAL = ROOT / "tests" / "run_system_integration_v0_focal.py"
+SYSTEM_INDEX = ROOT / "spec" / "TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0.json"
+SYSTEM_SPEC = ROOT / "spec" / "TEV_SCRIPT_SYSTEM_INTEGRATION_V0.md"
+RECEIPT_SCHEMA = "TEV_SCRIPT_SYSTEM_INTEGRATION_RECEIPT_V0"
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def run(command: list[str], *, cwd: Path = ROOT, env: dict[str, str] | None = None, capture: bool = False) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        command,
+        cwd=cwd,
+        env=env,
+        text=True,
+        check=False,
+        capture_output=capture,
+    )
+
+
+def git_text(*args: str) -> str:
+    completed = run(["git", *args], capture=True)
+    if completed.returncode:
+        raise RuntimeError("git command failed: " + " ".join(args) + ":" + completed.stderr.strip())
+    return completed.stdout.strip()
+
+
+def require_clean_checkout() -> tuple[str, str, str, str]:
+    status = git_text("status", "--porcelain")
+    if status:
+        raise RuntimeError("system integration artifact requires clean checkout")
+    branch = git_text("branch", "--show-current")
+    head = git_text("rev-parse", "HEAD")
+    tree = git_text("rev-parse", "HEAD^{tree}")
+    epoch = git_text("show", "-s", "--format=%ct", "HEAD")
+    if not epoch.isdigit():
+        raise RuntimeError("invalid git commit epoch")
+    return branch, head, tree, epoch
+
+
+def load_project_metadata() -> dict[str, object]:
+    document = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    project = document.get("project")
+    if not isinstance(project, dict):
+        raise RuntimeError("pyproject project table missing")
+    if project.get("dependencies", []) != []:
+        raise RuntimeError("system integration artifact requires zero runtime dependencies")
+    return project
+
+
+def venv_python(directory: Path) -> Path:
+    if os.name == "nt":
+        return directory / "Scripts" / "python.exe"
+    return directory / "bin" / "python"
+
+
+def canonical_json_bytes(value: object) -> bytes:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Build and verify an exact TEV Script complete-system integration artifact.")
+    parser.add_argument("--artifact-out-dir", required=True)
+    args = parser.parse_args()
+
+    try:
+        if not FOCAL.is_file() or not SYSTEM_INDEX.is_file() or not SYSTEM_SPEC.is_file():
+            raise RuntimeError("system integration authority files missing")
+
+        out_dir = Path(args.artifact_out_dir).expanduser().resolve()
+        root_resolved = ROOT.resolve()
+        if out_dir == root_resolved or root_resolved in out_dir.parents:
+            raise RuntimeError("artifact output directory must be outside repository")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        if any(out_dir.iterdir()):
+            raise RuntimeError("artifact output directory must be empty")
+
+        branch, head, tree, epoch = require_clean_checkout()
+        project = load_project_metadata()
+
+        print("SYSTEM_SOURCE_CLEAN=PASS")
+        print("SYSTEM_SOURCE_BRANCH=" + branch)
+        print("SYSTEM_SOURCE_HEAD=" + head)
+        print("SYSTEM_SOURCE_TREE=" + tree)
+
+        focal = run([sys.executable, str(FOCAL)])
+        if focal.returncode:
+            raise RuntimeError("system focal gate failed")
+        print("SYSTEM_SOURCE_FOCAL=PASS")
+
+        from tev_script.system_api_v0 import (  # noqa: PLC0415
+            SYSTEM_API_CONTRACT_HASH_V0,
+            SYSTEM_CANONICAL_INDEX_SCHEMA_V0,
+            V1_LANGUAGE_VERSION,
+            system_api_contract_object_v0,
+        )
+        from tools.tev_script_build_backend import build_wheel  # noqa: PLC0415
+
+        system_index = json.loads(SYSTEM_INDEX.read_text(encoding="utf-8"))
+        if system_index.get("schema") != SYSTEM_CANONICAL_INDEX_SCHEMA_V0:
+            raise RuntimeError("system canonical index schema mismatch")
+        if system_index.get("language_version") != V1_LANGUAGE_VERSION:
+            raise RuntimeError("system canonical index language version mismatch")
+
+        if hashlib.sha256(canonical_json_bytes(system_api_contract_object_v0())).hexdigest() != SYSTEM_API_CONTRACT_HASH_V0:
+            raise RuntimeError("system api contract hash mismatch")
+        print("SYSTEM_API_CONTRACT_HASH=PASS")
+
+        with tempfile.TemporaryDirectory(prefix="tev-script-system-") as temporary:
+            temp = Path(temporary)
+            build_a = temp / "build-a"
+            build_b = temp / "build-b"
+            build_a.mkdir()
+            build_b.mkdir()
+
+            previous_epoch = os.environ.get("SOURCE_DATE_EPOCH")
+            os.environ["SOURCE_DATE_EPOCH"] = epoch
+            try:
+                wheel_a_name = build_wheel(str(build_a))
+                wheel_b_name = build_wheel(str(build_b))
+            finally:
+                if previous_epoch is None:
+                    os.environ.pop("SOURCE_DATE_EPOCH", None)
+                else:
+                    os.environ["SOURCE_DATE_EPOCH"] = previous_epoch
+
+            if wheel_a_name != wheel_b_name:
+                raise RuntimeError("deterministic wheel filename mismatch")
+            wheel_a = build_a / wheel_a_name
+            wheel_b = build_b / wheel_b_name
+            wheel_a_sha = sha256_file(wheel_a)
+            wheel_b_sha = sha256_file(wheel_b)
+            if wheel_a_sha != wheel_b_sha or wheel_a.read_bytes() != wheel_b.read_bytes():
+                raise RuntimeError("independent system wheel builds are not byte-identical")
+            print("SYSTEM_WHEEL_DETERMINISTIC_BYTES=PASS")
+
+            target_wheel = out_dir / wheel_a_name
+            shutil.copyfile(wheel_a, target_wheel)
+            target_wheel_sha = sha256_file(target_wheel)
+            if target_wheel_sha != wheel_a_sha:
+                raise RuntimeError("copied wheel hash mismatch")
+
+            env_dir = temp / "installed-env"
+            venv.EnvBuilder(with_pip=True, clear=True).create(env_dir)
+            python_executable = venv_python(env_dir)
+            install = run(
+                [str(python_executable), "-m", "pip", "install", "--no-index", "--no-deps", str(target_wheel)],
+                cwd=temp,
+                capture=True,
+            )
+            if install.returncode:
+                raise RuntimeError("installed wheel failed: " + install.stderr.strip())
+
+            smoke_code = (
+                "import json; import tev_script.system_api_v0 as api; "
+                "required=('compile_v1_sources_to_ir_v3','verify_ir_v3_lowering_receipt','ScriptRuntimeV3',"
+                "'admit_realization','resolve_realization_selection','HostExecutionAdmissionV1',"
+                "'evaluate_execution_activation','evaluate_execution_observation'); "
+                "assert all(hasattr(api,n) for n in required); "
+                "print(json.dumps({'language_version':api.V1_LANGUAGE_VERSION,"
+                "'contract_hash':api.SYSTEM_API_CONTRACT_HASH_V0,'exports':len(api.SYSTEM_API_EXPORTS_V0)},sort_keys=True))"
+            )
+            smoke = run([str(python_executable), "-I", "-c", smoke_code], cwd=temp, capture=True)
+            if smoke.returncode:
+                raise RuntimeError("installed system api smoke failed: " + smoke.stderr.strip())
+            installed = json.loads(smoke.stdout.strip().splitlines()[-1])
+            if installed.get("language_version") != V1_LANGUAGE_VERSION:
+                raise RuntimeError("installed system language version mismatch")
+            if installed.get("contract_hash") != SYSTEM_API_CONTRACT_HASH_V0:
+                raise RuntimeError("installed system api contract hash mismatch")
+            if int(installed.get("exports", 0)) <= 0:
+                raise RuntimeError("installed system api export surface empty")
+            print("SYSTEM_INSTALLED_WHEEL_IMPORT=PASS")
+            print("SYSTEM_INSTALLED_API_IDENTITY=PASS")
+
+        receipt_body = {
+            "schema": RECEIPT_SCHEMA,
+            "status": "PASS",
+            "source": {
+                "branch": branch,
+                "head": head,
+                "tree": tree,
+                "source_date_epoch": epoch,
+            },
+            "language_version": V1_LANGUAGE_VERSION,
+            "system_api_contract_hash": SYSTEM_API_CONTRACT_HASH_V0,
+            "system_canonical_index": {
+                "schema": SYSTEM_CANONICAL_INDEX_SCHEMA_V0,
+                "file_sha256": sha256_file(SYSTEM_INDEX),
+            },
+            "system_integration_spec_sha256": sha256_file(SYSTEM_SPEC),
+            "distribution": {
+                "name": str(project.get("name")),
+                "version": str(project.get("version")),
+                "wheel": target_wheel.name,
+                "wheel_sha256": target_wheel_sha,
+                "runtime_dependencies": 0,
+                "package_version_alone_is_identity": False,
+            },
+            "verification": {
+                "source_focal": "PASS",
+                "deterministic_wheel_bytes": "PASS",
+                "installed_wheel_import": "PASS",
+                "installed_api_identity": "PASS",
+                "certify_full": "DEFERRED",
+                "python_certify_full": "DEFERRED",
+                "unity": "DEFERRED_BY_PRIORITY",
+                "public_release": "DEFERRED",
+            },
+        }
+        receipt_hash = hashlib.sha256(canonical_json_bytes(receipt_body)).hexdigest()
+        receipt = {**receipt_body, "receipt_hash": receipt_hash}
+        receipt_path = out_dir / "TEV_SCRIPT_SYSTEM_INTEGRATION_V0.receipt.json"
+        receipt_path.write_bytes(canonical_json_bytes(receipt) + b"\n")
+
+        print("SYSTEM_DISTRIBUTION_WHEEL=" + target_wheel.name)
+        print("SYSTEM_DISTRIBUTION_WHEEL_SHA256=" + target_wheel_sha)
+        print("SYSTEM_API_CONTRACT_HASH_V0=" + SYSTEM_API_CONTRACT_HASH_V0)
+        print("SYSTEM_INTEGRATION_RECEIPT_SHA256=" + receipt_hash)
+        print("CERTIFY_FULL=DEFERRED_BY_DESIGN")
+        print("UNITY_VALIDATION=DEFERRED_BY_PRIORITY")
+        print("TEV_SCRIPT_SYSTEM_INTEGRATION_ARTIFACT=PASS")
+        return 0
+    except Exception as error:
+        print("TEV_SCRIPT_SYSTEM_INTEGRATION_ARTIFACT=FAIL")
+        print("TEV_SCRIPT_SYSTEM_INTEGRATION_ARTIFACT_DETAIL=" + str(error))
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
