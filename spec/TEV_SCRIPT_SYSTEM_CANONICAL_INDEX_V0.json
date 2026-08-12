@@ -36,7 +36,8 @@
     "canonical_hash_required": true,
     "exact_distribution_sha256_required": true,
     "exact_source_identity_supported": true,
-    "stable_public_api_preserved_required": true
+    "stable_public_api_preserved_required": true,
+    "wheel_complete_python_module_closure_required": true
   },
   "authority_files": [
     "spec/TEV_SCRIPT_STANDALONE_SEMANTIC_AUTHORITY_V0.md",
@@ -89,6 +90,7 @@
   "distribution": {
     "python_runtime_dependencies": 0,
     "whole_tev_script_python_package_required": true,
+    "exact_python_module_closure_required": true,
     "exact_artifact_hash_required": true,
     "installed_complete_causal_registry_required": true,
     "installed_complete_semantic_registry_required": true,
