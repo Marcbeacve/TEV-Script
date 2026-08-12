@@ -1,0 +1,40 @@
+{
+  "schema": "TEV_SCRIPT_TEVPROVER_AXIOM_PLAN_V0",
+  "status": "PREPARED_NOT_EXECUTED",
+  "semantic_authority": false,
+  "installed_port": "tevprover_cuofc.installed_proof_port:tevprover_verify_installed",
+  "required_frame": "TEV_NATIVE_EXACT_FINITE",
+  "rules": {
+    "supported_goal_kind_required": true,
+    "unsupported_goal_is_success": false,
+    "exact_scope_binding_required": true,
+    "proof_hash_required": true,
+    "verifier_hash_required": true,
+    "truth_authority_bool": false,
+    "write_authority_bool": false
+  },
+  "obligations": [
+    {
+      "id": "TVP0_FOUR_VALUE_FINITE_CARRIER",
+      "preferred_goal_kind": "finite_relation_graph",
+      "purpose": "Certify the finite four-value carrier/transition graph after the exact graph certificate is generated.",
+      "status": "NOT_MATERIALIZED"
+    },
+    {
+      "id": "TVP1_SELECTION_FINITE_COUNTERMODEL",
+      "preferred_goal_kind": "finite_relation_graph",
+      "purpose": "Bind the finite negative-control countermodel showing Selected without Admitted is possible only when the safety law is removed.",
+      "status": "NOT_MATERIALIZED"
+    },
+    {
+      "id": "TVP2_FORMAL_RECEIPT_SCOPE",
+      "preferred_goal_kind": "eq",
+      "purpose": "Bind the exact formal receipt/scope identity only after RepoTalk Lean/Z3 receipts exist.",
+      "status": "BLOCKED_ON_FORMAL_RECEIPTS"
+    }
+  ],
+  "higher_order_theorems": {
+    "engine": "lean",
+    "reason": "Do not force unsupported higher-order composition/equivalence goals into TEVProver."
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "schema": "TEV_SCRIPT_AXIOM_OBLIGATIONS_V0",
+  "status": "AXIOMATIC_CANDIDATE",
+  "language_version": "1.0.0",
+  "system_profile": "POST_V1_REALIZATION_SYSTEM_V0",
+  "primitive_families": [
+    "Field",
+    "Transformation"
+  ],
+  "meta_logic": {
+    "lean_z3": "CLASSICAL_META_LOGIC_ONLY",
+    "object_evidence_logic": "FOUR_VALUE_SUPPORT_REFUTE",
+    "classical_explosion_applies_to_object_evidence": false
+  },
+  "formal_sources": [
+    {
+      "id": "LEAN_ABSTRACT_THEORY",
+      "engine": "lean",
+      "path": "formal/lean/TEVScriptAxiomsV0.lean",
+      "expected": "typechecked",
+      "admissions_allowed": false
+    },
+    {
+      "id": "Z3_THEOREMS",
+      "engine": "z3",
+      "path": "formal/smt/tev_script_axioms_theorems_v0.smt2",
+      "expected_outcome": "unsat",
+      "negative_control": false,
+      "expected_checks": 4
+    },
+    {
+      "id": "Z3_NONCOLLAPSE_MODEL",
+      "engine": "z3",
+      "path": "formal/smt/tev_script_axioms_model_v0.smt2",
+      "expected_outcome": "sat",
+      "negative_control": false,
+      "expected_checks": 1
+    },
+    {
+      "id": "Z3_SELECTION_NEGATIVE_CONTROL",
+      "engine": "z3",
+      "path": "formal/smt/tev_script_axioms_negative_control_v0.smt2",
+      "expected_outcome": "unsat",
+      "negative_control": true,
+      "expected_checks": 1,
+      "required_witness": "EXPECTED_OUTCOME_REJECTED"
+    }
+  ],
+  "implementation_correspondence": {
+    "Field": "tev_script/semantic_kernel_v0.py:SemanticFieldV0",
+    "Transformation_action": "tev_script/semantic_apply_v0.py:apply_rule",
+    "Governed_composition": "tev_script/semantic_composition_theorem_v0.py:prove_semantic_diamond",
+    "Residual": "tev_script/semantic_residual_v0.py",
+    "Four_value_evidence": "tev_script/semantic_paraconsistent_v0.py:FourValueV0",
+    "Selection": "tev_script/semantic_realization_selection_v0.py:evaluate_realization_selection",
+    "Resolution": "tev_script/semantic_realization_resolution_v0.py:resolve_realization_selection",
+    "Proof_boundary": "tev_script/semantic_proof_boundary_v0.py:ProofBoundaryWitnessV0"
+  },
+  "repotalk": {
+    "tool": "repotalk_formal_verify",
+    "requires_exact_head": true,
+    "fixed_argv_only": true,
+    "workspace_snapshot_required": true
+  },
+  "tevprover": {
+    "role": "EXTERNAL_FINITE_PROOF_VERIFIER",
+    "semantic_authority": false,
+    "installed_port": "tevprover_cuofc.installed_proof_port:tevprover_verify_installed",
+    "allowed_strategy": "ONLY_SUPPORTED_GOAL_KINDS_WITH_EXACT_SCOPE_BINDING",
+    "status": "PREPARED_NOT_EXECUTED",
+    "plan_path": "formal/tevprover/TEVScriptAxiomsV0.plan.json"
+  },
+  "promotion": {
+    "bind_to_system_canonical_index_before_formal_pass": false,
+    "rewrite_historical_v1_identity": false,
+    "requires_repotalk_lean": true,
+    "requires_repotalk_z3": true,
+    "requires_static_correspondence": true
+  }
+}
