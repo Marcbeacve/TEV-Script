@@ -103,7 +103,7 @@
   "tevprover": {
     "role": "EXTERNAL_FINITE_PROOF_VERIFIER",
     "semantic_authority": false,
-    "installed_port": "tevprover_cuofc.installed_proof_port:tevprover_verify_installed",
+    "installed_port": "tevprover_cuofc.verify_proof",
     "allowed_strategy": "ONLY_SUPPORTED_GOAL_KINDS_WITH_EXACT_SCOPE_BINDING",
     "status": "MATERIALIZED_NOT_EXECUTED",
     "plan_path": "formal/tevprover/TEVScriptAxiomsV0.plan.json",
