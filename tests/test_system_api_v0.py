@@ -54,9 +54,11 @@ class SystemApiV0Tests(unittest.TestCase):
         self.assertIs(api["stable_public_api_superset_required"], True)
         self.assertIs(api["stable_public_api_object_identity_preserved"], True)
         receipt = document["system_integration_receipt"]
+        self.assertIs(receipt["exact_receipt_hash_required"], True)
         self.assertIs(receipt["stable_public_api_preserved_required"], True)
         self.assertIs(receipt["wheel_complete_python_module_closure_required"], True)
         consumer = document["consumer_binding"]
+        self.assertIs(consumer["integration_receipt_hash_required"], True)
         self.assertIs(consumer["stable_public_api_preservation_required"], True)
         distribution = document["distribution"]
         self.assertIs(distribution["whole_tev_script_python_package_required"], True)
@@ -126,6 +128,7 @@ class SystemApiV0Tests(unittest.TestCase):
         requirements = set(system_api.system_api_contract_object_v0()["consumer_requirements"])
         self.assertIn("bind_exact_system_api_contract_hash", requirements)
         self.assertIn("bind_exact_distribution_artifact_sha256", requirements)
+        self.assertIn("bind_exact_system_integration_receipt_hash", requirements)
         self.assertIn("verify_system_integration_receipt_before_use", requirements)
         self.assertIn("preserve_stable_public_api_surface", requirements)
         self.assertIn("do_not_upgrade_proof_required_or_indeterminate_to_pass", requirements)
