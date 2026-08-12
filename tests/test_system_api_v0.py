@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import unittest
 
@@ -39,6 +40,20 @@ class SystemApiV0Tests(unittest.TestCase):
         self.assertTrue(set(root_exports).issubset(set(system_api.SYSTEM_API_EXPORTS_V0)))
         for name in root_exports:
             self.assertIs(getattr(system_api, name), getattr(tev_script, name), name)
+
+    def test_system_canonical_index_requires_stable_public_api_preservation(self):
+        root = Path(system_api.__file__).resolve().parents[1]
+        document = json.loads(
+            (root / "spec" / "TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        api = document["system_api"]
+        self.assertEqual(api["stable_public_api_source"], "tev_script.__all__")
+        self.assertEqual(api["stable_public_api_surface"], "stable_public_api")
+        self.assertIs(api["stable_public_api_superset_required"], True)
+        self.assertIs(api["stable_public_api_object_identity_preserved"], True)
+        self.assertIs(document["consumer_binding"]["stable_public_api_preservation_required"], True)
 
     def test_complete_high_level_surfaces_are_bound(self):
         contract = system_api.system_api_contract_object_v0()
