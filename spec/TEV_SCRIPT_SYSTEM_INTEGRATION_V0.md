@@ -4,7 +4,7 @@ Status: **post-V1 integration contract; additive and non-normative for TEV Scrip
 
 ## 1. Purpose
 
-A consumer that needs TEV Script as a complete subsystem must consume the TEV Script distribution, not copy individual realization, runtime, compiler or verifier modules into the consumer.
+A consumer that needs TEV Script as a complete subsystem must consume the TEV Script distribution, not copy individual language, causal, semantic, realization, runtime, compiler or verifier modules into the consumer.
 
 The integration boundary is:
 
@@ -38,13 +38,15 @@ Package version text alone is insufficient to identify an experimental post-V1 s
 
 `tev_script.system_api_v0` is the consumer-facing facade for the complete Python-side system integration profile. The wheel continues to contain the implementation modules; the facade defines which high-level surfaces a consumer may bind without importing private implementation layout as its contract.
 
-The facade covers:
+The complete system profile covers:
 
 ```text
 language analysis / compilation
 IR V2 / IR V3 lowering
 IR V3 lowering receipts and verification
 IR V3 validation / conformance / runtime / checkpoint
+Causal Reaction V1
+Causal -> Semantic bridge
 Field + Transformation semantic calculus
 artifact / evidence / machine / regime / resource descriptions
 realization admission
@@ -57,19 +59,25 @@ activation
 execution observation
 grounded discovery after execution
 integration receipt construction and verification
+complete post-V1 causal registry
 complete post-V1 semantic subsystem registry
 ```
 
-The direct high-level facade is not the entire semantic module set. Completeness is closed by:
+The direct high-level facade is not the entire module set. Completeness is closed by two registries:
 
 ```text
+SYSTEM_CAUSAL_MODULE_PATHS_V0
+load_system_causal_subsystem_v0(subsystem_id)
+
 SYSTEM_SUBSYSTEM_MODULE_PATHS_V0
 load_system_subsystem_v0(subsystem_id)
 ```
 
-`SYSTEM_SUBSYSTEM_MODULE_PATHS_V0` MUST contain exactly every `tev_script/semantic_*.py` module in the admitted source tree. The registry is part of `SYSTEM_API_CONTRACT_HASH_V0`; adding, deleting or renaming a semantic subsystem without updating the registry makes the system gate fail closed.
+`SYSTEM_CAUSAL_MODULE_PATHS_V0` MUST contain exactly every `tev_script/causal_*_v1.py` module in the admitted source tree. `SYSTEM_SUBSYSTEM_MODULE_PATHS_V0` MUST contain exactly every `tev_script/semantic_*.py` module. Both registries are part of `SYSTEM_API_CONTRACT_HASH_V0`; adding, deleting or renaming a governed causal or semantic subsystem without updating its registry makes the system gate fail closed.
 
-The loader accepts only ids already present in that registry. A consumer therefore does not invent package paths to reach cost models, placement, dispatch, delivery, resource calibration, receipt validity, realization composition or other post-V1 semantic layers.
+The loaders accept only ids already present in their registries. A consumer therefore does not invent package paths to reach causal analysis/runtime/refinement, cost models, placement, dispatch, delivery, resource calibration, receipt validity, realization composition or other post-V1 layers.
+
+The causal registry does not make the Semantic Calculus the authority of Causal Reaction or vice versa. Their existing one-directional bridge and independent authorities remain unchanged.
 
 ## 4. Authority direction
 
@@ -78,7 +86,7 @@ The required dependency direction is:
 ```text
 consumer
    -> TEV Script system API
-        -> TEV Script-owned semantic/runtime authorities
+        -> TEV Script-owned language / causal / semantic / runtime authorities
 ```
 
 Forbidden direction:
@@ -159,7 +167,7 @@ with schema:
 TEV_SCRIPT_SYSTEM_CANONICAL_INDEX_V0
 ```
 
-It binds the system facade, the closed semantic registry, receipt contract, realization/host/action-loop implementation surfaces and all system integration gates while preserving `stable=false` for the post-V1 system profile.
+It binds the system facade, the closed causal and semantic registries, receipt contract, realization/host/action-loop implementation surfaces and all system integration gates while preserving `stable=false` for the post-V1 system profile.
 
 ## 9. Stable V1 root API remains unchanged
 
@@ -173,7 +181,7 @@ This prevents an additive post-V1 integration surface from silently redefining t
 
 ## 10. Distribution rule
 
-The in-tree wheel backend packages all Python modules under `tev_script/`. Therefore the system facade, all registered semantic subsystems, receipt verifier and implementation modules are transported together by a wheel built from the same source identity.
+The in-tree wheel backend packages all Python modules under `tev_script/`. Therefore the system facade, all registered causal and semantic subsystems, receipt verifier and implementation modules are transported together by a wheel built from the same source identity.
 
 A production consumer MUST pin the exact wheel bytes. The distribution/package version remains insufficient as a post-V1 system identity by itself; `SYSTEM_API_CONTRACT_HASH_V0` plus the exact artifact SHA-256 and integration receipt close that ambiguity.
 
@@ -181,20 +189,23 @@ A later public post-V1 release may introduce a distinct distribution version/pro
 
 ## 11. Artifact admission
 
-`RUN_TEV_SCRIPT_SYSTEM_INTEGRATION_V0.py` is the exact-artifact integration gate. It does not publish, merge, tag, promote or modify a consumer.
+`RUN_TEV_SCRIPT_SYSTEM_INTEGRATION_V0.py` is the exact-artifact integration gate. It does not publish, merge, tag, promote, mutate `Current` or modify a consumer.
 
 The gate requires a clean named-branch checkout and an empty output directory outside the repository. It:
 
 ```text
 runs the system focal
   -> validates the system API contract
+  -> proves the source causal registry is non-empty and closed
   -> proves the source semantic registry is non-empty and closed
   -> builds two independent deterministic wheels
   -> requires byte identity between both builds
   -> installs the exact wheel into a clean venv with --no-deps
   -> imports the complete system API from the installed wheel
+  -> loads every registered Causal Reaction V1 module
   -> loads representative non-facade semantic subsystems through the registry
-  -> requires installed/source registry cardinality identity
+  -> requires installed/source causal registry cardinality identity
+  -> requires installed/source semantic registry cardinality identity
   -> constructs the canonical integration receipt
   -> makes the installed wheel verify that receipt
   -> copies the exact wheel to the output directory
@@ -211,13 +222,17 @@ A candidate is ready for external-system integration only when the focal and exa
 SYSTEM_API_IMPORT_BOUNDARY=PASS
 SYSTEM_API_CONTRACT_HASH=PASS
 SYSTEM_API_REQUIRED_SURFACE=PASS
+SYSTEM_COMPLETE_CAUSAL_REGISTRY_CLOSED=PASS
 SYSTEM_COMPLETE_SEMANTIC_REGISTRY_CLOSED=PASS
 SYSTEM_CANONICAL_INDEX_SCHEMA=PASS
 V1_ROOT_API_NOT_REDEFINED=PASS
 SYSTEM_ZERO_RUNTIME_DEPENDENCIES=PASS
+SYSTEM_CAUSAL_REACTION=PASS
+SYSTEM_CAUSAL_SEMANTIC_BRIDGE=PASS
 SYSTEM_WHEEL_DETERMINISTIC_BYTES=PASS
 SYSTEM_INSTALLED_WHEEL_IMPORT=PASS
 SYSTEM_INSTALLED_API_IDENTITY=PASS
+SYSTEM_INSTALLED_COMPLETE_CAUSAL_REGISTRY=PASS
 SYSTEM_INSTALLED_COMPLETE_SEMANTIC_REGISTRY=PASS
 SYSTEM_INSTALLED_RECEIPT_VERIFIER=PASS
 SYSTEM_ARTIFACT_RECEIPT_LAST=PASS
