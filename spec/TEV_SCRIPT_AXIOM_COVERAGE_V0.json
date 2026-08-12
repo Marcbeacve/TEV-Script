@@ -1,0 +1,173 @@
+{
+  "allowed_layers": [
+    "L0",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "L6",
+    "L7",
+    "L8"
+  ],
+  "causal_module_layers": {
+    "L2": [
+      "causal_runtime_v1"
+    ],
+    "L4": [
+      "causal_analysis_v1",
+      "causal_model_v1",
+      "causal_refinement_v1",
+      "causal_runtime_v1"
+    ]
+  },
+  "closure": {
+    "causal_module_union_must_equal_system_api_registry": true,
+    "semantic_module_union_must_equal_system_api_registry": true,
+    "system_surface_union_must_equal_system_api_surface_set": true,
+    "uncovered_module_is_pass": false,
+    "unknown_layer_is_pass": false,
+    "unknown_module_is_pass": false
+  },
+  "primitive_families": [
+    "Field",
+    "Transformation"
+  ],
+  "schema": "TEV_SCRIPT_AXIOM_COVERAGE_V0",
+  "semantic_module_layers": {
+    "L2": [
+      "semantic_host_realization_v1",
+      "semantic_runtime_state_v0"
+    ],
+    "L3": [
+      "semantic_commit_outcome_v0",
+      "semantic_effects_v0",
+      "semantic_execution_authority_v0",
+      "semantic_governance_v0",
+      "semantic_prepared_execution_v0",
+      "semantic_security_v0"
+    ],
+    "L4": [
+      "semantic_abstraction_v0",
+      "semantic_apply_v0",
+      "semantic_causal_bridge_v0",
+      "semantic_causality_v0",
+      "semantic_composition_theorem_v0",
+      "semantic_composition_v0",
+      "semantic_computation_v0",
+      "semantic_discovery_realization_v0",
+      "semantic_kernel_v0",
+      "semantic_paraconsistent_v0",
+      "semantic_projection_v0",
+      "semantic_realization_composition_v0",
+      "semantic_reflection_v0",
+      "semantic_regime_v0",
+      "semantic_residual_adapters_v0",
+      "semantic_residual_v0",
+      "semantic_types_v1",
+      "semantic_universality_v0"
+    ],
+    "L5": [
+      "semantic_artifact_v0",
+      "semantic_epistemic_v0",
+      "semantic_evidence_v0",
+      "semantic_paraconsistent_v0",
+      "semantic_proof_boundary_v0",
+      "semantic_receipt_validity_v0",
+      "semantic_resource_evidence_v0",
+      "semantic_resource_measurement_v0",
+      "semantic_trace_v0"
+    ],
+    "L6": [
+      "semantic_cost_model_update_v0",
+      "semantic_cost_model_v0",
+      "semantic_cost_prediction_v0",
+      "semantic_machine_v0",
+      "semantic_placement_v0",
+      "semantic_resource_algebra_v0",
+      "semantic_resource_calibration_v0",
+      "semantic_resource_evidence_v0",
+      "semantic_resource_measurement_v0"
+    ],
+    "L7": [
+      "semantic_activation_v0",
+      "semantic_commit_outcome_v0",
+      "semantic_delivery_guarantee_v0",
+      "semantic_delivery_plan_v0",
+      "semantic_delivery_satisfaction_v0",
+      "semantic_discovery_realization_v0",
+      "semantic_dispatch_consumption_v0",
+      "semantic_dispatch_observation_v0",
+      "semantic_dispatch_v0",
+      "semantic_dispatched_grounded_discovery_v0",
+      "semantic_execution_authority_v0",
+      "semantic_execution_observation_v0",
+      "semantic_execution_request_v0",
+      "semantic_governance_v0",
+      "semantic_grounded_discovery_v0",
+      "semantic_host_realization_v1",
+      "semantic_liveness_v0",
+      "semantic_machine_v0",
+      "semantic_placement_v0",
+      "semantic_prepared_execution_v0",
+      "semantic_realization_composition_v0",
+      "semantic_realization_resolution_v0",
+      "semantic_realization_search_v0",
+      "semantic_realization_selection_v0",
+      "semantic_realization_v0",
+      "semantic_regime_v0",
+      "semantic_runtime_state_v0",
+      "semantic_security_v0",
+      "semantic_trace_v0",
+      "semantic_universality_v0"
+    ],
+    "L8": [
+      "semantic_artifact_v0",
+      "semantic_governance_v0",
+      "semantic_receipt_validity_v0"
+    ]
+  },
+  "status": "AXIOMATIC_CANDIDATE",
+  "system_surface_layers": {
+    "L0": [
+      "complete_semantic_registry",
+      "stable_public_api"
+    ],
+    "L1": [
+      "complete_semantic_registry",
+      "stable_public_api"
+    ],
+    "L2": [
+      "complete_semantic_registry",
+      "host_realization",
+      "stable_public_api"
+    ],
+    "L3": [
+      "complete_semantic_registry",
+      "execution_governance",
+      "stable_public_api"
+    ],
+    "L4": [
+      "causal_reaction_registry",
+      "complete_semantic_registry",
+      "semantic_calculus"
+    ],
+    "L5": [
+      "complete_semantic_registry"
+    ],
+    "L6": [
+      "complete_semantic_registry",
+      "realization"
+    ],
+    "L7": [
+      "complete_semantic_registry",
+      "execution_governance",
+      "host_realization",
+      "realization"
+    ],
+    "L8": [
+      "complete_semantic_registry",
+      "integration_binding"
+    ]
+  }
+}

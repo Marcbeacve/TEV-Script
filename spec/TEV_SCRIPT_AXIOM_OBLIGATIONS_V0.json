@@ -4,6 +4,7 @@
   "language_version": "1.0.0",
   "system_profile": "POST_V1_REALIZATION_SYSTEM_V0",
   "system_layer_spec": "spec/TEV_SCRIPT_AXIOMATIC_SYSTEM_LAYERS_V0.md",
+  "coverage_ledger": "spec/TEV_SCRIPT_AXIOM_COVERAGE_V0.json",
   "primitive_families": [
     "Field",
     "Transformation"
@@ -77,7 +78,8 @@
     "Proof_boundary": "tev_script/semantic_proof_boundary_v0.py:ProofBoundaryWitnessV0",
     "Resolution_semantics": "NO_ADMISSIBLE_REALIZATION only after closed rejection; open admission -> INDETERMINATE",
     "Constitutive_C0_C8": "tools/validate_axiomatic_system_correspondence_v0.py",
-    "Operational_L0_L8": "tools/validate_axiomatic_operational_v0.py"
+    "Operational_L0_L8": "tools/validate_axiomatic_operational_v0.py",
+    "Closed_module_coverage": "tools/validate_axiomatic_coverage_v0.py"
   },
   "repotalk": {
     "tool": "repotalk_formal_verify",
@@ -108,6 +110,7 @@
     "requires_tevprover_structural_replay": true,
     "requires_static_correspondence": true,
     "requires_constitutive_c0_c8_correspondence": true,
-    "requires_operational_l0_l8_correspondence": true
+    "requires_operational_l0_l8_correspondence": true,
+    "requires_closed_module_axiom_coverage": true
   }
 }
