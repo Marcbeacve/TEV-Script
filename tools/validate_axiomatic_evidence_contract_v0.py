@@ -14,6 +14,8 @@ REQUIRED = (
     "tests/test_axiomatic_formal_evidence_v0.py",
 )
 
+TEVPROVER_PUBLIC_PROOF_PORT = "tevprover_cuofc.verify_proof"
+
 
 def _campaign(
     relative: str,
@@ -160,11 +162,32 @@ def validate() -> tuple[str, ...]:
                 failures.append("manifest:repotalk_source_mode")
             if repotalk.get("lean_toolchain_tree_hash_required") is not True:
                 failures.append("manifest:lean_tree_hash")
+        tevprover = manifest.get("tevprover")
+        if not isinstance(tevprover, dict):
+            failures.append("manifest:tevprover")
+        elif tevprover.get("installed_port") != TEVPROVER_PUBLIC_PROOF_PORT:
+            failures.append("manifest:tevprover_public_proof_port")
         promotion = manifest.get("promotion")
         if not isinstance(promotion, dict) or promotion.get(
             "requires_axiomatic_formal_receipt"
         ) is not True:
             failures.append("manifest:formal_receipt_promotion_gate")
+
+    tevprover_plan_path = ROOT / "formal/tevprover/TEVScriptAxiomsV0.plan.json"
+    if not tevprover_plan_path.is_file():
+        failures.append("tevprover_plan:missing")
+    else:
+        try:
+            tevprover_plan = json.loads(
+                tevprover_plan_path.read_text(encoding="utf-8")
+            )
+        except json.JSONDecodeError:
+            failures.append("tevprover_plan:invalid_json")
+            tevprover_plan = {}
+        if tevprover_plan.get("installed_port") != TEVPROVER_PUBLIC_PROOF_PORT:
+            failures.append("tevprover_plan:public_proof_port")
+        if tevprover_plan.get("semantic_authority") is not False:
+            failures.append("tevprover_plan:semantic_authority")
 
     for relative in (
         "CANONICAL_INDEX.json",
