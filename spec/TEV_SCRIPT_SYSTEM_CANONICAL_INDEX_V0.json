@@ -35,7 +35,8 @@
     "verifier": "verify_system_integration_receipt_v0",
     "canonical_hash_required": true,
     "exact_distribution_sha256_required": true,
-    "exact_source_identity_supported": true
+    "exact_source_identity_supported": true,
+    "stable_public_api_preserved_required": true
   },
   "authority_files": [
     "spec/TEV_SCRIPT_STANDALONE_SEMANTIC_AUTHORITY_V0.md",
