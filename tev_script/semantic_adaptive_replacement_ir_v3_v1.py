@@ -7,8 +7,8 @@ from .canonical import canonical_hash, canonical_json
 from .ir_v3_conformance import run_ir_v3_conformance
 from .ir_v3_values import build_type_table_v3, encode_v3_value
 from .lift_ir_v2_to_v3 import lift_ir_v2_to_v3
-from .runtime import ScriptRuntime
-from .values import decode_typed_value, encode_typed_value
+from .runtime_checkpoint_v2 import RuntimeCheckpointV2
+from .values import decode_typed_value
 
 IR_V3_SCENARIO_SCHEMA_V1 = "TEV_SCRIPT_IR_V3_SCENARIO_V1"
 IR_V3_RECEIPT_SCHEMA_V1 = "TEV_SCRIPT_IR_V3_CONFORMANCE_RECEIPT_V1"
@@ -21,26 +21,6 @@ def _issue(kind: str, severity: str, subject: Any, **detail: Any) -> dict[str, o
         "subject": str(subject),
         "detail": detail,
     }
-
-
-def _legacy_initial_state(ir: Mapping[str, Any]) -> list[dict[str, object]]:
-    runtime = ScriptRuntime(ir, {})
-    result: list[dict[str, object]] = []
-    for raw_entity in ir["entities"]:
-        entity = runtime.entities[raw_entity["entity_id"]]
-        result.append(
-            {
-                "entity_id": raw_entity["entity_id"],
-                "state": {
-                    name: {
-                        "type": entity.state_types[name],
-                        "value": encode_typed_value(entity.state_types[name], value),
-                    }
-                    for name, value in sorted(entity.state.items())
-                },
-            }
-        )
-    return result
 
 
 def _contracts(ir: Mapping[str, Any], entity_id: str) -> dict[str, dict[str, Any]]:
@@ -64,31 +44,143 @@ def _v2_raw_to_v3(
     return encode_v3_value(type_id, value, type_table, context=context)
 
 
+def _checkpoint_from_legacy_baseline(
+    v3_ir: Mapping[str, Any],
+    baseline_state: Any,
+    type_table: Any,
+) -> tuple[RuntimeCheckpointV2 | None, list[dict[str, object]]]:
+    issues: list[dict[str, object]] = []
+    if not isinstance(baseline_state, list):
+        return None, [_issue("replacement.variable_baseline_shape_invalid", "REJECT", "baseline_state")]
+
+    observed: dict[str, Mapping[str, Any]] = {}
+    for index, raw_row in enumerate(baseline_state):
+        if not isinstance(raw_row, Mapping) or set(raw_row) != {"entity_id", "state"}:
+            issues.append(_issue("replacement.variable_baseline_entity_shape_invalid", "REJECT", index))
+            continue
+        entity_id = str(raw_row["entity_id"])
+        if entity_id in observed:
+            issues.append(_issue("replacement.variable_baseline_entity_duplicate", "REJECT", entity_id))
+            continue
+        if not isinstance(raw_row["state"], Mapping):
+            issues.append(_issue("replacement.variable_baseline_state_shape_invalid", "REJECT", entity_id))
+            continue
+        observed[entity_id] = raw_row
+
+    expected_entities = {
+        str(raw_entity["entity_id"]): raw_entity
+        for raw_entity in v3_ir["entities"]
+    }
+    if set(observed) != set(expected_entities):
+        issues.append(
+            _issue(
+                "replacement.variable_baseline_entity_set_mismatch",
+                "REJECT",
+                canonical_hash(baseline_state),
+                expected=sorted(expected_entities),
+                observed=sorted(observed),
+            )
+        )
+    if issues:
+        return None, issues
+
+    checkpoint_entities: list[tuple[str, tuple[tuple[str, str, Any], ...]]] = []
+    for entity_id in sorted(expected_entities):
+        definition = expected_entities[entity_id]
+        expected_states = {
+            str(item["name"]): str(item["type"])
+            for item in definition["states"]
+        }
+        raw_state = observed[entity_id]["state"]
+        assert isinstance(raw_state, Mapping)
+        if set(raw_state) != set(expected_states):
+            issues.append(
+                _issue(
+                    "replacement.variable_baseline_state_set_mismatch",
+                    "REJECT",
+                    entity_id,
+                    expected=sorted(expected_states),
+                    observed=sorted(raw_state),
+                )
+            )
+            continue
+
+        states: list[tuple[str, str, Any]] = []
+        for state_name in sorted(expected_states):
+            typed = raw_state[state_name]
+            if not isinstance(typed, Mapping) or set(typed) != {"type", "value"}:
+                issues.append(
+                    _issue(
+                        "replacement.variable_baseline_typed_value_shape_invalid",
+                        "REJECT",
+                        f"{entity_id}.{state_name}",
+                    )
+                )
+                continue
+            expected_type = expected_states[state_name]
+            observed_type = str(typed["type"])
+            if observed_type != expected_type:
+                issues.append(
+                    _issue(
+                        "replacement.variable_baseline_type_mismatch",
+                        "REJECT",
+                        f"{entity_id}.{state_name}",
+                        expected=expected_type,
+                        observed=observed_type,
+                    )
+                )
+                continue
+            try:
+                converted = _v2_raw_to_v3(
+                    expected_type,
+                    typed["value"],
+                    type_table,
+                    context=f"R10 baseline {entity_id}.{state_name}",
+                )
+            except Exception as error:
+                issues.append(
+                    _issue(
+                        "replacement.variable_baseline_value_invalid",
+                        "REJECT",
+                        f"{entity_id}.{state_name}",
+                        error_type=type(error).__name__,
+                    )
+                )
+                continue
+            states.append((state_name, expected_type, converted))
+        checkpoint_entities.append((entity_id, tuple(states)))
+
+    if issues:
+        return None, issues
+
+    checkpoint = RuntimeCheckpointV2(
+        program_id=str(v3_ir["program_id"]),
+        ir_schema=str(v3_ir["schema"]),
+        semantic_hash=str(v3_ir["semantic_hash"]),
+        source_schema=str(v3_ir["source_schema"]),
+        source_semantic_hash=str(v3_ir["source_semantic_hash"]),
+        entities=tuple(checkpoint_entities),
+    )
+    return checkpoint, []
+
+
 def _prepare_variable_projection(
     ir: Mapping[str, Any],
     bundle: Mapping[str, Any],
-) -> tuple[dict[str, object] | None, list[dict[str, object]], list[dict[str, object]]]:
-    """Build an IR V3 scripted-call scenario from an R10 V2 canary bundle.
+) -> tuple[
+    dict[str, object] | None,
+    list[dict[str, object]],
+    RuntimeCheckpointV2 | None,
+    list[dict[str, object]],
+]:
+    """Build an IR V3 scripted-call scenario and exact baseline checkpoint.
 
     The V2 semantic hash is preserved by the V2->V3 lift as
-    source_semantic_hash. A variable observation is therefore replayed by the
-    existing IR V3 conformance authority rather than by inventing a second
-    sequence semantics in the legacy runner.
+    source_semantic_hash. Variable observations therefore reuse the canonical
+    IR V3 scripted-call semantics, while the candidate baseline is restored
+    through RuntimeCheckpointV2 before replay.
     """
     issues: list[dict[str, object]] = []
-    initial_state = _legacy_initial_state(ir)
-    initial_state_hash = canonical_hash(initial_state)
-    if canonical_json(bundle.get("baseline_state")) != canonical_json(initial_state):
-        issues.append(
-            _issue(
-                "replacement.variable_hot_baseline_restore_required",
-                "PROOF_REQUIRED",
-                bundle.get("baseline_state_hash", ""),
-                ir_v3_initial_state_hash=initial_state_hash,
-            )
-        )
-        return None, [], issues
-
     try:
         lifted = lift_ir_v2_to_v3(ir)
     except Exception as error:
@@ -101,7 +193,7 @@ def _prepare_variable_projection(
                 error=str(error),
             )
         )
-        return None, [], issues
+        return None, [], None, issues
 
     v3_ir = lifted.ir
     if v3_ir.get("source_semantic_hash") != ir.get("semantic_hash"):
@@ -113,7 +205,7 @@ def _prepare_variable_projection(
                 expected=ir.get("semantic_hash", ""),
             )
         )
-        return None, [], issues
+        return None, [], None, issues
 
     try:
         type_table = build_type_table_v3(v3_ir)
@@ -127,12 +219,21 @@ def _prepare_variable_projection(
                 error=str(error),
             )
         )
-        return None, [], issues
+        return None, [], None, issues
+
+    checkpoint, checkpoint_issues = _checkpoint_from_legacy_baseline(
+        v3_ir,
+        bundle.get("baseline_state"),
+        type_table,
+    )
+    issues.extend(checkpoint_issues)
+    if checkpoint is None or issues:
+        return None, [], checkpoint, issues
 
     invocations = bundle.get("invocations")
     if not isinstance(invocations, list) or not invocations:
         issues.append(_issue("replacement.variable_invocations_invalid", "REJECT", bundle.get("bundle_hash", "")))
-        return None, [], issues
+        return None, [], checkpoint, issues
     entity_ids = {
         str(item.get("entity_id", ""))
         for item in invocations
@@ -147,13 +248,13 @@ def _prepare_variable_projection(
                 entities=sorted(entity_ids),
             )
         )
-        return None, [], issues
+        return None, [], checkpoint, issues
     entity_id = next(iter(entity_ids))
     contracts = _contracts(ir, entity_id)
     bindings = bundle.get("capability_bindings")
     if not isinstance(bindings, dict):
         issues.append(_issue("replacement.variable_capability_bindings_invalid", "REJECT", bundle.get("bundle_hash", "")))
-        return None, [], issues
+        return None, [], checkpoint, issues
 
     calls_by_capability: dict[str, list[dict[str, object]]] = {
         capability_id: [] for capability_id in sorted(bindings)
@@ -162,7 +263,7 @@ def _prepare_variable_projection(
     raw_trace = bundle.get("observed_capability_trace")
     if not isinstance(raw_trace, list):
         issues.append(_issue("replacement.variable_trace_invalid", "REJECT", bundle.get("bundle_hash", "")))
-        return None, [], issues
+        return None, [], checkpoint, issues
 
     for index, raw_call in enumerate(raw_trace):
         if not isinstance(raw_call, dict) or set(raw_call) != {"capability_id", "arguments", "result"}:
@@ -323,7 +424,7 @@ def _prepare_variable_projection(
         expected_transcript.append(transcript)
 
     if issues:
-        return None, expected_transcript, issues
+        return None, expected_transcript, checkpoint, issues
 
     steps: list[dict[str, object]] = []
     for index, raw_invocation in enumerate(invocations):
@@ -367,7 +468,7 @@ def _prepare_variable_projection(
         )
 
     if issues:
-        return None, expected_transcript, issues
+        return None, expected_transcript, checkpoint, issues
 
     scenario = {
         "schema": IR_V3_SCENARIO_SCHEMA_V1,
@@ -383,14 +484,14 @@ def _prepare_variable_projection(
         ],
         "steps": steps,
     }
-    return scenario, expected_transcript, []
+    return scenario, expected_transcript, checkpoint, []
 
 
 def project_variable_adaptive_replacement_v1(
     ir: Mapping[str, Any],
     bundle: Mapping[str, Any],
 ) -> tuple[dict[str, object] | None, tuple[dict[str, object], ...]]:
-    scenario, _expected, issues = _prepare_variable_projection(ir, bundle)
+    scenario, _expected, _checkpoint, issues = _prepare_variable_projection(ir, bundle)
     return scenario, tuple(issues)
 
 
@@ -399,9 +500,9 @@ def evaluate_variable_adaptive_replacement_v1(
     bundle: Mapping[str, Any],
     scenario: Mapping[str, Any],
 ) -> tuple[str, tuple[dict[str, object], ...]]:
-    projected, expected_transcript, preparation_issues = _prepare_variable_projection(ir, bundle)
+    projected, expected_transcript, checkpoint, preparation_issues = _prepare_variable_projection(ir, bundle)
     issues = list(preparation_issues)
-    if projected is None:
+    if projected is None or checkpoint is None:
         return "", tuple(issues)
     if canonical_json(projected) != canonical_json(dict(scenario)):
         issues.append(
@@ -416,7 +517,11 @@ def evaluate_variable_adaptive_replacement_v1(
 
     try:
         lifted = lift_ir_v2_to_v3(ir)
-        result = run_ir_v3_conformance(lifted.ir, projected)
+        result = run_ir_v3_conformance(
+            lifted.ir,
+            projected,
+            initial_checkpoint=checkpoint,
+        )
     except Exception as error:
         issues.append(
             _issue(
@@ -450,6 +555,7 @@ def evaluate_variable_adaptive_replacement_v1(
                 "REJECT",
                 bundle.get("baseline_state_hash", ""),
                 observed=receipt.get("initial_state_hash"),
+                checkpoint_hash=checkpoint.checkpoint_hash,
             )
         )
     if canonical_json(receipt.get("final_state")) != canonical_json(bundle.get("observed_final_states")):
