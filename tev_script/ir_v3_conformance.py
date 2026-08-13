@@ -8,6 +8,7 @@ from .canonical import canonical_hash, canonical_json
 from .diagnostics import TevScriptError
 from .ir_v3_validation import validate_program_ir_v3
 from .ir_v3_values import decode_v3_value, encode_v3_value
+from .runtime_checkpoint_v2 import RuntimeCheckpointV2
 from .runtime_v3 import EmittedEventV3, ScriptRuntimeV3
 
 _STABLE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
@@ -160,6 +161,8 @@ class _ScenarioHost:
 def run_ir_v3_conformance(
     ir: Mapping[str, Any],
     scenario: Mapping[str, Any],
+    *,
+    initial_checkpoint: RuntimeCheckpointV2 | None = None,
 ) -> IrV3ConformanceReceiptBundle:
     program = dict(ir)
     validate_program_ir_v3(program)
@@ -174,12 +177,15 @@ def run_ir_v3_conformance(
         bootstrap,
         _array(scenario_obj["capabilities"], "$.capabilities", 0, 8192),
     )
-    # Recreate the runtime with the fully validated scripted capability bindings.
-    runtime = ScriptRuntimeV3(
-        program,
-        host.bindings(),
-        expected_source_semantic_hash=str(scenario_obj["source_semantic_hash"]),
-    )
+    bindings = host.bindings()
+    if initial_checkpoint is None:
+        runtime = ScriptRuntimeV3(
+            program,
+            bindings,
+            expected_source_semantic_hash=str(scenario_obj["source_semantic_hash"]),
+        )
+    else:
+        runtime = initial_checkpoint.restore_exact(program, bindings)
     host.runtime = runtime
 
     initial_state = _state_witness(runtime)
