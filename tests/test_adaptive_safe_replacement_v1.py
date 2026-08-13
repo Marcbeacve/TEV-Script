@@ -55,6 +55,18 @@ entity A {
 }
 '''
 
+    VARIABLE_OBSERVATION = b'''
+script VariableObservation version "0.2.0";
+entity A {
+    state a: Rat = 0;
+    state b: Rat = 0;
+    on go {
+        a = time.delta();
+        b = time.delta();
+    }
+}
+'''
+
     TRACE_EFFECT = b'''
 script Effect version "0.2.0";
 entity A {
@@ -96,6 +108,36 @@ entity A {
             observed_final_states=[] if final_states is None else final_states,
             observed_emitted_events=[] if emitted_events is None else emitted_events,
             observed_capability_trace=[] if capability_trace is None else capability_trace,
+        )
+
+    def variable_bundle(self, ir, *, trace=None, baseline_state=None):
+        final_states = [
+            {
+                "entity_id": "A",
+                "state": {
+                    "a": {"type": "Rat", "value": rat_value(1, 2)},
+                    "b": {"type": "Rat", "value": rat_value(3, 4)},
+                },
+            }
+        ]
+        capability_trace = [
+            {
+                "capability_id": "time.delta",
+                "arguments": [],
+                "result": rat_value(1, 2),
+            },
+            {
+                "capability_id": "time.delta",
+                "arguments": [],
+                "result": rat_value(3, 4),
+            },
+        ]
+        return self.bundle(
+            ir,
+            bindings={"time.delta": {"mode": "variable"}},
+            baseline_state=baseline_state,
+            final_states=final_states,
+            capability_trace=capability_trace if trace is None else trace,
         )
 
     def test_smoke_projects_to_real_conformance_runner_and_passes(self):
@@ -157,25 +199,84 @@ entity A {
         self.assertEqual(receipt["capability_trace"], capability_trace)
         self.assertEqual(evaluate_adaptive_replacement_canary_v1(ir, bundle).status, "PASS")
 
-    def test_variable_observation_is_proof_required(self):
-        ir = self.compile(self.CONSTANT_OBSERVATION)
-        bundle = self.bundle(
-            ir,
-            bindings={
-                "time.delta": {
-                    "mode": "variable",
-                    "values": [
-                        {"type": "Rat", "value": rat_value(1, 2)},
-                        {"type": "Rat", "value": rat_value(3, 4)},
-                    ],
-                }
-            },
+    def test_variable_observation_uses_ir_v3_scripted_calls_and_passes(self):
+        ir = self.compile(self.VARIABLE_OBSERVATION)
+        bundle = self.variable_bundle(ir)
+
+        projection = project_adaptive_replacement_conformance_v1(ir, bundle)
+        self.assertEqual(projection.status, "PASS")
+        self.assertIsNotNone(projection.scenario)
+        self.assertEqual(projection.scenario["schema"], "TEV_SCRIPT_IR_V3_SCENARIO_V1")
+        self.assertEqual(projection.scenario["source_semantic_hash"], ir["semantic_hash"])
+        self.assertEqual(
+            [call["return"]["value"] for call in projection.scenario["capabilities"][0]["calls"]],
+            [rat_value(1, 2), rat_value(3, 4)],
         )
+
+        evaluation = evaluate_adaptive_replacement_canary_v1(ir, bundle)
+        self.assertEqual(evaluation.status, "PASS")
+        self.assertTrue(evaluation.runner_receipt_hash)
+        self.assertTrue(parse_residual(residual_from_adaptive_replacement_v1(evaluation)).closed)
+
+    def test_variable_observation_call_underflow_is_rejected(self):
+        ir = self.compile(self.VARIABLE_OBSERVATION)
+        trace = [
+            {"capability_id": "time.delta", "arguments": [], "result": rat_value(1, 2)},
+            {"capability_id": "time.delta", "arguments": [], "result": rat_value(3, 4)},
+            {"capability_id": "time.delta", "arguments": [], "result": rat_value(5, 6)},
+        ]
+        bundle = self.variable_bundle(ir, trace=trace)
+        evaluation = evaluate_adaptive_replacement_canary_v1(ir, bundle)
+        self.assertEqual(evaluation.status, "REJECT")
+        self.assertIn(
+            "replacement.conformance_runner_rejected",
+            {item.kind for item in evaluation.issues},
+        )
+
+    def test_variable_observation_call_overflow_is_rejected(self):
+        ir = self.compile(self.VARIABLE_OBSERVATION)
+        trace = [
+            {"capability_id": "time.delta", "arguments": [], "result": rat_value(1, 2)},
+        ]
+        bundle = self.variable_bundle(ir, trace=trace)
+        evaluation = evaluate_adaptive_replacement_canary_v1(ir, bundle)
+        self.assertEqual(evaluation.status, "REJECT")
+        self.assertIn(
+            "replacement.conformance_runner_rejected",
+            {item.kind for item in evaluation.issues},
+        )
+
+    def test_variable_hot_baseline_remains_proof_required_until_v3_restore(self):
+        ir = self.compile(self.VARIABLE_OBSERVATION)
+        hot_state = [
+            {
+                "entity_id": "A",
+                "state": {
+                    "a": {"type": "Rat", "value": rat_value(9)},
+                    "b": {"type": "Rat", "value": rat_value(8)},
+                },
+            }
+        ]
+        bundle = self.variable_bundle(ir, baseline_state=hot_state)
         projection = project_adaptive_replacement_conformance_v1(ir, bundle)
         self.assertEqual(projection.status, "PROOF_REQUIRED")
         self.assertIsNone(projection.scenario)
         self.assertIn(
-            "replacement.variable_observation_projection_required",
+            "replacement.variable_hot_baseline_restore_required",
+            {item.kind for item in projection.issues},
+        )
+
+    def test_variable_binding_cannot_duplicate_sequence_evidence(self):
+        ir = self.compile(self.VARIABLE_OBSERVATION)
+        bundle = self.variable_bundle(ir)
+        tampered = deepcopy(bundle)
+        tampered["capability_bindings"]["time.delta"]["values"] = [rat_value(1, 2)]
+        body = {key: value for key, value in tampered.items() if key != "bundle_hash"}
+        tampered["bundle_hash"] = canonical_hash(body)
+        projection = project_adaptive_replacement_conformance_v1(ir, tampered)
+        self.assertEqual(projection.status, "REJECT")
+        self.assertIn(
+            "replacement.variable_binding_invalid",
             {item.kind for item in projection.issues},
         )
 
