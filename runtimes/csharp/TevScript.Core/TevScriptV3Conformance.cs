@@ -143,7 +143,13 @@ public static class TevScriptV3Conformance
         }
     }
 
-    public static TevScriptV3ConformanceReceipt Run(JsonElement ir, JsonElement scenario)
+    public static TevScriptV3ConformanceReceipt Run(JsonElement ir, JsonElement scenario) =>
+        Run(ir, scenario, initialCheckpoint: null);
+
+    public static TevScriptV3ConformanceReceipt Run(
+        JsonElement ir,
+        JsonElement scenario,
+        TevScriptRuntimeCheckpointV2? initialCheckpoint)
     {
         var program = ir.Clone();
         TevScriptProgramValidatorV3.Validate(program);
@@ -156,10 +162,13 @@ public static class TevScriptV3Conformance
             capabilities: null,
             expectedSourceSemanticHash: scenarioValue.GetProperty("source_semantic_hash").GetString());
         var host = new ScenarioHost(bootstrap, scenarioValue.GetProperty("capabilities"));
-        var runtime = new TevScriptRuntimeV3(
-            program,
-            host.Bindings(),
-            scenarioValue.GetProperty("source_semantic_hash").GetString());
+        var bindings = host.Bindings();
+        var runtime = initialCheckpoint is null
+            ? new TevScriptRuntimeV3(
+                program,
+                bindings,
+                scenarioValue.GetProperty("source_semantic_hash").GetString())
+            : initialCheckpoint.RestoreExact(program, bindings);
         host.BindRuntime(runtime);
 
         var initialState = StateWitness(runtime, program);
