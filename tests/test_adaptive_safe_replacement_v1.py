@@ -39,6 +39,14 @@ entity A {
 }
 '''
 
+    HOT_INCREMENT = b'''
+script HotIncrement version "0.2.0";
+entity A {
+    state x: Int = 0;
+    on go { x = x + 1; }
+}
+'''
+
     CONSTANT_OBSERVATION = b'''
 script Observation version "0.2.0";
 entity A {
@@ -99,12 +107,13 @@ entity A {
             }
         ]
         bundle = self.bundle(ir, final_states=final_states)
-
         projection = project_adaptive_replacement_conformance_v1(ir, bundle)
         self.assertEqual(projection.status, "PASS")
         self.assertIsNotNone(projection.scenario)
 
-        receipt = run_conformance(ir, projection.scenario)
+        receipt = run_conformance(ir, projection.scenario, initial_state=bundle["baseline_state"])
+        self.assertEqual(receipt["schema"], "TEV_SCRIPT_CONFORMANCE_RECEIPT_V2")
+        self.assertEqual(receipt["initial_state_hash"], bundle["baseline_state_hash"])
         self.assertEqual(receipt["final_states"], final_states)
         self.assertEqual(receipt["emitted_events"], [])
         self.assertEqual(receipt["capability_trace"], [])
@@ -144,7 +153,7 @@ entity A {
         )
         projection = project_adaptive_replacement_conformance_v1(ir, bundle)
         self.assertEqual(projection.status, "PASS")
-        receipt = run_conformance(ir, projection.scenario)
+        receipt = run_conformance(ir, projection.scenario, initial_state=bundle["baseline_state"])
         self.assertEqual(receipt["capability_trace"], capability_trace)
         self.assertEqual(evaluate_adaptive_replacement_canary_v1(ir, bundle).status, "PASS")
 
@@ -193,7 +202,7 @@ entity A {
         )
         projection = project_adaptive_replacement_conformance_v1(ir, bundle)
         self.assertEqual(projection.status, "PASS")
-        receipt = run_conformance(ir, projection.scenario)
+        receipt = run_conformance(ir, projection.scenario, initial_state=bundle["baseline_state"])
         self.assertEqual(receipt["capability_trace"], capability_trace)
         self.assertEqual(evaluate_adaptive_replacement_canary_v1(ir, bundle).status, "PASS")
 
@@ -245,21 +254,45 @@ entity A {
             {item.kind for item in projection.issues},
         )
 
-    def test_hot_baseline_requires_checkpoint_restore(self):
-        ir = self.compile(self.SMOKE)
+    def test_hot_baseline_is_restored_explicitly_and_passes(self):
+        ir = self.compile(self.HOT_INCREMENT)
         hot_state = [
             {
                 "entity_id": "A",
                 "state": {"x": {"type": "Int", "value": int_value(9)}},
             }
         ]
-        bundle = self.bundle(ir, baseline_state=hot_state)
+        final_states = [
+            {
+                "entity_id": "A",
+                "state": {"x": {"type": "Int", "value": int_value(10)}},
+            }
+        ]
+        bundle = self.bundle(ir, baseline_state=hot_state, final_states=final_states)
         projection = project_adaptive_replacement_conformance_v1(ir, bundle)
-        self.assertEqual(projection.status, "PROOF_REQUIRED")
-        self.assertIsNone(projection.scenario)
+        self.assertEqual(projection.status, "PASS")
+        self.assertIsNotNone(projection.scenario)
+
+        receipt = run_conformance(ir, projection.scenario, initial_state=bundle["baseline_state"])
+        self.assertEqual(receipt["schema"], "TEV_SCRIPT_CONFORMANCE_RECEIPT_V2")
+        self.assertEqual(receipt["initial_state_hash"], bundle["baseline_state_hash"])
+        self.assertEqual(receipt["final_states"], final_states)
+        self.assertEqual(evaluate_adaptive_replacement_canary_v1(ir, bundle).status, "PASS")
+
+    def test_malformed_hot_baseline_is_rejected_by_runner(self):
+        ir = self.compile(self.HOT_INCREMENT)
+        invalid_state = [
+            {
+                "entity_id": "A",
+                "state": {"x": {"type": "Rat", "value": rat_value(9)}},
+            }
+        ]
+        bundle = self.bundle(ir, baseline_state=invalid_state)
+        evaluation = evaluate_adaptive_replacement_canary_v1(ir, bundle)
+        self.assertEqual(evaluation.status, "REJECT")
         self.assertIn(
-            "replacement.baseline_restore_required",
-            {item.kind for item in projection.issues},
+            "replacement.conformance_runner_rejected",
+            {item.kind for item in evaluation.issues},
         )
 
     def test_bundle_tamper_is_rejected_before_projection(self):
@@ -267,7 +300,6 @@ entity A {
         bundle = self.bundle(ir)
         tampered = deepcopy(bundle)
         tampered["lane_id"] = "lane.tampered"
-
         projection = project_adaptive_replacement_conformance_v1(ir, tampered)
         self.assertEqual(projection.status, "REJECT")
         self.assertIsNone(projection.scenario)
