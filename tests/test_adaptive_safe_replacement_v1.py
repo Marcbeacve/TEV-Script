@@ -67,6 +67,17 @@ entity A {
 }
 '''
 
+    HOT_VARIABLE_OBSERVATION = b'''
+script HotVariableObservation version "0.2.0";
+entity A {
+    state x: Rat = 0;
+    on go {
+        x = x + time.delta();
+        x = x + time.delta();
+    }
+}
+'''
+
     TRACE_EFFECT = b'''
 script Effect version "0.2.0";
 entity A {
@@ -246,23 +257,61 @@ entity A {
             {item.kind for item in evaluation.issues},
         )
 
-    def test_variable_hot_baseline_remains_proof_required_until_v3_restore(self):
-        ir = self.compile(self.VARIABLE_OBSERVATION)
+    def test_variable_hot_baseline_is_restored_before_scripted_calls(self):
+        ir = self.compile(self.HOT_VARIABLE_OBSERVATION)
         hot_state = [
             {
                 "entity_id": "A",
-                "state": {
-                    "a": {"type": "Rat", "value": rat_value(9)},
-                    "b": {"type": "Rat", "value": rat_value(8)},
-                },
+                "state": {"x": {"type": "Rat", "value": rat_value(9)}},
             }
         ]
-        bundle = self.variable_bundle(ir, baseline_state=hot_state)
+        final_states = [
+            {
+                "entity_id": "A",
+                "state": {"x": {"type": "Rat", "value": rat_value(41, 4)}},
+            }
+        ]
+        trace = [
+            {"capability_id": "time.delta", "arguments": [], "result": rat_value(1, 2)},
+            {"capability_id": "time.delta", "arguments": [], "result": rat_value(3, 4)},
+        ]
+        bundle = self.bundle(
+            ir,
+            bindings={"time.delta": {"mode": "variable"}},
+            baseline_state=hot_state,
+            final_states=final_states,
+            capability_trace=trace,
+        )
         projection = project_adaptive_replacement_conformance_v1(ir, bundle)
-        self.assertEqual(projection.status, "PROOF_REQUIRED")
-        self.assertIsNone(projection.scenario)
+        self.assertEqual(projection.status, "PASS")
+        self.assertEqual(projection.scenario["schema"], "TEV_SCRIPT_IR_V3_SCENARIO_V1")
+        evaluation = evaluate_adaptive_replacement_canary_v1(ir, bundle)
+        self.assertEqual(evaluation.status, "PASS")
+        self.assertTrue(evaluation.runner_receipt_hash)
+        self.assertNotEqual(final_states[0]["state"]["x"]["value"], rat_value(5, 4))
+
+    def test_variable_hot_baseline_type_tamper_is_rejected_before_replay(self):
+        ir = self.compile(self.HOT_VARIABLE_OBSERVATION)
+        invalid_state = [
+            {
+                "entity_id": "A",
+                "state": {"x": {"type": "Int", "value": int_value(9)}},
+            }
+        ]
+        trace = [
+            {"capability_id": "time.delta", "arguments": [], "result": rat_value(1, 2)},
+            {"capability_id": "time.delta", "arguments": [], "result": rat_value(3, 4)},
+        ]
+        bundle = self.bundle(
+            ir,
+            bindings={"time.delta": {"mode": "variable"}},
+            baseline_state=invalid_state,
+            capability_trace=trace,
+        )
+        projection = project_adaptive_replacement_conformance_v1(ir, bundle)
+        self.assertEqual(projection.status, "REJECT")
         self.assertIn(
-            "replacement.variable_hot_baseline_restore_required",
+            "replacement.variable_baseline_type_mismatch",
             {item.kind for item in projection.issues},
         )
 
