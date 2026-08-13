@@ -8,6 +8,11 @@ from typing import Any, Mapping
 from .canonical import canonical_hash, canonical_json
 from .conformance import run_conformance
 from .runtime import ScriptRuntime
+from .semantic_adaptive_replacement_ir_v3_v1 import (
+    IR_V3_SCENARIO_SCHEMA_V1,
+    evaluate_variable_adaptive_replacement_v1,
+    project_variable_adaptive_replacement_v1,
+)
 from .semantic_kernel_v0 import SemanticFieldV0, field_from_mapping
 from .semantic_residual_v0 import ResidualObstructionV0, residual_from_obstructions
 from .values import decode_typed_value, encode_typed_value
@@ -234,6 +239,21 @@ def _issue(kind: str, severity: str, subject: Any, **detail: Any) -> AdaptiveRep
     return AdaptiveReplacementIssueV1(kind, severity, str(subject), detail)
 
 
+def _convert_bridge_issues(raw_issues: tuple[dict[str, object], ...]) -> list[AdaptiveReplacementIssueV1]:
+    result: list[AdaptiveReplacementIssueV1] = []
+    for item in raw_issues:
+        detail = item.get("detail", {})
+        result.append(
+            AdaptiveReplacementIssueV1(
+                str(item["kind"]),
+                str(item["severity"]),
+                str(item["subject"]),
+                dict(detail) if isinstance(detail, Mapping) else {"detail": detail},
+            )
+        )
+    return result
+
+
 def _projection(
     *,
     bundle: Mapping[str, Any],
@@ -263,7 +283,12 @@ def project_adaptive_replacement_conformance_v1(
     ir: Mapping[str, Any],
     bundle: Mapping[str, Any],
 ) -> AdaptiveReplacementProjectionV1:
-    """Project an R10 canary into conformance without pretending unsupported evidence exists."""
+    """Project one R10 canary through the strongest existing compatible runner.
+
+    Constant/trace lanes use the legacy V2 conformance runner with explicit
+    baseline restoration. Finite variable observations use the existing IR V3
+    scripted-call conformance authority after the canonical V2->V3 lift.
+    """
     raw = _canonical_copy(dict(bundle), "adaptive replacement bundle")
     _, initial_state_hash = initial_conformance_state_v1(ir)
     issues: list[AdaptiveReplacementIssueV1] = []
@@ -355,6 +380,7 @@ def project_adaptive_replacement_conformance_v1(
         issues.append(_issue("replacement.capability_binding_missing", "PROOF_REQUIRED", capability_id))
 
     projected_bindings: dict[str, object] = {}
+    uses_variable = False
     for capability_id in sorted(binding_ids & contract_ids):
         config = bindings[capability_id]
         contract = contracts[capability_id]
@@ -365,7 +391,17 @@ def project_adaptive_replacement_conformance_v1(
         return_type = str(contract["return_type"])
         kind = str(contract["kind"])
         if mode == "variable":
-            issues.append(_issue("replacement.variable_observation_projection_required", "PROOF_REQUIRED", capability_id, return_type=return_type, capability_kind=kind))
+            uses_variable = True
+            if set(config) != {"mode"} or kind != "observation" or return_type == "Unit":
+                issues.append(
+                    _issue(
+                        "replacement.variable_binding_invalid",
+                        "REJECT",
+                        capability_id,
+                        capability_kind=kind,
+                        return_type=return_type,
+                    )
+                )
             continue
         if mode == "constant":
             if set(config) != {"mode", "value_type", "value"}:
@@ -398,6 +434,17 @@ def project_adaptive_replacement_conformance_v1(
     if issues:
         return _projection(bundle=raw, ir=ir, initial_state_hash=initial_state_hash, scenario=None, issues=issues)
 
+    if uses_variable:
+        scenario, bridge_issues = project_variable_adaptive_replacement_v1(ir, raw)
+        issues.extend(_convert_bridge_issues(bridge_issues))
+        return _projection(
+            bundle=raw,
+            ir=ir,
+            initial_state_hash=initial_state_hash,
+            scenario=scenario if not issues else None,
+            issues=issues,
+        )
+
     scenario = {
         "schema": "TEV_SCRIPT_CONFORMANCE_SCENARIO_V1",
         "scenario_id": raw["scenario_id"],
@@ -418,37 +465,45 @@ def evaluate_adaptive_replacement_canary_v1(
     runner_receipt_hash = ""
     if projection.status == "PASS":
         assert projection.scenario is not None
-        try:
-            receipt = run_conformance(ir, projection.scenario, initial_state=bundle["baseline_state"])
-        except Exception as error:
-            issues.append(
-                _issue(
-                    "replacement.conformance_runner_rejected",
-                    "REJECT",
-                    projection.scenario_hash,
-                    error_type=type(error).__name__,
-                    error=str(error),
-                )
+        if projection.scenario.get("schema") == IR_V3_SCENARIO_SCHEMA_V1:
+            runner_receipt_hash, bridge_issues = evaluate_variable_adaptive_replacement_v1(
+                ir,
+                bundle,
+                projection.scenario,
             )
+            issues.extend(_convert_bridge_issues(bridge_issues))
         else:
-            runner_receipt_hash = str(receipt["receipt_hash"])
-            if receipt.get("schema") != "TEV_SCRIPT_CONFORMANCE_RECEIPT_V2" or receipt.get("initial_state_hash") != bundle["baseline_state_hash"]:
+            try:
+                receipt = run_conformance(ir, projection.scenario, initial_state=bundle["baseline_state"])
+            except Exception as error:
                 issues.append(
                     _issue(
-                        "replacement.runner_baseline_binding_mismatch",
+                        "replacement.conformance_runner_rejected",
                         "REJECT",
-                        bundle["baseline_state_hash"],
-                        runner_schema=receipt.get("schema"),
-                        runner_initial_state_hash=receipt.get("initial_state_hash"),
+                        projection.scenario_hash,
+                        error_type=type(error).__name__,
+                        error=str(error),
                     )
                 )
-            for receipt_key, bundle_key in (
-                ("final_states", "observed_final_states"),
-                ("emitted_events", "observed_emitted_events"),
-                ("capability_trace", "observed_capability_trace"),
-            ):
-                if canonical_json(receipt[receipt_key]) != canonical_json(bundle[bundle_key]):
-                    issues.append(_issue("replacement.observable_divergence", "REJECT", bundle_key, runner_receipt_hash=runner_receipt_hash))
+            else:
+                runner_receipt_hash = str(receipt["receipt_hash"])
+                if receipt.get("schema") != "TEV_SCRIPT_CONFORMANCE_RECEIPT_V2" or receipt.get("initial_state_hash") != bundle["baseline_state_hash"]:
+                    issues.append(
+                        _issue(
+                            "replacement.runner_baseline_binding_mismatch",
+                            "REJECT",
+                            bundle["baseline_state_hash"],
+                            runner_schema=receipt.get("schema"),
+                            runner_initial_state_hash=receipt.get("initial_state_hash"),
+                        )
+                    )
+                for receipt_key, bundle_key in (
+                    ("final_states", "observed_final_states"),
+                    ("emitted_events", "observed_emitted_events"),
+                    ("capability_trace", "observed_capability_trace"),
+                ):
+                    if canonical_json(receipt[receipt_key]) != canonical_json(bundle[bundle_key]):
+                        issues.append(_issue("replacement.observable_divergence", "REJECT", bundle_key, runner_receipt_hash=runner_receipt_hash))
 
     return AdaptiveReplacementEvaluationV1(
         projection_hash=projection.projection_hash,
