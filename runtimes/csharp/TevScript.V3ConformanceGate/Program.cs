@@ -113,6 +113,16 @@ static int RunSelfTest(string casesPath, string scenarioPath)
     var receipt = TevScriptV3Conformance.Run(baseElement, scenario);
     Console.WriteLine("CSHARP_IR_V3_CONFORMANCE_RECEIPT=PASS");
     Console.WriteLine("CSHARP_IR_V3_RECEIPT_HASH=" + receipt.ReceiptHash);
+
+    var checkpointRuntime = new TevScriptRuntimeV3(
+        baseElement,
+        capabilities: null,
+        expectedSourceSemanticHash: scenario.GetProperty("source_semantic_hash").GetString());
+    var checkpoint = TevScriptRuntimeCheckpointV2.Capture(checkpointRuntime);
+    var checkpointReceipt = TevScriptV3Conformance.Run(baseElement, scenario, checkpoint);
+    if (!StringComparer.Ordinal.Equals(receipt.CanonicalJson, checkpointReceipt.CanonicalJson))
+        throw new InvalidOperationException("checkpoint-backed conformance diverged from equivalent fresh baseline");
+    Console.WriteLine("CSHARP_IR_V3_CONFORMANCE_CHECKPOINT_EQUIVALENCE=PASS");
     return 0;
 }
 
