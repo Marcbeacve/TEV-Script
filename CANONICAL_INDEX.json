@@ -216,6 +216,17 @@
         "schemas/tev-script-v2-filesystem-artifacts.schema.json",
         "schemas/tev-script-v2-certify-full-receipt.schema.json"
       ],
+      "stable_tooling_authority": [
+        "tev_script/release_metadata_v2.py",
+        "tools/v2_certification_support.py",
+        "schemas/tev-script-v2-certify-full-receipt-v2.schema.json",
+        "RUN_TEV_SCRIPT_V2_PYTHON_CERTIFY_FULL.py",
+        "schemas/tev-script-v2-python-certify-full-receipt.schema.json",
+        "tools/validate_v2_stable_governance.py",
+        "RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py",
+        "schemas/tev-script-v2-stable-admission-receipt.schema.json",
+        "tools/validate_v2_stable_tooling_authority.py"
+      ],
       "introspection_surface": {
         "schema": "schemas/tev-script-v2-descriptor.schema.json",
         "generator": "tev_script/descriptor_v2.py",
@@ -231,10 +242,23 @@
         "maximum_file_read_bytes": 1048576,
         "unsupported_platform_fails_closed": true
       },
+      "stable_release_surface": {
+        "release_metadata": "tev_script/release_metadata_v2.py",
+        "governance": "tools/validate_v2_stable_governance.py",
+        "admission_gate": "RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py",
+        "receipt_schema": "TEV_SCRIPT_V2_STABLE_ADMISSION_RECEIPT_V1",
+        "exact_parent_certificate_required": true,
+        "release_diff_whitelist_required": true,
+        "artifact_byte_identity_required": true,
+        "stable_claim": false
+      },
       "gates": {
         "authority": "tools/validate_v2_authority.py",
         "filesystem_safety": "tools/validate_v2_filesystem_safety.py",
         "certify_full": "RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py",
+        "python_certify_full": "RUN_TEV_SCRIPT_V2_PYTHON_CERTIFY_FULL.py",
+        "stable_governance": "tools/validate_v2_stable_governance.py",
+        "stable_admission": "RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py",
         "v1_non_regression": "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py"
       },
       "public_interfaces": {

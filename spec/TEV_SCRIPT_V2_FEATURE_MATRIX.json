@@ -17,6 +17,17 @@
     "schemas/tev-script-v2-filesystem-artifacts.schema.json",
     "schemas/tev-script-v2-certify-full-receipt.schema.json"
   ],
+  "stable_tooling_authority": [
+    "tev_script/release_metadata_v2.py",
+    "tools/v2_certification_support.py",
+    "schemas/tev-script-v2-certify-full-receipt-v2.schema.json",
+    "RUN_TEV_SCRIPT_V2_PYTHON_CERTIFY_FULL.py",
+    "schemas/tev-script-v2-python-certify-full-receipt.schema.json",
+    "tools/validate_v2_stable_governance.py",
+    "RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py",
+    "schemas/tev-script-v2-stable-admission-receipt.schema.json",
+    "tools/validate_v2_stable_tooling_authority.py"
+  ],
   "security_invariants": {
     "filesystem_authority": "OPEN_DIRECTORY_OBJECT_IDENTITY_V1",
     "filesystem_resolution": "HANDLE_RELATIVE_NO_FOLLOW_V1",
@@ -62,6 +73,7 @@
       "tev_script/program_ir_v4.py",
       "tev_script/program_ir_v4_effect_commands.py",
       "tev_script/recursive_functions_v2.py",
+      "tev_script/release_metadata_v2.py",
       "tev_script/remote_module_acquisition_v2.py",
       "tev_script/scoped_filesystem_v2.py",
       "tev_script/semantic_collections_v2.py",
@@ -130,9 +142,17 @@
       "tests/test_task_dag_v2.py",
       "tests/test_task_scheduler_v2.py",
       "tests/test_v2_authority.py",
+      "tests/test_v2_authority_profiles.py",
+      "tests/test_v2_certification_support.py",
       "tests/test_v2_certify_full.py",
+      "tests/test_v2_certify_full_v2.py",
       "tests/test_v2_descriptor.py",
-      "tests/test_v2_schemas.py"
+      "tests/test_v2_python_certify_full.py",
+      "tests/test_v2_release_metadata.py",
+      "tests/test_v2_schemas.py",
+      "tests/test_v2_stable_admission.py",
+      "tests/test_v2_stable_governance.py",
+      "tests/test_v2_stable_tooling_authority.py"
     ],
     "conformance": [
       "conformance/v2-source-static-cases.json",
@@ -142,7 +162,11 @@
     "gates": [
       "tools/validate_v2_authority.py",
       "tools/validate_v2_filesystem_safety.py",
-      "RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py"
+      "RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py",
+      "RUN_TEV_SCRIPT_V2_PYTHON_CERTIFY_FULL.py",
+      "tools/validate_v2_stable_governance.py",
+      "RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py",
+      "tools/validate_v2_stable_tooling_authority.py"
     ],
     "public_interfaces": [
       "pyproject.toml",
@@ -161,6 +185,10 @@
     "CERTIFY_V1_PASS",
     "CERTIFY_V2_PASS",
     "FULL_REGRESSION_PASS",
-    "EXACT_CLEAN_CANDIDATE_FROZEN"
+    "EXACT_CLEAN_CANDIDATE_FROZEN",
+    "CURRENT_BASE_CERTIFICATION_SUPPORTED",
+    "V2_PYTHON_ARTIFACT_CERTIFICATION_SUPPORTED",
+    "STABLE_ADMISSION_TOOLING_PRESENT",
+    "STABLE_ADMISSION_TOOLING_TECHNICALLY_CERTIFIED_REQUIRED"
   ]
 }
