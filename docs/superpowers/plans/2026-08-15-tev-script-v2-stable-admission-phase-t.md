@@ -20,6 +20,7 @@
 - `pyproject.toml` must not change in Phase T or later Phase S for V2 stability.
 - Python runtime dependencies remain exactly empty.
 - V1 stable certification remains mandatory non-regression evidence.
+- Preserve all V1 Stable Admission tokens/contracts in `README.md`, `CHANGELOG.md`, and `PROJECT_STATE.md`; V2 documentation edits are additive and must not invalidate V1 stable governance.
 - No parser, compiler, Program IR V4, filesystem-safety implementation, or language semantic change is authorized unless a failing gate demonstrates a real technical defect; such a defect invalidates the stable-admission track and requires a separately recertified technical parent.
 - External receipts/artifacts must be outside the repository and source certification must leave HEAD/tree unchanged.
 
@@ -507,7 +508,7 @@ git commit -m "feat: add V2 stable-admission authority"
 
 - [ ] **Step 1: Write failing inventory tests**
 
-Require the V2 target/matrix to list `release_metadata_v2`, current-base receipt schema, V2 Python cert gate/schema, stable governance, stable-admission gate/schema, and all four new test modules. `stable=false`, candidate status, publication=false, merge=false must remain exact.
+Require the V2 target/matrix to list `release_metadata_v2`, current-base receipt schema, V2 Python cert gate/schema, stable governance, stable-admission gate/schema, and all four new test modules. Add the three new receipt schemas to V2 `authority_files`; add release metadata/gates/tests to the appropriate governed groups. `stable=false`, candidate status, publication=false, merge=false must remain exact.
 
 - [ ] **Step 2: Require stable-release surface but false claim**
 
@@ -547,7 +548,7 @@ Do not add `STABLE_ADMISSION_PASS` or set `stable=true`.
 
 - [ ] **Step 5: Update project state/docs only for Phase-T truth**
 
-README/PROJECT_STATE must state: stable-admission tooling is being technically certified; V2 remains canonical but non-stable; Python package remains 1.0.0; Phase S does not exist yet; no tag/release/merge authority is implied.
+README/PROJECT_STATE must state: stable-admission tooling is being technically certified; V2 remains canonical but non-stable; Python package remains 1.0.0; Phase S does not exist yet; no tag/release/merge authority is implied. Preserve all existing V1 Stable Admission identity/witness tokens verbatim enough for `tools/validate_v1_stable_governance.py` and V1 certification to remain green.
 
 - [ ] **Step 6: Run governed zero-skip suite**
 
