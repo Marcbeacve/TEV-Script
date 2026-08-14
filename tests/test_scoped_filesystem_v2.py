@@ -50,6 +50,28 @@ class ScopedFilesystemV2Tests(unittest.TestCase):
                             read_scoped_file_v2(scope, value, maximum_bytes=16)
                         self.assertEqual(caught.exception.diagnostic.code, "TEVS_SCOPED_FS_PATH")
 
+    def test_windows_unicode_name_lengths_fail_closed_before_ntcreatefile(self) -> None:
+        accepted = "a" * 32_766
+        rejected = "a" * 32_767
+
+        self.assertEqual(scoped_filesystem._parse_relative(accepted), ((accepted,), accepted))
+        with self.assertRaises(TevScriptError) as caught:
+            scoped_filesystem._parse_relative(rejected)
+        self.assertEqual(caught.exception.diagnostic.code, "TEVS_SCOPED_FS_PATH")
+
+        if os.name == "nt":
+            with patch.object(scoped_filesystem, "_NtCreateFile") as nt_create_file:
+                with self.assertRaises(TevScriptError) as caught:
+                    scoped_filesystem._win_open_relative(
+                        0,
+                        rejected,
+                        desired_access=0,
+                        create_disposition=0,
+                        create_options=0,
+                    )
+            self.assertEqual(caught.exception.diagnostic.code, "TEVS_SCOPED_FS_PATH")
+            nt_create_file.assert_not_called()
+
     def test_scope_pins_root_object_across_path_replacement_for_read(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             parent = Path(raw)

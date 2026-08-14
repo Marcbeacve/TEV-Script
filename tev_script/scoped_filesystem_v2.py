@@ -271,7 +271,15 @@ def _parse_relative(raw_relative: str) -> tuple[tuple[str, ...], str]:
         stem = part.split(".", 1)[0].upper()
         if stem in _WINDOWS_RESERVED:
             _fail("TEVS_SCOPED_FS_PATH", "scoped path contains a reserved Windows device name")
+        _validate_win_unicode_name(part)
     return tuple(parts), "/".join(parts)
+
+
+def _validate_win_unicode_name(name: str) -> int:
+    encoded_length = len(name.encode("utf-16-le"))
+    if encoded_length + 2 > 0xFFFF:
+        _fail("TEVS_SCOPED_FS_PATH", "scoped path segment is too long for Windows")
+    return encoded_length
 
 
 def _posix_open_parent(root: ScopedFilesystemRootV2, parts: tuple[str, ...]) -> int:
@@ -618,8 +626,8 @@ def _win_open_relative(
     create_disposition: int,
     create_options: int,
 ) -> int:
+    encoded_length = _validate_win_unicode_name(name)
     name_buffer = ctypes.create_unicode_buffer(name)
-    encoded_length = len(name.encode("utf-16-le"))
     unicode_name = _WinUnicodeString(
         encoded_length,
         encoded_length + 2,
