@@ -83,6 +83,7 @@
       "tests/test_cli_task_scheduler_v2.py",
       "tests/test_cli_v2.py",
       "tests/test_effect_commit_ledger_v2.py",
+      "tests/test_effect_command_artifacts_v4.py",
       "tests/test_file_effect_provider_v2.py",
       "tests/test_file_observation_acquisition_v2.py",
       "tests/test_file_observation_scheduler_v2.py",

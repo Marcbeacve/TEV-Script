@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import tempfile
 import tomllib
 import unittest
+from unittest.mock import patch
+
+import tools.validate_v2_authority as authority
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +24,53 @@ NORMATIVE_PATHS = (
 
 
 class V2AuthorityTests(unittest.TestCase):
+    def test_inventory_rejects_unlisted_test_importing_governed_implementation(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            governed = {
+                "implementation": ["tev_script/ir_v4_effect_commands.py"],
+                "tests": ["tests/test_listed.py"],
+                "conformance": ["conformance/cases.json"],
+                "gates": ["tools/gate.py"],
+                "public_interfaces": ["pyproject.toml"],
+            }
+            matrix = {
+                "schema": "TEV_SCRIPT_V2_FEATURE_MATRIX_V1",
+                "language_version": "2.0.0",
+                "stable": False,
+                "certified_base_sha": authority.V2_CERTIFIED_BASE_SHA,
+                "authority_files": list(authority.AUTHORITY_PATHS),
+                "governed_paths": governed,
+            }
+            target = {
+                "language_version": "2.0.0",
+                "status": "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED",
+                "stable": False,
+                "authority_files": list(authority.AUTHORITY_PATHS),
+                "certified_base_sha": authority.V2_CERTIFIED_BASE_SHA,
+                "publication_authorized": False,
+                "merge_authorized": False,
+            }
+            contents = {
+                "spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json": json.dumps(matrix),
+                "CANONICAL_INDEX.json": json.dumps({"candidate_language_targets": [target]}),
+                "tests/test_unlisted.py": "from tev_script.ir_v4_effect_commands import build_effect_action_r2_v4\n",
+            }
+            required_paths = set(authority.AUTHORITY_PATHS)
+            required_paths.update(path for paths in governed.values() for path in paths)
+            required_paths.update(contents)
+            for relative in required_paths:
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(contents.get(relative, "{}\n"), encoding="utf-8")
+
+            with patch.object(authority, "ROOT", root):
+                with self.assertRaisesRegex(
+                    authority.V2AuthorityFailure,
+                    "tests/test_unlisted.py",
+                ):
+                    authority._require_inventory()
+
     def test_canonical_index_has_one_nonstable_v2_target_with_exact_authority(self) -> None:
         index = json.loads((ROOT / "CANONICAL_INDEX.json").read_text(encoding="utf-8"))
         targets = [

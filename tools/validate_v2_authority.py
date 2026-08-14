@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import copy
 import json
 from pathlib import Path
@@ -59,6 +60,54 @@ def _load(relative: str) -> Any:
         raise V2AuthorityFailure(f"cannot load {relative}: {error}") from error
 
 
+def _python_module(relative: str) -> str | None:
+    path = Path(relative)
+    if path.suffix != ".py":
+        return None
+    return ".".join(path.with_suffix("").parts)
+
+
+def _direct_imports(path: Path, relative: str) -> set[str]:
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=relative)
+    except (OSError, UnicodeError, SyntaxError) as error:
+        raise V2AuthorityFailure(f"cannot parse test imports for {relative}: {error}") from error
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module is not None:
+            imported.add(node.module)
+            imported.update(
+                f"{node.module}.{alias.name}"
+                for alias in node.names
+                if alias.name != "*"
+            )
+    return imported
+
+
+def _require_test_inventory_closure(governed: Mapping[str, Any]) -> None:
+    implementation_modules = {
+        module
+        for relative in governed["implementation"]
+        if isinstance(relative, str) and (module := _python_module(relative)) is not None
+    }
+    listed_tests = set(governed["tests"])
+    unlisted_owners: list[str] = []
+    tests_root = ROOT / "tests"
+    for path in sorted(tests_root.rglob("*.py")):
+        relative = path.relative_to(ROOT).as_posix()
+        if relative in listed_tests:
+            continue
+        if _direct_imports(path, relative) & implementation_modules:
+            unlisted_owners.append(relative)
+    if unlisted_owners:
+        raise V2AuthorityFailure(
+            "V2 governed test inventory omits direct implementation importers: "
+            f"{unlisted_owners}"
+        )
+
+
 def _require_inventory() -> tuple[dict[str, Any], dict[str, Any]]:
     for relative in AUTHORITY_PATHS:
         if not (ROOT / relative).is_file():
@@ -82,6 +131,7 @@ def _require_inventory() -> tuple[dict[str, Any], dict[str, Any]]:
         missing = [relative for relative in paths if not isinstance(relative, str) or not (ROOT / relative).is_file()]
         if missing:
             raise V2AuthorityFailure(f"V2 governed group {group!r} has missing paths: {missing}")
+    _require_test_inventory_closure(governed)
 
     index = _load("CANONICAL_INDEX.json")
     targets = [item for item in index.get("candidate_language_targets", []) if item.get("language_version") == "2.0.0"]

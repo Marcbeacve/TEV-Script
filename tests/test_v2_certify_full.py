@@ -61,6 +61,7 @@ class V2CertifyFullTests(unittest.TestCase):
         modules = gate.v2_test_modules(ROOT)
         self.assertGreater(len(modules), 40)
         self.assertNotIn("tests.test_v2_certify_full", modules)
+        self.assertIn("tests.test_effect_command_artifacts_v4", modules)
         self.assertIn("tests.test_scoped_filesystem_v2", modules)
         self.assertEqual(len(modules), len(set(modules)))
 
