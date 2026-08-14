@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev.dev/schemas/tev-script-v2-python-certify-full-receipt.schema.json",
+  "title": "TEV Script V2 Python Certify Full Receipt V1",
+  "type": "object",
+  "required": [
+    "schema", "admission_profile", "repository", "commit_sha", "tree_sha", "base_sha", "branch", "dirty",
+    "python_version", "package_name", "package_version", "language_version", "wheel_filename", "wheel_sha256",
+    "v1_python_receipt_sha256", "descriptor_hash", "entry_points", "installed_module_origin",
+    "python_v2_certify_full", "language_stable", "receipt_hash"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_V2_PYTHON_CERTIFY_FULL_RECEIPT_V1"},
+    "admission_profile": {"enum": ["candidate", "stable"]},
+    "repository": {"const": "Marcbeacve/TEV-Script"},
+    "commit_sha": {"$ref": "#/$defs/gitSha"},
+    "tree_sha": {"$ref": "#/$defs/gitSha"},
+    "base_sha": {"$ref": "#/$defs/gitSha"},
+    "branch": {"type": "string", "pattern": "^agent/[a-z0-9._/-]+$"},
+    "dirty": {"const": false},
+    "python_version": {"type": "string", "pattern": "^3\\.(?:1[1-9]|[2-9][0-9])(?:\\.[0-9]+)?$"},
+    "package_name": {"const": "tev-script-portable-reference"},
+    "package_version": {"const": "1.0.0"},
+    "language_version": {"const": "2.0.0"},
+    "wheel_filename": {"const": "tev_script_portable_reference-1.0.0-py3-none-any.whl"},
+    "wheel_sha256": {"$ref": "#/$defs/sha256"},
+    "v1_python_receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "descriptor_hash": {"$ref": "#/$defs/sha256"},
+    "entry_points": {
+      "type": "object",
+      "required": ["tev-script-v2", "tev-script-v2-describe"],
+      "additionalProperties": false,
+      "properties": {
+        "tev-script-v2": {"const": "tev_script.cli_v2:main"},
+        "tev-script-v2-describe": {"const": "tev_script.describe_v2:main"}
+      }
+    },
+    "installed_module_origin": {"const": "VENV"},
+    "python_v2_certify_full": {"const": true},
+    "language_stable": {"const": false},
+    "receipt_hash": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "gitSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
