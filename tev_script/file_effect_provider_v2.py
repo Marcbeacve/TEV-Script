@@ -72,8 +72,10 @@ class AtomicFileReplaceProviderV2:
     """Single-intent, root-scoped atomic file replacement provider.
 
     R2 deliberately limits one batch to one file.replace intent. This lets the
-    provider truthfully advertise atomic_batch_v1 using same-directory
-    temp-write + fsync + os.replace. Multi-file atomicity remains unsupported.
+    Windows provider truthfully advertise atomic_batch_v1 using handle-bound,
+    same-directory replacement. POSIX replacement fails closed until an
+    identity-bound atomic primitive is available. Multi-file atomicity remains
+    unsupported.
     """
 
     def __init__(

@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from tools import validate_ir_v3_browser_wasm as browser_gate
 
@@ -57,6 +57,63 @@ class BrowserProfileCleanupTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(RuntimeError, "timed out.*late-out.*late-err"):
                     browser_gate._stop_browser_process(None, profile)
+
+    def test_windows_cim_enumeration_failure_is_a_gate_failure(self) -> None:
+        def simulate_cim_failure(
+            arguments: list[str],
+            **_kwargs: object,
+        ) -> subprocess.CompletedProcess[str]:
+            command = arguments[-1]
+            terminating = (
+                "$ErrorActionPreference='Stop'" in command
+                and "Get-CimInstance Win32_Process -ErrorAction Stop" in command
+            )
+            return subprocess.CompletedProcess(
+                arguments,
+                1 if terminating else 0,
+                "",
+                "simulated CIM enumeration failure" if terminating else "",
+            )
+
+        with tempfile.TemporaryDirectory() as raw:
+            profile = Path(raw) / "profile"
+            with (
+                patch.object(browser_gate.os, "name", "nt"),
+                patch.object(browser_gate, "_stop_process"),
+                patch.object(browser_gate.subprocess, "run", side_effect=simulate_cim_failure),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "simulated CIM enumeration failure"):
+                    browser_gate._stop_browser_process(None, profile)
+
+    def test_hung_taskkill_is_bounded_and_continues_to_profile_fallback(self) -> None:
+        process = MagicMock()
+        process.pid = 4242
+        process.poll.return_value = None
+        process.wait.side_effect = subprocess.TimeoutExpired(["browser.exe"], 5)
+        calls: list[tuple[list[str], dict[str, object]]] = []
+
+        def simulate_hung_taskkill(
+            arguments: list[str],
+            **kwargs: object,
+        ) -> subprocess.CompletedProcess[str]:
+            calls.append((arguments, kwargs))
+            if arguments[0] == "taskkill":
+                raise subprocess.TimeoutExpired(arguments, kwargs.get("timeout", 0))
+            return subprocess.CompletedProcess(arguments, 0, "", "")
+
+        with tempfile.TemporaryDirectory() as raw:
+            profile = Path(raw) / "profile"
+            with (
+                patch.object(browser_gate.os, "name", "nt"),
+                patch.object(browser_gate.subprocess, "run", side_effect=simulate_hung_taskkill),
+            ):
+                try:
+                    browser_gate._stop_browser_process(process, profile)
+                except subprocess.TimeoutExpired as error:
+                    self.fail(f"hung taskkill escaped instead of continuing to fallback: {error}")
+
+        self.assertEqual([call[0][0] for call in calls], ["taskkill", "powershell.exe"])
+        self.assertEqual(calls[0][1]["timeout"], 5)
 
 
 if __name__ == "__main__":

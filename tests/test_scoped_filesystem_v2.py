@@ -121,11 +121,83 @@ class ScopedFilesystemV2Tests(unittest.TestCase):
                 root.rename(moved)
                 root.mkdir()
                 (root / "value.txt").write_text("outside-sentinel", encoding="utf-8")
-                result = replace_scoped_file_v2(scope, "value.txt", b"new")
+                if os.name == "nt":
+                    result = replace_scoped_file_v2(scope, "value.txt", b"new")
+                else:
+                    with self.assertRaises(TevScriptError) as caught:
+                        replace_scoped_file_v2(scope, "value.txt", b"new")
+                    self.assertEqual(caught.exception.diagnostic.code, "TEVS_SCOPED_FS_UNSUPPORTED")
+                    result = None
 
-            self.assertTrue(result.replaced)
-            self.assertEqual((moved / "value.txt").read_bytes(), b"new")
+            if os.name == "nt":
+                self.assertIsNotNone(result)
+                self.assertTrue(result.replaced)
+                self.assertEqual((moved / "value.txt").read_bytes(), b"new")
+            else:
+                self.assertIsNone(result)
+                self.assertEqual((moved / "value.txt").read_bytes(), b"old")
             self.assertEqual((root / "value.txt").read_bytes(), b"outside-sentinel")
+
+    def test_posix_temporary_source_substitution_never_returns_success_receipt(self) -> None:
+        intended = b"verified-content"
+        attacker = b"attacker-content"
+        model = {"target": b"old-content"}
+
+        def substitute_source_and_replace(*_args: object, **_kwargs: object) -> None:
+            model["target"] = attacker
+
+        with (
+            patch.object(scoped_filesystem.os, "name", "posix"),
+            patch.object(scoped_filesystem.os, "O_NOFOLLOW", 0, create=True),
+            patch.object(scoped_filesystem, "_require_scope", return_value=object()),
+            patch.object(scoped_filesystem, "_posix_open_parent", return_value=101),
+            patch.object(scoped_filesystem, "_posix_existing_bytes", return_value=None),
+            patch.object(scoped_filesystem.secrets, "token_hex", return_value="race"),
+            patch.object(scoped_filesystem.os, "open", return_value=202),
+            patch.object(scoped_filesystem, "_posix_write_all"),
+            patch.object(scoped_filesystem.os, "fsync"),
+            patch.object(scoped_filesystem.os, "lseek"),
+            patch.object(scoped_filesystem, "_consume_bounded_v2", return_value=intended),
+            patch.object(scoped_filesystem.os, "replace", side_effect=substitute_source_and_replace),
+            patch.object(scoped_filesystem.os, "unlink"),
+            patch.object(scoped_filesystem.os, "close"),
+        ):
+            receipt = None
+            try:
+                receipt = replace_scoped_file_v2(object(), "target.bin", intended)
+            except TevScriptError as error:
+                self.assertEqual(error.diagnostic.code, "TEVS_SCOPED_FS_UNSUPPORTED")
+
+        self.assertFalse(receipt is not None and model["target"] == attacker)
+        self.assertEqual(model["target"], b"old-content")
+
+    def test_posix_failure_cleanup_preserves_substituted_temporary_entry(self) -> None:
+        model = {"substituted_entry_exists": True}
+
+        def fail_replacement(*_args: object, **_kwargs: object) -> None:
+            raise OSError("simulated destination failure after source substitution")
+
+        def unlink_substituted_entry(*_args: object, **_kwargs: object) -> None:
+            model["substituted_entry_exists"] = False
+
+        with (
+            patch.object(scoped_filesystem.os, "O_NOFOLLOW", 0, create=True),
+            patch.object(scoped_filesystem, "_posix_open_parent", return_value=101),
+            patch.object(scoped_filesystem, "_posix_existing_bytes", return_value=None),
+            patch.object(scoped_filesystem.secrets, "token_hex", return_value="race"),
+            patch.object(scoped_filesystem.os, "open", return_value=202),
+            patch.object(scoped_filesystem, "_posix_write_all"),
+            patch.object(scoped_filesystem.os, "fsync"),
+            patch.object(scoped_filesystem.os, "lseek"),
+            patch.object(scoped_filesystem, "_consume_bounded_v2", return_value=b"verified-content"),
+            patch.object(scoped_filesystem.os, "replace", side_effect=fail_replacement),
+            patch.object(scoped_filesystem.os, "unlink", side_effect=unlink_substituted_entry),
+            patch.object(scoped_filesystem.os, "close"),
+        ):
+            with self.assertRaises(TevScriptError):
+                scoped_filesystem._posix_replace(object(), ("target.bin",), "target.bin", b"verified-content")
+
+        self.assertTrue(model["substituted_entry_exists"])
 
     def test_parent_link_or_junction_escape_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -207,14 +279,14 @@ import sys
 from tev_script.diagnostics import TevScriptError
 from tev_script.scoped_filesystem_v2 import open_scoped_root_v2, read_scoped_file_v2, replace_scoped_file_v2
 with open_scoped_root_v2(sys.argv[1]) as scope:
-    for operation in (
-        lambda: read_scoped_file_v2(scope, "pipe", maximum_bytes=16),
-        lambda: replace_scoped_file_v2(scope, "pipe", b"value"),
+    for operation, expected_code in (
+        (lambda: read_scoped_file_v2(scope, "pipe", maximum_bytes=16), "TEVS_SCOPED_FS_KIND"),
+        (lambda: replace_scoped_file_v2(scope, "pipe", b"value"), "TEVS_SCOPED_FS_UNSUPPORTED"),
     ):
         try:
             operation()
         except TevScriptError as error:
-            assert error.diagnostic.code == "TEVS_SCOPED_FS_KIND", error.diagnostic.code
+            assert error.diagnostic.code == expected_code, error.diagnostic.code
         else:
             raise AssertionError("FIFO must fail closed")
 """

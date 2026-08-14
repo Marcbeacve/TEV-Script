@@ -20,6 +20,8 @@ CASE_TO_TEST = {
     "OVERSIZE_READ_CONSUMES_AT_MOST_LIMIT_PLUS_ONE": "tests.test_scoped_filesystem_v2.ScopedFilesystemV2Tests.test_bounded_consumer_never_requests_or_retains_more_than_limit_plus_one",
     "OVERSIZE_READ_NOT_DECODED_OR_HASHED": "tests.test_file_observation_acquisition_v2.FileObservationAcquisitionV2Tests.test_oversize_rejection_never_uses_unbounded_path_read",
     "ATOMIC_REPLACE_VERIFIES_OPEN_TEMP_HANDLE": "tests.test_scoped_filesystem_v2.ScopedFilesystemV2Tests.test_scope_pins_root_object_across_path_replacement_for_replace",
+    "TEMPORARY_SOURCE_SUBSTITUTION_FAILS_CLOSED": "tests.test_scoped_filesystem_v2.ScopedFilesystemV2Tests.test_posix_temporary_source_substitution_never_returns_success_receipt",
+    "SUBSTITUTED_TEMPORARY_CLEANUP_PRESERVES_ENTRY": "tests.test_scoped_filesystem_v2.ScopedFilesystemV2Tests.test_posix_failure_cleanup_preserves_substituted_temporary_entry",
     "UNSUPPORTED_SECURE_PRIMITIVE_FAILS_CLOSED": "tests.test_scoped_filesystem_v2.ScopedFilesystemV2Tests.test_unavailable_secure_backend_fails_closed_without_path_fallback"
 }
 

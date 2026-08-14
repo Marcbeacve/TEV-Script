@@ -350,49 +350,11 @@ def _posix_replace(
     canonical: str,
     data: bytes,
 ) -> bool:
-    parent = _posix_open_parent(root, parts[:-1])
-    temporary_name: str | None = None
-    descriptor: int | None = None
-    try:
-        if _posix_existing_bytes(parent, parts[-1], canonical, len(data)) == data:
-            return False
-        for _attempt in range(128):
-            candidate = f".{parts[-1]}.tev-v2-{secrets.token_hex(12)}.tmp"
-            try:
-                descriptor = os.open(
-                    candidate,
-                    os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
-                    0o600,
-                    dir_fd=parent,
-                )
-                temporary_name = candidate
-                break
-            except FileExistsError:
-                continue
-        if descriptor is None or temporary_name is None:
-            _fail("TEVS_SCOPED_FS_IO", "unable to reserve a unique scoped temporary file")
-        _posix_write_all(descriptor, data)
-        os.fsync(descriptor)
-        os.lseek(descriptor, 0, os.SEEK_SET)
-        verified = _consume_bounded_v2(lambda count: os.read(descriptor, count), len(data))
-        if verified != data:
-            _fail("TEVS_SCOPED_FS_VERIFY", "temporary file bytes do not match replacement data")
-        try:
-            os.replace(temporary_name, parts[-1], src_dir_fd=parent, dst_dir_fd=parent)
-        except OSError as error:
-            _fail("TEVS_SCOPED_FS_IO", f"scoped atomic replacement failed: {error}")
-        temporary_name = None
-        os.fsync(parent)
-        return True
-    finally:
-        if descriptor is not None:
-            os.close(descriptor)
-        if temporary_name is not None:
-            try:
-                os.unlink(temporary_name, dir_fd=parent)
-            except OSError:
-                pass
-        os.close(parent)
+    del root, parts, canonical, data
+    _fail(
+        "TEVS_SCOPED_FS_UNSUPPORTED",
+        "POSIX identity-bound atomic replacement is unavailable",
+    )
 
 
 def _posix_write_all(descriptor: int, data: bytes) -> None:

@@ -189,11 +189,15 @@ def _stop_process(process: subprocess.Popen[str] | None) -> None:
     if process is None or process.poll() is not None:
         return
     if os.name == "nt":
-        subprocess.run(
-            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-            capture_output=True,
-            check=False,
-        )
+        try:
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                capture_output=True,
+                check=False,
+                timeout=5,
+            )
+        except subprocess.TimeoutExpired:
+            pass
         try:
             process.wait(timeout=5)
         except subprocess.TimeoutExpired:
@@ -218,10 +222,11 @@ def _stop_browser_process(process: subprocess.Popen[str] | None, profile: Path) 
         "-NoProfile",
         "-NonInteractive",
         "-Command",
+        "$ErrorActionPreference='Stop'; "
         "$needle=$env:TEV_BROWSER_PROFILE_CLEANUP; "
         "$deadline=(Get-Date).AddSeconds(30); "
         "do { "
-        "$targets=@(Get-CimInstance Win32_Process | "
+        "$targets=@(Get-CimInstance Win32_Process -ErrorAction Stop | "
         "Where-Object { $_.CommandLine -and $_.CommandLine.Contains($needle) }); "
         "if ($targets.Count -eq 0) { exit 0 }; "
         "$targets | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; "
