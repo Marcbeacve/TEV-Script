@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev.dev/schemas/tev-script-v2-stable-admission-receipt.schema.json",
+  "title": "TEV Script V2 Stable Admission Receipt V1",
+  "type": "object",
+  "required": [
+    "schema", "repository", "commit_sha", "tree_sha", "branch", "language_version",
+    "python_package_version", "technical_parent_commit", "technical_parent_tree",
+    "technical_parent_certificate_sha256", "release_changed_paths",
+    "v2_technical_receipt_sha256", "v1_receipt_sha256", "v2_python_receipt_sha256",
+    "python_wheel_filename", "python_wheel_sha256", "descriptor_hash",
+    "canonical_index_sha256", "feature_matrix_sha256", "certify_full",
+    "stable_admission", "language_stable", "receipt_hash"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_V2_STABLE_ADMISSION_RECEIPT_V1"},
+    "repository": {"const": "Marcbeacve/TEV-Script"},
+    "commit_sha": {"$ref": "#/$defs/gitSha"},
+    "tree_sha": {"$ref": "#/$defs/gitSha"},
+    "branch": {"type": "string", "pattern": "^agent/[a-z0-9._/-]+$"},
+    "language_version": {"const": "2.0.0"},
+    "python_package_version": {"const": "1.0.0"},
+    "technical_parent_commit": {"$ref": "#/$defs/gitSha"},
+    "technical_parent_tree": {"$ref": "#/$defs/gitSha"},
+    "technical_parent_certificate_sha256": {"$ref": "#/$defs/sha256"},
+    "release_changed_paths": {
+      "type": "array", "minItems": 6, "maxItems": 6, "uniqueItems": true,
+      "items": {"enum": [
+        "CANONICAL_INDEX.json", "CHANGELOG.md", "PROJECT_STATE.md", "README.md",
+        "spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json", "tev_script/release_metadata_v2.py"
+      ]}
+    },
+    "v2_technical_receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "v1_receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "v2_python_receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "python_wheel_filename": {"const": "tev_script_portable_reference-1.0.0-py3-none-any.whl"},
+    "python_wheel_sha256": {"$ref": "#/$defs/sha256"},
+    "descriptor_hash": {"$ref": "#/$defs/sha256"},
+    "canonical_index_sha256": {"$ref": "#/$defs/sha256"},
+    "feature_matrix_sha256": {"$ref": "#/$defs/sha256"},
+    "certify_full": {"const": true},
+    "stable_admission": {"const": true},
+    "language_stable": {"const": true},
+    "receipt_hash": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "gitSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
