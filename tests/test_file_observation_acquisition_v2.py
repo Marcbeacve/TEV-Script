@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from unittest.mock import patch
 from pathlib import Path
 import tempfile
 import unittest
@@ -118,6 +119,46 @@ class FileObservationAcquisitionV2Tests(unittest.TestCase):
             with self.assertRaises(TevScriptError) as captured:
                 acquire_file_read_observations_v2(request,compiled.capabilities,root)
             self.assertEqual(captured.exception.diagnostic.code,'TEVS_FILE_READ_BUDGET')
+
+    def test_oversize_rejection_never_uses_unbounded_path_read(self):
+        compiled=self.compiled()
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            target=root.joinpath('big.txt')
+            target.write_bytes(b'a'*(MAX_FILE_READ_BYTES_V2+1))
+            request=build_file_read_acquisition_request_v2(compiled.capabilities,['big.txt'])
+            original_read_bytes=Path.read_bytes
+            def guarded_read_bytes(path):
+                if path == target:
+                    raise AssertionError('unbounded target path read forbidden')
+                return original_read_bytes(path)
+            with patch.object(Path,'read_bytes',new=guarded_read_bytes):
+                with self.assertRaises(TevScriptError) as captured:
+                    acquire_file_read_observations_v2(request,compiled.capabilities,root)
+            self.assertEqual(captured.exception.diagnostic.code,'TEVS_FILE_READ_BUDGET')
+
+    def test_root_path_swap_during_strategy_keeps_original_authority_object(self):
+        compiled=self.compiled()
+        request=build_file_read_acquisition_request_v2(compiled.capabilities,['input.txt'])
+        with tempfile.TemporaryDirectory() as td:
+            parent=Path(td); root=parent/'root'; moved=parent/'root-original'
+            root.mkdir(); root.joinpath('input.txt').write_text('authorized',encoding='utf-8')
+
+            class SwappingStrategy:
+                def run(self, calls, acquire_call):
+                    root.rename(moved)
+                    root.mkdir()
+                    root.joinpath('input.txt').write_text('replacement',encoding='utf-8')
+                    return [acquire_call(index, call) for index,call in calls]
+
+            evidence=acquire_file_read_observations_v2(
+                request,
+                compiled.capabilities,
+                root,
+                execution_strategy=SwappingStrategy(),
+            )
+            self.assertEqual(evidence['calls'][0]['return'],'authorized')
+            self.assertEqual(root.joinpath('input.txt').read_text(encoding='utf-8'),'replacement')
 
     def test_wrong_file_read_signature_is_rejected(self):
         source='''

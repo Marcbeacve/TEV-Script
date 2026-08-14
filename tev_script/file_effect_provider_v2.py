@@ -5,8 +5,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import stat
-import tempfile
 from typing import Any
 
 from .diagnostics import TevScriptError
@@ -20,6 +18,12 @@ from .ir_v4_effect_commands import (
     build_provider_batch_observation_v4,
 )
 from .ir_v4_values import TypeTableV4
+from .scoped_filesystem_v2 import (
+    ScopedFilesystemRootV2,
+    open_scoped_root_v2,
+    replace_scoped_file_v2,
+)
+from . import scoped_filesystem_v2 as _scoped_filesystem
 
 FILE_REPLACE_COMMAND_ID_V2 = "file.replace"
 FILE_PROVIDER_ID_V2 = "tev.file_replace"
@@ -46,82 +50,11 @@ class FileReplaceEffectReceiptV2:
 
 
 def build_file_effect_scope_v2(root: str | os.PathLike[str]) -> FileEffectScopeV2:
-    raw = os.fspath(root)
-    if not isinstance(raw, str) or not raw:
-        _fail("TEVS_FILE_PROVIDER_SCOPE", "authorized root must be a non-empty path")
-    absolute = os.path.abspath(os.path.normpath(raw))
     try:
-        info = os.lstat(absolute)
-    except OSError as error:
-        _fail("TEVS_FILE_PROVIDER_SCOPE", f"authorized root is not accessible: {error}")
-    if _is_link_or_reparse(info):
-        _fail("TEVS_FILE_PROVIDER_SCOPE", "authorized root cannot be a symlink or reparse point")
-    if not stat.S_ISDIR(info.st_mode):
-        _fail("TEVS_FILE_PROVIDER_SCOPE", "authorized root must be an existing directory")
-    canonical = _canonical_host_path(absolute)
-    payload = {"schema": "TEV_SCRIPT_FILE_EFFECT_SCOPE_V2_V1", "root": canonical}
-    return FileEffectScopeV2(canonical, _hash(payload))
-
-
-def resolve_scoped_file_path_v2(
-    root: str | os.PathLike[str],
-    raw_relative: str,
-    *,
-    require_existing: bool,
-) -> tuple[Path, str, FileEffectScopeV2]:
-    scope = build_file_effect_scope_v2(root)
-    if raw_relative == "" or "\x00" in raw_relative:
-        _fail("TEVS_FILE_PROVIDER_PATH", "scoped file path must be non-empty and contain no NUL")
-    relative = Path(raw_relative)
-    if relative.is_absolute() or relative.drive:
-        _fail("TEVS_FILE_PROVIDER_PATH", "scoped file path must be relative to the authorized root")
-    parts = relative.parts
-    if not parts or any(part in {"", ".", ".."} for part in parts):
-        _fail("TEVS_FILE_PROVIDER_PATH", "scoped file path cannot contain empty, '.', or '..' segments")
-    for part in parts:
-        _validate_windows_path_segment(part)
-
-    current = Path(os.path.abspath(os.path.normpath(os.fspath(root))))
-    for part in parts[:-1]:
-        current = current / part
-        try:
-            info = os.lstat(current)
-        except OSError as error:
-            _fail("TEVS_FILE_PROVIDER_PATH", f"target parent must already exist: {error}")
-        if _is_link_or_reparse(info):
-            _fail("TEVS_FILE_PROVIDER_PATH_ESCAPE", "target parent cannot traverse a symlink or reparse point")
-        if not stat.S_ISDIR(info.st_mode):
-            _fail("TEVS_FILE_PROVIDER_PATH", "target parent component must be a directory")
-
-    parent = current
-    target = parent / parts[-1]
-    try:
-        parent_info = os.lstat(parent)
-    except OSError as error:
-        _fail("TEVS_FILE_PROVIDER_PATH", f"target parent must already exist: {error}")
-    if _is_link_or_reparse(parent_info):
-        _fail("TEVS_FILE_PROVIDER_PATH_ESCAPE", "target parent cannot be a symlink or reparse point")
-    if not stat.S_ISDIR(parent_info.st_mode):
-        _fail("TEVS_FILE_PROVIDER_PATH", "target parent must be a directory")
-
-    try:
-        target_info = os.lstat(target)
-    except FileNotFoundError:
-        target_info = None
-    except OSError as error:
-        _fail("TEVS_FILE_PROVIDER_PATH", f"existing target cannot be inspected: {error}")
-    if target_info is None:
-        if require_existing:
-            _fail("TEVS_FILE_PROVIDER_PATH", "scoped file target must already exist")
-    else:
-        if _is_link_or_reparse(target_info):
-            _fail("TEVS_FILE_PROVIDER_PATH_ESCAPE", "symlink/reparse targets are not allowed")
-        if stat.S_ISDIR(target_info.st_mode):
-            _fail("TEVS_FILE_PROVIDER_PATH", "scoped file target cannot be a directory")
-        if not stat.S_ISREG(target_info.st_mode):
-            _fail("TEVS_FILE_PROVIDER_PATH", "scoped file target must be a regular file")
-
-    return target, "/".join(parts), scope
+        with open_scoped_root_v2(root) as filesystem:
+            return FileEffectScopeV2(filesystem.canonical_root, filesystem.scope_hash)
+    except TevScriptError as error:
+        _raise_scoped_provider_error(error)
 
 
 def build_file_replace_command_table_v4(table: TypeTableV4):
@@ -150,20 +83,40 @@ class AtomicFileReplaceProviderV2:
         contract_hash: str,
         provider_implementation_hash: str | None = None,
     ) -> None:
-        self.scope = build_file_effect_scope_v2(root)
-        self._root = Path(self.scope.root)
-        self.contract_hash = _sha(contract_hash, "contract_hash")
-        implementation_hash = provider_implementation_hash or _implementation_hash()
-        self._descriptor = build_effect_provider_descriptor_v4(
-            provider_id=FILE_PROVIDER_ID_V2,
-            provider_version=FILE_PROVIDER_VERSION_V2,
-            provider_implementation_hash=implementation_hash,
-            supported_contract_hashes=[self.contract_hash],
-            commit_semantics="atomic_batch_v1",
+        try:
+            self._filesystem: ScopedFilesystemRootV2 = open_scoped_root_v2(root)
+        except TevScriptError as error:
+            _raise_scoped_provider_error(error)
+        self.scope = FileEffectScopeV2(
+            self._filesystem.canonical_root,
+            self._filesystem.scope_hash,
         )
+        try:
+            self.contract_hash = _sha(contract_hash, "contract_hash")
+            implementation_hash = provider_implementation_hash or _implementation_hash()
+            self._descriptor = build_effect_provider_descriptor_v4(
+                provider_id=FILE_PROVIDER_ID_V2,
+                provider_version=FILE_PROVIDER_VERSION_V2,
+                provider_implementation_hash=implementation_hash,
+                supported_contract_hashes=[self.contract_hash],
+                commit_semantics="atomic_batch_v1",
+            )
+        except Exception:
+            self._filesystem.close()
+            raise
         self._effect_receipts: dict[str, FileReplaceEffectReceiptV2] = {}
         self.commit_calls = 0
         self.physical_replace_calls = 0
+
+    def __enter__(self) -> "AtomicFileReplaceProviderV2":
+        self._filesystem._ensure_open()
+        return self
+
+    def __exit__(self, exc_type: object, exc_value: object, traceback: object) -> None:
+        self.close()
+
+    def close(self) -> None:
+        self._filesystem.close()
 
     @property
     def descriptor(self) -> EffectProviderDescriptorV4:
@@ -209,36 +162,17 @@ class AtomicFileReplaceProviderV2:
         if not isinstance(relative_path, str) or not isinstance(data, str):
             _fail("TEVS_FILE_PROVIDER_ARGUMENTS", "file.replace wire arguments must be canonical Text strings")
 
-        target, relative_canonical = self._resolve_target(relative_path)
         data_bytes = data.encode("utf-8")
         data_hash = hashlib.sha256(data_bytes).hexdigest()
-        temporary: str | None = None
         try:
-            try:
-                current_bytes = target.read_bytes()
-            except FileNotFoundError:
-                current_bytes = None
-            if current_bytes == data_bytes:
-                final_bytes = current_bytes
-            else:
-                fd, temporary = tempfile.mkstemp(prefix=f".{target.name}.tev-r2-", suffix=".tmp", dir=str(target.parent))
-                with os.fdopen(fd, "wb") as stream:
-                    stream.write(data_bytes)
-                    stream.flush()
-                    os.fsync(stream.fileno())
+            replacement = replace_scoped_file_v2(self._filesystem, relative_path, data_bytes)
+            if replacement.replaced:
                 self.physical_replace_calls += 1
-                os.replace(temporary, target)
-                temporary = None
-                final_bytes = target.read_bytes()
-        except OSError as error:
-            if temporary is not None:
-                try:
-                    os.unlink(temporary)
-                except OSError:
-                    pass
-            _fail("TEVS_FILE_PROVIDER_IO", f"atomic file replacement failed: {error}")
-        final_hash = hashlib.sha256(final_bytes).hexdigest()
-        if final_hash != data_hash or final_bytes != data_bytes:
+        except TevScriptError as error:
+            _raise_scoped_provider_error(error)
+        relative_canonical = replacement.canonical_relative_path
+        final_hash = replacement.content_sha256
+        if final_hash != data_hash or replacement.byte_count != len(data_bytes):
             _fail("TEVS_FILE_PROVIDER_VERIFY", "post-replace content does not match requested bytes")
 
         payload = {
@@ -279,13 +213,6 @@ class AtomicFileReplaceProviderV2:
             provider_batch_receipt_hash=provider_batch_hash,
         )
 
-    def _resolve_target(self, raw_relative: str) -> tuple[Path, str]:
-        target, relative_canonical, _scope = resolve_scoped_file_path_v2(
-            self._root, raw_relative, require_existing=False
-        )
-        return target, relative_canonical
-
-
 def file_effect_receipt_to_dict_v2(receipt: FileReplaceEffectReceiptV2) -> dict[str, Any]:
     if not isinstance(receipt, FileReplaceEffectReceiptV2):
         _fail("TEVS_FILE_PROVIDER_RECEIPT", "expected FileReplaceEffectReceiptV2")
@@ -305,32 +232,27 @@ def file_effect_receipt_to_dict_v2(receipt: FileReplaceEffectReceiptV2) -> dict[
 
 
 
-def _canonical_host_path(path: str | os.PathLike[str]) -> str:
-    return os.path.normcase(os.path.abspath(os.path.normpath(os.fspath(path)))).replace("\\", "/")
-
-
-def _is_link_or_reparse(info: os.stat_result) -> bool:
-    if stat.S_ISLNK(info.st_mode):
-        return True
-    attributes = getattr(info, "st_file_attributes", 0)
-    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
-    return bool(attributes & reparse_flag)
-
-
-def _validate_windows_path_segment(part: str) -> None:
-    if part.rstrip(" .") != part or ":" in part:
-        _fail("TEVS_FILE_PROVIDER_PATH", "file.replace path contains a Windows-ambiguous segment")
-    stem = part.split(".", 1)[0].upper()
-    reserved = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
-    if stem in reserved:
-        _fail("TEVS_FILE_PROVIDER_PATH", "file.replace path contains a reserved Windows device name")
-
-
 def _implementation_hash() -> str:
     try:
-        return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+        payload = {
+            "schema": "TEV_SCRIPT_FILE_PROVIDER_IMPLEMENTATION_V2_V1",
+            "provider_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            "scoped_filesystem_sha256": hashlib.sha256(Path(_scoped_filesystem.__file__).read_bytes()).hexdigest(),
+        }
+        return _hash(payload)
     except OSError as error:
         _fail("TEVS_FILE_PROVIDER_IMPLEMENTATION", f"provider implementation bytes are unreadable: {error}")
+
+
+def _raise_scoped_provider_error(error: TevScriptError) -> None:
+    code = error.diagnostic.code
+    if code == "TEVS_SCOPED_FS_ESCAPE":
+        _fail("TEVS_FILE_PROVIDER_PATH_ESCAPE", error.diagnostic.message)
+    if code in {"TEVS_SCOPED_FS_PATH", "TEVS_SCOPED_FS_KIND", "TEVS_SCOPED_FS_ROOT"}:
+        _fail("TEVS_FILE_PROVIDER_PATH", error.diagnostic.message)
+    if code == "TEVS_SCOPED_FS_VERIFY":
+        _fail("TEVS_FILE_PROVIDER_VERIFY", error.diagnostic.message)
+    _fail("TEVS_FILE_PROVIDER_IO", error.diagnostic.message)
 
 
 def _sha(value: Any, path: str) -> str:

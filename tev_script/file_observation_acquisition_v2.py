@@ -8,12 +8,8 @@ from pathlib import Path
 from typing import Any, Callable, Mapping, Protocol, Sequence
 
 from .diagnostics import TevScriptError
-from .file_effect_provider_v2 import (
-    FileEffectScopeV2,
-    build_file_effect_scope_v2,
-    resolve_scoped_file_path_v2,
-)
-from . import file_effect_provider_v2 as _shared_file_policy
+from .scoped_filesystem_v2 import open_scoped_root_v2, read_scoped_file_v2
+from . import scoped_filesystem_v2 as _shared_file_policy
 from .ir_v4_effects import CapabilityContractV4, CapabilityTableV4
 
 FILE_READ_CAPABILITY_ID_V2 = "file.read"
@@ -172,58 +168,62 @@ def acquire_file_read_observations_v2(
 ) -> dict[str, Any]:
     request = validate_file_read_acquisition_request_v2(request_raw, capabilities)
     contract = _require_file_read_contract(capabilities)
-    scope = build_file_effect_scope_v2(root)
     descriptor = build_file_read_provider_descriptor_v2(contract)
     descriptor_wire = file_read_provider_descriptor_to_dict_v2(descriptor)
+    try:
+        filesystem = open_scoped_root_v2(root)
+    except TevScriptError as error:
+        _raise_scoped_read_error(error)
+    try:
+        scope_hash = filesystem.scope_hash
 
-    def acquire_call(index: int, request_call: Mapping[str, Any]) -> FileReadAcquiredCallV2:
-        requested_path = request_call["arguments"][0]
-        target, canonical_relative, observed_scope = resolve_scoped_file_path_v2(
-            root, requested_path, require_existing=True
-        )
-        if observed_scope.scope_hash != scope.scope_hash:
-            _fail("TEVS_FILE_READ_SCOPE", "file.read acquisition scope changed during acquisition")
-        try:
-            data = target.read_bytes()
-        except OSError as error:
-            _fail("TEVS_FILE_READ_IO", f"file.read acquisition failed: {error}")
-        if len(data) > MAX_FILE_READ_BYTES_V2:
-            _fail("TEVS_FILE_READ_BUDGET", f"file.read content exceeds {MAX_FILE_READ_BYTES_V2} bytes")
-        try:
-            text = data.decode("utf-8")
-        except UnicodeDecodeError as error:
-            _fail("TEVS_FILE_READ_UTF8", f"file.read content must be valid UTF-8: {error}")
-        content_hash = hashlib.sha256(data).hexdigest()
-        arguments_hash = _hash({
-            "schema": "TEV_SCRIPT_FILE_READ_ARGUMENTS_V2_V1",
-            "arguments": [requested_path],
-        })
-        call_payload = {
-            "schema": "TEV_SCRIPT_FILE_READ_ACQUISITION_CALL_V2_V1",
-            "call_index": index,
-            "capability_id": contract.capability_id,
-            "contract_hash": contract.contract_hash,
-            "arguments": [requested_path],
-            "arguments_hash": arguments_hash,
-            "canonical_relative_path": canonical_relative,
-            "return": text,
-            "content_sha256": content_hash,
-            "byte_count": len(data),
-            "provider_descriptor_hash": descriptor.descriptor_hash,
-            "authority_scope_hash": scope.scope_hash,
-            "acquisition_policy": FILE_READ_ACQUISITION_POLICY_V2,
-        }
-        return FileReadAcquiredCallV2(
-            index,
-            {**call_payload, "call_evidence_hash": _hash(call_payload)},
-        )
+        def acquire_call(index: int, request_call: Mapping[str, Any]) -> FileReadAcquiredCallV2:
+            requested_path = request_call["arguments"][0]
+            try:
+                observed = read_scoped_file_v2(
+                    filesystem,
+                    requested_path,
+                    maximum_bytes=MAX_FILE_READ_BYTES_V2,
+                )
+            except TevScriptError as error:
+                _raise_scoped_read_error(error)
+            data = observed.data
+            try:
+                text = data.decode("utf-8")
+            except UnicodeDecodeError as error:
+                _fail("TEVS_FILE_READ_UTF8", f"file.read content must be valid UTF-8: {error}")
+            arguments_hash = _hash({
+                "schema": "TEV_SCRIPT_FILE_READ_ARGUMENTS_V2_V1",
+                "arguments": [requested_path],
+            })
+            call_payload = {
+                "schema": "TEV_SCRIPT_FILE_READ_ACQUISITION_CALL_V2_V1",
+                "call_index": index,
+                "capability_id": contract.capability_id,
+                "contract_hash": contract.contract_hash,
+                "arguments": [requested_path],
+                "arguments_hash": arguments_hash,
+                "canonical_relative_path": observed.canonical_relative_path,
+                "return": text,
+                "content_sha256": observed.content_sha256,
+                "byte_count": len(data),
+                "provider_descriptor_hash": descriptor.descriptor_hash,
+                "authority_scope_hash": scope_hash,
+                "acquisition_policy": FILE_READ_ACQUISITION_POLICY_V2,
+            }
+            return FileReadAcquiredCallV2(
+                index,
+                {**call_payload, "call_evidence_hash": _hash(call_payload)},
+            )
 
-    indexed_calls = tuple(enumerate(request["calls"]))
-    completed = (
-        tuple(acquire_call(index, call) for index, call in indexed_calls)
-        if execution_strategy is None
-        else tuple(execution_strategy.run(indexed_calls, acquire_call))
-    )
+        indexed_calls = tuple(enumerate(request["calls"]))
+        completed = (
+            tuple(acquire_call(index, call) for index, call in indexed_calls)
+            if execution_strategy is None
+            else tuple(execution_strategy.run(indexed_calls, acquire_call))
+        )
+    finally:
+        filesystem.close()
     if len(completed) != len(indexed_calls) or any(not isinstance(item, FileReadAcquiredCallV2) for item in completed):
         _fail("TEVS_FILE_READ_ACQUISITION_STRATEGY", "file.read acquisition strategy returned an invalid result set")
     by_index = {item.call_index: item for item in completed}
@@ -243,7 +243,7 @@ def acquire_file_read_observations_v2(
         "capability_id": contract.capability_id,
         "contract_hash": contract.contract_hash,
         "provider": descriptor_wire,
-        "authority_scope_hash": scope.scope_hash,
+        "authority_scope_hash": scope_hash,
         "acquisition_policy": FILE_READ_ACQUISITION_POLICY_V2,
         "calls": calls,
     }
@@ -380,6 +380,17 @@ def _implementation_hashes() -> tuple[str, str]:
         "shared_file_policy_sha256": shared,
     })
     return combined, shared
+
+
+def _raise_scoped_read_error(error: TevScriptError) -> None:
+    code = error.diagnostic.code
+    if code == "TEVS_SCOPED_FS_BUDGET":
+        _fail("TEVS_FILE_READ_BUDGET", error.diagnostic.message)
+    if code == "TEVS_SCOPED_FS_ESCAPE":
+        _fail("TEVS_FILE_READ_PATH_ESCAPE", error.diagnostic.message)
+    if code in {"TEVS_SCOPED_FS_PATH", "TEVS_SCOPED_FS_KIND", "TEVS_SCOPED_FS_ROOT"}:
+        _fail("TEVS_FILE_READ_PATH", error.diagnostic.message)
+    _fail("TEVS_FILE_READ_IO", error.diagnostic.message)
 
 
 def _object(value: Any, path: str) -> dict[str, Any]:

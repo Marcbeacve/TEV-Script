@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 
@@ -151,20 +152,25 @@ class FileEffectProviderV2Tests(unittest.TestCase):
             self.assertEqual(second.receipt_hash,first.receipt_hash)
             self.assertEqual(retry_provider.physical_replace_calls,0)
 
-    def test_existing_symlink_target_is_rejected_when_platform_supports_it(self):
+    def test_parent_link_or_junction_escape_is_rejected_without_skip(self):
         with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as outside:
             root=Path(td); outside_target=Path(outside)/'victim.txt'; outside_target.write_text('safe',encoding='utf-8')
-            link=root/'out.txt'
+            link=root/'escape'
+            if os.name == 'nt':
+                completed=subprocess.run(['cmd.exe','/d','/c','mklink','/J',str(link),str(Path(outside))],capture_output=True,text=True,check=False)
+                self.assertEqual(completed.returncode,0,completed.stdout+completed.stderr)
+            else:
+                link.symlink_to(Path(outside),target_is_directory=True)
             try:
-                link.symlink_to(outside_target)
-            except (OSError, NotImplementedError):
-                self.skipTest('symlink creation unavailable on this Windows host')
-            plan=self.plan(); provider=AtomicFileReplaceProviderV2(root,contract_hash=self.contract.contract_hash)
-            grant=build_effect_authority_grant_v4(provider.descriptor,plan.command_batch,allowed_contract_hashes=[self.contract.contract_hash],authority_scope_hash=provider.scope.scope_hash)
-            with self.assertRaises(TevScriptError) as captured:
-                commit_effect_command_batch_v4(plan.command_batch,provider,grant,EffectCommitLedgerV4())
-            self.assertEqual(captured.exception.diagnostic.code,'TEVS_FILE_PROVIDER_PATH_ESCAPE')
-            self.assertEqual(outside_target.read_text(encoding='utf-8'),'safe')
+                plan=self.plan(path='escape/victim.txt'); provider=AtomicFileReplaceProviderV2(root,contract_hash=self.contract.contract_hash)
+                grant=build_effect_authority_grant_v4(provider.descriptor,plan.command_batch,allowed_contract_hashes=[self.contract.contract_hash],authority_scope_hash=provider.scope.scope_hash)
+                with self.assertRaises(TevScriptError) as captured:
+                    commit_effect_command_batch_v4(plan.command_batch,provider,grant,EffectCommitLedgerV4())
+                self.assertEqual(captured.exception.diagnostic.code,'TEVS_FILE_PROVIDER_PATH_ESCAPE')
+                self.assertEqual(outside_target.read_text(encoding='utf-8'),'safe')
+            finally:
+                if os.name == 'nt': os.rmdir(link)
+                else: link.unlink()
 
     def test_multi_intent_batch_returns_fail_before_any_file_write(self):
         with tempfile.TemporaryDirectory() as td:
@@ -186,6 +192,25 @@ class FileEffectProviderV2Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
             sa=build_file_effect_scope_v2(a); sb=build_file_effect_scope_v2(b)
             self.assertNotEqual(sa.scope_hash,sb.scope_hash)
+
+    def test_provider_root_path_swap_cannot_redirect_commit(self):
+        with tempfile.TemporaryDirectory() as td:
+            parent=Path(td); root=parent/'root'; moved=parent/'root-original'
+            root.mkdir(); root.joinpath('out.txt').write_text('authorized-old',encoding='utf-8')
+            plan=self.plan(); provider=AtomicFileReplaceProviderV2(root,contract_hash=self.contract.contract_hash)
+            grant=build_effect_authority_grant_v4(
+                provider.descriptor,
+                plan.command_batch,
+                allowed_contract_hashes=[self.contract.contract_hash],
+                authority_scope_hash=provider.scope.scope_hash,
+            )
+            root.rename(moved)
+            root.mkdir()
+            root.joinpath('out.txt').write_text('outside-sentinel',encoding='utf-8')
+            commit=commit_effect_command_batch_v4(plan.command_batch,provider,grant,EffectCommitLedgerV4())
+            self.assertEqual(commit.status,'PASS')
+            self.assertEqual(moved.joinpath('out.txt').read_text(encoding='utf-8'),'hello')
+            self.assertEqual(root.joinpath('out.txt').read_text(encoding='utf-8'),'outside-sentinel')
 
 
 if __name__=='__main__': unittest.main()
