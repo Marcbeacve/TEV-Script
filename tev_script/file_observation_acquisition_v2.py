@@ -294,7 +294,9 @@ def validate_file_read_acquisition_evidence_v2(
             _fail("TEVS_FILE_READ_EVIDENCE_CALL", "file.read evidence canonical path must be non-empty Text")
         if not isinstance(call["return"], str):
             _fail("TEVS_FILE_READ_EVIDENCE_CALL", "file.read evidence return must be Text")
-        content_bytes = call["return"].encode("utf-8")
+        if isinstance(call["byte_count"], bool) or not isinstance(call["byte_count"], int) or not 0 <= call["byte_count"] <= MAX_FILE_READ_BYTES_V2:
+            _fail("TEVS_FILE_READ_EVIDENCE_CONTENT", "file.read evidence byte count exceeds the configured budget")
+        content_bytes = _bounded_utf8_bytes(call["return"])
         if call["byte_count"] != len(content_bytes) or call["content_sha256"] != hashlib.sha256(content_bytes).hexdigest():
             _fail("TEVS_FILE_READ_EVIDENCE_CONTENT", "file.read evidence content witness mismatch")
         if call["provider_descriptor_hash"] != provider["descriptor_hash"] or call["authority_scope_hash"] != scope_hash or call["acquisition_policy"] != FILE_READ_ACQUISITION_POLICY_V2:
@@ -408,6 +410,22 @@ def _sha(value: Any, path: str) -> str:
     if not isinstance(value, str) or len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
         _fail("TEVS_FILE_READ_HASH", f"{path} must be lowercase sha256 hex")
     return value
+
+
+def _bounded_utf8_bytes(value: str) -> bytes:
+    if len(value) > MAX_FILE_READ_BYTES_V2:
+        _fail("TEVS_FILE_READ_EVIDENCE_CONTENT", "file.read evidence content exceeds the configured budget")
+    bounded = bytearray()
+    for character in value:
+        encoded = character.encode("utf-8")
+        remaining = MAX_FILE_READ_BYTES_V2 + 1 - len(bounded)
+        if len(encoded) > remaining:
+            bounded.extend(encoded[:remaining])
+            _fail("TEVS_FILE_READ_EVIDENCE_CONTENT", "file.read evidence content exceeds the configured budget")
+        bounded.extend(encoded)
+        if len(bounded) > MAX_FILE_READ_BYTES_V2:
+            _fail("TEVS_FILE_READ_EVIDENCE_CONTENT", "file.read evidence content exceeds the configured budget")
+    return bytes(bounded)
 
 
 def _hash(value: Any) -> str:

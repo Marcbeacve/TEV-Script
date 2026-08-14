@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 from unittest.mock import patch
 from pathlib import Path
 import tempfile
@@ -70,6 +72,24 @@ class FileObservationAcquisitionV2Tests(unittest.TestCase):
             tampered=copy.deepcopy(evidence); tampered['calls'][0]['return']='beta'
             with self.assertRaises(TevScriptError) as captured:
                 validate_file_read_acquisition_evidence_v2(tampered,compiled.capabilities)
+            self.assertEqual(captured.exception.diagnostic.code,'TEVS_FILE_READ_EVIDENCE_CONTENT')
+
+    def test_external_oversize_evidence_is_rejected_even_with_consistent_hashes(self):
+        compiled=self.compiled(); request=build_file_read_acquisition_request_v2(compiled.capabilities,['input.txt'])
+        with tempfile.TemporaryDirectory() as td:
+            Path(td,'input.txt').write_text('x',encoding='utf-8')
+            forged=copy.deepcopy(acquire_file_read_observations_v2(request,compiled.capabilities,td))
+            content='a'*(MAX_FILE_READ_BYTES_V2+1)
+            call=forged['calls'][0]
+            call['return']=content
+            call['byte_count']=MAX_FILE_READ_BYTES_V2+1
+            call['content_sha256']=hashlib.sha256(content.encode('utf-8')).hexdigest()
+            call_payload={key:value for key,value in call.items() if key != 'call_evidence_hash'}
+            call['call_evidence_hash']=hashlib.sha256(json.dumps(call_payload,sort_keys=True,separators=(',',':'),ensure_ascii=True).encode('utf-8')).hexdigest()
+            evidence_payload={key:value for key,value in forged.items() if key != 'evidence_hash'}
+            forged['evidence_hash']=hashlib.sha256(json.dumps(evidence_payload,sort_keys=True,separators=(',',':'),ensure_ascii=True).encode('utf-8')).hexdigest()
+            with self.assertRaises(TevScriptError) as captured:
+                validate_file_read_acquisition_evidence_v2(forged,compiled.capabilities)
             self.assertEqual(captured.exception.diagnostic.code,'TEVS_FILE_READ_EVIDENCE_CONTENT')
 
     def test_scope_and_provider_external_pins_are_enforced(self):
