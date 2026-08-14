@@ -57,6 +57,7 @@ class V2CertifyFullV2Tests(unittest.TestCase):
         self.assertEqual(receipt["admission_profile"], "candidate")
         self.assertIs(receipt["certify_full"], True)
         self.assertIs(receipt["language_stable"], False)
+        self.assertEqual(receipt["gates"]["stable_tooling_authority"], "PASS")
 
     def test_historical_receipt_shape_remains_unchanged(self) -> None:
         identity = gate.GitIdentity("agent/v2", "1" * 40, "2" * 40, gate.CERTIFIED_BASE_SHA)
@@ -70,6 +71,7 @@ class V2CertifyFullV2Tests(unittest.TestCase):
         self.assertNotIn("admission_profile", receipt)
         self.assertNotIn("certify_full", receipt)
         self.assertNotIn("language_stable", receipt)
+        self.assertNotIn("stable_tooling_authority", receipt["gates"])
 
     def test_receipt_output_compatibility_still_requires_external_path(self) -> None:
         with self.assertRaisesRegex(gate.V2CertificationFailure, "outside"):

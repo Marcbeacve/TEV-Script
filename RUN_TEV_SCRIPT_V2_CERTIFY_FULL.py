@@ -158,6 +158,13 @@ def _gate_receipt_fields() -> dict[str, str]:
     }
 
 
+def _gate_receipt_fields_v2() -> dict[str, str]:
+    return {
+        **_gate_receipt_fields(),
+        "stable_tooling_authority": "PASS",
+    }
+
+
 def build_receipt(
     identity: GitIdentity,
     *,
@@ -202,7 +209,7 @@ def build_receipt_v2(
         "branch": identity.branch,
         "dirty": False,
         "python_version": python_version,
-        "gates": _gate_receipt_fields(),
+        "gates": _gate_receipt_fields_v2(),
         "v2_test_count": v2_test_count,
         "v2_skipped_tests": 0,
         "v1_receipt_sha256": v1_receipt_sha256,
@@ -292,6 +299,21 @@ def certify(
             "TEV_SCRIPT_V2_AUTHORITY=PASS",
         ),
     )
+    if current_base_mode:
+        run_checked(
+            "V2 stable tooling authority",
+            [
+                sys.executable,
+                str(ROOT / "tools" / "validate_v2_stable_tooling_authority.py"),
+                "--profile",
+                profile,
+            ],
+            (
+                f"TEV_SCRIPT_V2_STABLE_TOOLING_AUTHORITY_PROFILE={profile}",
+                "TEV_SCRIPT_V2_STABLE_TOOLING_SCHEMAS=PASS",
+                "TEV_SCRIPT_V2_STABLE_TOOLING_AUTHORITY=PASS",
+            ),
+        )
     run_checked(
         "V2 filesystem safety",
         [sys.executable, str(ROOT / "tools" / "validate_v2_filesystem_safety.py")],
@@ -359,6 +381,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "FULL_REGRESSION=PASS",
     ):
         print(witness)
+    if receipt["schema"] == "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V2":
+        print("V2_STABLE_TOOLING_AUTHORITY=PASS")
     print("TEV_SCRIPT_V2_COMMIT=" + str(receipt["commit_sha"]))
     print("TEV_SCRIPT_V2_TREE=" + str(receipt["tree_sha"]))
     print("TEV_SCRIPT_V2_RECEIPT_SCHEMA=" + str(receipt["schema"]))

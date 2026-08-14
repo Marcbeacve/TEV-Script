@@ -24,7 +24,7 @@
       "required": [
         "authority_inventory", "schemas_contracts", "cli_v2", "source_static", "program_ir_v4",
         "filesystem_safety", "toctou_closure", "one_mib_pre_admission", "v2_negative_campaign",
-        "v2_regression", "v1_certify_full"
+        "v2_regression", "v1_certify_full", "stable_tooling_authority"
       ],
       "additionalProperties": false,
       "properties": {
@@ -38,7 +38,8 @@
         "one_mib_pre_admission": {"const": "PASS"},
         "v2_negative_campaign": {"const": "PASS"},
         "v2_regression": {"const": "PASS"},
-        "v1_certify_full": {"const": "PASS"}
+        "v1_certify_full": {"const": "PASS"},
+        "stable_tooling_authority": {"const": "PASS"}
       }
     },
     "v2_test_count": {"type": "integer", "minimum": 1},
