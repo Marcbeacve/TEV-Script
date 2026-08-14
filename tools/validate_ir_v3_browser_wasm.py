@@ -207,6 +207,35 @@ def _stop_process(process: subprocess.Popen[str] | None) -> None:
         process.wait(timeout=3)
 
 
+def _stop_browser_process(process: subprocess.Popen[str] | None, profile: Path) -> None:
+    _stop_process(process)
+    if os.name != "nt":
+        return
+    environment = os.environ.copy()
+    environment["TEV_BROWSER_PROFILE_CLEANUP"] = str(profile.resolve())
+    subprocess.run(
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "$needle=$env:TEV_BROWSER_PROFILE_CLEANUP; "
+            "$deadline=(Get-Date).AddSeconds(30); "
+            "do { "
+            "$targets=@(Get-CimInstance Win32_Process | "
+            "Where-Object { $_.CommandLine -and $_.CommandLine.Contains($needle) }); "
+            "if ($targets.Count -eq 0) { exit 0 }; "
+            "$targets | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; "
+            "Start-Sleep -Milliseconds 250 "
+            "} while ((Get-Date) -lt $deadline); exit 1",
+        ],
+        cwd=ROOT,
+        env=environment,
+        capture_output=True,
+        check=False,
+    )
+
+
 def main() -> int:
     if shutil.which("dotnet") is None:
         return _skip("DOTNET_UNAVAILABLE")
@@ -276,6 +305,7 @@ def main() -> int:
         server_stderr = temp / "server.err.log"
         browser_stdout = temp / "browser.out.log"
         browser_stderr = temp / "browser.err.log"
+        profile = temp / "browser-profile"
         server_process: subprocess.Popen[str] | None = None
         browser_process: subprocess.Popen[str] | None = None
         try:
@@ -306,7 +336,6 @@ def main() -> int:
                 _wait_health(base_url, server_process)
                 print("TEV_SCRIPT_IR_V3_BROWSER_HTTP_SERVER=PASS")
 
-                profile = temp / "browser-profile"
                 profile.mkdir()
                 url = base_url + "/?tev_witness_token=" + token
                 arguments = [
@@ -366,7 +395,7 @@ def main() -> int:
                         print("TEV_SCRIPT_IR_V3_BROWSER_" + label + "=" + text.replace("\n", "\\n"))
             return 1
         finally:
-            _stop_process(browser_process)
+            _stop_browser_process(browser_process, profile)
             _stop_process(server_process)
 
 
