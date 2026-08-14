@@ -35,7 +35,22 @@ Stage-D stable admission on S4:                        REQUESTED / NOT YET EXECU
 Python package version in S4:                          1.0.0
 JavaScript package version in S4:                      1.0.0
 V1 language version:                                   1.0.0
+
+V2 source language / static semantics:                 NORMATIVE CANDIDATE AUTHORITY
+Program IR V4 schemas / contracts:                     IMPLEMENTED
+V2 CLI + self-hashed descriptor:                       IMPLEMENTED
+V2 filesystem handle-relative safety:                  IMPLEMENTED
+V2 file.read 1 MiB pre-admission:                      IMPLEMENTED
+V2 TOCTOU race negatives / fail-closed coverage:       IMPLEMENTED
+V2 independent CERTIFY_FULL gate:                      IMPLEMENTED
+V2 publication / PR / merge authority:                 NOT GRANTED
 ```
+
+V2 has its own feature matrix, schemas, conformance vectors, filesystem-safety gate,
+and exact-identity certification receipt. The V1 gates remain mandatory regression
+evidence, but they cannot substitute for `CERTIFY_V2`. Certification receipts are
+written outside the repository so certification cannot mutate the identity it
+attests.
 
 ## Verificación / autoridades exactas
 

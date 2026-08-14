@@ -189,11 +189,15 @@ def _stop_process(process: subprocess.Popen[str] | None) -> None:
     if process is None or process.poll() is not None:
         return
     if os.name == "nt":
-        subprocess.run(
-            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-            capture_output=True,
-            check=False,
-        )
+        try:
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                capture_output=True,
+                check=False,
+                timeout=5,
+            )
+        except subprocess.TimeoutExpired:
+            pass
         try:
             process.wait(timeout=5)
         except subprocess.TimeoutExpired:
@@ -205,6 +209,66 @@ def _stop_process(process: subprocess.Popen[str] | None) -> None:
     except subprocess.TimeoutExpired:
         process.kill()
         process.wait(timeout=3)
+
+
+def _stop_browser_process(process: subprocess.Popen[str] | None, profile: Path) -> None:
+    _stop_process(process)
+    if os.name != "nt":
+        return
+    environment = os.environ.copy()
+    environment["TEV_BROWSER_PROFILE_CLEANUP"] = str(profile.resolve())
+    arguments = [
+        "powershell.exe",
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$ErrorActionPreference='Stop'; "
+        "$needle=$env:TEV_BROWSER_PROFILE_CLEANUP; "
+        "$deadline=(Get-Date).AddSeconds(30); "
+        "do { "
+        "$targets=@(Get-CimInstance Win32_Process -ErrorAction Stop | "
+        "Where-Object { $_.CommandLine -and $_.CommandLine.Contains($needle) }); "
+        "if ($targets.Count -eq 0) { exit 0 }; "
+        "$targets | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; "
+        "Start-Sleep -Milliseconds 250 "
+        "} while ((Get-Date) -lt $deadline); exit 1",
+    ]
+    try:
+        completed = subprocess.run(
+            arguments,
+            cwd=ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+            timeout=35,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError(
+            "browser profile cleanup timed out; stdout="
+            + _cleanup_output(error.stdout)
+            + "; stderr="
+            + _cleanup_output(error.stderr)
+        ) from error
+    if completed.returncode != 0:
+        raise RuntimeError(
+            f"browser profile cleanup exited {completed.returncode}; stdout="
+            + _cleanup_output(completed.stdout)
+            + "; stderr="
+            + _cleanup_output(completed.stderr)
+        )
+
+
+def _cleanup_output(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        text = value.decode("utf-8", errors="replace")
+    else:
+        text = value
+    return text[-4000:].replace("\r", "\\r").replace("\n", "\\n")
 
 
 def main() -> int:
@@ -276,6 +340,7 @@ def main() -> int:
         server_stderr = temp / "server.err.log"
         browser_stdout = temp / "browser.out.log"
         browser_stderr = temp / "browser.err.log"
+        profile = temp / "browser-profile"
         server_process: subprocess.Popen[str] | None = None
         browser_process: subprocess.Popen[str] | None = None
         try:
@@ -306,7 +371,6 @@ def main() -> int:
                 _wait_health(base_url, server_process)
                 print("TEV_SCRIPT_IR_V3_BROWSER_HTTP_SERVER=PASS")
 
-                profile = temp / "browser-profile"
                 profile.mkdir()
                 url = base_url + "/?tev_witness_token=" + token
                 arguments = [
@@ -366,7 +430,7 @@ def main() -> int:
                         print("TEV_SCRIPT_IR_V3_BROWSER_" + label + "=" + text.replace("\n", "\\n"))
             return 1
         finally:
-            _stop_process(browser_process)
+            _stop_browser_process(browser_process, profile)
             _stop_process(server_process)
 
 

@@ -1,0 +1,55 @@
+{
+  "schema": "TEV_SCRIPT_V2_SOURCE_STATIC_CASES_V1",
+  "language_version": "2.0.0",
+  "cases": [
+    {
+      "id": "PURE_BASIC",
+      "compiler": "pure",
+      "source": "script D version \"2.0.0\"; entry main:Int=1;",
+      "expected_status": "PASS",
+      "expected_semantic_hash": "41004755231914ae31305e53b69bb75f5f06960c58ea828ae1b830f47878f817"
+    },
+    {
+      "id": "GENERIC_IDENTITY",
+      "compiler": "pure",
+      "source": "script G version \"2.0.0\"; generic fn id<T>(x:T)->T=x; entry main:Int=id<Int>(7);",
+      "expected_status": "PASS",
+      "expected_semantic_hash": "85575a178b281a3a0b2795c7afd6d0d7244453088ce4f07060cd1c4a168fc517"
+    },
+    {
+      "id": "RECURSIVE_COUNTDOWN",
+      "compiler": "pure",
+      "source": "script R version \"2.0.0\"; recursive fn down(n:Int)->Int decreases n max_depth 8 = if n==0 then 0 else self(n-1); entry main:Int=down(4);",
+      "expected_status": "PASS",
+      "expected_semantic_hash": "8857f8ffaf3a1de5b3c383ee667248431613b3104fd4c683fda78afaec829fe0"
+    },
+    {
+      "id": "EFFECT_COMMAND",
+      "compiler": "effects_r2",
+      "source": "script E version \"2.0.0\"; state x:Int=0; command file.replace(Text,Text); action a(){request file.replace(\"x.txt\",\"x\"); set x=1;} entry main=a();",
+      "expected_status": "PASS",
+      "expected_semantic_hash": "0cb87025c85c26abf6bb7005e87ca19ed2b742e7c3a8f3d744d15b0023a59559"
+    },
+    {
+      "id": "WRONG_LANGUAGE_VERSION",
+      "compiler": "pure",
+      "source": "script D version \"1.0.0\"; entry main:Int=1;",
+      "expected_status": "FAIL",
+      "expected_diagnostic": "TEVS_V2_PROGRAM_VERSION"
+    },
+    {
+      "id": "ZERO_COLLECTION_CAPACITY",
+      "compiler": "pure",
+      "source": "script D version \"2.0.0\"; entry main:List<Int,0>=[];",
+      "expected_status": "FAIL",
+      "expected_diagnostic": "TEVS_V2_COLLECTION_CAPACITY"
+    },
+    {
+      "id": "UNCONTRACTED_SELF_CALL",
+      "compiler": "pure",
+      "source": "script D version \"2.0.0\"; fn f(n:Int)->Int=self(n); entry main:Int=f(1);",
+      "expected_status": "FAIL",
+      "expected_diagnostic": "TEVS_V2_PROGRAM_RECURSION_CONTEXT"
+    }
+  ]
+}
