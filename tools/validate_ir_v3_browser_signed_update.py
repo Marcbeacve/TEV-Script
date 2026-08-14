@@ -120,6 +120,7 @@ def main() -> int:
         server_stderr = temp / "server.err.log"
         browser_stdout = temp / "browser.out.log"
         browser_stderr = temp / "browser.err.log"
+        profile = temp / "browser-profile"
         server_process = None
         browser_process = None
         previous_gate = browser_common.GATE
@@ -139,7 +140,6 @@ def main() -> int:
                 browser_common._wait_health(base_url, server_process)
                 print("TEV_SCRIPT_IR_V3_BROWSER_SIGNED_UPDATE_HTTP_SERVER=PASS")
 
-                profile = temp / "browser-profile"
                 profile.mkdir()
                 url = base_url + "/?tev_witness_token=" + token
                 with browser_stdout.open("w", encoding="utf-8") as browser_out, browser_stderr.open("w", encoding="utf-8") as browser_err:
@@ -174,7 +174,7 @@ def main() -> int:
             return 1
         finally:
             browser_common.GATE = previous_gate
-            browser_common._stop_process(browser_process)
+            browser_common._stop_browser_process(browser_process, profile)
             browser_common._stop_process(server_process)
 
 

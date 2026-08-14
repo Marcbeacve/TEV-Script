@@ -95,6 +95,7 @@ def validate_browser(dotnet: str, browser: str) -> int:
         server_stderr = temp / "server.err.log"
         browser_stdout = temp / "browser.out.log"
         browser_stderr = temp / "browser.err.log"
+        profile = temp / "browser-profile"
         server_process: subprocess.Popen[str] | None = None
         browser_process: subprocess.Popen[str] | None = None
         previous_gate = browser_common.GATE
@@ -129,7 +130,6 @@ def validate_browser(dotnet: str, browser: str) -> int:
                 base_url = f"http://127.0.0.1:{port}"
                 browser_common._wait_health(base_url, server_process)
 
-                profile = temp / "browser-profile"
                 profile.mkdir()
                 url = base_url + "/?tev_witness_token=" + token
                 with (
@@ -186,7 +186,7 @@ def validate_browser(dotnet: str, browser: str) -> int:
             return 1
         finally:
             browser_common.GATE = previous_gate
-            browser_common._stop_process(browser_process)
+            browser_common._stop_browser_process(browser_process, profile)
             browser_common._stop_process(server_process)
 
 
