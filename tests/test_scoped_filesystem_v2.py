@@ -5,8 +5,10 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from tev_script.diagnostics import TevScriptError
+from tev_script import scoped_filesystem_v2 as scoped_filesystem
 from tev_script.scoped_filesystem_v2 import (
     _consume_bounded_v2,
     open_scoped_root_v2,
@@ -16,6 +18,13 @@ from tev_script.scoped_filesystem_v2 import (
 
 
 class ScopedFilesystemV2Tests(unittest.TestCase):
+    def test_unavailable_secure_backend_fails_closed_without_path_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            with patch.object(scoped_filesystem, "_SECURE_BACKEND_AVAILABLE", False):
+                with self.assertRaises(TevScriptError) as caught:
+                    open_scoped_root_v2(raw)
+            self.assertEqual(caught.exception.diagnostic.code, "TEVS_SCOPED_FS_UNSUPPORTED")
+
     def test_rejects_ambiguous_or_escaping_relative_paths_before_access(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw) / "root"

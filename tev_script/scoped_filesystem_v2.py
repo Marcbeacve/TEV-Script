@@ -20,6 +20,7 @@ _WINDOWS_RESERVED = frozenset(
     | {f"LPT{index}" for index in range(1, 10)}
 )
 _READ_CHUNK_BYTES = 64 * 1024
+_SECURE_BACKEND_AVAILABLE = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +114,8 @@ def canonical_host_path_v2(path: str | os.PathLike[str]) -> str:
 
 
 def open_scoped_root_v2(root: str | os.PathLike[str]) -> ScopedFilesystemRootV2:
+    if not _SECURE_BACKEND_AVAILABLE:
+        _fail("TEVS_SCOPED_FS_UNSUPPORTED", "secure handle-relative filesystem backend is unavailable")
     canonical = canonical_host_path_v2(root)
     if os.name == "nt":
         handle = _win_open_root(os.fspath(root))

@@ -11,11 +11,9 @@ from typing import Any, Mapping
 
 from .diagnostics import TevScriptError
 from .json_io import load_strict_json
+from .descriptor_v2 import v2_descriptor_json
 from .program_ir_v4_effect_commands import PROGRAM_IR_V4_EFFECTS_R2_SCHEMA
 from .program_ir_v4 import (
-    PROGRAM_IR_V4_PURE_SCHEMA,
-    PROGRAM_IR_V4_RECURSIVE_SCHEMA,
-    PROGRAM_IR_V4_EFFECTS_SCHEMA,
     canonical_program_ir_v4_bytes,
     export_program_ir_v4_pure,
     export_program_ir_v4_recursive,
@@ -186,23 +184,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _descriptor(_arguments: argparse.Namespace) -> int:
-    print(_canonical_json({
-        "schema": "TEV_SCRIPT_V2_DESCRIPTOR_V1",
-        "language_version": LANGUAGE_VERSION_V2,
-        "source_extension": ".tevs",
-        "program_ir_schemas": [PROGRAM_IR_V4_PURE_SCHEMA, PROGRAM_IR_V4_RECURSIVE_SCHEMA, PROGRAM_IR_V4_EFFECTS_SCHEMA, PROGRAM_IR_V4_EFFECTS_R2_SCHEMA],
-        "commands": ["check", "compile", "verify-signed-remote-module-manifest", "acquire-signed-remote-modules", "extract-signed-remote-module-bundle", "check-remote-module-manifest", "acquire-remote-modules", "extract-remote-module-bundle", "bundle-modules", "check-modules", "compile-modules", "check-effects", "scenario-effects", "compile-effects", "request-file-observations", "acquire-file-observations", "check-effects-r2", "scenario-effects-r2", "compile-effects-r2", "plan-effects-r2", "authorize-file-effects-r2", "commit-file-effects-r2", "run"],
-        "runtime_requires_source_compiler": False,
-        "boundaries": {
-            "dynamic_code": False,
-            "unbounded_loops": False,
-            "uncontracted_recursion": False,
-            "implicit_host_io": False,
-            "runtime_source_compilation": False,
-            "physical_effect_commit": "explicit_grant_only",
-            "file_provider_batch": "single_file_replace_v1",
-        },
-    }))
+    print(v2_descriptor_json())
     return 0
 
 

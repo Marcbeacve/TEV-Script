@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev.dev/schemas/tev-script-v2-filesystem-artifacts.schema.json",
+  "title": "TEV Script V2 Filesystem Capability Artifacts",
+  "oneOf": [
+    {"$ref": "#/$defs/scope"},
+    {"$ref": "#/$defs/readRequest"},
+    {"$ref": "#/$defs/readEvidence"},
+    {"$ref": "#/$defs/effectReceipt"}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "scope": {
+      "type": "object", "required": ["schema", "root", "scope_hash"], "additionalProperties": false,
+      "properties": {"schema": {"const": "TEV_SCRIPT_FILE_EFFECT_SCOPE_V2_V1"}, "root": {"type": "string", "minLength": 1}, "scope_hash": {"$ref": "#/$defs/sha256"}}
+    },
+    "readRequest": {
+      "type": "object", "required": ["schema", "capability_table_hash", "capability_id", "contract_hash", "calls", "request_hash"], "additionalProperties": false,
+      "properties": {"schema": {"const": "TEV_SCRIPT_FILE_READ_ACQUISITION_REQUEST_V2_V1"}, "capability_table_hash": {"$ref": "#/$defs/sha256"}, "capability_id": {"const": "file.read"}, "contract_hash": {"$ref": "#/$defs/sha256"}, "calls": {"type": "array", "minItems": 1, "maxItems": 1024, "items": {"type": "object", "required": ["arguments"], "additionalProperties": false, "properties": {"arguments": {"type": "array", "prefixItems": [{"type": "string", "minLength": 1}], "minItems": 1, "maxItems": 1}}}}, "request_hash": {"$ref": "#/$defs/sha256"}}
+    },
+    "readProvider": {
+      "type": "object",
+      "required": ["schema", "provider_id", "provider_version", "capability_id", "contract_hash", "acquisition_policy", "maximum_bytes_per_call", "implementation_hash", "shared_file_policy_hash", "descriptor_hash"],
+      "additionalProperties": false,
+      "properties": {
+        "schema": {"const": "TEV_SCRIPT_FILE_READ_PROVIDER_DESCRIPTOR_V2_V1"},
+        "provider_id": {"const": "tev.file_read_snapshot"},
+        "provider_version": {"const": "1.0.0"},
+        "capability_id": {"const": "file.read"},
+        "contract_hash": {"$ref": "#/$defs/sha256"},
+        "acquisition_policy": {"const": "scoped_snapshot_v1"},
+        "maximum_bytes_per_call": {"const": 1048576},
+        "implementation_hash": {"$ref": "#/$defs/sha256"},
+        "shared_file_policy_hash": {"$ref": "#/$defs/sha256"},
+        "descriptor_hash": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "readCall": {
+      "type": "object",
+      "required": ["schema", "call_index", "capability_id", "contract_hash", "arguments", "arguments_hash", "canonical_relative_path", "return", "content_sha256", "byte_count", "provider_descriptor_hash", "authority_scope_hash", "acquisition_policy", "call_evidence_hash"],
+      "additionalProperties": false,
+      "properties": {
+        "schema": {"const": "TEV_SCRIPT_FILE_READ_ACQUISITION_CALL_V2_V1"},
+        "call_index": {"type": "integer", "minimum": 0, "maximum": 1023},
+        "capability_id": {"const": "file.read"},
+        "contract_hash": {"$ref": "#/$defs/sha256"},
+        "arguments": {"type": "array", "prefixItems": [{"type": "string", "minLength": 1}], "minItems": 1, "maxItems": 1},
+        "arguments_hash": {"$ref": "#/$defs/sha256"},
+        "canonical_relative_path": {"type": "string", "minLength": 1},
+        "return": {"type": "string"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "byte_count": {"type": "integer", "minimum": 0, "maximum": 1048576},
+        "provider_descriptor_hash": {"$ref": "#/$defs/sha256"},
+        "authority_scope_hash": {"$ref": "#/$defs/sha256"},
+        "acquisition_policy": {"const": "scoped_snapshot_v1"},
+        "call_evidence_hash": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "readEvidence": {
+      "type": "object", "required": ["schema", "request_hash", "capability_table_hash", "capability_id", "contract_hash", "provider", "authority_scope_hash", "acquisition_policy", "calls", "evidence_hash"], "additionalProperties": false,
+      "properties": {"schema": {"const": "TEV_SCRIPT_FILE_READ_ACQUISITION_EVIDENCE_V2_V1"}, "request_hash": {"$ref": "#/$defs/sha256"}, "capability_table_hash": {"$ref": "#/$defs/sha256"}, "capability_id": {"const": "file.read"}, "contract_hash": {"$ref": "#/$defs/sha256"}, "provider": {"$ref": "#/$defs/readProvider"}, "authority_scope_hash": {"$ref": "#/$defs/sha256"}, "acquisition_policy": {"const": "scoped_snapshot_v1"}, "calls": {"type": "array", "minItems": 1, "maxItems": 1024, "items": {"$ref": "#/$defs/readCall"}}, "evidence_hash": {"$ref": "#/$defs/sha256"}}
+    },
+    "effectReceipt": {
+      "type": "object", "required": ["schema", "intent_hash", "command_id", "authority_scope_hash", "relative_path", "data_sha256", "byte_count", "final_sha256", "receipt_hash"], "additionalProperties": false,
+      "properties": {"schema": {"const": "TEV_SCRIPT_FILE_REPLACE_EFFECT_RECEIPT_V2_V1"}, "intent_hash": {"$ref": "#/$defs/sha256"}, "command_id": {"const": "file.replace"}, "authority_scope_hash": {"$ref": "#/$defs/sha256"}, "relative_path": {"type": "string", "minLength": 1}, "data_sha256": {"$ref": "#/$defs/sha256"}, "byte_count": {"type": "integer", "minimum": 0}, "final_sha256": {"$ref": "#/$defs/sha256"}, "receipt_hash": {"$ref": "#/$defs/sha256"}}
+    }
+  }
+}

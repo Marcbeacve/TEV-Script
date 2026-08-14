@@ -1,0 +1,40 @@
+{
+  "schema": "TEV_SCRIPT_PROGRAM_IR_V4_CASES_V1",
+  "language_version": "2.0.0",
+  "valid_profiles": [
+    {
+      "id": "PURE",
+      "profile": "pure",
+      "source": "script D version \"2.0.0\"; entry main:Int=1;",
+      "expected_schema": "TEV_SCRIPT_PROGRAM_IR_V4_PURE_V1",
+      "expected_program_ir_hash": "b7b1aeaf6e525e79ca5ecef6cf74776f5c9aa22f6f37799dc9f25601711ec192"
+    },
+    {
+      "id": "RECURSIVE",
+      "profile": "recursive",
+      "source": "script R version \"2.0.0\"; recursive fn down(n:Int)->Int decreases n max_depth 8 = if n==0 then 0 else self(n-1); entry main:Int=down(4);",
+      "expected_schema": "TEV_SCRIPT_PROGRAM_IR_V4_RECURSIVE_V1",
+      "expected_program_ir_hash": "0d6a66a8ff982e7a1d49ceb06901dfacda548f526e63045f95b39685ac803c41"
+    },
+    {
+      "id": "EFFECTS",
+      "profile": "effects",
+      "source": "script E version \"2.0.0\"; state x:Int=0; action a(){set x=1;} entry main=a();",
+      "expected_schema": "TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_V1",
+      "expected_program_ir_hash": "563e170cdaa0eec255ca08495295751f30eb5cf965bcba0d571765dfdfa8719a"
+    },
+    {
+      "id": "EFFECTS_R2",
+      "profile": "effects_r2_plan",
+      "source": "script E version \"2.0.0\"; state x:Int=0; command file.replace(Text,Text); action a(){request file.replace(\"x.txt\",\"x\"); set x=1;} entry main=a();",
+      "expected_schema": "TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_R2_V1",
+      "expected_program_ir_hash": "f026e29b45cb7695205a8d76eaa50635f8b2282e2ac73ee53beedba17e3770ef"
+    }
+  ],
+  "negative_mutations": [
+    {"id": "UNKNOWN_TOP_LEVEL_FIELD", "mutation": "add_unknown_field", "schema_status": "FAIL", "semantic_status": "FAIL"},
+    {"id": "UPPERCASE_PROGRAM_HASH", "mutation": "uppercase_program_ir_hash", "schema_status": "FAIL", "semantic_status": "FAIL"},
+    {"id": "PROFILE_SCHEMA_MISMATCH", "mutation": "replace_profile", "schema_status": "FAIL", "semantic_status": "FAIL"},
+    {"id": "TYPE_TABLE_HASH_MISMATCH", "mutation": "zero_type_table_hash", "schema_status": "PASS", "semantic_status": "FAIL"}
+  ]
+}

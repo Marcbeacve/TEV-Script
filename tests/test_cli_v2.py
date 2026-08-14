@@ -200,9 +200,14 @@ class CliV2Tests(unittest.TestCase):
                 self.assertIn("tev_script/task_scheduler_v2.py",names)
                 self.assertIn("tev_script/file_observation_scheduler_v2.py",names)
                 self.assertIn("tev_script/file_observation_acquisition_v2.py",names)
+                self.assertIn("tev_script/scoped_filesystem_v2.py",names)
+                self.assertIn("tev_script/descriptor_v2.py",names)
+                self.assertIn("tev_script/describe_v2.py",names)
                 self.assertIn("tev_script/module_linker_v2.py",names)
                 self.assertIn("tev_script/remote_module_acquisition_v2.py",names)
                 self.assertIn("tev_script/signed_remote_module_manifest_v2.py",names)
+                self.assertIn("tev-script-v2 = tev_script.cli_v2:main",entry_text)
+                self.assertIn("tev-script-v2-describe = tev_script.describe_v2:main",entry_text)
         finally:
             if old_epoch is None: os.environ.pop("SOURCE_DATE_EPOCH",None)
             else: os.environ["SOURCE_DATE_EPOCH"]=old_epoch

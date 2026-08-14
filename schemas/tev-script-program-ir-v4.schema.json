@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev.dev/schemas/tev-script-program-ir-v4.schema.json",
+  "title": "TEV Script Program IR V4",
+  "oneOf": [
+    {"$ref": "#/$defs/pureProgram"},
+    {"$ref": "#/$defs/recursiveProgram"},
+    {"$ref": "#/$defs/effectsProgram"},
+    {"$ref": "#/$defs/effectsR2Program"}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "name": {"type": "string", "minLength": 1, "maxLength": 512},
+    "jsonValue": {},
+    "parameter": {
+      "type": "object", "required": ["name", "type"], "additionalProperties": false,
+      "properties": {"name": {"$ref": "#/$defs/name"}, "type": {"$ref": "#/$defs/name"}}
+    },
+    "argument": {
+      "type": "object", "required": ["name", "type", "value"], "additionalProperties": false,
+      "properties": {"name": {"$ref": "#/$defs/name"}, "type": {"$ref": "#/$defs/name"}, "value": {"$ref": "#/$defs/jsonValue"}}
+    },
+    "field": {
+      "type": "object", "required": ["name", "type"], "additionalProperties": false,
+      "properties": {"name": {"$ref": "#/$defs/name"}, "type": {"$ref": "#/$defs/name"}}
+    },
+    "typeDescriptor": {
+      "oneOf": [
+        {"type": "object", "required": ["type_id", "kind"], "additionalProperties": false, "properties": {"type_id": {"enum": ["Bool", "Int", "Rat", "Text", "Vec2", "Vec3"]}, "kind": {"const": "primitive"}}},
+        {"type": "object", "required": ["type_id", "kind"], "additionalProperties": false, "properties": {"type_id": {"const": "Unit"}, "kind": {"const": "unit"}}},
+        {"type": "object", "required": ["type_id", "kind", "fields"], "additionalProperties": false, "properties": {"type_id": {"$ref": "#/$defs/name"}, "kind": {"const": "record"}, "fields": {"type": "array", "minItems": 1, "maxItems": 256, "items": {"$ref": "#/$defs/field"}}}},
+        {"type": "object", "required": ["type_id", "kind", "variants"], "additionalProperties": false, "properties": {"type_id": {"$ref": "#/$defs/name"}, "kind": {"const": "enum"}, "variants": {"type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/name"}}}},
+        {"type": "object", "required": ["type_id", "kind", "argument"], "additionalProperties": false, "properties": {"type_id": {"$ref": "#/$defs/name"}, "kind": {"const": "option"}, "argument": {"$ref": "#/$defs/name"}}},
+        {"type": "object", "required": ["type_id", "kind", "ok_type", "err_type"], "additionalProperties": false, "properties": {"type_id": {"$ref": "#/$defs/name"}, "kind": {"const": "result"}, "ok_type": {"$ref": "#/$defs/name"}, "err_type": {"$ref": "#/$defs/name"}}},
+        {"type": "object", "required": ["type_id", "kind", "element_type", "capacity", "order_policy"], "additionalProperties": false, "properties": {"type_id": {"$ref": "#/$defs/name"}, "kind": {"enum": ["list", "set"]}, "element_type": {"$ref": "#/$defs/name"}, "capacity": {"type": "integer", "minimum": 1, "maximum": 4096}, "order_policy": {"enum": ["sequence", "canonical_value_bytes"]}}},
+        {"type": "object", "required": ["type_id", "kind", "element_type", "length", "order_policy"], "additionalProperties": false, "properties": {"type_id": {"$ref": "#/$defs/name"}, "kind": {"const": "array"}, "element_type": {"$ref": "#/$defs/name"}, "length": {"type": "integer", "minimum": 1, "maximum": 4096}, "order_policy": {"const": "sequence"}}},
+        {"type": "object", "required": ["type_id", "kind", "key_type", "value_type", "capacity", "order_policy"], "additionalProperties": false, "properties": {"type_id": {"$ref": "#/$defs/name"}, "kind": {"const": "map"}, "key_type": {"$ref": "#/$defs/name"}, "value_type": {"$ref": "#/$defs/name"}, "capacity": {"type": "integer", "minimum": 1, "maximum": 4096}, "order_policy": {"const": "canonical_key_bytes"}}}
+      ]
+    },
+    "typeTable": {
+      "type": "object", "required": ["boundary", "types"], "additionalProperties": false,
+      "properties": {
+        "boundary": {"type": "object", "required": ["maximum_value_nesting"], "additionalProperties": false, "properties": {"maximum_value_nesting": {"type": "integer", "minimum": 1, "maximum": 128}}},
+        "types": {"type": "array", "minItems": 7, "maxItems": 16384, "items": {"$ref": "#/$defs/typeDescriptor"}}
+      }
+    },
+    "pureSource": {
+      "type": "object", "required": ["program_id", "language_version", "semantic_hash", "entry_hash", "callable_id"], "additionalProperties": false,
+      "properties": {"program_id": {"$ref": "#/$defs/name"}, "language_version": {"const": "2.0.0"}, "semantic_hash": {"$ref": "#/$defs/sha256"}, "entry_hash": {"$ref": "#/$defs/sha256"}, "callable_id": {"$ref": "#/$defs/name"}}
+    },
+    "effectSource": {
+      "type": "object", "required": ["program_id", "language_version", "semantic_hash"], "additionalProperties": false,
+      "properties": {"program_id": {"$ref": "#/$defs/name"}, "language_version": {"const": "2.0.0"}, "semantic_hash": {"$ref": "#/$defs/sha256"}}
+    },
+    "pureEntry": {
+      "type": "object", "required": ["name", "parameters", "return_type", "body", "body_expression_hash", "type_closure_roots", "type_closure_hash", "static_step_upper_bound", "maximum_steps", "arguments"], "additionalProperties": false,
+      "properties": {"name": {"$ref": "#/$defs/name"}, "parameters": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/parameter"}}, "return_type": {"$ref": "#/$defs/name"}, "body": {"type": "object", "minProperties": 1, "maxProperties": 16}, "body_expression_hash": {"$ref": "#/$defs/sha256"}, "type_closure_roots": {"type": "array", "minItems": 1, "maxItems": 16384, "uniqueItems": true, "items": {"$ref": "#/$defs/name"}}, "type_closure_hash": {"$ref": "#/$defs/sha256"}, "static_step_upper_bound": {"type": "integer", "minimum": 1}, "maximum_steps": {"type": "integer", "minimum": 1}, "arguments": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/argument"}}}
+    },
+    "recursionContract": {
+      "type": "object", "required": ["kind", "measure_parameter", "measure_parameter_index", "measure_type", "max_depth", "single_static_self_call", "self_call_in_loops", "self_call_in_conditions", "local_static_step_upper_bound", "recursive_static_step_upper_bound", "maximum_steps", "contract_hash"], "additionalProperties": false,
+      "properties": {"kind": {"const": "decreases_int"}, "measure_parameter": {"$ref": "#/$defs/name"}, "measure_parameter_index": {"type": "integer", "minimum": 0, "maximum": 255}, "measure_type": {"const": "Int"}, "max_depth": {"type": "integer", "minimum": 1}, "single_static_self_call": {"const": true}, "self_call_in_loops": {"const": false}, "self_call_in_conditions": {"const": false}, "local_static_step_upper_bound": {"type": "integer", "minimum": 1}, "recursive_static_step_upper_bound": {"type": "integer", "minimum": 1}, "maximum_steps": {"type": "integer", "minimum": 1}, "contract_hash": {"$ref": "#/$defs/sha256"}}
+    },
+    "recursiveEntry": {
+      "type": "object", "required": ["name", "parameters", "return_type", "body", "body_expression_hash", "type_closure_roots", "type_closure_hash", "recursion_contract", "arguments"], "additionalProperties": false,
+      "properties": {"name": {"$ref": "#/$defs/name"}, "parameters": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/parameter"}}, "return_type": {"$ref": "#/$defs/name"}, "body": {"type": "object", "minProperties": 1, "maxProperties": 16}, "body_expression_hash": {"$ref": "#/$defs/sha256"}, "type_closure_roots": {"type": "array", "minItems": 1, "maxItems": 16384, "uniqueItems": true, "items": {"$ref": "#/$defs/name"}}, "type_closure_hash": {"$ref": "#/$defs/sha256"}, "recursion_contract": {"$ref": "#/$defs/recursionContract"}, "arguments": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/argument"}}}
+    },
+    "stateSchema": {"type": "object", "required": ["states", "schema_hash", "initial_state_hash"], "additionalProperties": false, "properties": {"states": {"type": "array", "maxItems": 4096, "items": {"type": "object", "required": ["name", "type", "initial"], "additionalProperties": false, "properties": {"name": {"$ref": "#/$defs/name"}, "type": {"$ref": "#/$defs/name"}, "initial": {"$ref": "#/$defs/jsonValue"}}}}, "schema_hash": {"$ref": "#/$defs/sha256"}, "initial_state_hash": {"$ref": "#/$defs/sha256"}}},
+    "capabilities": {"type": "object", "required": ["contracts", "table_hash"], "additionalProperties": false, "properties": {"contracts": {"type": "array", "maxItems": 4096, "items": {"type": "object", "required": ["capability_id", "parameters", "return_type", "kind", "contract_hash"], "additionalProperties": false, "properties": {"capability_id": {"$ref": "#/$defs/name"}, "parameters": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/name"}}, "return_type": {"$ref": "#/$defs/name"}, "kind": {"const": "observation"}, "contract_hash": {"$ref": "#/$defs/sha256"}}}}, "table_hash": {"$ref": "#/$defs/sha256"}}},
+    "commands": {"type": "object", "required": ["contracts", "table_hash"], "additionalProperties": false, "properties": {"contracts": {"type": "array", "minItems": 1, "maxItems": 4096, "items": {"type": "object", "required": ["command_id", "parameters", "kind", "idempotency_policy", "contract_hash"], "additionalProperties": false, "properties": {"command_id": {"$ref": "#/$defs/name"}, "parameters": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/name"}}, "kind": {"const": "effect_command"}, "idempotency_policy": {"$ref": "#/$defs/name"}, "contract_hash": {"$ref": "#/$defs/sha256"}}}}, "table_hash": {"$ref": "#/$defs/sha256"}}},
+    "effectAction": {"type": "object", "required": ["action_id", "parameters", "steps", "static_step_upper_bound", "observation_call_upper_bound", "action_hash"], "additionalProperties": false, "properties": {"action_id": {"$ref": "#/$defs/name"}, "parameters": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/parameter"}}, "steps": {"type": "array", "minItems": 1, "maxItems": 65536, "items": {"type": "object", "minProperties": 1, "maxProperties": 16}}, "static_step_upper_bound": {"type": "integer", "minimum": 1}, "observation_call_upper_bound": {"type": "integer", "minimum": 0}, "action_hash": {"$ref": "#/$defs/sha256"}}},
+    "r2Action": {"type": "object", "required": ["action_id", "parameters", "steps", "static_step_upper_bound", "observation_call_upper_bound", "command_request_upper_bound", "action_hash"], "additionalProperties": false, "properties": {"action_id": {"$ref": "#/$defs/name"}, "parameters": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/parameter"}}, "steps": {"type": "array", "minItems": 1, "maxItems": 65536, "items": {"type": "object", "minProperties": 1, "maxProperties": 16}}, "static_step_upper_bound": {"type": "integer", "minimum": 1}, "observation_call_upper_bound": {"type": "integer", "minimum": 0}, "command_request_upper_bound": {"type": "integer", "minimum": 1}, "action_hash": {"$ref": "#/$defs/sha256"}}},
+    "scenario": {"type": "object", "required": ["capability_table_hash", "capabilities", "scenario_hash"], "additionalProperties": false, "properties": {"capability_table_hash": {"$ref": "#/$defs/sha256"}, "capabilities": {"type": "array", "maxItems": 4096, "items": {"type": "object", "required": ["capability_id", "contract_hash", "calls"], "additionalProperties": false, "properties": {"capability_id": {"$ref": "#/$defs/name"}, "contract_hash": {"$ref": "#/$defs/sha256"}, "calls": {"type": "array", "maxItems": 65536, "items": {"type": "object", "required": ["arguments", "return"], "additionalProperties": false, "properties": {"arguments": {"type": "array", "maxItems": 256}, "return": {"$ref": "#/$defs/jsonValue"}}}}}}}, "scenario_hash": {"$ref": "#/$defs/sha256"}}},
+    "execution": {"type": "object", "required": ["current_state", "arguments"], "additionalProperties": false, "properties": {"current_state": {"type": "array", "maxItems": 4096, "items": {"type": "object", "required": ["name", "type", "value"], "additionalProperties": false, "properties": {"name": {"$ref": "#/$defs/name"}, "type": {"$ref": "#/$defs/name"}, "value": {"$ref": "#/$defs/jsonValue"}}}}, "arguments": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/argument"}}}},
+    "pureProgram": {"type": "object", "required": ["schema", "source", "profile", "type_table", "type_table_hash", "entry", "program_ir_hash"], "additionalProperties": false, "properties": {"schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V4_PURE_V1"}, "source": {"$ref": "#/$defs/pureSource"}, "profile": {"const": "pure"}, "type_table": {"$ref": "#/$defs/typeTable"}, "type_table_hash": {"$ref": "#/$defs/sha256"}, "entry": {"$ref": "#/$defs/pureEntry"}, "program_ir_hash": {"$ref": "#/$defs/sha256"}}},
+    "recursiveProgram": {"type": "object", "required": ["schema", "source", "profile", "type_table", "type_table_hash", "entry", "program_ir_hash"], "additionalProperties": false, "properties": {"schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V4_RECURSIVE_V1"}, "source": {"$ref": "#/$defs/pureSource"}, "profile": {"const": "recursive"}, "type_table": {"$ref": "#/$defs/typeTable"}, "type_table_hash": {"$ref": "#/$defs/sha256"}, "entry": {"$ref": "#/$defs/recursiveEntry"}, "program_ir_hash": {"$ref": "#/$defs/sha256"}}},
+    "effectsProgram": {"type": "object", "required": ["schema", "source", "profile", "type_table", "type_table_hash", "state_schema", "capabilities", "action", "scenario", "execution", "program_ir_hash"], "additionalProperties": false, "properties": {"schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_V1"}, "source": {"$ref": "#/$defs/effectSource"}, "profile": {"const": "effects"}, "type_table": {"$ref": "#/$defs/typeTable"}, "type_table_hash": {"$ref": "#/$defs/sha256"}, "state_schema": {"$ref": "#/$defs/stateSchema"}, "capabilities": {"$ref": "#/$defs/capabilities"}, "action": {"$ref": "#/$defs/effectAction"}, "scenario": {"$ref": "#/$defs/scenario"}, "execution": {"$ref": "#/$defs/execution"}, "program_ir_hash": {"$ref": "#/$defs/sha256"}}},
+    "effectsR2Program": {"type": "object", "required": ["schema", "source", "profile", "type_table", "type_table_hash", "state_schema", "capabilities", "commands", "action", "scenario", "execution", "program_ir_hash"], "additionalProperties": false, "properties": {"schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_R2_V1"}, "source": {"$ref": "#/$defs/effectSource"}, "profile": {"const": "effects_r2_plan"}, "type_table": {"$ref": "#/$defs/typeTable"}, "type_table_hash": {"$ref": "#/$defs/sha256"}, "state_schema": {"$ref": "#/$defs/stateSchema"}, "capabilities": {"$ref": "#/$defs/capabilities"}, "commands": {"$ref": "#/$defs/commands"}, "action": {"$ref": "#/$defs/r2Action"}, "scenario": {"$ref": "#/$defs/scenario"}, "execution": {"$ref": "#/$defs/execution"}, "program_ir_hash": {"$ref": "#/$defs/sha256"}}}
+  }
+}

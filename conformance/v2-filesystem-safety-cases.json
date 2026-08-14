@@ -1,0 +1,24 @@
+{
+  "schema": "TEV_SCRIPT_V2_FILESYSTEM_SAFETY_CASES_V1",
+  "maximum_file_read_bytes": 1048576,
+  "overflow_witness_bytes": 1,
+  "required_case_ids": [
+    "RELATIVE_TRAVERSAL_REJECTED",
+    "WINDOWS_AMBIGUOUS_SEGMENT_REJECTED",
+    "PARENT_LINK_OR_JUNCTION_REJECTED",
+    "PARENT_SWAP_AFTER_ROOT_OPEN_REJECTED",
+    "ROOT_PATH_REPLACEMENT_READS_PINNED_OBJECT",
+    "ROOT_PATH_REPLACEMENT_WRITES_PINNED_OBJECT",
+    "OVERSIZE_READ_CONSUMES_AT_MOST_LIMIT_PLUS_ONE",
+    "OVERSIZE_READ_NOT_DECODED_OR_HASHED",
+    "ATOMIC_REPLACE_VERIFIES_OPEN_TEMP_HANDLE",
+    "UNSUPPORTED_SECURE_PRIMITIVE_FAILS_CLOSED"
+  ],
+  "mandatory_test_modules": [
+    "tests.test_scoped_filesystem_v2",
+    "tests.test_file_observation_acquisition_v2",
+    "tests.test_file_effect_provider_v2",
+    "tests.test_cli_file_observation_v2"
+  ],
+  "skips_allowed": 0
+}

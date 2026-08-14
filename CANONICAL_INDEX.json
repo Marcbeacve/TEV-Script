@@ -200,6 +200,52 @@
       ],
       "implementation_plan": "docs/V1_IMPLEMENTATION_PLAN.md",
       "certification_protocol": "docs/V1_CERTIFICATION_PROTOCOL.md"
+    },
+    {
+      "language_version": "2.0.0",
+      "status": "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED",
+      "stable": false,
+      "authority_files": [
+        "spec/TEV_SCRIPT_V2_LANGUAGE.md",
+        "spec/TEV_SCRIPT_PROGRAM_IR_V4.md",
+        "spec/TEV_SCRIPT_V2_FILESYSTEM_CAPABILITIES.md",
+        "spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json",
+        "schemas/tev-script-v2-descriptor.schema.json",
+        "schemas/tev-script-program-ir-v4.schema.json",
+        "schemas/tev-script-v2-filesystem-artifacts.schema.json",
+        "schemas/tev-script-v2-certify-full-receipt.schema.json"
+      ],
+      "introspection_surface": {
+        "schema": "schemas/tev-script-v2-descriptor.schema.json",
+        "generator": "tev_script/descriptor_v2.py",
+        "module_cli": "tev_script/describe_v2.py",
+        "installed_cli": "tev-script-v2-describe",
+        "stable_claim": false
+      },
+      "filesystem_capability_surface": {
+        "specification": "spec/TEV_SCRIPT_V2_FILESYSTEM_CAPABILITIES.md",
+        "implementation": "tev_script/scoped_filesystem_v2.py",
+        "authority_anchor": "OPEN_DIRECTORY_OBJECT_IDENTITY_V1",
+        "path_resolution": "HANDLE_RELATIVE_NO_FOLLOW_V1",
+        "maximum_file_read_bytes": 1048576,
+        "unsupported_platform_fails_closed": true
+      },
+      "gates": {
+        "authority": "tools/validate_v2_authority.py",
+        "filesystem_safety": "tools/validate_v2_filesystem_safety.py",
+        "certify_full": "RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py",
+        "v1_non_regression": "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py"
+      },
+      "public_interfaces": {
+        "python_package": "tev_script",
+        "v2_cli": "tev-script-v2",
+        "v2_descriptor_cli": "tev-script-v2-describe",
+        "v2_module_cli": "python -m tev_script.cli_v2",
+        "v2_descriptor_module_cli": "python -m tev_script.describe_v2"
+      },
+      "feature_matrix": "spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json",
+      "publication_authorized": false,
+      "merge_authorized": false
     }
   ],
   "reference_implementations": [

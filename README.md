@@ -66,6 +66,32 @@ TREE=4d97cc4c50096325c6ccb1f36edf22afebea19fc
 
 The root `descriptor.json` remains the V0.2 descriptor. V1 introspection is versioned separately through `TEV_SCRIPT_DESCRIPTOR_V3` and `tev-script-v1-describe`.
 
+## V2 implementation candidate
+
+This branch also contains the additive TEV Script `2.0.0` implementation candidate.
+V2 is governed independently by:
+
+```text
+spec/TEV_SCRIPT_V2_LANGUAGE.md
+spec/TEV_SCRIPT_PROGRAM_IR_V4.md
+spec/TEV_SCRIPT_V2_FILESYSTEM_CAPABILITIES.md
+spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json
+schemas/tev-script-v2-*.schema.json
+schemas/tev-script-program-ir-v4.schema.json
+```
+
+Its public interfaces are `python -m tev_script.cli_v2`, `tev-script-v2`,
+`python -m tev_script.describe_v2`, and `tev-script-v2-describe`. The `descriptor`
+command reports the same self-hashed candidate contract. V2 certification is
+performed only by `RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py`; a V1 certificate is retained
+as regression evidence but is not V2 authority.
+
+The V2 filesystem boundary pins an opened root directory identity, performs
+no-follow handle-relative traversal, rejects an oversized `file.read` after consuming
+at most the 1 MiB budget plus one witness byte, and linearizes `file.replace` with a
+same-directory atomic rename. Unsupported secure primitives fail closed. None of
+these candidate materials authorizes publication or merge.
+
 ## Canonical source-semantic path
 
 ```text

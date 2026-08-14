@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev.dev/schemas/tev-script-v2-descriptor.schema.json",
+  "title": "TEV Script V2 Descriptor V1",
+  "type": "object",
+  "required": [
+    "schema", "language_version", "release_status", "stable", "source_extension",
+    "program_ir_schemas", "commands", "runtime_requires_source_compiler", "boundaries",
+    "filesystem_safety", "authority", "certification", "public_interfaces", "descriptor_hash"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_V2_DESCRIPTOR_V1"},
+    "language_version": {"const": "2.0.0"},
+    "release_status": {"const": "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED"},
+    "stable": {"const": false},
+    "source_extension": {"const": ".tevs"},
+    "program_ir_schemas": {
+      "type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true,
+      "items": {"enum": ["TEV_SCRIPT_PROGRAM_IR_V4_PURE_V1", "TEV_SCRIPT_PROGRAM_IR_V4_RECURSIVE_V1", "TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_V1", "TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_R2_V1"]}
+    },
+    "commands": {"type": "array", "minItems": 24, "maxItems": 24, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "runtime_requires_source_compiler": {"const": false},
+    "boundaries": {
+      "type": "object",
+      "required": ["dynamic_code", "unbounded_loops", "uncontracted_recursion", "implicit_host_io", "runtime_source_compilation", "physical_effect_commit", "file_provider_batch"],
+      "additionalProperties": false,
+      "properties": {
+        "dynamic_code": {"const": false},
+        "unbounded_loops": {"const": false},
+        "uncontracted_recursion": {"const": false},
+        "implicit_host_io": {"const": false},
+        "runtime_source_compilation": {"const": false},
+        "physical_effect_commit": {"const": "explicit_grant_only"},
+        "file_provider_batch": {"const": "single_file_replace_v1"}
+      }
+    },
+    "filesystem_safety": {
+      "type": "object",
+      "required": ["authority_anchor", "path_resolution", "maximum_file_read_bytes", "oversize_witness_bytes", "replace_linearization", "unsupported_platform_fails_closed"],
+      "additionalProperties": false,
+      "properties": {
+        "authority_anchor": {"const": "OPEN_DIRECTORY_OBJECT_IDENTITY_V1"},
+        "path_resolution": {"const": "HANDLE_RELATIVE_NO_FOLLOW_V1"},
+        "maximum_file_read_bytes": {"const": 1048576},
+        "oversize_witness_bytes": {"const": 1},
+        "replace_linearization": {"const": "SAME_DIRECTORY_ATOMIC_RENAME_V1"},
+        "unsupported_platform_fails_closed": {"const": true}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "required": ["normative_specifications", "json_schemas", "feature_matrix", "canonical_index"],
+      "additionalProperties": false,
+      "properties": {
+        "normative_specifications": {"type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "json_schemas": {"type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "feature_matrix": {"const": "spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json"},
+        "canonical_index": {"const": "CANONICAL_INDEX.json"}
+      }
+    },
+    "certification": {
+      "type": "object",
+      "required": ["certify_full_gate", "receipt_schema", "exact_git_identity_required", "clean_worktree_required", "v1_certificate_is_v2_authority", "publication_authorized", "merge_authorized"],
+      "additionalProperties": false,
+      "properties": {
+        "certify_full_gate": {"const": "RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py"},
+        "receipt_schema": {"const": "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V1"},
+        "exact_git_identity_required": {"const": true},
+        "clean_worktree_required": {"const": true},
+        "v1_certificate_is_v2_authority": {"const": false},
+        "publication_authorized": {"const": false},
+        "merge_authorized": {"const": false}
+      }
+    },
+    "public_interfaces": {
+      "type": "object",
+      "required": ["module_cli", "installed_cli", "descriptor_module_cli", "descriptor_installed_cli"],
+      "additionalProperties": false,
+      "properties": {
+        "module_cli": {"const": "python -m tev_script.cli_v2"},
+        "installed_cli": {"const": "tev-script-v2"},
+        "descriptor_module_cli": {"const": "python -m tev_script.describe_v2"},
+        "descriptor_installed_cli": {"const": "tev-script-v2-describe"}
+      }
+    },
+    "descriptor_hash": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
