@@ -417,7 +417,10 @@ def _bounded_utf8_bytes(value: str) -> bytes:
         _fail("TEVS_FILE_READ_EVIDENCE_CONTENT", "file.read evidence content exceeds the configured budget")
     bounded = bytearray()
     for character in value:
-        encoded = character.encode("utf-8")
+        try:
+            encoded = character.encode("utf-8")
+        except UnicodeEncodeError:
+            _fail("TEVS_FILE_READ_EVIDENCE_CONTENT", "file.read evidence content must be valid UTF-8")
         remaining = MAX_FILE_READ_BYTES_V2 + 1 - len(bounded)
         if len(encoded) > remaining:
             bounded.extend(encoded[:remaining])
