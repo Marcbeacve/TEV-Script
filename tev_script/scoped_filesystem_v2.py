@@ -276,7 +276,10 @@ def _parse_relative(raw_relative: str) -> tuple[tuple[str, ...], str]:
 
 
 def _validate_win_unicode_name(name: str) -> int:
-    encoded_length = len(name.encode("utf-16-le"))
+    try:
+        encoded_length = len(name.encode("utf-16-le"))
+    except UnicodeEncodeError:
+        _fail("TEVS_SCOPED_FS_PATH", "scoped path segment cannot be represented as UTF-16LE")
     if encoded_length + 2 > 0xFFFF:
         _fail("TEVS_SCOPED_FS_PATH", "scoped path segment is too long for Windows")
     return encoded_length
