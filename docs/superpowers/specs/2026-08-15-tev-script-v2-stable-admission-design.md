@@ -37,6 +37,8 @@ STABLE_ADMISSION_V2=PASS -> LANGUAGE_STABLE=YES
 
 The stable gate must never be introduced or modified in the same release-only diff whose stability it judges.
 
+Language version and distribution version are distinct authorities. V2 language stability is `2.0.0`; the existing Python reference distribution remains `1.0.0` during this admission because V1 stable non-regression currently binds that package version. A future package-version transition is a separate technical/release project and must not be smuggled into V2 Stable Admission.
+
 ## Approaches considered
 
 ### A. Direct stable release from current `main`
@@ -68,20 +70,31 @@ P0=fef64edf903610b87a1dc959ef7cbf7ab9f5400f
 
 Phase T is **not** a stable release. Every observable stable claim remains false.
 
-### T1. Repeatable V2 technical certification
+### T1. Repeatable/profile-aware V2 technical certification
 
-The existing V2 certifier is historically pinned to the original V2 implementation base `284ec3ec...`. That one-shot binding must remain valid for historical receipts.
+The existing V2 certifier is historically pinned to the original V2 implementation base `284ec3ec...`, and the current authority validator hard-codes the candidate profile. Those historical semantics must remain valid by default.
 
-Extend `RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py` without invalidating the legacy path:
+Extend `RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py` and `tools/validate_v2_authority.py` additively:
 
-- Default invocation preserves the historical pinned-base behavior and `TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V1` semantics.
-- Add an explicit `--expected-base <40-hex-sha>` mode for future technical-parent certification.
-- In current-base mode, require `origin/main == expected_base`, require `expected_base` to be an ancestor of `HEAD`, require an `agent/` branch, require a clean worktree, and bind the exact commit/tree/base.
-- Current-base mode emits a new `TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V2` receipt validated by a new schema. The V1 receipt schema remains immutable.
-- Both modes run the same V2 authority, schemas/contracts, CLI, source/static, Program IR V4, filesystem-safety, governed-regression, full-regression, and V1 non-regression evidence.
-- Both modes must emit `LANGUAGE_STABLE=NO`.
+- Default invocation preserves the historical candidate/pinned-base behavior and `TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V1` semantics.
+- Add `--profile candidate|stable`, defaulting to `candidate`.
+- Add explicit `--expected-base <40-hex-sha>` current-base mode.
+- In current-base mode, require `origin/main == expected_base`, require `expected_base` to be an ancestor of `HEAD`, require an `agent/` branch, require a clean worktree, and bind exact commit/tree/base.
+- Current-base mode emits `TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V2` validated by a new additive schema. It includes `admission_profile`; its base SHA is exact but not globally hard-coded. The V1 receipt schema remains immutable.
+- Candidate profile requires candidate/non-stable index, feature matrix, release metadata, descriptor, and schema state.
+- Stable profile requires stable-shaped index, feature matrix, release metadata, descriptor, and schema state, but the technical certifier still emits `LANGUAGE_STABLE=NO`.
+- Both profiles run the same semantic/security evidence: V2 normative authority, schemas/contracts, CLI, source/static, Program IR V4, filesystem safety, governed regression, full regression, and V1 stable non-regression.
 
-This creates a reusable technical certification authority without rewriting historical evidence.
+Phase T itself is certified with:
+
+```text
+RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py \
+  --profile candidate \
+  --expected-base fef64edf903610b87a1dc959ef7cbf7ab9f5400f \
+  --receipt-out <external-path>
+```
+
+This creates reusable technical certification without rewriting historical evidence.
 
 ### T2. Release metadata indirection
 
@@ -100,7 +113,7 @@ STABLE_LANGUAGE_VERSION=2.0.0
 
 `descriptor_v2.py` must read release state from this module rather than hard-code candidate/stable values. In Phase T this refactor must be behavior-preserving: descriptor output remains non-stable.
 
-The descriptor must expose stable-admission authority even while the claim is false:
+The descriptor exposes stable-admission authority even while the claim is false:
 
 - stable admission gate path;
 - stable admission receipt schema;
@@ -109,6 +122,8 @@ The descriptor must expose stable-admission authority even while the claim is fa
 - artifact byte-identity requirement;
 - current technical certification claim;
 - current language-stable claim.
+
+The historical `certified_base_sha=284ec3ec...` remains an initial-V2 lineage datum; it is not reused as the future stable technical-parent identity.
 
 ### T3. Descriptor/schema authority
 
@@ -119,13 +134,13 @@ Generalize `schemas/tev-script-v2-descriptor.schema.json` so it accepts exactly 
 
 Do not weaken semantic/security fields. Program IR, filesystem invariants, command inventory, capability boundaries, and runtime-source restrictions remain identical across profiles.
 
-Add the new current-base technical receipt schema as additive authority; preserve the existing receipt schema unchanged.
+Add the current-base V2 technical receipt schema and the V2 stable-admission receipt schema as additive authority. Preserve the historical V2 receipt schema unchanged.
 
 ### T4. V2 stable governance validator
 
 Add `tools/validate_v2_stable_governance.py`.
 
-It validates only release/governance state and must fail closed unless all of the following hold:
+It validates only release/governance state and fails closed unless all of the following hold:
 
 - release profile is `stable`;
 - release status is `STABLE_2_0_0`;
@@ -133,13 +148,33 @@ It validates only release/governance state and must fail closed unless all of th
 - descriptor and descriptor schema agree with stable state;
 - feature matrix declares stable admission and its required promotion gates;
 - technical-parent commit/hash are valid and exposed consistently;
-- Python project version is `2.0.0`, dependencies remain empty, and V2 CLI entry points remain present;
-- README, CHANGELOG, and PROJECT_STATE contain the stable-admission identity/witness tokens;
+- Python project version remains `1.0.0`, dependencies remain empty, and V2 CLI entry points remain present;
+- README, CHANGELOG, and PROJECT_STATE contain stable-admission identity/witness tokens;
 - no JavaScript/C#/Unity V2 stability is implied unless separately proven.
 
-### T5. V2 stable admission gate
+The `1.0.0` Python package-version check is deliberate: it preserves the already-stable V1 package contract while admitting V2 as a language. Language V2 and package-version evolution are decoupled.
 
-Add `RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py` plus a stable-admission receipt schema.
+### T5. V2 Python artifact certification
+
+Add `RUN_TEV_SCRIPT_V2_PYTHON_CERTIFY_FULL.py` as a technical packaging gate. It supports candidate/stable profiles but never emits a stable-language claim.
+
+It must:
+
+- require a clean exact Git identity;
+- build artifacts outside the repository;
+- produce exactly one wheel;
+- require distribution name `tev-script-portable-reference` and package version `1.0.0`;
+- verify V2 console entry points `tev-script-v2` and `tev-script-v2-describe` exist in wheel metadata;
+- verify the installed/imported wheel exposes the V2 descriptor and CLI from the wheel, not from the checkout;
+- verify descriptor self-hash and language version `2.0.0`;
+- record exact wheel filename/hash and technical Git identity in a self-hashed external receipt;
+- emit `PYTHON_V2_CERTIFY_FULL=PASS` and `LANGUAGE_STABLE=NO` only on success.
+
+This proves that the existing 1.0.0 reference distribution physically carries the admitted V2 surface without falsely claiming a package 2.0 release.
+
+### T6. V2 stable admission gate
+
+Add `RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py` plus `TEV_SCRIPT_V2_STABLE_ADMISSION_RECEIPT_V1` schema.
 
 The gate consumes:
 
@@ -152,41 +187,43 @@ It must:
 
 1. require clean worktree before and after;
 2. bind exact `HEAD`, tree, branch, and technical parent;
-3. validate the external technical-parent certificate hash and schema;
-4. require the certificate commit/tree to equal the declared technical parent;
+3. validate external technical-parent certificate hash and `TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V2` schema;
+4. require the certificate profile to be `candidate` and its commit/tree to equal the declared technical parent;
 5. require the technical parent to be an ancestor of the stable candidate;
 6. enforce the exact release-only diff whitelist;
 7. run V2 stable governance;
-8. run V2 technical certification in current-base/stable-head mode while requiring that technical certification itself still reports `LANGUAGE_STABLE=NO`;
-9. run V1 non-regression certification;
-10. build exactly one Python wheel, verify filename/version/hash against the certification receipt, and keep artifacts outside the repository;
+8. run V2 technical certification with `--profile stable --expected-base P`, requiring that it still emits `LANGUAGE_STABLE=NO`;
+9. run V1 stable non-regression certification;
+10. run V2 Python artifact certification with stable profile and verify exact wheel byte identity;
 11. verify descriptor self-hash and canonical release metadata consistency;
 12. verify HEAD/tree unchanged after all gates;
-13. emit a self-hashed `TEV_SCRIPT_V2_STABLE_ADMISSION_RECEIPT_V1`;
+13. emit a self-hashed `TEV_SCRIPT_V2_STABLE_ADMISSION_RECEIPT_V1` outside the repository;
 14. emit `CERTIFY_FULL=PASS`, `STABLE_ADMISSION=PASS`, and only then `LANGUAGE_STABLE=YES`.
 
-No stable tag, release, push, PR, or merge is performed by the gate.
+No tag, release, push, PR, or merge is performed by the gate.
 
-### T6. Phase-T tests
+### T7. Phase-T tests
 
 Add governed tests for:
 
-- historical V1 receipt compatibility;
+- historical V2 receipt V1 compatibility;
 - current-base technical-certification identity binding;
+- candidate/stable profile discrimination;
 - base drift rejection;
 - dirty-worktree rejection;
 - descriptor candidate/stable profile schema discrimination;
 - candidate profile cannot claim stable;
 - stable profile cannot omit parent certificate identity;
 - stable-admission release diff rejects every non-whitelisted path;
-- technical gate cannot self-promote;
+- technical gates cannot self-promote;
 - stable gate rejects missing/mismatched parent certificate;
 - artifact directory must be external and empty;
+- V2 wheel gate proves entry points and imports originate from the wheel;
 - stable gate verifies exact wheel byte identity;
 - stable gate leaves repository identity unchanged;
 - negative control proving a technical implementation change cannot be hidden in an S release.
 
-Phase T must pass full repository regression with zero skips and fresh V1/V2 certification before it can become technical parent `P`.
+Phase T must pass full repository regression with zero skips and fresh V1/V2 technical certification before it can become technical parent `P`.
 
 ## Phase S — release-only stable identity
 
@@ -201,19 +238,18 @@ Create a new `agent/` branch from `P`.
 
 ### Closed release path set
 
-Exactly these seven paths may differ from `P`:
+Exactly these six paths may differ from `P`:
 
 ```text
 CANONICAL_INDEX.json
 CHANGELOG.md
 PROJECT_STATE.md
 README.md
-pyproject.toml
 spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json
 tev_script/release_metadata_v2.py
 ```
 
-No parser, compiler, IR, runtime, filesystem, schema, certifier, validator, or test file may change in Phase S.
+`pyproject.toml` is intentionally excluded. No parser, compiler, IR, runtime, filesystem, schema, certifier, validator, test, or package-version file may change in Phase S.
 
 ### Required S state
 
@@ -230,9 +266,9 @@ TECHNICAL_PARENT_CERTIFICATE_SHA256=P_CERT
 STABLE_LANGUAGE_VERSION=2.0.0
 ```
 
-`CANONICAL_INDEX.json` and the V2 feature matrix must expose the stable V2 target and stable-admission gate. The Python distribution version becomes `2.0.0`; existing V1 compatibility surfaces remain present. README, CHANGELOG, and PROJECT_STATE record the exact technical parent and the fact that the stable claim is pending gate execution until `STABLE_ADMISSION=PASS`.
+`CANONICAL_INDEX.json` and the V2 feature matrix expose the stable V2 target and stable-admission gate. README, CHANGELOG, and PROJECT_STATE record the exact technical parent and state that the stable-shaped source claim remains pending until `STABLE_ADMISSION=PASS`.
 
-JavaScript, C#, and Unity package/version claims are not promoted to V2 merely because Python V2 becomes stable. Cross-runtime V2 stability requires separate evidence if later desired.
+The Python distribution remains version `1.0.0` and is certified byte-for-byte as carrying the V2 stable public surface. Existing V1 compatibility/stability remains intact. JavaScript, C#, and Unity package/version claims are not promoted to V2 merely because the V2 language becomes stable; cross-runtime V2 stability requires separate evidence.
 
 ## Stable admission data flow
 
@@ -246,8 +282,8 @@ S release-only tree
             +--> release diff confinement
             +--> stable governance
             +--> V2 technical recertification -> LANGUAGE_STABLE=NO
-            +--> V1 non-regression
-            +--> Python wheel build/hash
+            +--> V1 stable non-regression
+            +--> V2 Python wheel certification -> LANGUAGE_STABLE=NO
             +--> descriptor/index/matrix consistency
             +--> clean HEAD/tree invariant
             |
@@ -260,7 +296,7 @@ LANGUAGE_STABLE=YES
 
 ## Error handling
 
-Every identity, schema, hash, path-set, artifact, or gate mismatch fails closed with exit code non-zero and the terminal witnesses:
+Every identity, schema, hash, path-set, artifact, or gate mismatch fails closed with exit code non-zero and terminal witnesses:
 
 ```text
 STABLE_ADMISSION=FAIL
@@ -279,17 +315,19 @@ Phase T is complete only when the stable-admission machinery is technically cert
 Phase S is admitted only when:
 
 ```text
-V2_TECHNICAL_PARENT_CERTIFICATE      PASS
-V2_RELEASE_DIFF_CONFINEMENT          PASS
-V2_STABLE_GOVERNANCE                 PASS
-V2_TECHNICAL_RECERTIFICATION         PASS
-V1_NON_REGRESSION                     PASS
-PYTHON_2_0_0_WHEEL_BYTE_IDENTITY     PASS
-DESCRIPTOR_INDEX_MATRIX_CONSISTENCY  PASS
-WORKTREE_CLEAN_BEFORE_AFTER          PASS
-HEAD_TREE_UNCHANGED                  PASS
-STABLE_ADMISSION                     PASS
-LANGUAGE_STABLE                      YES
+V2_TECHNICAL_PARENT_CERTIFICATE       PASS
+V2_RELEASE_DIFF_CONFINEMENT           PASS
+V2_STABLE_GOVERNANCE                  PASS
+V2_TECHNICAL_RECERTIFICATION          PASS
+V1_STABLE_NON_REGRESSION              PASS
+V2_PYTHON_WHEEL_BYTE_IDENTITY         PASS
+V2_LANGUAGE_VERSION_2_0_0             PASS
+PYTHON_PACKAGE_VERSION_1_0_0          PASS
+DESCRIPTOR_INDEX_MATRIX_CONSISTENCY   PASS
+WORKTREE_CLEAN_BEFORE_AFTER           PASS
+HEAD_TREE_UNCHANGED                   PASS
+STABLE_ADMISSION                      PASS
+LANGUAGE_STABLE                       YES
 ```
 
 Publication and merge of Phase T and Phase S remain separate governed actions requiring explicit authorization. A stable tag/release is a further action and is not implied by Stable Admission or merge.
