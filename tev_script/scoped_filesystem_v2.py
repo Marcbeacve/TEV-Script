@@ -134,7 +134,7 @@ def open_scoped_root_v2(root: str | os.PathLike[str]) -> ScopedFilesystemRootV2:
             _win_close(handle)
             raise
 
-    required_flags = ("O_DIRECTORY", "O_NOFOLLOW")
+    required_flags = ("O_DIRECTORY", "O_NOFOLLOW", "O_NONBLOCK")
     if any(not hasattr(os, name) for name in required_flags):
         _fail("TEVS_SCOPED_FS_UNSUPPORTED", "POSIX secure directory primitives are unavailable")
     flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
@@ -293,7 +293,7 @@ def _posix_open_parent(root: ScopedFilesystemRootV2, parts: tuple[str, ...]) -> 
 
 
 def _posix_open_file(parent: int, name: str, canonical: str) -> int:
-    flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
     try:
         descriptor = os.open(name, flags, dir_fd=parent)
     except OSError as error:
@@ -312,7 +312,7 @@ def _posix_existing_bytes(parent: int, name: str, canonical: str, maximum: int) 
     try:
         descriptor = os.open(
             name,
-            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0),
             dir_fd=parent,
         )
     except FileNotFoundError:

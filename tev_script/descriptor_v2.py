@@ -13,6 +13,7 @@ from .program_ir_v4_effect_commands import PROGRAM_IR_V4_EFFECTS_R2_SCHEMA
 from .source_program_v2 import LANGUAGE_VERSION_V2
 
 
+V2_CERTIFIED_BASE_SHA = "284ec3ec8c41681825ec1a8421f7ee2a1b012d68"
 V2_NORMATIVE_PATHS = (
     "spec/TEV_SCRIPT_V2_LANGUAGE.md",
     "spec/TEV_SCRIPT_PROGRAM_IR_V4.md",
@@ -94,6 +95,7 @@ def v2_descriptor() -> dict[str, Any]:
         "certification": {
             "certify_full_gate": "RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py",
             "receipt_schema": "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V1",
+            "certified_base_sha": V2_CERTIFIED_BASE_SHA,
             "exact_git_identity_required": True,
             "clean_worktree_required": True,
             "v1_certificate_is_v2_authority": False,

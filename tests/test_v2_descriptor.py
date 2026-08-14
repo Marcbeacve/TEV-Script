@@ -21,6 +21,7 @@ class V2DescriptorTests(unittest.TestCase):
 
     def test_descriptor_reports_independent_nonstable_v2_authority(self) -> None:
         descriptor = v2_descriptor()
+        self.assertEqual(descriptor["certification"]["certified_base_sha"], "284ec3ec8c41681825ec1a8421f7ee2a1b012d68")
         self.assertEqual(descriptor["schema"], "TEV_SCRIPT_V2_DESCRIPTOR_V1")
         self.assertEqual(descriptor["language_version"], "2.0.0")
         self.assertEqual(descriptor["release_status"], "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED")

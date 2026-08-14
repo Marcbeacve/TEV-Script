@@ -15,7 +15,7 @@ from jsonschema import Draft202012Validator, ValidationError  # noqa: E402
 
 from tev_script.canonical import canonical_hash  # noqa: E402
 from tev_script.cli_v2 import build_parser  # noqa: E402
-from tev_script.descriptor_v2 import V2_COMMANDS, v2_descriptor  # noqa: E402
+from tev_script.descriptor_v2 import V2_CERTIFIED_BASE_SHA, V2_COMMANDS, v2_descriptor  # noqa: E402
 from tev_script.diagnostics import TevScriptError  # noqa: E402
 from tev_script.program_ir_v4 import (  # noqa: E402
     export_program_ir_v4_pure,
@@ -68,6 +68,8 @@ def _require_inventory() -> tuple[dict[str, Any], dict[str, Any]]:
         raise V2AuthorityFailure("V2 feature matrix schema mismatch")
     if matrix.get("language_version") != "2.0.0" or matrix.get("stable") is not False:
         raise V2AuthorityFailure("V2 feature matrix version/stability mismatch")
+    if matrix.get("certified_base_sha") != V2_CERTIFIED_BASE_SHA:
+        raise V2AuthorityFailure("V2 feature matrix certified base mismatch")
     if tuple(matrix.get("authority_files", ())) != AUTHORITY_PATHS:
         raise V2AuthorityFailure("V2 feature matrix authority inventory mismatch")
     governed = matrix.get("governed_paths")
@@ -90,6 +92,8 @@ def _require_inventory() -> tuple[dict[str, Any], dict[str, Any]]:
         raise V2AuthorityFailure("canonical V2 target status/stability mismatch")
     if tuple(target.get("authority_files", ())) != AUTHORITY_PATHS:
         raise V2AuthorityFailure("canonical V2 target authority inventory mismatch")
+    if target.get("certified_base_sha") != V2_CERTIFIED_BASE_SHA:
+        raise V2AuthorityFailure("canonical V2 target certified base mismatch")
     if target.get("publication_authorized") is not False or target.get("merge_authorized") is not False:
         raise V2AuthorityFailure("canonical V2 target makes an unauthorized promotion claim")
     return matrix, target

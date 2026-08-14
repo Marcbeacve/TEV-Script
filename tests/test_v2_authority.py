@@ -29,6 +29,7 @@ class V2AuthorityTests(unittest.TestCase):
         ]
         self.assertEqual(len(targets), 1)
         target = targets[0]
+        self.assertEqual(target["certified_base_sha"], "284ec3ec8c41681825ec1a8421f7ee2a1b012d68")
         self.assertEqual(target["status"], "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED")
         self.assertIs(target["stable"], False)
         self.assertEqual(tuple(target["authority_files"]), NORMATIVE_PATHS)
@@ -43,6 +44,7 @@ class V2AuthorityTests(unittest.TestCase):
         matrix = json.loads((ROOT / "spec" / "TEV_SCRIPT_V2_FEATURE_MATRIX.json").read_text(encoding="utf-8"))
         self.assertEqual(matrix["schema"], "TEV_SCRIPT_V2_FEATURE_MATRIX_V1")
         self.assertEqual(matrix["language_version"], "2.0.0")
+        self.assertEqual(matrix["certified_base_sha"], "284ec3ec8c41681825ec1a8421f7ee2a1b012d68")
         self.assertIs(matrix["stable"], False)
         self.assertEqual(tuple(matrix["authority_files"]), NORMATIVE_PATHS)
         governed = matrix["governed_paths"]

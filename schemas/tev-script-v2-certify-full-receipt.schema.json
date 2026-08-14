@@ -10,7 +10,7 @@
     "repository": {"const": "Marcbeacve/TEV-Script"},
     "commit_sha": {"$ref": "#/$defs/gitSha"},
     "tree_sha": {"$ref": "#/$defs/gitSha"},
-    "base_sha": {"$ref": "#/$defs/gitSha"},
+    "base_sha": {"const": "284ec3ec8c41681825ec1a8421f7ee2a1b012d68"},
     "branch": {"type": "string", "pattern": "^agent/[a-z0-9._/-]+$"},
     "dirty": {"const": false},
     "python_version": {"type": "string", "pattern": "^3\\.(?:1[1-9]|[2-9][0-9])(?:\\.[0-9]+)?$"},

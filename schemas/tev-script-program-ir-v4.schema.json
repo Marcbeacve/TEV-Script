@@ -10,7 +10,7 @@
   ],
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "name": {"type": "string", "minLength": 1, "maxLength": 512},
+    "name": {"type": "string", "minLength": 1},
     "jsonValue": {},
     "parameter": {
       "type": "object", "required": ["name", "type"], "additionalProperties": false,

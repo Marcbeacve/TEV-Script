@@ -61,11 +61,12 @@
     },
     "certification": {
       "type": "object",
-      "required": ["certify_full_gate", "receipt_schema", "exact_git_identity_required", "clean_worktree_required", "v1_certificate_is_v2_authority", "publication_authorized", "merge_authorized"],
+      "required": ["certify_full_gate", "receipt_schema", "certified_base_sha", "exact_git_identity_required", "clean_worktree_required", "v1_certificate_is_v2_authority", "publication_authorized", "merge_authorized"],
       "additionalProperties": false,
       "properties": {
         "certify_full_gate": {"const": "RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py"},
         "receipt_schema": {"const": "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V1"},
+        "certified_base_sha": {"const": "284ec3ec8c41681825ec1a8421f7ee2a1b012d68"},
         "exact_git_identity_required": {"const": true},
         "clean_worktree_required": {"const": true},
         "v1_certificate_is_v2_authority": {"const": false},

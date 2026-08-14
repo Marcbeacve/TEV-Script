@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -148,6 +149,41 @@ class ScopedFilesystemV2Tests(unittest.TestCase):
         chunks = iter((b"abc", b"def", b""))
         data = _consume_bounded_v2(lambda _maximum: next(chunks), 6)
         self.assertEqual(data, b"abcdef")
+
+    def test_posix_fifo_fails_closed_without_blocking_read_or_replace(self) -> None:
+        if os.name == "nt":
+            import inspect
+
+            self.assertIn("O_NONBLOCK", inspect.getsource(scoped_filesystem._posix_open_file))
+            self.assertIn("O_NONBLOCK", inspect.getsource(scoped_filesystem._posix_existing_bytes))
+            return
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            os.mkfifo(root / "pipe")
+            program = """
+import sys
+from tev_script.diagnostics import TevScriptError
+from tev_script.scoped_filesystem_v2 import open_scoped_root_v2, read_scoped_file_v2, replace_scoped_file_v2
+with open_scoped_root_v2(sys.argv[1]) as scope:
+    for operation in (
+        lambda: read_scoped_file_v2(scope, "pipe", maximum_bytes=16),
+        lambda: replace_scoped_file_v2(scope, "pipe", b"value"),
+    ):
+        try:
+            operation()
+        except TevScriptError as error:
+            assert error.diagnostic.code == "TEVS_SCOPED_FS_KIND", error.diagnostic.code
+        else:
+            raise AssertionError("FIFO must fail closed")
+"""
+            completed = subprocess.run(
+                [sys.executable, "-c", program, str(root)],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
 
     @staticmethod
     def _create_directory_link(link: Path, target: Path) -> None:

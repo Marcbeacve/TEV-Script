@@ -87,6 +87,18 @@ class V2SchemaTests(unittest.TestCase):
                 with self.assertRaises(ValidationError):
                     validator.validate(uppercase)
 
+    def test_program_ir_schema_accepts_maximum_depth_constructed_type_ids(self) -> None:
+        validator = Draft202012Validator(load_schema(SCHEMA_PATHS[1]))
+        nested = "Int"
+        for _ in range(127):
+            nested = f"Option<{nested}>"
+        compiled = compile_program_v2(
+            f'script Deep version "2.0.0"; entry main:{nested}=None;'
+        )
+        program = export_program_ir_v4_pure(compiled)
+        self.assertGreater(len(program["entry"]["return_type"]), 512)
+        validator.validate(program)
+
     def test_filesystem_artifact_schema_rejects_unknown_and_bad_hash(self) -> None:
         validator = Draft202012Validator(load_schema(SCHEMA_PATHS[2]))
         artifact = {

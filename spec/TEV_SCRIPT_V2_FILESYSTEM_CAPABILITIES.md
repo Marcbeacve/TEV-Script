@@ -66,7 +66,9 @@ handle without following the final segment. It must resolve to a non-reparse
 directory. A final read target must be a non-reparse regular file.
 
 On POSIX, conforming primitives are descriptor-relative open/rename with
-`O_DIRECTORY`, `O_NOFOLLOW`, and directory FDs. On Windows, conforming primitives are
+`O_DIRECTORY`, `O_NOFOLLOW`, `O_NONBLOCK` for final read candidates, and directory
+FDs. A FIFO, device, socket, or other special final object is rejected from opened
+descriptor metadata without waiting for a peer. On Windows, conforming primitives are
 root-handle-relative NT opens with `FILE_OPEN_REPARSE_POINT`, post-open type/identity
 inspection, and handle-relative rename. Equivalent kernels MAY be used if they prove
 the same properties.

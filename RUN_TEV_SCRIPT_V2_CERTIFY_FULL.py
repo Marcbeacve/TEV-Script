@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT))
 from jsonschema import Draft202012Validator  # noqa: E402
 
 from tev_script.canonical import canonical_hash, canonical_json  # noqa: E402
+from tev_script.descriptor_v2 import V2_CERTIFIED_BASE_SHA as CERTIFIED_BASE_SHA  # noqa: E402
 
 
 REPOSITORY = "Marcbeacve/TEV-Script"
@@ -63,11 +64,17 @@ def collect_git_identity(root: Path) -> GitIdentity:
         raise V2CertificationFailure(f"V2 certification requires an agent/ branch, observed={branch!r}")
     commit_sha = _git(root, "rev-parse", "--verify", "HEAD")
     tree_sha = _git(root, "rev-parse", "--verify", "HEAD^{tree}")
-    base_sha = _git(root, "rev-parse", "--verify", "origin/main")
+    observed_origin_main = _git(root, "rev-parse", "--verify", "origin/main")
+    if observed_origin_main != CERTIFIED_BASE_SHA:
+        raise V2CertificationFailure(
+            "origin/main drift from pinned V2 base: "
+            f"expected={CERTIFIED_BASE_SHA} observed={observed_origin_main}"
+        )
+    base_sha = CERTIFIED_BASE_SHA
     for label, value in (("HEAD", commit_sha), ("tree", tree_sha), ("base", base_sha)):
         if _GIT_SHA.fullmatch(value) is None:
             raise V2CertificationFailure(f"invalid {label} Git identity: {value!r}")
-    _git(root, "merge-base", "--is-ancestor", "origin/main", "HEAD")
+    _git(root, "merge-base", "--is-ancestor", CERTIFIED_BASE_SHA, "HEAD")
     return GitIdentity(branch, commit_sha, tree_sha, base_sha)
 
 

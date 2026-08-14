@@ -27,8 +27,8 @@ class V2CertifyFullTests(unittest.TestCase):
             ("symbolic-ref", "--quiet", "--short", "HEAD"): "agent/v2",
             ("rev-parse", "--verify", "HEAD"): "1" * 40,
             ("rev-parse", "--verify", "HEAD^{tree}"): "2" * 40,
-            ("rev-parse", "--verify", "origin/main"): "3" * 40,
-            ("merge-base", "--is-ancestor", "origin/main", "HEAD"): "",
+            ("rev-parse", "--verify", "origin/main"): gate.CERTIFIED_BASE_SHA,
+            ("merge-base", "--is-ancestor", gate.CERTIFIED_BASE_SHA, "HEAD"): "",
         }
 
         def fake_git(_root, *arguments):
@@ -39,7 +39,13 @@ class V2CertifyFullTests(unittest.TestCase):
         self.assertEqual(identity.branch, "agent/v2")
         self.assertEqual(identity.commit_sha, "1" * 40)
         self.assertEqual(identity.tree_sha, "2" * 40)
-        self.assertEqual(identity.base_sha, "3" * 40)
+        self.assertEqual(identity.base_sha, gate.CERTIFIED_BASE_SHA)
+
+    def test_collect_git_identity_rejects_mutable_origin_main_drift(self) -> None:
+        values = iter(("", "agent/v2", "1" * 40, "2" * 40, "3" * 40))
+        with patch.object(gate, "_git", side_effect=lambda *_args: next(values)):
+            with self.assertRaisesRegex(gate.V2CertificationFailure, "origin/main drift"):
+                gate.collect_git_identity(ROOT)
 
     def test_run_checked_requires_exit_zero_and_every_witness(self) -> None:
         missing = subprocess.CompletedProcess(["python"], 0, "A=PASS\n", "")
@@ -59,7 +65,7 @@ class V2CertifyFullTests(unittest.TestCase):
         self.assertEqual(len(modules), len(set(modules)))
 
     def test_receipt_is_self_hashing_schema_valid_and_not_a_stable_claim(self) -> None:
-        identity = gate.GitIdentity("agent/v2", "1" * 40, "2" * 40, "3" * 40)
+        identity = gate.GitIdentity("agent/v2", "1" * 40, "2" * 40, gate.CERTIFIED_BASE_SHA)
         receipt = gate.build_receipt(
             identity,
             python_version="3.14.6",
