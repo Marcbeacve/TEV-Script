@@ -213,27 +213,57 @@ def _stop_browser_process(process: subprocess.Popen[str] | None, profile: Path) 
         return
     environment = os.environ.copy()
     environment["TEV_BROWSER_PROFILE_CLEANUP"] = str(profile.resolve())
-    subprocess.run(
-        [
-            "powershell.exe",
-            "-NoProfile",
-            "-NonInteractive",
-            "-Command",
-            "$needle=$env:TEV_BROWSER_PROFILE_CLEANUP; "
-            "$deadline=(Get-Date).AddSeconds(30); "
-            "do { "
-            "$targets=@(Get-CimInstance Win32_Process | "
-            "Where-Object { $_.CommandLine -and $_.CommandLine.Contains($needle) }); "
-            "if ($targets.Count -eq 0) { exit 0 }; "
-            "$targets | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; "
-            "Start-Sleep -Milliseconds 250 "
-            "} while ((Get-Date) -lt $deadline); exit 1",
-        ],
-        cwd=ROOT,
-        env=environment,
-        capture_output=True,
-        check=False,
-    )
+    arguments = [
+        "powershell.exe",
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "$needle=$env:TEV_BROWSER_PROFILE_CLEANUP; "
+        "$deadline=(Get-Date).AddSeconds(30); "
+        "do { "
+        "$targets=@(Get-CimInstance Win32_Process | "
+        "Where-Object { $_.CommandLine -and $_.CommandLine.Contains($needle) }); "
+        "if ($targets.Count -eq 0) { exit 0 }; "
+        "$targets | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; "
+        "Start-Sleep -Milliseconds 250 "
+        "} while ((Get-Date) -lt $deadline); exit 1",
+    ]
+    try:
+        completed = subprocess.run(
+            arguments,
+            cwd=ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+            timeout=35,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError(
+            "browser profile cleanup timed out; stdout="
+            + _cleanup_output(error.stdout)
+            + "; stderr="
+            + _cleanup_output(error.stderr)
+        ) from error
+    if completed.returncode != 0:
+        raise RuntimeError(
+            f"browser profile cleanup exited {completed.returncode}; stdout="
+            + _cleanup_output(completed.stdout)
+            + "; stderr="
+            + _cleanup_output(completed.stderr)
+        )
+
+
+def _cleanup_output(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        text = value.decode("utf-8", errors="replace")
+    else:
+        text = value
+    return text[-4000:].replace("\r", "\\r").replace("\n", "\\n")
 
 
 def main() -> int:
