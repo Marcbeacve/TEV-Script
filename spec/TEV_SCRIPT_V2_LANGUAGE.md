@@ -59,16 +59,18 @@ Numeric tokens have no sign; negation is an expression operator. Leading zeroes 
 not canonical except for zero itself. Rational arithmetic remains exact. Host-native
 floating-point values are not TEV values.
 
-Reserved keywords are:
+Structural words are recognized contextually by the productions below. They are not
+a separate token class; an identifier position is rejected only where the governing
+production or static rule reserves that spelling.
 
 ```text
-script module import as export private version
-generic record enum protocol type impl for where
+script module import as export version
+generic record protocol type impl for in fold while when max_iterations
 fn recursive decreases max_depth max_steps entry
 state capability observation command action
-let if then else match self assert
-observe all request set
-spawn task join cancel select priority
+let if then else match self assert not
+observe all request set map
+spawn task scope return await within_steps do select first_within
 true false Some None Ok Err
 ```
 
@@ -189,8 +191,32 @@ expression = literal | identifier | field-expression | call-expression
            | constructor-expression | collection-expression
            | unary-expression | binary-expression
            | "if" , expression , "then" , expression , "else" , expression
-           | "let" , identifier , "=" , expression , ";" , expression
-           | match-expression | for-expression | task-expression ;
+           | match-expression | for-expression | while-expression
+           | task-expression | step-limit-expression | select-expression ;
+
+match-expression = "match" , expression , "{" , match-arm ,
+                   { match-arm } , "}" ;
+match-arm = identifier , [ "(" , identifier , ")" ] , "=>" , expression , ";" ;
+
+for-expression = "for" , identifier , [ "," , identifier ] , "in" , expression ,
+                 "fold" , identifier , ":" , type , "=" , expression ,
+                 "do" , expression ;
+while-expression = "while" , identifier , ":" , type , "=" , expression ,
+                   "when" , expression ,
+                   "max_iterations" , positive-integer , "do" , expression ;
+
+task-expression = task-scope-expression | await-all-expression | await-expression ;
+task-scope-expression = "task" , "scope" , "{" , spawn-declaration ,
+                        { spawn-declaration } , "return" , expression , ";" , "}" ;
+spawn-declaration = "spawn" , identifier , ":" , type , "=" , expression , ";" ;
+await-all-expression = "await" , "all" , "(" , task-binding ,
+                       { "," , task-binding } , [ "," ] , ")" , "=>" , expression ;
+task-binding = identifier , ":" , type , "=" , expression ;
+await-expression = "await" , identifier ;
+step-limit-expression = "within_steps" , positive-integer , "do" , expression ;
+select-expression = "select" , "first_within" , "{" ,
+                    step-limit-expression , ";" ,
+                    { step-limit-expression , ";" } , "}" ;
 ```
 
 Bindings are immutable and lexically scoped. Every name resolves uniquely. Function
@@ -213,15 +239,21 @@ host ordering. Text operations do not depend on locale.
 
 ### 6.2 Match
 
-A match over enum, `Option`, or `Result` must be exhaustive and have no duplicate or
+A match over `Option` or `Result` must be exhaustive and have no duplicate or
 unreachable arm. All arms produce the same static result type. Pattern bindings are
 immutable and arm-local.
 
 ### 6.3 Bounded iteration
 
-`for` expressions iterate a statically admitted finite collection or a statically
-bounded integer range. The compiler proves the maximum iteration count from type or
-literal bounds. Data-dependent unbounded iteration and `while` are absent.
+`for … fold` iterates a statically admitted List, Array, Set, or Map and updates an
+immutable accumulator value. One binding receives each sequence/set element; Map
+iteration uses two bindings for key and value. The collection type proves the maximum
+iteration count.
+
+`while … max_iterations N do …` is a bounded accumulator fold, not an unbounded
+loop. `N` is in `1..4096`; the condition and body can read the current accumulator,
+and the result is the accumulator after the first false condition or after exactly
+`N` true iterations. A missing finite bound is not syntax.
 
 ### 6.4 Contracted recursion
 
@@ -269,6 +301,14 @@ its explicit immutable inputs. Spawn order is nonsemantic. Join results are retu
 in declared task order. Cancellation follows `cooperative_boundary_v1`. Priority
 selection chooses the lowest declared priority and then lexical declaration order;
 speculative losers cannot commit observations, state, or physical effects.
+
+`await all` creates independent children and joins them in declared binding order.
+`task scope` admits an explicit acyclic dependency graph: `await name` may reference
+only a spawned binding and every binding required by `return` is evaluated under the
+closed graph. `within_steps N do value` admits `N` in `1..1,000,000` and fails before
+crossing that local budget. `select first_within` evaluates candidates under their
+declared step bounds and chooses the earliest lexical candidate that completes within
+its bound; speculative failure or cancellation cannot leak a commit.
 
 At most 4,096 pure tasks and the statically declared pure-evaluation step budget are
 admitted. Worker count and scheduling are operational only and cannot change

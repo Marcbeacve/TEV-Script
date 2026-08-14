@@ -67,6 +67,24 @@ class V2AuthorityTests(unittest.TestCase):
         self.assertIs(matrix["publication_authorized"], False)
         self.assertIs(matrix["merge_authorized"], False)
 
+    def test_normative_grammar_covers_every_bounded_control_form(self) -> None:
+        language = (ROOT / "spec" / "TEV_SCRIPT_V2_LANGUAGE.md").read_text(encoding="utf-8")
+        required = (
+            '"while" , identifier , ":" , type , "="',
+            '"max_iterations" , positive-integer',
+            '"task" , "scope"',
+            '"spawn" , identifier , ":" , type',
+            '"await" , "all"',
+            '"within_steps" , positive-integer , "do"',
+            '"select" , "first_within"',
+            '"for" , identifier',
+            '"fold" , identifier , ":" , type',
+        )
+        for marker in required:
+            with self.subTest(marker=marker):
+                self.assertIn(marker, language)
+        self.assertNotIn("Data-dependent unbounded iteration and `while` are absent", language)
+
 
 if __name__ == "__main__":
     unittest.main()
