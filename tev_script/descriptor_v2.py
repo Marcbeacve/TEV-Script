@@ -11,6 +11,7 @@ from .program_ir_v4 import (
 )
 from .program_ir_v4_effect_commands import PROGRAM_IR_V4_EFFECTS_R2_SCHEMA
 from .source_program_v2 import LANGUAGE_VERSION_V2
+from . import release_metadata_v2 as release_metadata
 
 
 V2_CERTIFIED_BASE_SHA = "284ec3ec8c41681825ec1a8421f7ee2a1b012d68"
@@ -55,11 +56,13 @@ V2_COMMANDS = (
 
 
 def v2_descriptor() -> dict[str, Any]:
+    release_metadata.validate_release_metadata()
     body: dict[str, Any] = {
         "schema": "TEV_SCRIPT_V2_DESCRIPTOR_V1",
         "language_version": LANGUAGE_VERSION_V2,
-        "release_status": "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED",
-        "stable": False,
+        "release_profile": release_metadata.RELEASE_PROFILE,
+        "release_status": release_metadata.RELEASE_STATUS,
+        "stable": release_metadata.STABLE,
         "source_extension": ".tevs",
         "program_ir_schemas": [
             PROGRAM_IR_V4_PURE_SCHEMA,
@@ -95,12 +98,30 @@ def v2_descriptor() -> dict[str, Any]:
         "certification": {
             "certify_full_gate": "RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py",
             "receipt_schema": "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V1",
+            "historical_receipt_schema": "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V1",
+            "current_receipt_schema": "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V2",
+            "python_certify_full_gate": "RUN_TEV_SCRIPT_V2_PYTHON_CERTIFY_FULL.py",
+            "stable_admission_gate": "RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py",
             "certified_base_sha": V2_CERTIFIED_BASE_SHA,
+            "technical_parent_commit": release_metadata.TECHNICAL_PARENT_COMMIT,
+            "technical_parent_certificate_sha256": release_metadata.TECHNICAL_PARENT_CERTIFICATE_SHA256,
             "exact_git_identity_required": True,
             "clean_worktree_required": True,
             "v1_certificate_is_v2_authority": False,
+            "current_v2_certify_full_claim": release_metadata.CURRENT_V2_CERTIFY_FULL_CLAIM,
+            "current_v2_language_stable_claim": release_metadata.CURRENT_V2_LANGUAGE_STABLE_CLAIM,
             "publication_authorized": False,
             "merge_authorized": False,
+        },
+        "stable_release_surface": {
+            "release_metadata": "tev_script/release_metadata_v2.py",
+            "governance": "tools/validate_v2_stable_governance.py",
+            "admission_gate": "RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py",
+            "receipt_schema": "TEV_SCRIPT_V2_STABLE_ADMISSION_RECEIPT_V1",
+            "exact_parent_certificate_required": True,
+            "release_diff_whitelist_required": True,
+            "artifact_byte_identity_required": True,
+            "stable_claim": release_metadata.STABLE,
         },
         "public_interfaces": {
             "module_cli": "python -m tev_script.cli_v2",

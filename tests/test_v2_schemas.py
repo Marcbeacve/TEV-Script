@@ -5,10 +5,12 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from jsonschema import Draft202012Validator, ValidationError
 
-from tev_script.descriptor_v2 import v2_descriptor
+from tev_script.canonical import canonical_hash
+import tev_script.descriptor_v2 as descriptor_v2
 from tev_script.file_observation_acquisition_v2 import (
     acquire_file_read_observations_v2,
     build_file_read_acquisition_request_v2,
@@ -36,6 +38,12 @@ def load_schema(relative: str) -> dict:
     return json.loads((ROOT / relative).read_text(encoding="utf-8"))
 
 
+def rehash_descriptor(value: dict) -> dict:
+    changed = copy.deepcopy(value)
+    changed.pop("descriptor_hash", None)
+    return {**changed, "descriptor_hash": canonical_hash(changed)}
+
+
 class V2SchemaTests(unittest.TestCase):
     def test_all_v2_schemas_are_valid_draft_2020_12(self) -> None:
         for relative in SCHEMA_PATHS:
@@ -46,7 +54,7 @@ class V2SchemaTests(unittest.TestCase):
 
     def test_descriptor_schema_accepts_exact_descriptor_and_rejects_drift(self) -> None:
         validator = Draft202012Validator(load_schema(SCHEMA_PATHS[0]))
-        descriptor = v2_descriptor()
+        descriptor = descriptor_v2.v2_descriptor()
         validator.validate(descriptor)
         for mutation in ("unknown", "missing", "uppercase_hash", "stable"):
             changed = copy.deepcopy(descriptor)
@@ -60,6 +68,51 @@ class V2SchemaTests(unittest.TestCase):
                 changed["stable"] = True
             with self.subTest(mutation=mutation), self.assertRaises(ValidationError):
                 validator.validate(changed)
+
+    def test_descriptor_schema_accepts_only_coherent_release_profiles(self) -> None:
+        validator = Draft202012Validator(load_schema(SCHEMA_PATHS[0]))
+        candidate = descriptor_v2.v2_descriptor()
+        validator.validate(candidate)
+
+        stable_values = {
+            "RELEASE_PROFILE": "stable",
+            "RELEASE_STATUS": "STABLE_2_0_0",
+            "STABLE": True,
+            "CURRENT_V2_CERTIFY_FULL_CLAIM": True,
+            "CURRENT_V2_LANGUAGE_STABLE_CLAIM": True,
+            "TECHNICAL_PARENT_COMMIT": "1" * 40,
+            "TECHNICAL_PARENT_CERTIFICATE_SHA256": "2" * 64,
+        }
+        patches = [
+            patch.object(descriptor_v2.release_metadata, name, value)
+            for name, value in stable_values.items()
+        ]
+        for item in patches:
+            item.start()
+        try:
+            stable = descriptor_v2.v2_descriptor()
+        finally:
+            for item in reversed(patches):
+                item.stop()
+        validator.validate(stable)
+        self.assertEqual(stable["release_profile"], "stable")
+        self.assertIs(stable["stable"], True)
+        self.assertIs(stable["stable_release_surface"]["stable_claim"], True)
+
+        candidate_stable_flip = copy.deepcopy(candidate)
+        candidate_stable_flip["stable"] = True
+        with self.assertRaises(ValidationError):
+            validator.validate(rehash_descriptor(candidate_stable_flip))
+
+        stable_without_parent = copy.deepcopy(stable)
+        stable_without_parent["certification"]["technical_parent_commit"] = ""
+        with self.assertRaises(ValidationError):
+            validator.validate(rehash_descriptor(stable_without_parent))
+
+        security_drift = copy.deepcopy(candidate)
+        security_drift["filesystem_safety"]["maximum_file_read_bytes"] += 1
+        with self.assertRaises(ValidationError):
+            validator.validate(rehash_descriptor(security_drift))
 
     def test_program_ir_schema_closes_all_four_profiles(self) -> None:
         validator = Draft202012Validator(load_schema(SCHEMA_PATHS[1]))

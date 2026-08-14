@@ -4,16 +4,18 @@
   "title": "TEV Script V2 Descriptor V1",
   "type": "object",
   "required": [
-    "schema", "language_version", "release_status", "stable", "source_extension",
-    "program_ir_schemas", "commands", "runtime_requires_source_compiler", "boundaries",
-    "filesystem_safety", "authority", "certification", "public_interfaces", "descriptor_hash"
+    "schema", "language_version", "release_profile", "release_status", "stable",
+    "source_extension", "program_ir_schemas", "commands", "runtime_requires_source_compiler",
+    "boundaries", "filesystem_safety", "authority", "certification",
+    "stable_release_surface", "public_interfaces", "descriptor_hash"
   ],
   "additionalProperties": false,
   "properties": {
     "schema": {"const": "TEV_SCRIPT_V2_DESCRIPTOR_V1"},
     "language_version": {"const": "2.0.0"},
-    "release_status": {"const": "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED"},
-    "stable": {"const": false},
+    "release_profile": {"enum": ["candidate", "stable"]},
+    "release_status": {"enum": ["IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED", "STABLE_2_0_0"]},
+    "stable": {"type": "boolean"},
     "source_extension": {"const": ".tevs"},
     "program_ir_schemas": {
       "type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true,
@@ -61,17 +63,47 @@
     },
     "certification": {
       "type": "object",
-      "required": ["certify_full_gate", "receipt_schema", "certified_base_sha", "exact_git_identity_required", "clean_worktree_required", "v1_certificate_is_v2_authority", "publication_authorized", "merge_authorized"],
+      "required": [
+        "certify_full_gate", "receipt_schema", "historical_receipt_schema", "current_receipt_schema",
+        "python_certify_full_gate", "stable_admission_gate", "certified_base_sha",
+        "technical_parent_commit", "technical_parent_certificate_sha256",
+        "exact_git_identity_required", "clean_worktree_required", "v1_certificate_is_v2_authority",
+        "current_v2_certify_full_claim", "current_v2_language_stable_claim",
+        "publication_authorized", "merge_authorized"
+      ],
       "additionalProperties": false,
       "properties": {
         "certify_full_gate": {"const": "RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py"},
         "receipt_schema": {"const": "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V1"},
+        "historical_receipt_schema": {"const": "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V1"},
+        "current_receipt_schema": {"const": "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V2"},
+        "python_certify_full_gate": {"const": "RUN_TEV_SCRIPT_V2_PYTHON_CERTIFY_FULL.py"},
+        "stable_admission_gate": {"const": "RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py"},
         "certified_base_sha": {"const": "284ec3ec8c41681825ec1a8421f7ee2a1b012d68"},
+        "technical_parent_commit": {"type": "string", "pattern": "^(?:|[0-9a-f]{40})$"},
+        "technical_parent_certificate_sha256": {"type": "string", "pattern": "^(?:|[0-9a-f]{64})$"},
         "exact_git_identity_required": {"const": true},
         "clean_worktree_required": {"const": true},
         "v1_certificate_is_v2_authority": {"const": false},
+        "current_v2_certify_full_claim": {"type": "boolean"},
+        "current_v2_language_stable_claim": {"type": "boolean"},
         "publication_authorized": {"const": false},
         "merge_authorized": {"const": false}
+      }
+    },
+    "stable_release_surface": {
+      "type": "object",
+      "required": ["release_metadata", "governance", "admission_gate", "receipt_schema", "exact_parent_certificate_required", "release_diff_whitelist_required", "artifact_byte_identity_required", "stable_claim"],
+      "additionalProperties": false,
+      "properties": {
+        "release_metadata": {"const": "tev_script/release_metadata_v2.py"},
+        "governance": {"const": "tools/validate_v2_stable_governance.py"},
+        "admission_gate": {"const": "RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py"},
+        "receipt_schema": {"const": "TEV_SCRIPT_V2_STABLE_ADMISSION_RECEIPT_V1"},
+        "exact_parent_certificate_required": {"const": true},
+        "release_diff_whitelist_required": {"const": true},
+        "artifact_byte_identity_required": {"const": true},
+        "stable_claim": {"type": "boolean"}
       }
     },
     "public_interfaces": {
@@ -87,7 +119,43 @@
     },
     "descriptor_hash": {"$ref": "#/$defs/sha256"}
   },
-  "$defs": {
-    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
-  }
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "release_profile": {"const": "candidate"},
+            "release_status": {"const": "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED"},
+            "stable": {"const": false},
+            "certification": {
+              "properties": {
+                "technical_parent_commit": {"const": ""},
+                "technical_parent_certificate_sha256": {"const": ""},
+                "current_v2_certify_full_claim": {"const": false},
+                "current_v2_language_stable_claim": {"const": false}
+              }
+            },
+            "stable_release_surface": {"properties": {"stable_claim": {"const": false}}}
+          }
+        },
+        {
+          "properties": {
+            "release_profile": {"const": "stable"},
+            "release_status": {"const": "STABLE_2_0_0"},
+            "stable": {"const": true},
+            "certification": {
+              "properties": {
+                "technical_parent_commit": {"pattern": "^[0-9a-f]{40}$"},
+                "technical_parent_certificate_sha256": {"pattern": "^[0-9a-f]{64}$"},
+                "current_v2_certify_full_claim": {"const": true},
+                "current_v2_language_stable_claim": {"const": true}
+              }
+            },
+            "stable_release_surface": {"properties": {"stable_claim": {"const": true}}}
+          }
+        }
+      ]
+    }
+  ],
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
 }

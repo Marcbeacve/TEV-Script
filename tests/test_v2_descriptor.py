@@ -24,10 +24,24 @@ class V2DescriptorTests(unittest.TestCase):
         self.assertEqual(descriptor["certification"]["certified_base_sha"], "284ec3ec8c41681825ec1a8421f7ee2a1b012d68")
         self.assertEqual(descriptor["schema"], "TEV_SCRIPT_V2_DESCRIPTOR_V1")
         self.assertEqual(descriptor["language_version"], "2.0.0")
+        self.assertEqual(descriptor["release_profile"], "candidate")
         self.assertEqual(descriptor["release_status"], "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED")
         self.assertIs(descriptor["stable"], False)
-        self.assertEqual(descriptor["certification"]["certify_full_gate"], "RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py")
-        self.assertIs(descriptor["certification"]["v1_certificate_is_v2_authority"], False)
+        certification = descriptor["certification"]
+        self.assertEqual(certification["certify_full_gate"], "RUN_TEV_SCRIPT_V2_CERTIFY_FULL.py")
+        self.assertEqual(certification["receipt_schema"], "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V1")
+        self.assertEqual(certification["historical_receipt_schema"], "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V1")
+        self.assertEqual(certification["current_receipt_schema"], "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V2")
+        self.assertEqual(certification["python_certify_full_gate"], "RUN_TEV_SCRIPT_V2_PYTHON_CERTIFY_FULL.py")
+        self.assertEqual(certification["stable_admission_gate"], "RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py")
+        self.assertEqual(certification["technical_parent_commit"], "")
+        self.assertEqual(certification["technical_parent_certificate_sha256"], "")
+        self.assertIs(certification["current_v2_certify_full_claim"], False)
+        self.assertIs(certification["current_v2_language_stable_claim"], False)
+        self.assertIs(certification["v1_certificate_is_v2_authority"], False)
+        stable_surface = descriptor["stable_release_surface"]
+        self.assertEqual(stable_surface["admission_gate"], "RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py")
+        self.assertIs(stable_surface["stable_claim"], False)
 
     def test_descriptor_reports_handle_safety_and_pre_admission_budget(self) -> None:
         safety = v2_descriptor()["filesystem_safety"]
