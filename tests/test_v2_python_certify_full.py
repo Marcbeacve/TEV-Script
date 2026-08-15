@@ -14,18 +14,23 @@ import RUN_TEV_SCRIPT_V2_PYTHON_CERTIFY_FULL as gate
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def make_wheel(path: Path) -> None:
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr(
+            "tev_script_portable_reference-1.0.0.dist-info/entry_points.txt",
+            "[console_scripts]\n"
+            "tev-script-v2 = tev_script.cli_v2:main\n"
+            "tev-script-v2-describe = tev_script.describe_v2:main\n",
+        )
+
+
 class V2PythonCertifyFullTests(unittest.TestCase):
     def test_wheel_entry_points_require_exact_v2_scripts(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
-            wheel = Path(raw) / "tev_script_portable_reference-1.0.0-py3-none-any.whl"
-            with zipfile.ZipFile(wheel, "w") as archive:
-                archive.writestr(
-                    "tev_script_portable_reference-1.0.0.dist-info/entry_points.txt",
-                    "[console_scripts]\n"
-                    "tev-script-v2 = tev_script.cli_v2:main\n"
-                    "tev-script-v2-describe = tev_script.describe_v2:main\n",
-                )
-            observed = gate.read_console_scripts(wheel)
+            wheel = Path(raw) / gate.WHEEL_FILENAME
+            make_wheel(wheel)
+            _, snapshot, _ = gate.load_single_wheel_snapshot(Path(raw))
+            observed = gate.read_console_scripts_snapshot(snapshot)
             gate.require_v2_entry_points(observed)
             observed.pop("tev-script-v2")
             with self.assertRaisesRegex(
@@ -33,6 +38,37 @@ class V2PythonCertifyFullTests(unittest.TestCase):
                 "entry point",
             ):
                 gate.require_v2_entry_points(observed)
+
+    def test_wheel_snapshot_requires_exactly_one_expected_regular_wheel(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            wheel = root / gate.WHEEL_FILENAME
+            make_wheel(wheel)
+            selected, snapshot, digest = gate.load_single_wheel_snapshot(root)
+            self.assertEqual(selected, wheel)
+            self.assertEqual(digest, gate.hash_wheel_snapshot(snapshot))
+            self.assertGreater(len(snapshot), 0)
+
+            make_wheel(root / "unexpected-1.0.0-py3-none-any.whl")
+            with self.assertRaisesRegex(
+                gate.V2PythonCertificationFailure,
+                "exactly one wheel",
+            ):
+                gate.load_single_wheel_snapshot(root)
+
+    def test_exported_wheel_must_remain_byte_identical_to_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            wheel = root / gate.WHEEL_FILENAME
+            make_wheel(wheel)
+            _, snapshot, digest = gate.load_single_wheel_snapshot(root)
+            gate.require_exported_wheel_unchanged(wheel, digest)
+            wheel.write_bytes(snapshot + b"mutation")
+            with self.assertRaisesRegex(
+                gate.V2PythonCertificationFailure,
+                "changed during certification",
+            ):
+                gate.require_exported_wheel_unchanged(wheel, digest)
 
     def test_v1_python_receipt_binds_exact_source_identity(self) -> None:
         identity = gate.GitIdentity(
@@ -94,7 +130,7 @@ class V2PythonCertifyFullTests(unittest.TestCase):
             identity,
             admission_profile="candidate",
             python_version="3.14.6",
-            wheel_filename="tev_script_portable_reference-1.0.0-py3-none-any.whl",
+            wheel_filename=gate.WHEEL_FILENAME,
             wheel_sha256="4" * 64,
             v1_python_receipt_sha256="5" * 64,
             descriptor_hash="6" * 64,
