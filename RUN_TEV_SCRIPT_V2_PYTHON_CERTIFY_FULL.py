@@ -391,12 +391,10 @@ def _validate_receipt(receipt: dict[str, object]) -> None:
 
 
 def _write_receipt(path: Path, receipt: dict[str, object]) -> None:
-    selected = support.require_external_output_path(ROOT, path)
-    selected.parent.mkdir(parents=True, exist_ok=True)
-    selected.write_text(
-        canonical_json(receipt) + "\n",
-        encoding="utf-8",
-        newline="\n",
+    support.write_external_bytes_once(
+        ROOT,
+        path,
+        (canonical_json(receipt) + "\n").encode("utf-8"),
     )
 
 
