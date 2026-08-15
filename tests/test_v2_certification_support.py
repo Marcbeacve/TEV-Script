@@ -22,21 +22,35 @@ class V2CertificationSupportTests(unittest.TestCase):
             ("rev-parse", "--verify", "origin/main"): expected,
             ("merge-base", "--is-ancestor", expected, "HEAD"): "",
         }
-        with patch.object(support, "_git", side_effect=lambda _root, *args: values[tuple(args)]):
+        with patch.object(
+            support,
+            "_git",
+            side_effect=lambda _root, *args: values[tuple(args)],
+        ):
             identity = support.collect_git_identity(ROOT, expected)
         self.assertEqual(identity.base_sha, expected)
         self.assertEqual(identity.commit_sha, "1" * 40)
         self.assertEqual(identity.tree_sha, "2" * 40)
 
         values[("rev-parse", "--verify", "origin/main")] = "4" * 40
-        with patch.object(support, "_git", side_effect=lambda _root, *args: values[tuple(args)]):
-            with self.assertRaisesRegex(support.V2CertificationFailure, "origin/main drift"):
+        with patch.object(
+            support,
+            "_git",
+            side_effect=lambda _root, *args: values[tuple(args)],
+        ):
+            with self.assertRaisesRegex(
+                support.V2CertificationFailure,
+                "origin/main drift",
+            ):
                 support.collect_git_identity(ROOT, expected)
 
     def test_expected_base_must_be_lowercase_exact_git_sha(self) -> None:
         for value in ("A" * 40, "1" * 39, "1" * 41, "not-a-sha"):
             with self.subTest(value=value):
-                with self.assertRaisesRegex(support.V2CertificationFailure, "expected base"):
+                with self.assertRaisesRegex(
+                    support.V2CertificationFailure,
+                    "expected base",
+                ):
                     support.collect_git_identity(ROOT, value)
 
     def test_external_file_and_directory_helpers_fail_closed(self) -> None:
@@ -50,6 +64,13 @@ class V2CertificationSupportTests(unittest.TestCase):
                 support.require_external_output_path(ROOT, external_file),
                 external_file.resolve(),
             )
+            external_file.write_text("old evidence\n", encoding="utf-8")
+            with self.assertRaisesRegex(
+                support.V2CertificationFailure,
+                "already exists",
+            ):
+                support.require_external_output_path(ROOT, external_file)
+
             external_dir = Path(raw) / "artifacts"
             self.assertEqual(
                 support.require_external_empty_dir(ROOT, external_dir),
