@@ -27,8 +27,15 @@ def _git(root: Path, *arguments: str) -> str:
     return certification_support._git(root, *arguments)
 
 
-def collect_git_identity(root: Path, expected_base: str = CERTIFIED_BASE_SHA) -> GitIdentity:
-    return certification_support.collect_git_identity(root, expected_base, git=_git)
+def collect_git_identity(
+    root: Path,
+    expected_base: str = CERTIFIED_BASE_SHA,
+) -> GitIdentity:
+    return certification_support.collect_git_identity(
+        root,
+        expected_base,
+        git=_git,
+    )
 
 
 def require_external_receipt_path(root: Path, raw: Path) -> Path:
@@ -42,10 +49,14 @@ def _bounded(value: str | bytes | None) -> str:
 def v2_test_modules(root: Path) -> tuple[str, ...]:
     try:
         matrix = json.loads(
-            (root / "spec" / "TEV_SCRIPT_V2_FEATURE_MATRIX.json").read_text(encoding="utf-8")
+            (
+                root / "spec" / "TEV_SCRIPT_V2_FEATURE_MATRIX.json"
+            ).read_text(encoding="utf-8")
         )
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
-        raise V2CertificationFailure(f"cannot load V2 test inventory: {error}") from error
+        raise V2CertificationFailure(
+            f"cannot load V2 test inventory: {error}"
+        ) from error
     paths = matrix.get("governed_paths", {}).get("tests")
     if not isinstance(paths, list) or not paths:
         raise V2CertificationFailure("V2 test inventory is empty")
@@ -56,13 +67,23 @@ def v2_test_modules(root: Path) -> tuple[str, ...]:
             "tests/test_v2_certify_full_v2.py",
         }:
             continue
-        if not isinstance(relative, str) or not relative.startswith("tests/") or not relative.endswith(".py"):
-            raise V2CertificationFailure(f"invalid V2 test path: {relative!r}")
+        if (
+            not isinstance(relative, str)
+            or not relative.startswith("tests/")
+            or not relative.endswith(".py")
+        ):
+            raise V2CertificationFailure(
+                f"invalid V2 test path: {relative!r}"
+            )
         if not (root / relative).is_file():
-            raise V2CertificationFailure(f"missing V2 test path: {relative}")
+            raise V2CertificationFailure(
+                f"missing V2 test path: {relative}"
+            )
         modules.append(relative[:-3].replace("/", "."))
     if len(modules) != len(set(modules)):
-        raise V2CertificationFailure("V2 test inventory contains duplicate modules")
+        raise V2CertificationFailure(
+            "V2 test inventory contains duplicate modules"
+        )
     return tuple(modules)
 
 
@@ -86,17 +107,23 @@ def run_checked(
         )
     except subprocess.TimeoutExpired as error:
         raise V2CertificationFailure(
-            f"{label} timed out after {timeout}s; stdout={_bounded(error.stdout)}; stderr={_bounded(error.stderr)}"
+            f"{label} timed out after {timeout}s; "
+            f"stdout={_bounded(error.stdout)}; "
+            f"stderr={_bounded(error.stderr)}"
         ) from error
     combined = completed.stdout + "\n" + completed.stderr
     if completed.returncode != 0:
         raise V2CertificationFailure(
-            f"{label} failed exit={completed.returncode}; stdout={_bounded(completed.stdout)}; stderr={_bounded(completed.stderr)}"
+            f"{label} failed exit={completed.returncode}; "
+            f"stdout={_bounded(completed.stdout)}; "
+            f"stderr={_bounded(completed.stderr)}"
         )
     for witness in required_witnesses:
         if witness not in combined:
             raise V2CertificationFailure(
-                f"{label} missing required witness {witness!r}; stdout={_bounded(completed.stdout)}; stderr={_bounded(completed.stderr)}"
+                f"{label} missing required witness {witness!r}; "
+                f"stdout={_bounded(completed.stdout)}; "
+                f"stderr={_bounded(completed.stderr)}"
             )
     return completed
 
@@ -112,17 +139,60 @@ def _run_v2_regression() -> int:
     )
     combined = completed.stdout + "\n" + completed.stderr
     if "skipped=" in combined.lower() or "skipped '" in combined.lower():
-        raise V2CertificationFailure("V2 governed regression contains a skip")
+        raise V2CertificationFailure(
+            "V2 governed regression contains a skip"
+        )
     matches = re.findall(r"Ran ([0-9]+) tests? in ", combined)
     if len(matches) != 1 or int(matches[0]) <= 0:
-        raise V2CertificationFailure("V2 governed regression test count is missing or ambiguous")
+        raise V2CertificationFailure(
+            "V2 governed regression test count is missing or ambiguous"
+        )
     return int(matches[0])
 
 
-def _run_v1_non_regression() -> str:
+def _single_marker(stdout: str, prefix: str, label: str) -> str:
+    values = [
+        line[len(prefix) :]
+        for line in stdout.splitlines()
+        if line.startswith(prefix)
+    ]
+    if len(values) != 1:
+        raise V2CertificationFailure(
+            f"{label} expected one {prefix!r} marker, "
+            f"observed={values!r}"
+        )
+    return values[0]
+
+
+def _require_v1_non_regression_receipt(
+    receipt: dict[str, object],
+    announced_hash: str,
+    identity: GitIdentity,
+) -> str:
+    observed = canonical_hash(receipt)
+    if observed != announced_hash:
+        raise V2CertificationFailure(
+            "V1 non-regression receipt announced hash mismatch"
+        )
+    if (
+        receipt.get("schema")
+        != "TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V2"
+        or receipt.get("admission_profile") != "stable"
+        or receipt.get("commit") != identity.commit_sha
+        or receipt.get("tree") != identity.tree_sha
+        or receipt.get("certify_full") is not True
+        or receipt.get("language_stable") is not False
+    ):
+        raise V2CertificationFailure(
+            "V1 non-regression receipt identity/claims mismatch"
+        )
+    return observed
+
+
+def _run_v1_non_regression(identity: GitIdentity) -> str:
     with tempfile.TemporaryDirectory(prefix="tev_v2_v1_cert_") as raw:
         receipt = Path(raw) / "v1-certify-full.json"
-        run_checked(
+        completed = run_checked(
             "V1 non-regression certification",
             [
                 sys.executable,
@@ -138,8 +208,22 @@ def _run_v1_non_regression() -> str:
         try:
             parsed = json.loads(receipt.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError) as error:
-            raise V2CertificationFailure(f"cannot load fresh V1 receipt: {error}") from error
-        return canonical_hash(parsed)
+            raise V2CertificationFailure(
+                f"cannot load fresh V1 receipt: {error}"
+            ) from error
+        if not isinstance(parsed, dict):
+            raise V2CertificationFailure(
+                "fresh V1 receipt root must be an object"
+            )
+        return _require_v1_non_regression_receipt(
+            parsed,
+            _single_marker(
+                completed.stdout,
+                "V1_CERTIFY_FULL_RECEIPT_SHA256=",
+                "V1 non-regression certification",
+            ),
+            identity,
+        )
 
 
 def _gate_receipt_fields() -> dict[str, str]:
@@ -198,7 +282,9 @@ def build_receipt_v2(
     v1_receipt_sha256: str,
 ) -> dict[str, object]:
     if admission_profile not in {"candidate", "stable"}:
-        raise V2CertificationFailure(f"unsupported V2 admission profile: {admission_profile!r}")
+        raise V2CertificationFailure(
+            f"unsupported V2 admission profile: {admission_profile!r}"
+        )
     body: dict[str, object] = {
         "schema": "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V2",
         "admission_profile": admission_profile,
@@ -228,13 +314,21 @@ def _schema_path(current_base_mode: bool) -> Path:
     return ROOT / "schemas" / filename
 
 
-def _validate_receipt(receipt: dict[str, object], *, current_base_mode: bool) -> None:
+def _validate_receipt(
+    receipt: dict[str, object],
+    *,
+    current_base_mode: bool,
+) -> None:
     try:
-        schema = json.loads(_schema_path(current_base_mode).read_text(encoding="utf-8"))
+        schema = json.loads(
+            _schema_path(current_base_mode).read_text(encoding="utf-8")
+        )
         Draft202012Validator.check_schema(schema)
         Draft202012Validator(schema).validate(receipt)
     except Exception as error:
-        raise V2CertificationFailure(f"V2 receipt schema validation failed: {error}") from error
+        raise V2CertificationFailure(
+            f"V2 receipt schema validation failed: {error}"
+        ) from error
 
 
 def _write_receipt(path: Path, receipt: dict[str, object]) -> None:
@@ -266,14 +360,21 @@ def certify(
     expected_base: str | None = None,
 ) -> dict[str, object]:
     if profile not in {"candidate", "stable"}:
-        raise V2CertificationFailure(f"unsupported V2 certification profile: {profile!r}")
+        raise V2CertificationFailure(
+            f"unsupported V2 certification profile: {profile!r}"
+        )
     current_base_mode = expected_base is not None
     if not current_base_mode and profile != "candidate":
-        raise V2CertificationFailure("legacy V2 certification supports candidate profile only")
+        raise V2CertificationFailure(
+            "legacy V2 certification supports candidate profile only"
+        )
     base = (
         CERTIFIED_BASE_SHA
         if expected_base is None
-        else certification_support.require_git_sha(expected_base, "expected base")
+        else certification_support.require_git_sha(
+            expected_base,
+            "expected base",
+        )
     )
     selected_receipt = (
         None
@@ -304,7 +405,11 @@ def certify(
             "V2 stable tooling authority",
             [
                 sys.executable,
-                str(ROOT / "tools" / "validate_v2_stable_tooling_authority.py"),
+                str(
+                    ROOT
+                    / "tools"
+                    / "validate_v2_stable_tooling_authority.py"
+                ),
                 "--profile",
                 profile,
             ],
@@ -316,7 +421,10 @@ def certify(
         )
     run_checked(
         "V2 filesystem safety",
-        [sys.executable, str(ROOT / "tools" / "validate_v2_filesystem_safety.py")],
+        [
+            sys.executable,
+            str(ROOT / "tools" / "validate_v2_filesystem_safety.py"),
+        ],
         (
             "FILESYSTEM_SAFETY=PASS",
             "TOCTOU_CLOSURE=PASS",
@@ -325,13 +433,16 @@ def certify(
         ),
     )
     test_count = _run_v2_regression()
-    v1_receipt_sha256 = _run_v1_non_regression()
+    v1_receipt_sha256 = _run_v1_non_regression(initial)
     final = collect_git_identity(ROOT, base)
     if final != initial:
         raise V2CertificationFailure(
-            f"Git identity changed during V2 certification: {initial!r} -> {final!r}"
+            "Git identity changed during V2 certification: "
+            f"{initial!r} -> {final!r}"
         )
-    python_version = ".".join(str(item) for item in sys.version_info[:3])
+    python_version = ".".join(
+        str(item) for item in sys.version_info[:3]
+    )
     receipt = (
         build_receipt_v2(
             final,
@@ -348,15 +459,24 @@ def certify(
             v1_receipt_sha256=v1_receipt_sha256,
         )
     )
-    _validate_receipt(receipt, current_base_mode=current_base_mode)
+    _validate_receipt(
+        receipt,
+        current_base_mode=current_base_mode,
+    )
     if selected_receipt is not None:
         _write_receipt(selected_receipt, receipt)
     return receipt
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Certify the exact clean TEV Script V2 candidate")
-    parser.add_argument("--profile", choices=("candidate", "stable"), default="candidate")
+    parser = argparse.ArgumentParser(
+        description="Certify the exact clean TEV Script V2 candidate"
+    )
+    parser.add_argument(
+        "--profile",
+        choices=("candidate", "stable"),
+        default="candidate",
+    )
     parser.add_argument("--expected-base")
     parser.add_argument("--receipt-out", type=Path)
     arguments = parser.parse_args(argv)
@@ -368,7 +488,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     except Exception as error:  # noqa: BLE001
         print("CERTIFY_V2=NO")
-        print("TEV_SCRIPT_V2_CERTIFY_FULL_ERROR=" + type(error).__name__ + ":" + str(error))
+        print(
+            "TEV_SCRIPT_V2_CERTIFY_FULL_ERROR="
+            + type(error).__name__
+            + ":"
+            + str(error)
+        )
         return 1
     for witness in (
         "FILESYSTEM_SAFETY=PASS",
