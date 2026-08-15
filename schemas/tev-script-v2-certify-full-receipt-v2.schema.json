@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev.dev/schemas/tev-script-v2-certify-full-receipt-v2.schema.json",
+  "title": "TEV Script V2 Certify Full Receipt V2",
+  "type": "object",
+  "required": [
+    "schema", "admission_profile", "repository", "commit_sha", "tree_sha", "base_sha",
+    "branch", "dirty", "python_version", "gates", "v2_test_count", "v2_skipped_tests",
+    "full_test_count", "full_skipped_tests", "v1_receipt_sha256", "certify_full",
+    "language_stable", "receipt_hash"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V2"},
+    "admission_profile": {"enum": ["candidate", "stable"]},
+    "repository": {"const": "Marcbeacve/TEV-Script"},
+    "commit_sha": {"$ref": "#/$defs/gitSha"},
+    "tree_sha": {"$ref": "#/$defs/gitSha"},
+    "base_sha": {"$ref": "#/$defs/gitSha"},
+    "branch": {"type": "string", "pattern": "^agent/[a-z0-9._/-]+$"},
+    "dirty": {"const": false},
+    "python_version": {"type": "string", "pattern": "^3\\.(?:1[1-9]|[2-9][0-9])(?:\\.[0-9]+)?$"},
+    "gates": {
+      "type": "object",
+      "required": [
+        "authority_inventory", "schemas_contracts", "cli_v2", "source_static", "program_ir_v4",
+        "filesystem_safety", "toctou_closure", "one_mib_pre_admission", "v2_negative_campaign",
+        "v2_regression", "full_regression", "v1_certify_full", "stable_tooling_authority"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "authority_inventory": {"const": "PASS"},
+        "schemas_contracts": {"const": "PASS"},
+        "cli_v2": {"const": "PASS"},
+        "source_static": {"const": "PASS"},
+        "program_ir_v4": {"const": "PASS"},
+        "filesystem_safety": {"const": "PASS"},
+        "toctou_closure": {"const": "PASS"},
+        "one_mib_pre_admission": {"const": "PASS"},
+        "v2_negative_campaign": {"const": "PASS"},
+        "v2_regression": {"const": "PASS"},
+        "full_regression": {"const": "PASS"},
+        "v1_certify_full": {"const": "PASS"},
+        "stable_tooling_authority": {"const": "PASS"}
+      }
+    },
+    "v2_test_count": {"type": "integer", "minimum": 1},
+    "v2_skipped_tests": {"const": 0},
+    "full_test_count": {"type": "integer", "minimum": 1},
+    "full_skipped_tests": {"const": 0},
+    "v1_receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "certify_full": {"const": true},
+    "language_stable": {"const": false},
+    "receipt_hash": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "gitSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

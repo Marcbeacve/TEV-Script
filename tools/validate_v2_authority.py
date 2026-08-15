@@ -18,6 +18,7 @@ from tev_script.canonical import canonical_hash  # noqa: E402
 from tev_script.cli_v2 import build_parser  # noqa: E402
 from tev_script.descriptor_v2 import V2_CERTIFIED_BASE_SHA, V2_COMMANDS, v2_descriptor  # noqa: E402
 from tev_script.diagnostics import TevScriptError  # noqa: E402
+from tev_script import release_metadata_v2 as release_metadata  # noqa: E402
 from tev_script.program_ir_v4 import (  # noqa: E402
     export_program_ir_v4_pure,
     export_program_ir_v4_recursive,
@@ -108,19 +109,73 @@ def _require_test_inventory_closure(governed: Mapping[str, Any]) -> None:
         )
 
 
-def _require_inventory() -> tuple[dict[str, Any], dict[str, Any]]:
-    for relative in AUTHORITY_PATHS:
-        if not (ROOT / relative).is_file():
-            raise V2AuthorityFailure(f"missing V2 authority path: {relative}")
-    matrix = _load("spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json")
+def _expected_release_state(profile: str) -> tuple[str, str, bool]:
+    if profile == "candidate":
+        return (
+            "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED",
+            "CERTIFICATION_REQUIRED",
+            False,
+        )
+    if profile == "stable":
+        return ("STABLE_ADMISSION_REQUESTED", "STABLE_ADMISSION_REQUESTED", True)
+    raise V2AuthorityFailure(f"unsupported V2 authority profile: {profile!r}")
+
+
+def _require_release_authority(
+    profile: str,
+    matrix: Mapping[str, Any],
+    target: Mapping[str, Any],
+) -> None:
+    target_status, matrix_status, stable = _expected_release_state(profile)
+    try:
+        release_metadata.validate_release_metadata()
+    except RuntimeError as error:
+        raise V2AuthorityFailure(f"invalid V2 release metadata: {error}") from error
+    if release_metadata.RELEASE_PROFILE != profile:
+        raise V2AuthorityFailure(
+            "V2 release metadata profile mismatch: "
+            f"expected={profile!r} observed={release_metadata.RELEASE_PROFILE!r}"
+        )
+    expected_metadata_status = (
+        "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED"
+        if profile == "candidate"
+        else "STABLE_2_0_0"
+    )
+    if release_metadata.RELEASE_STATUS != expected_metadata_status:
+        raise V2AuthorityFailure("V2 release metadata status mismatch")
+    if release_metadata.STABLE is not stable:
+        raise V2AuthorityFailure("V2 release metadata stable flag mismatch")
+
     if matrix.get("schema") != "TEV_SCRIPT_V2_FEATURE_MATRIX_V1":
         raise V2AuthorityFailure("V2 feature matrix schema mismatch")
-    if matrix.get("language_version") != "2.0.0" or matrix.get("stable") is not False:
-        raise V2AuthorityFailure("V2 feature matrix version/stability mismatch")
+    if matrix.get("language_version") != "2.0.0":
+        raise V2AuthorityFailure("V2 feature matrix language version mismatch")
+    if matrix.get("stable") is not stable:
+        raise V2AuthorityFailure("V2 feature matrix stability mismatch")
+    if matrix.get("certification_status") != matrix_status:
+        raise V2AuthorityFailure("V2 feature matrix certification status mismatch")
     if matrix.get("certified_base_sha") != V2_CERTIFIED_BASE_SHA:
         raise V2AuthorityFailure("V2 feature matrix certified base mismatch")
     if tuple(matrix.get("authority_files", ())) != AUTHORITY_PATHS:
         raise V2AuthorityFailure("V2 feature matrix authority inventory mismatch")
+
+    if target.get("language_version") != "2.0.0":
+        raise V2AuthorityFailure("canonical V2 target language version mismatch")
+    if target.get("status") != target_status or target.get("stable") is not stable:
+        raise V2AuthorityFailure("canonical V2 target status/stability mismatch")
+    if tuple(target.get("authority_files", ())) != AUTHORITY_PATHS:
+        raise V2AuthorityFailure("canonical V2 target authority inventory mismatch")
+    if target.get("certified_base_sha") != V2_CERTIFIED_BASE_SHA:
+        raise V2AuthorityFailure("canonical V2 target certified base mismatch")
+    if target.get("publication_authorized") is not False or target.get("merge_authorized") is not False:
+        raise V2AuthorityFailure("canonical V2 target makes an unauthorized promotion claim")
+
+
+def _require_inventory(profile: str = "candidate") -> tuple[dict[str, Any], dict[str, Any]]:
+    for relative in AUTHORITY_PATHS:
+        if not (ROOT / relative).is_file():
+            raise V2AuthorityFailure(f"missing V2 authority path: {relative}")
+    matrix = _load("spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json")
     governed = matrix.get("governed_paths")
     if not isinstance(governed, Mapping):
         raise V2AuthorityFailure("V2 governed path inventory is missing")
@@ -134,19 +189,16 @@ def _require_inventory() -> tuple[dict[str, Any], dict[str, Any]]:
     _require_test_inventory_closure(governed)
 
     index = _load("CANONICAL_INDEX.json")
-    targets = [item for item in index.get("candidate_language_targets", []) if item.get("language_version") == "2.0.0"]
+    targets = [
+        item
+        for item in index.get("candidate_language_targets", [])
+        if isinstance(item, Mapping) and item.get("language_version") == "2.0.0"
+    ]
     if len(targets) != 1:
         raise V2AuthorityFailure(f"canonical index requires exactly one V2 target, observed={len(targets)}")
     target = targets[0]
-    if target.get("status") != "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED" or target.get("stable") is not False:
-        raise V2AuthorityFailure("canonical V2 target status/stability mismatch")
-    if tuple(target.get("authority_files", ())) != AUTHORITY_PATHS:
-        raise V2AuthorityFailure("canonical V2 target authority inventory mismatch")
-    if target.get("certified_base_sha") != V2_CERTIFIED_BASE_SHA:
-        raise V2AuthorityFailure("canonical V2 target certified base mismatch")
-    if target.get("publication_authorized") is not False or target.get("merge_authorized") is not False:
-        raise V2AuthorityFailure("canonical V2 target makes an unauthorized promotion claim")
-    return matrix, target
+    _require_release_authority(profile, matrix, target)
+    return matrix, dict(target)
 
 
 def _require_schemas() -> Draft202012Validator:
@@ -306,8 +358,8 @@ def _require_program_cases(validator: Draft202012Validator) -> int:
     return len(valid) + len(negative)
 
 
-def validate_v2_authority() -> dict[str, int]:
-    _require_inventory()
+def validate_v2_authority(profile: str = "candidate") -> dict[str, int]:
+    _require_inventory(profile)
     validator = _require_schemas()
     _require_cli()
     source_cases = _require_source_cases()
@@ -322,13 +374,17 @@ def validate_v2_authority() -> dict[str, int]:
     return {"source_cases": source_cases, "program_cases": program_cases}
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="TEV Script V2 authority validation")
+    parser.add_argument("--profile", choices=("candidate", "stable"), default="candidate")
+    args = parser.parse_args(argv)
     try:
-        counts = validate_v2_authority()
+        counts = validate_v2_authority(args.profile)
     except Exception as error:  # noqa: BLE001
         print("TEV_SCRIPT_V2_AUTHORITY=FAIL")
         print("TEV_SCRIPT_V2_AUTHORITY_ERROR=" + type(error).__name__ + ":" + str(error))
         return 1
+    print("TEV_SCRIPT_V2_AUTHORITY_PROFILE=" + args.profile)
     print("V2_NORMATIVE_SPEC=PASS")
     print("V2_SCHEMAS_CONTRACTS=PASS")
     print("CLI_V2=PASS")

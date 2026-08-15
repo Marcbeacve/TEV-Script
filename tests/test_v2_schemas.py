@@ -1,19 +1,25 @@
 from __future__ import annotations
 
+from contextlib import ExitStack
 import copy
 import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from jsonschema import Draft202012Validator, ValidationError
 
-from tev_script.descriptor_v2 import v2_descriptor
+from tev_script.canonical import canonical_hash
+import tev_script.descriptor_v2 as descriptor_v2
 from tev_script.file_observation_acquisition_v2 import (
     acquire_file_read_observations_v2,
     build_file_read_acquisition_request_v2,
 )
-from tev_script.program_ir_v4 import export_program_ir_v4_pure, export_program_ir_v4_recursive
+from tev_script.program_ir_v4 import (
+    export_program_ir_v4_pure,
+    export_program_ir_v4_recursive,
+)
 from tev_script.source_effect_program_v2 import (
     build_effect_command_program_ir_v4,
     build_effect_program_ir_v4,
@@ -22,7 +28,6 @@ from tev_script.source_effect_program_v2 import (
 )
 from tev_script.source_program_v2 import compile_program_v2
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATHS = (
     "schemas/tev-script-v2-descriptor.schema.json",
@@ -30,10 +35,43 @@ SCHEMA_PATHS = (
     "schemas/tev-script-v2-filesystem-artifacts.schema.json",
     "schemas/tev-script-v2-certify-full-receipt.schema.json",
 )
+CANDIDATE = {
+    "RELEASE_PROFILE": "candidate",
+    "RELEASE_STATUS": "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED",
+    "STABLE": False,
+    "CURRENT_V2_CERTIFY_FULL_CLAIM": False,
+    "CURRENT_V2_LANGUAGE_STABLE_CLAIM": False,
+    "TECHNICAL_PARENT_COMMIT": "",
+    "TECHNICAL_PARENT_CERTIFICATE_SHA256": "",
+}
+STABLE = {
+    "RELEASE_PROFILE": "stable",
+    "RELEASE_STATUS": "STABLE_2_0_0",
+    "STABLE": True,
+    "CURRENT_V2_CERTIFY_FULL_CLAIM": True,
+    "CURRENT_V2_LANGUAGE_STABLE_CLAIM": True,
+    "TECHNICAL_PARENT_COMMIT": "1" * 40,
+    "TECHNICAL_PARENT_CERTIFICATE_SHA256": "2" * 64,
+}
 
 
 def load_schema(relative: str) -> dict:
     return json.loads((ROOT / relative).read_text(encoding="utf-8"))
+
+
+def rehash_descriptor(value: dict) -> dict:
+    changed = copy.deepcopy(value)
+    changed.pop("descriptor_hash", None)
+    return {**changed, "descriptor_hash": canonical_hash(changed)}
+
+
+def descriptor_for(values: dict[str, object]) -> dict:
+    with ExitStack() as stack:
+        for name, value in values.items():
+            stack.enter_context(
+                patch.object(descriptor_v2.release_metadata, name, value)
+            )
+        return descriptor_v2.v2_descriptor()
 
 
 class V2SchemaTests(unittest.TestCase):
@@ -41,34 +79,82 @@ class V2SchemaTests(unittest.TestCase):
         for relative in SCHEMA_PATHS:
             with self.subTest(relative=relative):
                 schema = load_schema(relative)
-                self.assertEqual(schema["$schema"], "https://json-schema.org/draft/2020-12/schema")
+                self.assertEqual(
+                    schema["$schema"],
+                    "https://json-schema.org/draft/2020-12/schema",
+                )
                 Draft202012Validator.check_schema(schema)
 
     def test_descriptor_schema_accepts_exact_descriptor_and_rejects_drift(self) -> None:
         validator = Draft202012Validator(load_schema(SCHEMA_PATHS[0]))
-        descriptor = v2_descriptor()
+        descriptor = descriptor_v2.v2_descriptor()
         validator.validate(descriptor)
-        for mutation in ("unknown", "missing", "uppercase_hash", "stable"):
-            changed = copy.deepcopy(descriptor)
-            if mutation == "unknown":
-                changed["unknown"] = True
-            elif mutation == "missing":
-                del changed["authority"]
-            elif mutation == "uppercase_hash":
-                changed["descriptor_hash"] = changed["descriptor_hash"].upper()
-            else:
-                changed["stable"] = True
+        mutations: list[dict] = []
+        unknown = copy.deepcopy(descriptor)
+        unknown["unknown"] = True
+        mutations.append(unknown)
+        missing = copy.deepcopy(descriptor)
+        del missing["authority"]
+        mutations.append(missing)
+        uppercase = copy.deepcopy(descriptor)
+        uppercase["descriptor_hash"] = uppercase["descriptor_hash"].upper()
+        mutations.append(uppercase)
+        mixed = copy.deepcopy(descriptor)
+        mixed["stable"] = not descriptor["stable"]
+        mutations.append(rehash_descriptor(mixed))
+        for mutation in mutations:
             with self.subTest(mutation=mutation), self.assertRaises(ValidationError):
-                validator.validate(changed)
+                validator.validate(mutation)
+
+    def test_descriptor_schema_accepts_only_coherent_release_profiles(self) -> None:
+        validator = Draft202012Validator(load_schema(SCHEMA_PATHS[0]))
+        candidate = descriptor_for(CANDIDATE)
+        stable = descriptor_for(STABLE)
+        validator.validate(candidate)
+        validator.validate(stable)
+        self.assertEqual(candidate["release_profile"], "candidate")
+        self.assertIs(candidate["stable"], False)
+        self.assertEqual(stable["release_profile"], "stable")
+        self.assertIs(stable["stable"], True)
+        self.assertIs(stable["stable_release_surface"]["stable_claim"], True)
+
+        candidate_stable_flip = copy.deepcopy(candidate)
+        candidate_stable_flip["stable"] = True
+        with self.assertRaises(ValidationError):
+            validator.validate(rehash_descriptor(candidate_stable_flip))
+
+        stable_without_parent = copy.deepcopy(stable)
+        stable_without_parent["certification"]["technical_parent_commit"] = ""
+        with self.assertRaises(ValidationError):
+            validator.validate(rehash_descriptor(stable_without_parent))
+
+        security_drift = copy.deepcopy(candidate)
+        security_drift["filesystem_safety"]["maximum_file_read_bytes"] += 1
+        with self.assertRaises(ValidationError):
+            validator.validate(rehash_descriptor(security_drift))
 
     def test_program_ir_schema_closes_all_four_profiles(self) -> None:
         validator = Draft202012Validator(load_schema(SCHEMA_PATHS[1]))
-        pure = compile_program_v2('script D version "2.0.0"; entry main:Int=1;')
-        recursive = compile_program_v2('script D version "2.0.0"; recursive fn f(n:Int)->Int decreases n max_depth 3 = if n==0 then 0 else self(n-1); entry main:Int=f(2);')
-        effects = compile_effect_program_v2('script D version "2.0.0"; state x:Int=0; action a(){set x=1;} entry main=a();')
-        effects_scenario = {"capability_table_hash": effects.capabilities.table_hash, "capabilities": []}
-        commands = compile_effect_command_program_v2('script D version "2.0.0"; state x:Int=0; command file.replace(Text,Text); action a(){request file.replace("x.txt","x"); set x=1;} entry main=a();')
-        command_scenario = {"capability_table_hash": commands.capabilities.table_hash, "capabilities": []}
+        pure = compile_program_v2(
+            'script D version "2.0.0"; entry main:Int=1;'
+        )
+        recursive = compile_program_v2(
+            'script D version "2.0.0"; recursive fn f(n:Int)->Int decreases n max_depth 3 = if n==0 then 0 else self(n-1); entry main:Int=f(2);'
+        )
+        effects = compile_effect_program_v2(
+            'script D version "2.0.0"; state x:Int=0; action a(){set x=1;} entry main=a();'
+        )
+        effects_scenario = {
+            "capability_table_hash": effects.capabilities.table_hash,
+            "capabilities": [],
+        }
+        commands = compile_effect_command_program_v2(
+            'script D version "2.0.0"; state x:Int=0; command file.replace(Text,Text); action a(){request file.replace("x.txt","x"); set x=1;} entry main=a();'
+        )
+        command_scenario = {
+            "capability_table_hash": commands.capabilities.table_hash,
+            "capabilities": [],
+        }
         programs = (
             export_program_ir_v4_pure(pure),
             export_program_ir_v4_recursive(recursive),
@@ -107,12 +193,10 @@ class V2SchemaTests(unittest.TestCase):
             "scope_hash": "1" * 64,
         }
         validator.validate(artifact)
-        changed = {**artifact, "unknown": 1}
         with self.assertRaises(ValidationError):
-            validator.validate(changed)
-        changed = {**artifact, "scope_hash": "A" * 64}
+            validator.validate({**artifact, "unknown": 1})
         with self.assertRaises(ValidationError):
-            validator.validate(changed)
+            validator.validate({**artifact, "scope_hash": "A" * 64})
 
     def test_filesystem_artifact_schema_accepts_real_request_and_evidence(self) -> None:
         validator = Draft202012Validator(load_schema(SCHEMA_PATHS[2]))
@@ -121,12 +205,16 @@ class V2SchemaTests(unittest.TestCase):
             'capability observation file.read(Text)->Text; '
             'action a(){observe value=file.read("input.txt"); set x=value;} entry main=a();'
         )
-        request = build_file_read_acquisition_request_v2(compiled.capabilities, ["input.txt"])
+        request = build_file_read_acquisition_request_v2(
+            compiled.capabilities, ["input.txt"]
+        )
         validator.validate(request)
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             (root / "input.txt").write_text("bounded", encoding="utf-8")
-            evidence = acquire_file_read_observations_v2(request, compiled.capabilities, root)
+            evidence = acquire_file_read_observations_v2(
+                request, compiled.capabilities, root
+            )
         validator.validate(evidence)
         mutations = []
         unknown_provider = copy.deepcopy(evidence)
