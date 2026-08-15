@@ -47,13 +47,20 @@ def read_console_scripts(wheel: Path) -> dict[str, str]:
                 )
             text = archive.read(matches[0]).decode("utf-8")
     except (OSError, UnicodeError, zipfile.BadZipFile, KeyError) as error:
-        raise V2PythonCertificationFailure(f"cannot read wheel entry points: {error}") from error
+        raise V2PythonCertificationFailure(
+            f"cannot read wheel entry points: {error}"
+        ) from error
     parser = configparser.ConfigParser(interpolation=None)
     parser.optionxform = str
     parser.read_file(io.StringIO(text))
     if not parser.has_section("console_scripts"):
-        raise V2PythonCertificationFailure("wheel console_scripts entry point section is missing")
-    return {name: value.strip() for name, value in parser.items("console_scripts")}
+        raise V2PythonCertificationFailure(
+            "wheel console_scripts entry point section is missing"
+        )
+    return {
+        name: value.strip()
+        for name, value in parser.items("console_scripts")
+    }
 
 
 def require_v2_entry_points(scripts: dict[str, str]) -> None:
@@ -112,7 +119,11 @@ def build_receipt(
 
 
 def _single_marker(stdout: str, prefix: str) -> str:
-    values = [line[len(prefix):] for line in stdout.splitlines() if line.startswith(prefix)]
+    values = [
+        line[len(prefix) :]
+        for line in stdout.splitlines()
+        if line.startswith(prefix)
+    ]
     if len(values) != 1:
         raise V2PythonCertificationFailure(
             f"expected one marker {prefix!r}, observed={values!r}"
@@ -139,7 +150,8 @@ def _run(
         )
     except subprocess.TimeoutExpired as error:
         raise V2PythonCertificationFailure(
-            f"command timed out: {arguments!r}; stdout={support.bounded(error.stdout)}; "
+            f"command timed out: {arguments!r}; "
+            f"stdout={support.bounded(error.stdout)}; "
             f"stderr={support.bounded(error.stderr)}"
         ) from error
     if completed.returncode != 0:
@@ -151,8 +163,13 @@ def _run(
     return completed
 
 
-def _parse_v1_python_receipt(stdout: str) -> tuple[dict[str, object], str]:
-    payload = _single_marker(stdout, "TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT=")
+def _parse_v1_python_receipt(
+    stdout: str,
+) -> tuple[dict[str, object], str]:
+    payload = _single_marker(
+        stdout,
+        "TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT=",
+    )
     expected_hash = _single_marker(
         stdout,
         "TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL_RECEIPT_SHA256=",
@@ -160,21 +177,51 @@ def _parse_v1_python_receipt(stdout: str) -> tuple[dict[str, object], str]:
     observed_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
     if observed_hash != expected_hash:
         raise V2PythonCertificationFailure(
-            f"V1 Python receipt hash mismatch: expected={expected_hash} observed={observed_hash}"
+            "V1 Python receipt hash mismatch: "
+            f"expected={expected_hash} observed={observed_hash}"
         )
     try:
         receipt = json.loads(payload)
     except json.JSONDecodeError as error:
-        raise V2PythonCertificationFailure(f"invalid V1 Python receipt JSON: {error}") from error
+        raise V2PythonCertificationFailure(
+            f"invalid V1 Python receipt JSON: {error}"
+        ) from error
     if not isinstance(receipt, dict):
-        raise V2PythonCertificationFailure("V1 Python receipt root must be an object")
+        raise V2PythonCertificationFailure(
+            "V1 Python receipt root must be an object"
+        )
     return receipt, expected_hash
 
 
+def require_v1_python_receipt_identity(
+    receipt: dict[str, object],
+    identity: GitIdentity,
+) -> None:
+    wheel_sha256 = receipt.get("wheel_sha256")
+    if (
+        receipt.get("admission_profile") != "stable"
+        or receipt.get("commit") != identity.commit_sha
+        or receipt.get("tree") != identity.tree_sha
+        or receipt.get("package_name") != PACKAGE_NAME
+        or receipt.get("package_version") != PACKAGE_VERSION
+        or receipt.get("wheel_filename") != WHEEL_FILENAME
+        or not isinstance(wheel_sha256, str)
+        or len(wheel_sha256) != 64
+        or any(char not in "0123456789abcdef" for char in wheel_sha256)
+    ):
+        raise V2PythonCertificationFailure(
+            "V1 Python receipt identity/package mismatch"
+        )
+
+
 def _venv_python(root: Path) -> Path:
-    candidate = root / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    candidate = root / (
+        "Scripts/python.exe" if os.name == "nt" else "bin/python"
+    )
     if not candidate.is_file():
-        raise V2PythonCertificationFailure(f"isolated Python executable missing: {candidate}")
+        raise V2PythonCertificationFailure(
+            f"isolated Python executable missing: {candidate}"
+        )
     return candidate
 
 
@@ -184,7 +231,16 @@ def _installed_descriptor_hash(wheel: Path, profile: str) -> str:
         venv.EnvBuilder(with_pip=True, clear=True).create(environment)
         python = _venv_python(environment)
         _run(
-            [str(python), "-I", "-m", "pip", "install", "--no-deps", str(wheel)],
+            [
+                str(python),
+                "-I",
+                "-m",
+                "pip",
+                "install",
+                "--no-index",
+                "--no-deps",
+                str(wheel),
+            ],
             cwd=environment,
         )
         code = """
@@ -208,7 +264,10 @@ if descriptor.get('release_profile') != sys.argv[1]:
     raise SystemExit('release_profile_mismatch:' + repr(descriptor.get('release_profile')))
 print(json.dumps({'descriptor_hash': observed, 'module': str(module)}, sort_keys=True, separators=(',', ':')))
 """
-        completed = _run([str(python), "-I", "-c", code, profile], cwd=environment)
+        completed = _run(
+            [str(python), "-I", "-c", code, profile],
+            cwd=environment,
+        )
         try:
             result = json.loads(completed.stdout.strip())
         except json.JSONDecodeError as error:
@@ -217,12 +276,18 @@ print(json.dumps({'descriptor_hash': observed, 'module': str(module)}, sort_keys
             ) from error
         descriptor_hash = result.get("descriptor_hash")
         if not isinstance(descriptor_hash, str) or len(descriptor_hash) != 64:
-            raise V2PythonCertificationFailure("isolated descriptor hash is invalid")
+            raise V2PythonCertificationFailure(
+                "isolated descriptor hash is invalid"
+            )
         return descriptor_hash
 
 
 def _validate_receipt(receipt: dict[str, object]) -> None:
-    schema_path = ROOT / "schemas" / "tev-script-v2-python-certify-full-receipt.schema.json"
+    schema_path = (
+        ROOT
+        / "schemas"
+        / "tev-script-v2-python-certify-full-receipt.schema.json"
+    )
     try:
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         Draft202012Validator.check_schema(schema)
@@ -236,7 +301,11 @@ def _validate_receipt(receipt: dict[str, object]) -> None:
 def _write_receipt(path: Path, receipt: dict[str, object]) -> None:
     selected = support.require_external_output_path(ROOT, path)
     selected.parent.mkdir(parents=True, exist_ok=True)
-    selected.write_text(canonical_json(receipt) + "\n", encoding="utf-8", newline="\n")
+    selected.write_text(
+        canonical_json(receipt) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
 
 
 def certify(
@@ -265,40 +334,46 @@ def certify(
         ]
     )
     lines = set(completed.stdout.splitlines())
-    if "PYTHON_CERTIFY_FULL=PASS" not in lines or "LANGUAGE_STABLE=NO" not in lines:
-        raise V2PythonCertificationFailure("V1 Python certification witnesses are incomplete")
-    v1_receipt, v1_receipt_hash = _parse_v1_python_receipt(completed.stdout)
-    if v1_receipt.get("admission_profile") != "stable":
-        raise V2PythonCertificationFailure("V1 Python receipt must use stable profile")
     if (
-        v1_receipt.get("package_name") != PACKAGE_NAME
-        or v1_receipt.get("package_version") != PACKAGE_VERSION
+        "PYTHON_CERTIFY_FULL=PASS" not in lines
+        or "LANGUAGE_STABLE=NO" not in lines
     ):
-        raise V2PythonCertificationFailure("V1 Python receipt package identity mismatch")
-    wheel_filename = v1_receipt.get("wheel_filename")
-    if wheel_filename != WHEEL_FILENAME:
         raise V2PythonCertificationFailure(
-            f"unexpected V2 reference wheel filename: {wheel_filename!r}"
+            "V1 Python certification witnesses are incomplete"
         )
+    v1_receipt, v1_receipt_hash = _parse_v1_python_receipt(
+        completed.stdout
+    )
+    require_v1_python_receipt_identity(v1_receipt, initial)
     wheel = artifact_root / WHEEL_FILENAME
     if not wheel.is_file():
-        raise V2PythonCertificationFailure(f"V2 reference wheel is missing: {wheel}")
+        raise V2PythonCertificationFailure(
+            f"V2 reference wheel is missing: {wheel}"
+        )
     wheel_hash = support.sha256_file(wheel)
     if wheel_hash != v1_receipt.get("wheel_sha256"):
-        raise V2PythonCertificationFailure("V1/V2 wheel SHA-256 mismatch")
+        raise V2PythonCertificationFailure(
+            "V1/V2 wheel SHA-256 mismatch"
+        )
     scripts = read_console_scripts(wheel)
     require_v2_entry_points(scripts)
-    descriptor_hash = _installed_descriptor_hash(wheel, admission_profile)
+    descriptor_hash = _installed_descriptor_hash(
+        wheel,
+        admission_profile,
+    )
 
     final = support.collect_git_identity(ROOT, base)
     if final != initial:
         raise V2PythonCertificationFailure(
-            f"Git identity changed during V2 Python certification: {initial!r} -> {final!r}"
+            "Git identity changed during V2 Python certification: "
+            f"{initial!r} -> {final!r}"
         )
     receipt = build_receipt(
         final,
         admission_profile=admission_profile,
-        python_version=".".join(str(item) for item in sys.version_info[:3]),
+        python_version=".".join(
+            str(item) for item in sys.version_info[:3]
+        ),
         wheel_filename=WHEEL_FILENAME,
         wheel_sha256=wheel_hash,
         v1_python_receipt_sha256=v1_receipt_hash,
@@ -314,9 +389,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Certify the TEV Script V2 Python wheel surface"
     )
-    parser.add_argument("--profile", choices=("candidate", "stable"), default="candidate")
+    parser.add_argument(
+        "--profile",
+        choices=("candidate", "stable"),
+        default="candidate",
+    )
     parser.add_argument("--expected-base", required=True)
-    parser.add_argument("--artifact-out-dir", type=Path, required=True)
+    parser.add_argument(
+        "--artifact-out-dir",
+        type=Path,
+        required=True,
+    )
     parser.add_argument("--receipt-out", type=Path)
     args = parser.parse_args(argv)
     try:
@@ -341,7 +424,10 @@ def main(argv: list[str] | None = None) -> int:
     print("V2_PYTHON_ENTRY_POINTS=PASS")
     print("V2_PYTHON_INSTALLED_ORIGIN=VENV")
     print("V2_PYTHON_WHEEL_SHA256=" + str(receipt["wheel_sha256"]))
-    print("TEV_SCRIPT_V2_PYTHON_RECEIPT_SHA256=" + str(receipt["receipt_hash"]))
+    print(
+        "TEV_SCRIPT_V2_PYTHON_RECEIPT_SHA256="
+        + str(receipt["receipt_hash"])
+    )
     print("PYTHON_V2_CERTIFY_FULL=PASS")
     print("LANGUAGE_STABLE=NO")
     return 0
