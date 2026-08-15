@@ -6,7 +6,8 @@
   "required": [
     "schema", "admission_profile", "repository", "commit_sha", "tree_sha", "base_sha",
     "branch", "dirty", "python_version", "gates", "v2_test_count", "v2_skipped_tests",
-    "v1_receipt_sha256", "certify_full", "language_stable", "receipt_hash"
+    "full_test_count", "full_skipped_tests", "v1_receipt_sha256", "certify_full",
+    "language_stable", "receipt_hash"
   ],
   "additionalProperties": false,
   "properties": {
@@ -24,7 +25,7 @@
       "required": [
         "authority_inventory", "schemas_contracts", "cli_v2", "source_static", "program_ir_v4",
         "filesystem_safety", "toctou_closure", "one_mib_pre_admission", "v2_negative_campaign",
-        "v2_regression", "v1_certify_full", "stable_tooling_authority"
+        "v2_regression", "full_regression", "v1_certify_full", "stable_tooling_authority"
       ],
       "additionalProperties": false,
       "properties": {
@@ -38,12 +39,15 @@
         "one_mib_pre_admission": {"const": "PASS"},
         "v2_negative_campaign": {"const": "PASS"},
         "v2_regression": {"const": "PASS"},
+        "full_regression": {"const": "PASS"},
         "v1_certify_full": {"const": "PASS"},
         "stable_tooling_authority": {"const": "PASS"}
       }
     },
     "v2_test_count": {"type": "integer", "minimum": 1},
     "v2_skipped_tests": {"const": 0},
+    "full_test_count": {"type": "integer", "minimum": 1},
+    "full_skipped_tests": {"const": 0},
     "v1_receipt_sha256": {"$ref": "#/$defs/sha256"},
     "certify_full": {"const": true},
     "language_stable": {"const": false},
