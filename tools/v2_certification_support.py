@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -118,6 +119,41 @@ def require_external_output_path(root: Path, raw: Path) -> Path:
         raise V2CertificationFailure(
             "V2 certification output already exists: " + str(selected)
         )
+    return selected
+
+
+def write_external_bytes_once(
+    root: Path,
+    raw: Path,
+    data: bytes,
+) -> Path:
+    selected = require_external_output_path(root, raw)
+    selected.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        descriptor = os.open(
+            selected,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+        )
+    except FileExistsError as error:
+        raise V2CertificationFailure(
+            "V2 certification output already exists: " + str(selected)
+        ) from error
+    except OSError as error:
+        raise V2CertificationFailure(
+            f"cannot create V2 certification output {selected}: {error}"
+        ) from error
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except Exception:
+        try:
+            selected.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
     return selected
 
 
