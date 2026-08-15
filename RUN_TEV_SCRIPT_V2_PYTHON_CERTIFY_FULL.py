@@ -34,9 +34,64 @@ def require_artifact_root(raw: Path) -> Path:
     return support.require_external_empty_dir(ROOT, raw)
 
 
-def read_console_scripts(wheel: Path) -> dict[str, str]:
+def hash_wheel_snapshot(snapshot: bytes) -> str:
+    return hashlib.sha256(snapshot).hexdigest()
+
+
+def load_single_wheel_snapshot(
+    artifact_root: Path,
+) -> tuple[Path, bytes, str]:
+    wheels = sorted(artifact_root.glob("*.whl"), key=lambda path: path.name)
+    if len(wheels) != 1:
+        raise V2PythonCertificationFailure(
+            "V2 Python certification requires exactly one wheel, "
+            f"observed={[path.name for path in wheels]!r}"
+        )
+    wheel = wheels[0]
+    if wheel.name != WHEEL_FILENAME:
+        raise V2PythonCertificationFailure(
+            "unexpected V2 reference wheel filename: " + wheel.name
+        )
+    if wheel.is_symlink() or not wheel.is_file():
+        raise V2PythonCertificationFailure(
+            "V2 reference wheel must be a regular non-symlink file"
+        )
     try:
-        with zipfile.ZipFile(wheel) as archive:
+        with wheel.open("rb") as stream:
+            snapshot = stream.read()
+    except OSError as error:
+        raise V2PythonCertificationFailure(
+            f"cannot snapshot V2 reference wheel: {error}"
+        ) from error
+    if not snapshot:
+        raise V2PythonCertificationFailure("V2 reference wheel is empty")
+    return wheel, snapshot, hash_wheel_snapshot(snapshot)
+
+
+def require_exported_wheel_unchanged(
+    wheel: Path,
+    expected_sha256: str,
+) -> None:
+    if wheel.is_symlink() or not wheel.is_file():
+        raise V2PythonCertificationFailure(
+            "V2 reference wheel changed during certification"
+        )
+    try:
+        observed = support.sha256_file(wheel)
+    except OSError as error:
+        raise V2PythonCertificationFailure(
+            f"V2 reference wheel changed during certification: {error}"
+        ) from error
+    if observed != expected_sha256:
+        raise V2PythonCertificationFailure(
+            "V2 reference wheel changed during certification: "
+            f"expected={expected_sha256} observed={observed}"
+        )
+
+
+def read_console_scripts_snapshot(snapshot: bytes) -> dict[str, str]:
+    try:
+        with zipfile.ZipFile(io.BytesIO(snapshot)) as archive:
             matches = [
                 name
                 for name in archive.namelist()
@@ -62,6 +117,16 @@ def read_console_scripts(wheel: Path) -> dict[str, str]:
         name: value.strip()
         for name, value in parser.items("console_scripts")
     }
+
+
+def read_console_scripts(wheel: Path) -> dict[str, str]:
+    try:
+        snapshot = wheel.read_bytes()
+    except OSError as error:
+        raise V2PythonCertificationFailure(
+            f"cannot read wheel entry points: {error}"
+        ) from error
+    return read_console_scripts_snapshot(snapshot)
 
 
 def require_v2_entry_points(scripts: dict[str, str]) -> None:
@@ -249,9 +314,12 @@ def _venv_python(root: Path) -> Path:
     return candidate
 
 
-def _installed_descriptor_hash(wheel: Path, profile: str) -> str:
+def _installed_descriptor_hash(snapshot: bytes, profile: str) -> str:
     with tempfile.TemporaryDirectory(prefix="tev_v2_wheel_") as raw:
-        environment = Path(raw) / "venv"
+        temporary_root = Path(raw)
+        snapshot_wheel = temporary_root / WHEEL_FILENAME
+        snapshot_wheel.write_bytes(snapshot)
+        environment = temporary_root / "venv"
         venv.EnvBuilder(with_pip=True, clear=True).create(environment)
         python = _venv_python(environment)
         _run(
@@ -263,7 +331,7 @@ def _installed_descriptor_hash(wheel: Path, profile: str) -> str:
                 "install",
                 "--no-index",
                 "--no-deps",
-                str(wheel),
+                str(snapshot_wheel),
             ],
             cwd=environment,
         )
@@ -369,20 +437,17 @@ def certify(
         completed.stdout
     )
     require_v1_python_receipt_identity(v1_receipt, initial)
-    wheel = artifact_root / WHEEL_FILENAME
-    if not wheel.is_file():
-        raise V2PythonCertificationFailure(
-            f"V2 reference wheel is missing: {wheel}"
-        )
-    wheel_hash = support.sha256_file(wheel)
+    wheel, wheel_snapshot, wheel_hash = load_single_wheel_snapshot(
+        artifact_root
+    )
     if wheel_hash != v1_receipt.get("wheel_sha256"):
         raise V2PythonCertificationFailure(
             "V1/V2 wheel SHA-256 mismatch"
         )
-    scripts = read_console_scripts(wheel)
+    scripts = read_console_scripts_snapshot(wheel_snapshot)
     require_v2_entry_points(scripts)
     installed_descriptor_hash = _installed_descriptor_hash(
-        wheel,
+        wheel_snapshot,
         admission_profile,
     )
     checkout_descriptor = v2_descriptor()
@@ -394,6 +459,7 @@ def certify(
         installed_descriptor_hash,
         checkout_descriptor.get("descriptor_hash"),
     )
+    require_exported_wheel_unchanged(wheel, wheel_hash)
 
     final = support.collect_git_identity(ROOT, base)
     if final != initial:
