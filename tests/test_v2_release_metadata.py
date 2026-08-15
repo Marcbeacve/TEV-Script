@@ -15,7 +15,7 @@ CANDIDATE = {
     "TECHNICAL_PARENT_COMMIT": "",
     "TECHNICAL_PARENT_CERTIFICATE_SHA256": "",
 }
-STABLE = {
+STABLE_FIXTURE = {
     "RELEASE_PROFILE": "stable",
     "RELEASE_STATUS": "STABLE_2_0_0",
     "STABLE": True,
@@ -30,10 +30,21 @@ class V2ReleaseMetadataTests(unittest.TestCase):
     def test_current_profile_is_exact_and_valid(self) -> None:
         metadata.validate_release_metadata()
         self.assertEqual(metadata.STABLE_LANGUAGE_VERSION, "2.0.0")
-        expected = CANDIDATE if metadata.RELEASE_PROFILE == "candidate" else STABLE
         self.assertIn(metadata.RELEASE_PROFILE, {"candidate", "stable"})
-        for name, value in expected.items():
-            self.assertEqual(getattr(metadata, name), value)
+        if metadata.RELEASE_PROFILE == "candidate":
+            for name, value in CANDIDATE.items():
+                self.assertEqual(getattr(metadata, name), value)
+            return
+
+        self.assertEqual(metadata.RELEASE_STATUS, "STABLE_2_0_0")
+        self.assertIs(metadata.STABLE, True)
+        self.assertIs(metadata.CURRENT_V2_CERTIFY_FULL_CLAIM, True)
+        self.assertIs(metadata.CURRENT_V2_LANGUAGE_STABLE_CLAIM, True)
+        self.assertRegex(metadata.TECHNICAL_PARENT_COMMIT, r"^[0-9a-f]{40}$")
+        self.assertRegex(
+            metadata.TECHNICAL_PARENT_CERTIFICATE_SHA256,
+            r"^[0-9a-f]{64}$",
+        )
 
     def test_candidate_rejects_any_stable_claim_or_parent_binding(self) -> None:
         mutations = (
@@ -55,7 +66,7 @@ class V2ReleaseMetadataTests(unittest.TestCase):
 
     def test_stable_profile_requires_exact_claims_and_parent_shapes(self) -> None:
         with ExitStack() as stack:
-            for name, value in STABLE.items():
+            for name, value in STABLE_FIXTURE.items():
                 stack.enter_context(patch.object(metadata, name, value))
             metadata.validate_release_metadata()
             for name, invalid in (
