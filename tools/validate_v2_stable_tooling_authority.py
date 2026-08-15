@@ -3,14 +3,17 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 from typing import Any
 
-from jsonschema import Draft202012Validator
-
-from tev_script import descriptor_v2
-from tev_script import release_metadata_v2 as release_metadata
-
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from jsonschema import Draft202012Validator  # noqa: E402
+
+from tev_script import descriptor_v2  # noqa: E402
+from tev_script import release_metadata_v2 as release_metadata  # noqa: E402
+
 STABLE_TOOLING_PATHS = (
     "tev_script/release_metadata_v2.py",
     "tools/v2_certification_support.py",
