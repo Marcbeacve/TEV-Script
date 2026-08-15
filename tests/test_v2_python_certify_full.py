@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import tempfile
 import unittest
 import zipfile
 
 from jsonschema import Draft202012Validator
-import json
 
 import RUN_TEV_SCRIPT_V2_PYTHON_CERTIFY_FULL as gate
 
@@ -28,8 +28,43 @@ class V2PythonCertifyFullTests(unittest.TestCase):
             observed = gate.read_console_scripts(wheel)
             gate.require_v2_entry_points(observed)
             observed.pop("tev-script-v2")
-            with self.assertRaisesRegex(gate.V2PythonCertificationFailure, "entry point"):
+            with self.assertRaisesRegex(
+                gate.V2PythonCertificationFailure,
+                "entry point",
+            ):
                 gate.require_v2_entry_points(observed)
+
+    def test_v1_python_receipt_binds_exact_source_identity(self) -> None:
+        identity = gate.GitIdentity(
+            "agent/v2",
+            "1" * 40,
+            "2" * 40,
+            "3" * 40,
+        )
+        receipt = {
+            "admission_profile": "stable",
+            "commit": identity.commit_sha,
+            "tree": identity.tree_sha,
+            "package_name": gate.PACKAGE_NAME,
+            "package_version": gate.PACKAGE_VERSION,
+            "wheel_filename": gate.WHEEL_FILENAME,
+            "wheel_sha256": "4" * 64,
+        }
+        gate.require_v1_python_receipt_identity(receipt, identity)
+        substituted = dict(receipt)
+        substituted["commit"] = "9" * 40
+        with self.assertRaisesRegex(
+            gate.V2PythonCertificationFailure,
+            "identity",
+        ):
+            gate.require_v1_python_receipt_identity(substituted, identity)
+        substituted = dict(receipt)
+        substituted["tree"] = "8" * 40
+        with self.assertRaisesRegex(
+            gate.V2PythonCertificationFailure,
+            "identity",
+        ):
+            gate.require_v1_python_receipt_identity(substituted, identity)
 
     def test_receipt_binds_package_1_0_0_to_language_2_0_0_without_stable_claim(self) -> None:
         identity = gate.GitIdentity("agent/v2", "1" * 40, "2" * 40, "3" * 40)
@@ -43,9 +78,11 @@ class V2PythonCertifyFullTests(unittest.TestCase):
             descriptor_hash="6" * 64,
         )
         schema = json.loads(
-            (ROOT / "schemas" / "tev-script-v2-python-certify-full-receipt.schema.json").read_text(
-                encoding="utf-8"
-            )
+            (
+                ROOT
+                / "schemas"
+                / "tev-script-v2-python-certify-full-receipt.schema.json"
+            ).read_text(encoding="utf-8")
         )
         Draft202012Validator.check_schema(schema)
         Draft202012Validator(schema).validate(receipt)
