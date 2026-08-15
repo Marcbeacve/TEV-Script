@@ -152,6 +152,32 @@ class V2PythonCertifyFullTests(unittest.TestCase):
         observed = body.pop("receipt_hash")
         self.assertEqual(observed, gate.canonical_hash(body))
 
+    def test_receipt_writer_is_create_once(self) -> None:
+        identity = gate.GitIdentity("agent/v2", "1" * 40, "2" * 40, "3" * 40)
+        receipt = gate.build_receipt(
+            identity,
+            admission_profile="candidate",
+            python_version="3.14.6",
+            wheel_filename=gate.WHEEL_FILENAME,
+            wheel_sha256="4" * 64,
+            v1_python_receipt_sha256="5" * 64,
+            descriptor_hash="6" * 64,
+        )
+        with tempfile.TemporaryDirectory() as raw:
+            target = Path(raw) / "v2-python.json"
+            gate._write_receipt(target, receipt)
+            original = target.read_bytes()
+            self.assertEqual(
+                original,
+                (gate.canonical_json(receipt) + "\n").encode("utf-8"),
+            )
+            with self.assertRaisesRegex(
+                gate.V2PythonCertificationFailure,
+                "already exists",
+            ):
+                gate._write_receipt(target, receipt)
+            self.assertEqual(target.read_bytes(), original)
+
     def test_artifact_directory_must_be_external_and_empty(self) -> None:
         with self.assertRaisesRegex(gate.V2PythonCertificationFailure, "outside"):
             gate.require_artifact_root(ROOT / "artifacts")
