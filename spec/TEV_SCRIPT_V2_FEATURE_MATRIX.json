@@ -3,8 +3,8 @@
   "language_version": "2.0.0",
   "program_ir_version": "4",
   "certified_base_sha": "284ec3ec8c41681825ec1a8421f7ee2a1b012d68",
-  "certification_status": "CERTIFICATION_REQUIRED",
-  "stable": false,
+  "certification_status": "STABLE_ADMISSION_REQUESTED",
+  "stable": true,
   "publication_authorized": false,
   "merge_authorized": false,
   "authority_files": [
@@ -40,17 +40,72 @@
     "runtime_module_network_resolution": false
   },
   "required_features": [
-    {"id": "FINITE_COLLECTIONS", "source": "CLOSED", "ir": "PROGRAM_IR_V4", "tests": "REQUIRED"},
-    {"id": "USER_GENERICS", "source": "CLOSED", "ir": "MONOMORPHIZED", "tests": "REQUIRED"},
-    {"id": "PROTOCOLS_ASSOCIATED_TYPES", "source": "CLOSED", "ir": "WITNESS_BOUND", "tests": "REQUIRED"},
-    {"id": "CONTRACTED_RECURSION", "source": "CLOSED", "ir": "BOUNDED_RECURSIVE_PROFILE", "tests": "REQUIRED"},
-    {"id": "PURE_TASK_DAG", "source": "CLOSED", "ir": "DETERMINISTIC_TASK_SCOPE", "tests": "REQUIRED"},
-    {"id": "OBSERVATION_CAPABILITIES", "source": "CLOSED", "ir": "TRANSCRIPT_BOUND", "tests": "REQUIRED"},
-    {"id": "EFFECT_COMMAND_PLANNING", "source": "CLOSED", "ir": "EFFECTS_R2_PLAN", "tests": "REQUIRED"},
-    {"id": "LOCAL_MODULE_BUNDLES", "source": "CLOSED", "ir": "CONTENT_ADDRESSED_BUILD_TIME", "tests": "REQUIRED"},
-    {"id": "SIGNED_REMOTE_MODULES", "source": "CLOSED", "ir": "CONTENT_AND_KEY_PINNED_BUILD_TIME", "tests": "REQUIRED"},
-    {"id": "HANDLE_SCOPED_FILE_READ", "source": "CAPABILITY_ONLY", "ir": "ACQUISITION_EVIDENCE", "tests": "ZERO_SKIP_SECURITY_GATE"},
-    {"id": "HANDLE_SCOPED_FILE_REPLACE", "source": "COMMAND_ONLY", "ir": "AUTHORIZED_SINGLE_INTENT", "tests": "ZERO_SKIP_SECURITY_GATE"}
+    {
+      "id": "FINITE_COLLECTIONS",
+      "source": "CLOSED",
+      "ir": "PROGRAM_IR_V4",
+      "tests": "REQUIRED"
+    },
+    {
+      "id": "USER_GENERICS",
+      "source": "CLOSED",
+      "ir": "MONOMORPHIZED",
+      "tests": "REQUIRED"
+    },
+    {
+      "id": "PROTOCOLS_ASSOCIATED_TYPES",
+      "source": "CLOSED",
+      "ir": "WITNESS_BOUND",
+      "tests": "REQUIRED"
+    },
+    {
+      "id": "CONTRACTED_RECURSION",
+      "source": "CLOSED",
+      "ir": "BOUNDED_RECURSIVE_PROFILE",
+      "tests": "REQUIRED"
+    },
+    {
+      "id": "PURE_TASK_DAG",
+      "source": "CLOSED",
+      "ir": "DETERMINISTIC_TASK_SCOPE",
+      "tests": "REQUIRED"
+    },
+    {
+      "id": "OBSERVATION_CAPABILITIES",
+      "source": "CLOSED",
+      "ir": "TRANSCRIPT_BOUND",
+      "tests": "REQUIRED"
+    },
+    {
+      "id": "EFFECT_COMMAND_PLANNING",
+      "source": "CLOSED",
+      "ir": "EFFECTS_R2_PLAN",
+      "tests": "REQUIRED"
+    },
+    {
+      "id": "LOCAL_MODULE_BUNDLES",
+      "source": "CLOSED",
+      "ir": "CONTENT_ADDRESSED_BUILD_TIME",
+      "tests": "REQUIRED"
+    },
+    {
+      "id": "SIGNED_REMOTE_MODULES",
+      "source": "CLOSED",
+      "ir": "CONTENT_AND_KEY_PINNED_BUILD_TIME",
+      "tests": "REQUIRED"
+    },
+    {
+      "id": "HANDLE_SCOPED_FILE_READ",
+      "source": "CAPABILITY_ONLY",
+      "ir": "ACQUISITION_EVIDENCE",
+      "tests": "ZERO_SKIP_SECURITY_GATE"
+    },
+    {
+      "id": "HANDLE_SCOPED_FILE_REPLACE",
+      "source": "COMMAND_ONLY",
+      "ir": "AUTHORIZED_SINGLE_INTENT",
+      "tests": "ZERO_SKIP_SECURITY_GATE"
+    }
   ],
   "governed_paths": {
     "implementation": [
@@ -189,6 +244,12 @@
     "CURRENT_BASE_CERTIFICATION_SUPPORTED",
     "V2_PYTHON_ARTIFACT_CERTIFICATION_SUPPORTED",
     "STABLE_ADMISSION_TOOLING_PRESENT",
-    "STABLE_ADMISSION_TOOLING_TECHNICALLY_CERTIFIED_REQUIRED"
+    "STABLE_ADMISSION_TOOLING_TECHNICALLY_CERTIFIED_PASS",
+    "STABLE_PARENT_CERTIFICATE_BINDING_PASS",
+    "STABLE_RELEASE_DIFF_CONFINEMENT_PASS",
+    "STABLE_V2_TECHNICAL_RECERTIFICATION_PASS",
+    "STABLE_V1_NON_REGRESSION_PASS",
+    "STABLE_V2_PYTHON_ARTIFACT_PASS",
+    "EXACT_V2_STABLE_ADMISSION_PASS"
   ]
 }

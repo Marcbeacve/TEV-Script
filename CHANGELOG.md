@@ -62,3 +62,17 @@ Until that exact gate passes on this exact release-shaped commit, this changelog
 - Emits CLI artifacts as deterministic UTF-8/LF bytes on every host.
 
 This historical entry remains the preserved V0.2 lineage and does not supersede the V1 stable-admission authority.
+
+---
+
+## TEV Script V2 stable-admission request
+
+```text
+V2_STABLE_ADMISSION=REQUESTED
+V2_LANGUAGE_VERSION=2.0.0
+V2_PYTHON_PACKAGE_VERSION=1.0.0
+V2_TECHNICAL_PARENT_COMMIT=64d31f9c726ab82719a152bf551dc524abe82373
+V2_TECHNICAL_PARENT_CERTIFICATE_SHA256=49ccf5f6e5c4bf9962ccc6823ecade5f61f616787d3f7c5f0b596b51d4ff1bc7
+```
+
+This is the release-only Phase S source shape. It is bound to the exact independently recertified technical parent above. The source claim remains pending until `RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py` emits `STABLE_ADMISSION=PASS`. No tag, package publication, or main promotion is implied by this metadata alone.

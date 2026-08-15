@@ -223,3 +223,17 @@ python RUN_TEV_SCRIPT_V1_STABLE_ADMISSION.py --technical-parent-certificate <P6 
 A successful language/runtime stable admission does not certify unrelated deployment/security surfaces such as signing-key custody/rotation, hostile rollback-resistant monotonic storage, public WAN/TLS/DNS/CDN operation, external registry security, physical Unity providers, decentralized consensus/trust or unrestricted self-modifying code.
 
 Python capability implementations remain trusted embedding code. Untrusted callbacks require process/container, OS-resource and I/O controls outside the TEV runtime.
+
+---
+
+## TEV Script V2 stable-admission request
+
+```text
+V2_STABLE_ADMISSION=REQUESTED
+V2_LANGUAGE_VERSION=2.0.0
+V2_PYTHON_PACKAGE_VERSION=1.0.0
+V2_TECHNICAL_PARENT_COMMIT=64d31f9c726ab82719a152bf551dc524abe82373
+V2_TECHNICAL_PARENT_CERTIFICATE_SHA256=49ccf5f6e5c4bf9962ccc6823ecade5f61f616787d3f7c5f0b596b51d4ff1bc7
+```
+
+This is the release-only Phase S source shape. It is bound to the exact independently recertified technical parent above. The source claim remains pending until `RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py` emits `STABLE_ADMISSION=PASS`. No tag, package publication, or main promotion is implied by this metadata alone.

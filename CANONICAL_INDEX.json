@@ -204,8 +204,8 @@
     {
       "language_version": "2.0.0",
       "certified_base_sha": "284ec3ec8c41681825ec1a8421f7ee2a1b012d68",
-      "status": "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED",
-      "stable": false,
+      "status": "STABLE_ADMISSION_REQUESTED",
+      "stable": true,
       "authority_files": [
         "spec/TEV_SCRIPT_V2_LANGUAGE.md",
         "spec/TEV_SCRIPT_PROGRAM_IR_V4.md",
@@ -232,7 +232,7 @@
         "generator": "tev_script/descriptor_v2.py",
         "module_cli": "tev_script/describe_v2.py",
         "installed_cli": "tev-script-v2-describe",
-        "stable_claim": false
+        "stable_claim": true
       },
       "filesystem_capability_surface": {
         "specification": "spec/TEV_SCRIPT_V2_FILESYSTEM_CAPABILITIES.md",
@@ -250,7 +250,7 @@
         "exact_parent_certificate_required": true,
         "release_diff_whitelist_required": true,
         "artifact_byte_identity_required": true,
-        "stable_claim": false
+        "stable_claim": true
       },
       "gates": {
         "authority": "tools/validate_v2_authority.py",
