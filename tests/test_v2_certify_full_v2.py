@@ -106,6 +106,7 @@ class V2CertifyFullV2Tests(unittest.TestCase):
         receipt = {
             "schema": "TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V2",
             "admission_profile": "stable",
+            "branch": identity.branch,
             "commit": identity.commit_sha,
             "tree": identity.tree_sha,
             "certify_full": True,
@@ -129,17 +130,22 @@ class V2CertifyFullV2Tests(unittest.TestCase):
                 "f" * 64,
                 identity,
             )
-        substituted = dict(receipt)
-        substituted["tree"] = "9" * 40
-        with self.assertRaisesRegex(
-            gate.V2CertificationFailure,
-            "identity/claims",
+        for key, value in (
+            ("branch", "agent/other"),
+            ("tree", "9" * 40),
         ):
-            gate._require_v1_non_regression_receipt(
-                substituted,
-                gate.canonical_hash(substituted),
-                identity,
-            )
+            with self.subTest(key=key, value=value):
+                substituted = dict(receipt)
+                substituted[key] = value
+                with self.assertRaisesRegex(
+                    gate.V2CertificationFailure,
+                    "identity/claims",
+                ):
+                    gate._require_v1_non_regression_receipt(
+                        substituted,
+                        gate.canonical_hash(substituted),
+                        identity,
+                    )
 
     def test_receipt_output_compatibility_still_requires_external_path(self) -> None:
         with self.assertRaisesRegex(gate.V2CertificationFailure, "outside"):
