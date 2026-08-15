@@ -178,6 +178,7 @@ def _require_v1_non_regression_receipt(
         receipt.get("schema")
         != "TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V2"
         or receipt.get("admission_profile") != "stable"
+        or receipt.get("branch") != identity.branch
         or receipt.get("commit") != identity.commit_sha
         or receipt.get("tree") != identity.tree_sha
         or receipt.get("certify_full") is not True
