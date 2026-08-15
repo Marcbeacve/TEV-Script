@@ -25,7 +25,11 @@ class GitIdentity:
 def bounded(value: str | bytes | None) -> str:
     if value is None:
         return ""
-    text = value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value
+    text = (
+        value.decode("utf-8", errors="replace")
+        if isinstance(value, bytes)
+        else value
+    )
     return text[-12000:].replace("\r", "\\r").replace("\n", "\\n")
 
 
@@ -63,7 +67,9 @@ def collect_git_identity(
     git_fn = _git if git is None else git
     dirty = git_fn(root, "status", "--porcelain")
     if dirty:
-        raise V2CertificationFailure("dirty worktree is not certifiable: " + bounded(dirty))
+        raise V2CertificationFailure(
+            "dirty worktree is not certifiable: " + bounded(dirty)
+        )
     branch = git_fn(root, "symbolic-ref", "--quiet", "--short", "HEAD")
     if not branch.startswith("agent/"):
         raise V2CertificationFailure(
@@ -77,7 +83,12 @@ def collect_git_identity(
         git_fn(root, "rev-parse", "--verify", "HEAD^{tree}"),
         "tree Git identity",
     )
-    observed_origin_main = git_fn(root, "rev-parse", "--verify", "origin/main")
+    observed_origin_main = git_fn(
+        root,
+        "rev-parse",
+        "--verify",
+        "origin/main",
+    )
     if observed_origin_main != base_sha:
         raise V2CertificationFailure(
             "origin/main drift from expected V2 base: "
@@ -99,22 +110,36 @@ def _outside_repository(root: Path, raw: Path, label: str) -> Path:
 
 def require_external_output_path(root: Path, raw: Path) -> Path:
     selected = _outside_repository(root, raw, "V2 certification output")
-    if selected.exists() and selected.is_dir():
-        raise V2CertificationFailure("V2 certification output path is a directory")
+    if selected.exists():
+        if selected.is_dir():
+            raise V2CertificationFailure(
+                "V2 certification output path is a directory"
+            )
+        raise V2CertificationFailure(
+            "V2 certification output already exists: " + str(selected)
+        )
     return selected
 
 
 def require_external_input_file(root: Path, raw: Path) -> Path:
     selected = _outside_repository(root, raw, "V2 certification input")
     if not selected.is_file():
-        raise V2CertificationFailure(f"V2 certification input file is missing: {selected}")
+        raise V2CertificationFailure(
+            f"V2 certification input file is missing: {selected}"
+        )
     return selected
 
 
 def require_external_empty_dir(root: Path, raw: Path) -> Path:
-    selected = _outside_repository(root, raw, "V2 certification artifact directory")
+    selected = _outside_repository(
+        root,
+        raw,
+        "V2 certification artifact directory",
+    )
     if selected.exists() and not selected.is_dir():
-        raise V2CertificationFailure("V2 certification artifact path is not a directory")
+        raise V2CertificationFailure(
+            "V2 certification artifact path is not a directory"
+        )
     selected.mkdir(parents=True, exist_ok=True)
     if any(selected.iterdir()):
         raise V2CertificationFailure(
