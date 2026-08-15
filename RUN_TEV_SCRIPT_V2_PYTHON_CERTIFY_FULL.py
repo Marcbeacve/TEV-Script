@@ -201,17 +201,21 @@ def require_v1_python_receipt_identity(
     wheel_sha256 = receipt.get("wheel_sha256")
     if (
         receipt.get("admission_profile") != "stable"
+        or receipt.get("branch") != identity.branch
         or receipt.get("commit") != identity.commit_sha
         or receipt.get("tree") != identity.tree_sha
         or receipt.get("package_name") != PACKAGE_NAME
         or receipt.get("package_version") != PACKAGE_VERSION
         or receipt.get("wheel_filename") != WHEEL_FILENAME
+        or receipt.get("python_certify_full") is not True
+        or receipt.get("language_stable") is not False
+        or receipt.get("stable_release_authorized") is not False
         or not isinstance(wheel_sha256, str)
         or len(wheel_sha256) != 64
         or any(char not in "0123456789abcdef" for char in wheel_sha256)
     ):
         raise V2PythonCertificationFailure(
-            "V1 Python receipt identity/package mismatch"
+            "V1 Python receipt identity/package/claims mismatch"
         )
 
 
