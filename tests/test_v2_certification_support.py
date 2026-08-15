@@ -80,6 +80,27 @@ class V2CertificationSupportTests(unittest.TestCase):
             with self.assertRaisesRegex(support.V2CertificationFailure, "empty"):
                 support.require_external_empty_dir(ROOT, external_dir)
 
+    def test_external_evidence_write_is_create_once(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            target = Path(raw) / "receipt.json"
+            selected = support.write_external_bytes_once(
+                ROOT,
+                target,
+                b"evidence\n",
+            )
+            self.assertEqual(selected, target.resolve())
+            self.assertEqual(target.read_bytes(), b"evidence\n")
+            with self.assertRaisesRegex(
+                support.V2CertificationFailure,
+                "already exists",
+            ):
+                support.write_external_bytes_once(
+                    ROOT,
+                    target,
+                    b"replacement\n",
+                )
+            self.assertEqual(target.read_bytes(), b"evidence\n")
+
 
 if __name__ == "__main__":
     unittest.main()
