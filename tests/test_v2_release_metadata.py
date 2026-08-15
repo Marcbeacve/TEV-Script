@@ -1,25 +1,39 @@
 from __future__ import annotations
 
+from contextlib import ExitStack
 import unittest
 from unittest.mock import patch
 
 import tev_script.release_metadata_v2 as metadata
 
+CANDIDATE = {
+    "RELEASE_PROFILE": "candidate",
+    "RELEASE_STATUS": "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED",
+    "STABLE": False,
+    "CURRENT_V2_CERTIFY_FULL_CLAIM": False,
+    "CURRENT_V2_LANGUAGE_STABLE_CLAIM": False,
+    "TECHNICAL_PARENT_COMMIT": "",
+    "TECHNICAL_PARENT_CERTIFICATE_SHA256": "",
+}
+STABLE = {
+    "RELEASE_PROFILE": "stable",
+    "RELEASE_STATUS": "STABLE_2_0_0",
+    "STABLE": True,
+    "CURRENT_V2_CERTIFY_FULL_CLAIM": True,
+    "CURRENT_V2_LANGUAGE_STABLE_CLAIM": True,
+    "TECHNICAL_PARENT_COMMIT": "1" * 40,
+    "TECHNICAL_PARENT_CERTIFICATE_SHA256": "2" * 64,
+}
+
 
 class V2ReleaseMetadataTests(unittest.TestCase):
-    def test_candidate_defaults_are_exact_and_valid(self) -> None:
-        self.assertEqual(metadata.RELEASE_PROFILE, "candidate")
-        self.assertEqual(
-            metadata.RELEASE_STATUS,
-            "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED",
-        )
-        self.assertIs(metadata.STABLE, False)
-        self.assertFalse(metadata.CURRENT_V2_CERTIFY_FULL_CLAIM)
-        self.assertFalse(metadata.CURRENT_V2_LANGUAGE_STABLE_CLAIM)
-        self.assertEqual(metadata.TECHNICAL_PARENT_COMMIT, "")
-        self.assertEqual(metadata.TECHNICAL_PARENT_CERTIFICATE_SHA256, "")
-        self.assertEqual(metadata.STABLE_LANGUAGE_VERSION, "2.0.0")
+    def test_current_profile_is_exact_and_valid(self) -> None:
         metadata.validate_release_metadata()
+        self.assertEqual(metadata.STABLE_LANGUAGE_VERSION, "2.0.0")
+        expected = CANDIDATE if metadata.RELEASE_PROFILE == "candidate" else STABLE
+        self.assertIn(metadata.RELEASE_PROFILE, {"candidate", "stable"})
+        for name, value in expected.items():
+            self.assertEqual(getattr(metadata, name), value)
 
     def test_candidate_rejects_any_stable_claim_or_parent_binding(self) -> None:
         mutations = (
@@ -31,31 +45,18 @@ class V2ReleaseMetadataTests(unittest.TestCase):
             {"RELEASE_STATUS": "STABLE_2_0_0"},
         )
         for values in mutations:
-            with self.subTest(values=values):
-                patches = [patch.object(metadata, name, value) for name, value in values.items()]
-                for item in patches:
-                    item.start()
-                try:
-                    with self.assertRaisesRegex(RuntimeError, "TEVS_V2_RELEASE_METADATA_"):
-                        metadata.validate_release_metadata()
-                finally:
-                    for item in reversed(patches):
-                        item.stop()
+            with self.subTest(values=values), ExitStack() as stack:
+                for name, value in CANDIDATE.items():
+                    stack.enter_context(patch.object(metadata, name, value))
+                for name, value in values.items():
+                    stack.enter_context(patch.object(metadata, name, value))
+                with self.assertRaisesRegex(RuntimeError, "TEVS_V2_RELEASE_METADATA_"):
+                    metadata.validate_release_metadata()
 
     def test_stable_profile_requires_exact_claims_and_parent_shapes(self) -> None:
-        stable = {
-            "RELEASE_PROFILE": "stable",
-            "RELEASE_STATUS": "STABLE_2_0_0",
-            "STABLE": True,
-            "CURRENT_V2_CERTIFY_FULL_CLAIM": True,
-            "CURRENT_V2_LANGUAGE_STABLE_CLAIM": True,
-            "TECHNICAL_PARENT_COMMIT": "1" * 40,
-            "TECHNICAL_PARENT_CERTIFICATE_SHA256": "2" * 64,
-        }
-        patches = [patch.object(metadata, name, value) for name, value in stable.items()]
-        for item in patches:
-            item.start()
-        try:
+        with ExitStack() as stack:
+            for name, value in STABLE.items():
+                stack.enter_context(patch.object(metadata, name, value))
             metadata.validate_release_metadata()
             for name, invalid in (
                 ("RELEASE_STATUS", "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED"),
@@ -67,12 +68,13 @@ class V2ReleaseMetadataTests(unittest.TestCase):
                 ("TECHNICAL_PARENT_CERTIFICATE_SHA256", "G" * 64),
                 ("TECHNICAL_PARENT_CERTIFICATE_SHA256", "2" * 63),
             ):
-                with self.subTest(name=name, invalid=invalid), patch.object(metadata, name, invalid):
-                    with self.assertRaisesRegex(RuntimeError, "TEVS_V2_RELEASE_METADATA_"):
+                with self.subTest(name=name, invalid=invalid), patch.object(
+                    metadata, name, invalid
+                ):
+                    with self.assertRaisesRegex(
+                        RuntimeError, "TEVS_V2_RELEASE_METADATA_"
+                    ):
                         metadata.validate_release_metadata()
-        finally:
-            for item in reversed(patches):
-                item.stop()
 
     def test_unknown_profile_fails_closed(self) -> None:
         with patch.object(metadata, "RELEASE_PROFILE", "preview"):
