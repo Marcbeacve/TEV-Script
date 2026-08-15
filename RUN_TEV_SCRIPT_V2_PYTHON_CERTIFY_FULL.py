@@ -16,6 +16,7 @@ import zipfile
 from jsonschema import Draft202012Validator
 
 from tev_script.canonical import canonical_hash, canonical_json
+from tev_script.descriptor_v2 import v2_descriptor
 from tools import v2_certification_support as support
 
 ROOT = Path(__file__).resolve().parent
@@ -214,6 +215,25 @@ def require_v1_python_receipt_identity(
         )
 
 
+def require_descriptor_identity(
+    installed_descriptor_hash: str,
+    checkout_descriptor_hash: object,
+) -> None:
+    for value in (installed_descriptor_hash, checkout_descriptor_hash):
+        if (
+            not isinstance(value, str)
+            or len(value) != 64
+            or any(char not in "0123456789abcdef" for char in value)
+        ):
+            raise V2PythonCertificationFailure(
+                "V2 descriptor identity is not a lowercase SHA-256"
+            )
+    if installed_descriptor_hash != checkout_descriptor_hash:
+        raise V2PythonCertificationFailure(
+            "V2 descriptor identity mismatch between wheel and checkout"
+        )
+
+
 def _venv_python(root: Path) -> Path:
     candidate = root / (
         "Scripts/python.exe" if os.name == "nt" else "bin/python"
@@ -357,9 +377,18 @@ def certify(
         )
     scripts = read_console_scripts(wheel)
     require_v2_entry_points(scripts)
-    descriptor_hash = _installed_descriptor_hash(
+    installed_descriptor_hash = _installed_descriptor_hash(
         wheel,
         admission_profile,
+    )
+    checkout_descriptor = v2_descriptor()
+    if checkout_descriptor.get("release_profile") != admission_profile:
+        raise V2PythonCertificationFailure(
+            "V2 checkout descriptor release profile mismatch"
+        )
+    require_descriptor_identity(
+        installed_descriptor_hash,
+        checkout_descriptor.get("descriptor_hash"),
     )
 
     final = support.collect_git_identity(ROOT, base)
@@ -377,7 +406,7 @@ def certify(
         wheel_filename=WHEEL_FILENAME,
         wheel_sha256=wheel_hash,
         v1_python_receipt_sha256=v1_receipt_hash,
-        descriptor_hash=descriptor_hash,
+        descriptor_hash=installed_descriptor_hash,
     )
     _validate_receipt(receipt)
     if receipt_out is not None:
