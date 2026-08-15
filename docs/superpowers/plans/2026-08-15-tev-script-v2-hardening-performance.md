@@ -4,7 +4,7 @@
 
 **Goal:** Build a deterministic, hash-sealed hardening and performance harness for stable TEV Script V2.0.0, record a trustworthy baseline, and decide from measured evidence whether any implementation optimization is justified without changing V2 semantics.
 
-**Architecture:** Add repository-owned tooling outside the V2 semantic-authority surface. `tools/v2_hardening_corpus.py` owns deterministic benchmark/adversarial case construction and execution adapters; `tools/tevprober_v2_hardening_performance.py` owns Git identity, plan sealing, measurement, comparison, receipts, and CLI orchestration. New tests import only these `tools/` modules so the stable V2 feature matrix does not need to change merely to enumerate campaign tests.
+**Architecture:** Add repository-owned tooling outside the V2 semantic-authority surface. `tools/v2_hardening_corpus.py` owns deterministic benchmark/adversarial case construction and execution adapters. `tools/tevprober_v2_hardening_performance.py` owns Git identity, causal-frontier sealing, measurement, comparison, external receipts, and CLI orchestration. New tests import only these `tools/` modules so the stable V2 feature matrix does not need to change merely to enumerate campaign tests.
 
 **Tech Stack:** Python 3.11+ standard library only for campaign code (`dataclasses`, `hashlib`, `hmac`, `json`, `statistics`, `subprocess`, `tempfile`, `time`, `tracemalloc`); existing TEV Script V2 Python implementation; `unittest`; canonical SHA-256; external JSON receipts. No new runtime dependency and no GitHub Actions.
 
@@ -14,7 +14,7 @@
 - Stable Admission receipt authority remains `4235895f6229e168ff315c41624c23c205692046b74e030f6fd3fc8ca40adfe6`; this campaign never rewrites or reinterprets it.
 - Language version remains exactly `2.0.0`.
 - Do not modify grammar, parser acceptance/rejection semantics, static semantics, Program IR V4 schema/meaning, portable value model, capability ABI, canonical hashing, conformance receipt meaning, or stable-admission authority.
-- Do not modify `CANONICAL_INDEX.json`, `spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json`, V2 schemas, or `tev_script/release_metadata_v2.py` in the infrastructure phase.
+- Do not modify `CANONICAL_INDEX.json`, `spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json`, V2 schemas, or `tev_script/release_metadata_v2.py` in this infrastructure plan.
 - New tests must not directly import V2 governed implementation modules; they import `tools.v2_hardening_corpus` or `tools.tevprober_v2_hardening_performance`. This keeps `tools/validate_v2_authority.py::_require_test_inventory_closure` satisfied without changing the stable feature matrix.
 - No security check may be removed or bypassed for performance.
 - Missing capability, exhausted budget, malformed IR, hash mismatch, unsupported secure primitive, and authority mismatch continue to fail closed.
@@ -29,22 +29,24 @@
 ## File map
 
 **Create:**
-- `tools/v2_hardening_corpus.py` — deterministic benchmark/adversarial case definitions, corpus hashing, and implementation adapters.
-- `tools/tevprober_v2_hardening_performance.py` — exact Git/frontier policy, sealed plans, measurement engine, hardening runner, comparison gate, external receipts, CLI.
+- `tools/v2_hardening_corpus.py` — deterministic benchmark/adversarial case definitions, corpus hashing, semantic witnesses, adversarial execution, and per-case measurements.
+- `tools/tevprober_v2_hardening_performance.py` — exact Git/frontier policy, sealed plans, aggregation, hardening runner, comparison gate, external receipts, CLI.
 - `tests/test_tevprober_v2_hardening_performance.py` — probe/frontier/sealing/measurement/comparison/CLI regression tests; imports only `tools.*`.
 - `tests/test_v2_hardening_adversarial.py` — deterministic finite adversarial campaign tests through `tools.v2_hardening_corpus`; imports no governed `tev_script.*` module directly.
 
-**Already present and changed on this campaign branch:**
-- `docs/superpowers/specs/2026-08-15-tev-script-v2-hardening-performance-design.md` — approved design.
-- `docs/superpowers/plans/2026-08-15-tev-script-v2-hardening-performance.md` — this implementation plan.
+**Already changed on this campaign branch:**
+- `docs/superpowers/specs/2026-08-15-tev-script-v2-hardening-performance-design.md`
+- `docs/superpowers/plans/2026-08-15-tev-script-v2-hardening-performance.md`
 
-**Must remain unchanged in this infrastructure plan:**
+**Must remain unchanged:**
 - `CANONICAL_INDEX.json`
 - `spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json`
-- `schemas/tev-script-v2-*.json`
+- `schemas/tev-script-v2-descriptor.schema.json`
 - `schemas/tev-script-program-ir-v4.schema.json`
+- `schemas/tev-script-v2-filesystem-artifacts.schema.json`
+- `schemas/tev-script-v2-certify-full-receipt.schema.json`
 - `tev_script/release_metadata_v2.py`
-- parser/compiler/runtime implementation files under `tev_script/`
+- every existing parser/compiler/runtime implementation file under `tev_script/`
 
 ---
 
@@ -61,11 +63,8 @@
 - Produces `verify_plan(value: Mapping[str, Any]) -> bool`.
 - Produces `resolve_changed_paths() -> tuple[str, ...]`.
 - Produces `environment_fingerprint() -> dict[str, Any]`.
-- No function in this task executes benchmarks or claims release authority.
 
-- [ ] **Step 1: Write failing contract tests**
-
-Add tests that import only `tools.tevprober_v2_hardening_performance` and assert exact constants, exact frontier acceptance, unknown-path HOLD, tamper rejection, path normalization rejection, and `promotion_authority_bool is False`.
+- [ ] **Step 1: Write the failing contract tests**
 
 ```python
 from __future__ import annotations
@@ -74,7 +73,6 @@ import copy
 import unittest
 
 from tools import tevprober_v2_hardening_performance as probe
-
 
 EXPECTED_FRONTIER = (
     "docs/superpowers/plans/2026-08-15-tev-script-v2-hardening-performance.md",
@@ -85,9 +83,8 @@ EXPECTED_FRONTIER = (
     "tools/v2_hardening_corpus.py",
 )
 
-
 class V2HardeningProbeContractTests(unittest.TestCase):
-    def test_exact_infrastructure_frontier_is_ready_and_non_promotional(self) -> None:
+    def test_exact_frontier_is_ready_and_non_promotional(self) -> None:
         value = probe.plan(EXPECTED_FRONTIER)
         self.assertEqual(value["status"], "READY")
         self.assertEqual(tuple(value["changed_paths"]), EXPECTED_FRONTIER)
@@ -96,7 +93,7 @@ class V2HardeningProbeContractTests(unittest.TestCase):
         self.assertIs(value["promotion_authority_bool"], False)
         self.assertTrue(probe.verify_plan(value))
 
-    def test_unknown_path_holds(self) -> None:
+    def test_semantic_implementation_path_holds(self) -> None:
         value = probe.plan((*EXPECTED_FRONTIER, "tev_script/program_ir_v4.py"))
         self.assertEqual(value["status"], "HOLD")
         self.assertFalse(value["promotion_authority_bool"])
@@ -110,31 +107,17 @@ class V2HardeningProbeContractTests(unittest.TestCase):
 
 - [ ] **Step 2: Run RED**
 
-Run:
-
 ```powershell
 python -m unittest -v tests.test_tevprober_v2_hardening_performance
 ```
 
-Expected: import failure because `tools/tevprober_v2_hardening_performance.py` does not yet exist.
+Expected: import failure because `tools/tevprober_v2_hardening_performance.py` does not exist.
 
-- [ ] **Step 3: Implement the minimal sealed plan**
+- [ ] **Step 3: Implement the exact plan contract**
 
-Use only standard-library canonical JSON. The plan must be reproducible and must not trust unordered caller input.
+Use these exact constants and policies:
 
 ```python
-from __future__ import annotations
-
-import hashlib
-import hmac
-import json
-import os
-import platform
-import subprocess
-import sys
-from pathlib import Path
-from typing import Any, Mapping, Sequence
-
 ROOT = Path(__file__).resolve().parents[1]
 BASE_SHA = "2bdb047dcad41f9d112219bd65925c25668c02e0"
 BASE_TREE = "aa00bf02f6d7cca7cb5a9a21daf18370ba3dd2b8"
@@ -156,9 +139,12 @@ METRIC_POLICY = {
     "material_improvement_ratio": 0.10,
     "max_unexplained_regression_ratio": 0.05,
 }
+```
 
+Canonical hashing is exactly:
 
-def _canonical_bytes(value: Any) -> bytes:
+```python
+def canonical_bytes(value: Any) -> bytes:
     return json.dumps(
         value,
         sort_keys=True,
@@ -168,53 +154,21 @@ def _canonical_bytes(value: Any) -> bytes:
     ).encode("utf-8")
 
 
-def _sha256(value: Any) -> str:
-    return "sha256:" + hashlib.sha256(_canonical_bytes(value)).hexdigest()
-
-
-def normalize_paths(values: Sequence[str]) -> tuple[str, ...]:
-    if isinstance(values, (str, bytes)):
-        raise ValueError("tevprober_paths_sequence_required")
-    normalized: list[str] = []
-    for raw in values:
-        value = str(raw).strip().replace("\\", "/").removeprefix("./")
-        if not value or value.startswith(("/", "../")) or "/../" in value or "\x00" in value or "\n" in value:
-            raise ValueError("tevprober_path_invalid")
-        normalized.append(value)
-    return tuple(sorted(dict.fromkeys(normalized)))
-
-
-def plan(changed_paths: Sequence[str]) -> dict[str, Any]:
-    changed = normalize_paths(changed_paths)
-    expected = set(INFRASTRUCTURE_FRONTIER)
-    observed = set(changed)
-    unknown = sorted(observed - expected)
-    missing = sorted(expected - observed)
-    ready = not unknown and not missing
-    body = {
-        "schema": PLAN_SCHEMA,
-        "status": "READY" if ready else "HOLD",
-        "mode": "INFRASTRUCTURE_BASELINE" if ready else "HOLD",
-        "base_sha": BASE_SHA,
-        "base_tree": BASE_TREE,
-        "changed_paths": list(changed),
-        "metric_policy": dict(METRIC_POLICY),
-        "reasons": (
-            ["exact_infrastructure_frontier", "stable_base_bound", "non_semantic_campaign", "promotion_forbidden"]
-            if ready
-            else [*(f"out_of_frontier:{x}" for x in unknown), *(f"missing_frontier:{x}" for x in missing)]
-        ),
-        "promotion_authority_bool": False,
-        "semantic_authority_change_bool": False,
-    }
-    return {**body, "plan_hash": _sha256(body)}
+def sha256_obj(value: Any) -> str:
+    return "sha256:" + hashlib.sha256(canonical_bytes(value)).hexdigest()
 ```
 
-Implement `verify_plan` by rebuilding `plan(value["changed_paths"])`, comparing the exact canonical bytes and the hash with `hmac.compare_digest`. Implement `resolve_changed_paths` from `git diff --name-only BASE_SHA...HEAD` plus `git status --porcelain=v1 --untracked-files=all`. Implement `environment_fingerprint` with Python version, implementation, OS, machine, CPU count, and a hash of those stable fields; do not include wall-clock time.
+`normalize_paths` rejects strings-as-sequences, empty paths, absolute paths, parent traversal, NUL, and newline; it returns unique sorted slash-normalized paths. `plan` returns READY only when the changed path set is exactly `INFRASTRUCTURE_FRONTIER`; otherwise HOLD with `out_of_frontier:` and `missing_frontier:` reasons. `verify_plan` rebuilds the plan from `changed_paths` and compares both `plan_hash` and canonical bytes using `hmac.compare_digest` for the hash.
+
+`resolve_changed_paths` reads committed changes from `git diff --name-only BASE_SHA...HEAD --` plus tracked/untracked pending paths from `git status --porcelain=v1 --untracked-files=all`. `environment_fingerprint` records only `sys.version_info[:3]`, `sys.implementation.name`, `platform.system()`, `platform.release()`, `platform.machine()`, and `os.cpu_count()` and includes a canonical fingerprint hash.
 
 - [ ] **Step 4: Run GREEN**
 
-Run the same unittest command. Expected: PASS, zero skips.
+```powershell
+python -m unittest -v tests.test_tevprober_v2_hardening_performance
+```
+
+Expected: PASS, zero skips.
 
 - [ ] **Step 5: Commit**
 
@@ -225,61 +179,43 @@ git commit -m "test: seal V2 hardening probe contract"
 
 ---
 
-### Task 2: Add the deterministic benchmark corpus and semantic witness adapter
+### Task 2: Add the deterministic 14-family benchmark corpus and semantic witnesses
 
 **Files:**
 - Create: `tools/v2_hardening_corpus.py`
 - Modify: `tests/test_tevprober_v2_hardening_performance.py`
 
 **Interfaces:**
-- Produces immutable `BenchmarkCaseV2`.
-- Produces `build_benchmark_corpus() -> tuple[BenchmarkCaseV2, ...]`.
+- Produces `BenchmarkCaseV2(case_id: str, family: str, scale: int, kind: str, payload: dict[str, Any])`.
+- Produces `build_benchmark_corpus() -> tuple[BenchmarkCaseV2, ...]` with exactly 42 cases.
 - Produces `benchmark_corpus_hash() -> str`.
 - Produces `semantic_witness(case: BenchmarkCaseV2) -> dict[str, Any]`.
-- `semantic_witness` is the only campaign adapter allowed to call governed TEV Script V2 APIs for benchmark cases.
 
-- [ ] **Step 1: Write corpus determinism and semantic-witness tests**
-
-Tests continue to import only the `tools` module:
+- [ ] **Step 1: Write corpus closure and repeatability tests**
 
 ```python
 from tools import v2_hardening_corpus as corpus
 
+class V2BenchmarkCorpusTests(unittest.TestCase):
+    def test_corpus_is_exactly_fourteen_families_times_three_scales(self) -> None:
+        cases = corpus.build_benchmark_corpus()
+        self.assertEqual(len(cases), 42)
+        self.assertEqual(len({case.case_id for case in cases}), 42)
+        self.assertEqual({case.scale for case in cases}, {1, 2, 3})
+        self.assertEqual(
+            {case.family for case in cases},
+            {
+                "tiny_pure", "collection_heavy", "generic_specialization",
+                "protocol_associated_type", "bounded_recursion", "wide_task_dag",
+                "deep_task_dag", "observation_heavy", "effect_plan_heavy",
+                "local_module_bundle", "signed_remote_module_bundle", "filesystem_read",
+                "filesystem_replace", "canonical_receipt_heavy",
+            },
+        )
 
-def test_corpus_is_closed_and_hash_stable(self) -> None:
-    cases = corpus.build_benchmark_corpus()
-    self.assertEqual(len(cases), 42)
-    self.assertEqual(len({case.case_id for case in cases}), 42)
-    self.assertEqual({case.scale for case in cases}, {1, 2, 3})
-    self.assertEqual(
-        {case.family for case in cases},
-        {
-            "tiny_pure",
-            "collection_heavy",
-            "generic_specialization",
-            "protocol_associated_type",
-            "bounded_recursion",
-            "wide_task_dag",
-            "deep_task_dag",
-            "observation_heavy",
-            "effect_plan_heavy",
-            "local_module_bundle",
-            "signed_remote_module_bundle",
-            "filesystem_read",
-            "filesystem_replace",
-            "canonical_receipt_heavy",
-        },
-    )
-    self.assertEqual(corpus.benchmark_corpus_hash(), corpus.benchmark_corpus_hash())
-
-
-def test_tiny_pure_witness_is_deterministic(self) -> None:
-    case = next(x for x in corpus.build_benchmark_corpus() if x.case_id == "tiny_pure.s1")
-    left = corpus.semantic_witness(case)
-    right = corpus.semantic_witness(case)
-    self.assertEqual(left, right)
-    self.assertEqual(left["language_version"], "2.0.0")
-    self.assertEqual(left["profile"], "pure")
+    def test_tiny_pure_semantic_witness_replays_exactly(self) -> None:
+        case = next(item for item in corpus.build_benchmark_corpus() if item.case_id == "tiny_pure.s1")
+        self.assertEqual(corpus.semantic_witness(case), corpus.semantic_witness(case))
 ```
 
 - [ ] **Step 2: Run RED**
@@ -290,100 +226,71 @@ python -m unittest -v tests.test_tevprober_v2_hardening_performance
 
 Expected: import failure for `tools.v2_hardening_corpus`.
 
-- [ ] **Step 3: Implement the corpus data model and closed 14×3 inventory**
+- [ ] **Step 3: Implement the case model and exact inventory formulas**
 
-Use a plain-data case model so the corpus itself is hashable and independent of Python function identities:
+Use this exact family table. Each row generates scales 1, 2, 3 and `case_id=f"{family}.s{scale}"`.
 
-```python
-from dataclasses import asdict, dataclass
-from typing import Any
+| family | kind | deterministic payload formula |
+|---|---|---|
+| `tiny_pure` | `source_pure` | source `script P{scale} version "2.0.0"; fn add(x:Int)->Int=x+{scale}; entry main:Int=add(41);` |
+| `collection_heavy` | `source_pure` | `length=(3,8,16)[scale-1]`; source contains `generic fn middle<T>(xs:Array<T,length>)->T=array.get(xs,length//2);` and an integer array literal `0..length-1` |
+| `generic_specialization` | `registry_generic` | `specializations=(2,4,7)[scale-1]`; instantiate one registered identity template over the ordered prefix of `("Int","Text","Bool","Rat","Vec2","Vec3","Unit")` |
+| `protocol_associated_type` | `source_pure` | use one fixed valid protocol/associated-type source from `tests/test_source_associated_types_v2.py`; repeat independent concrete impl blocks `(1,2,4)[scale-1]` with unique names |
+| `bounded_recursion` | `source_recursive` | factorial source with `n=(4,6,8)[scale-1]` and `max_depth=(8,10,12)[scale-1]` |
+| `wide_task_dag` | `task_scheduler` | `width=(4,16,64)[scale-1]`, `workers=4`, tasks are canonical maps `{"index": i}` and child result is deterministic `i*i` |
+| `deep_task_dag` | `source_pure` | build a nested pure task expression with depth `(2,4,6)[scale-1]` using the same source form exercised by `tests/test_task_dag_v2.py` |
+| `observation_heavy` | `effects_ir` | build one observation capability and `(2,8,32)[scale-1]` deterministic transcript calls |
+| `effect_plan_heavy` | `effects_r2_plan` | build `(2,8,32)[scale-1]` authorized file-effect intents against temporary fixture paths, planning only; do not commit physical effects during timing |
+| `local_module_bundle` | `local_module` | create `(2,8,24)[scale-1]` modules in a temporary directory; one root imports every leaf in canonical name order |
+| `signed_remote_module_bundle` | `signed_remote_module` | create `(1,4,12)[scale-1]` locally signed module payloads using the same Ed25519 fixture strategy as `tests/test_signed_remote_module_manifest_v2.py`; no network |
+| `filesystem_read` | `filesystem_read` | temporary regular file sizes `(4 KiB,64 KiB,512 KiB)`; perform handle-scoped read within the 1 MiB limit |
+| `filesystem_replace` | `filesystem_replace` | temporary replacement payload sizes `(4 KiB,64 KiB,512 KiB)`; perform same-directory authorized replace in a disposable directory |
+| `canonical_receipt_heavy` | `canonical` | canonical object contains `(32,256,2048)[scale-1]` records with integer/string fields and is hashed twice to prove deterministic bytes |
 
-@dataclass(frozen=True, slots=True)
-class BenchmarkCaseV2:
-    case_id: str
-    family: str
-    scale: int
-    kind: str
-    payload: dict[str, Any]
+`benchmark_corpus_hash()` is SHA-256 over canonical JSON of `[dataclasses.asdict(case) for case in cases]`. No case payload contains an absolute path, temporary directory name, random value, timestamp, object repr, or process id.
 
+- [ ] **Step 4: Implement the semantic witness dispatch with exact existing APIs**
 
-def build_benchmark_corpus() -> tuple[BenchmarkCaseV2, ...]:
-    cases: list[BenchmarkCaseV2] = []
-    for scale in (1, 2, 3):
-        cases.extend(
-            (
-                BenchmarkCaseV2(
-                    f"tiny_pure.s{scale}", "tiny_pure", scale, "source_pure",
-                    {"source": f'script P{scale} version "2.0.0"; fn add(x:Int)->Int=x+{scale}; entry main:Int=add(41);'},
-                ),
-                BenchmarkCaseV2(
-                    f"bounded_recursion.s{scale}", "bounded_recursion", scale, "source_recursive",
-                    {"n": 3 + scale, "max_depth": 8 + scale},
-                ),
-                BenchmarkCaseV2(
-                    f"wide_task_dag.s{scale}", "wide_task_dag", scale, "task_scheduler",
-                    {"width": 2 ** (scale + 1), "workers": min(4, 2 ** (scale + 1))},
-                ),
-                BenchmarkCaseV2(
-                    f"canonical_receipt_heavy.s{scale}", "canonical_receipt_heavy", scale, "canonical",
-                    {"records": 32 * scale},
-                ),
-            )
-        )
-    # Add the remaining ten families with exactly one case per scale using the
-    # same explicit constructor form; do not generate family names dynamically.
-    ...
-```
-
-Do **not** leave the ellipsis in implementation. The final tuple must contain exactly the 14 family names asserted by the test, each at scales 1/2/3, and `case_id` must be `<family>.s<scale>`.
-
-For source-based payloads, generate finite source text deterministically from `scale`. For filesystem and signed-module cases, payloads contain only counts/sizes/fixture identifiers; the adapter creates all temporary files/directories at execution time. No benchmark case stores absolute paths.
-
-`benchmark_corpus_hash()` is SHA-256 over canonical JSON of `[asdict(case) ...]`.
-
-- [ ] **Step 4: Implement semantic witnesses using existing V2 APIs**
-
-For `source_pure`, use the already-governed path exercised by `tests/test_program_ir_v4.py`:
+Use this dispatch map:
 
 ```python
-from tev_script.program_ir_v4 import (
-    canonical_program_ir_v4_bytes,
-    export_program_ir_v4_pure,
-    run_program_ir_v4_pure,
-    validate_program_ir_v4_pure,
-)
-from tev_script.source_program_v2 import compile_and_run_program_v2, compile_program_v2
-
-
-def _pure_witness(source: str) -> dict[str, Any]:
-    compiled, source_receipt = compile_and_run_program_v2(source)
-    ir = export_program_ir_v4_pure(compiled)
-    validation = validate_program_ir_v4_pure(ir)
-    portable_receipt = run_program_ir_v4_pure(ir)
-    wire = canonical_program_ir_v4_bytes(ir)
-    if portable_receipt.result_hash != source_receipt.result_hash:
-        raise RuntimeError("tevprober_source_ir_result_divergence")
-    return {
-        "language_version": compiled.language_version,
-        "profile": "pure",
-        "semantic_hash": compiled.semantic_hash,
-        "program_ir_hash": validation.program_ir_hash,
-        "result_hash": portable_receipt.result_hash,
-        "receipt_hash": portable_receipt.receipt_hash,
-        "ir_bytes": len(wire),
-    }
+_WITNESS_BUILDERS = {
+    "source_pure": _witness_source_pure,
+    "source_recursive": _witness_source_recursive,
+    "registry_generic": _witness_registry_generic,
+    "task_scheduler": _witness_task_scheduler,
+    "effects_ir": _witness_effects_ir,
+    "effects_r2_plan": _witness_effects_r2_plan,
+    "local_module": _witness_local_module,
+    "signed_remote_module": _witness_signed_remote_module,
+    "filesystem_read": _witness_filesystem_read,
+    "filesystem_replace": _witness_filesystem_replace,
+    "canonical": _witness_canonical,
+}
 ```
 
-Add explicit adapters for recursive, task-scheduler, effects/observation, local module, signed remote module, filesystem read/replace, and canonical-only case kinds by reusing their existing public/tested APIs. Every adapter returns plain canonicalizable data only; no object repr, memory address, temporary path, or timing value belongs in a semantic witness.
+For pure source, use exactly `compile_and_run_program_v2`, `compile_program_v2`, `export_program_ir_v4_pure`, `validate_program_ir_v4_pure`, `canonical_program_ir_v4_bytes`, and `run_program_ir_v4_pure`, matching `tests/test_program_ir_v4.py`. Reject source/portable result-hash divergence.
+
+For recursive source, use `compile_and_run_program_v2`, `export_program_ir_v4_recursive`, `validate_program_ir_v4_recursive`, `canonical_program_ir_v4_bytes`, and `run_program_ir_v4_recursive`, matching `tests/test_program_ir_v4_recursive.py`.
+
+For effects, use `build_type_table_v4`, `build_state_schema_v4`, `build_capability_table_v4`, `build_effect_action_v4`, `build_effect_scenario_v4`, `build_program_ir_v4_effects`, `validate_program_ir_v4_effects`, and `run_program_ir_v4_effects`, matching `tests/test_program_ir_v4_effects.py`.
+
+For generic registry pressure, use `GenericRegistryV2` and `GenericPureFunctionRegistryV2`; register one `identity<T>(x:T)->T` template with body `{"op":"PARAM","name":"x","type":"T"}`, instantiate the declared ordered type prefix, and include sorted callable IDs in the witness, matching `tests/test_generic_functions_v2.py`.
+
+For task scheduling, use `BoundedThreadTaskStrategyV2(worker_count=4).run(...)`; witness contains canonical ordered child results, never physical completion order.
+
+For module, signed-module, filesystem, and Effects R2 planning families, call the same public functions already exercised by their respective existing test modules; the witness includes only canonical hashes/counts/result identities and excludes temporary paths. Any fixture cleanup happens in `finally`/temporary-directory context managers.
+
+Every witness must be canonicalizable and include `case_id`, `family`, `scale`, `kind`, and `language_version="2.0.0"`.
 
 - [ ] **Step 5: Run GREEN and repeatability check**
 
 ```powershell
 python -m unittest -v tests.test_tevprober_v2_hardening_performance
-python -c "from tools.v2_hardening_corpus import benchmark_corpus_hash; print(benchmark_corpus_hash()); print(benchmark_corpus_hash())"
+python -c "from tools.v2_hardening_corpus import benchmark_corpus_hash; a=benchmark_corpus_hash(); b=benchmark_corpus_hash(); print(a); print(b); assert a==b"
 ```
 
-Expected: tests PASS and the two printed hashes are byte-identical.
+Expected: PASS and identical hashes.
 
 - [ ] **Step 6: Commit**
 
@@ -401,15 +308,12 @@ git commit -m "test: add deterministic V2 benchmark corpus"
 - Create: `tests/test_v2_hardening_adversarial.py`
 
 **Interfaces:**
-- Produces immutable `AdversarialCaseV2`.
-- Produces `build_adversarial_cases() -> tuple[AdversarialCaseV2, ...]`.
+- Produces `AdversarialCaseV2(case_id: str, family: str, mutation: str, expected_outcome: str, expected_diagnostic_codes: tuple[str, ...])`.
+- Produces `build_adversarial_cases() -> tuple[AdversarialCaseV2, ...]` with exactly 48 cases.
 - Produces `adversarial_corpus_hash() -> str`.
 - Produces `run_adversarial_case(case: AdversarialCaseV2) -> dict[str, Any]`.
-- Each result contains `case_id`, `family`, `status`, `expected_outcome`, and either a governed diagnostic code or a deterministic success witness.
 
-- [ ] **Step 1: Write finite-campaign tests**
-
-`tests/test_v2_hardening_adversarial.py` imports only `tools.v2_hardening_corpus`:
+- [ ] **Step 1: Write the exact finite-campaign tests**
 
 ```python
 from __future__ import annotations
@@ -417,19 +321,15 @@ from __future__ import annotations
 import unittest
 from tools import v2_hardening_corpus as corpus
 
-
 class V2AdversarialCampaignTests(unittest.TestCase):
-    def test_campaign_is_closed_deterministic_and_fail_closed(self) -> None:
+    def test_campaign_has_exactly_forty_eight_cases_and_replays(self) -> None:
         cases = corpus.build_adversarial_cases()
-        self.assertGreaterEqual(len(cases), 48)
-        self.assertEqual(len(cases), len({case.case_id for case in cases}))
-        first = [corpus.run_adversarial_case(case) for case in cases]
-        second = [corpus.run_adversarial_case(case) for case in cases]
-        self.assertEqual(first, second)
-        self.assertTrue(all(item["status"] == "PASS" for item in first))
-
-    def test_adversarial_corpus_hash_is_stable(self) -> None:
-        self.assertEqual(corpus.adversarial_corpus_hash(), corpus.adversarial_corpus_hash())
+        self.assertEqual(len(cases), 48)
+        self.assertEqual(len({case.case_id for case in cases}), 48)
+        left = [corpus.run_adversarial_case(case) for case in cases]
+        right = [corpus.run_adversarial_case(case) for case in cases]
+        self.assertEqual(left, right)
+        self.assertTrue(all(item["status"] == "PASS" for item in left))
 ```
 
 - [ ] **Step 2: Run RED**
@@ -440,32 +340,9 @@ python -m unittest -v tests.test_v2_hardening_adversarial
 
 Expected: missing adversarial API failures.
 
-- [ ] **Step 3: Define at least 48 explicit cases across six families**
+- [ ] **Step 3: Define these exact 48 case IDs**
 
-Use eight or more cases in each family:
-
-```text
-source
-program_ir_v4
-capability_effect
-filesystem
-remote_module_signature
-receipt_canonicalization
-```
-
-The case model is plain data:
-
-```python
-@dataclass(frozen=True, slots=True)
-class AdversarialCaseV2:
-    case_id: str
-    family: str
-    mutation: str
-    expected_outcome: str
-    expected_diagnostic_codes: tuple[str, ...]
-```
-
-Required explicit mutations include:
+Eight cases per family:
 
 ```text
 source.malformed_utf8_file
@@ -523,7 +400,9 @@ receipt_canonicalization.identity_mismatch
 receipt_canonicalization.replay_result_mismatch
 ```
 
-Reuse existing implementation APIs and temporary local fixtures. A case passes only when the observed governed rejection/success class matches its predeclared expectation. Catch only `TevScriptError` or the exact documented validation exception for that boundary; unexpected exceptions are campaign failures, not successful rejection.
+Every case has a predeclared `expected_outcome` of `REJECT` or `ACCEPT_CANONICAL_EQUIVALENT`. A case with `REJECT` passes only when the adapter receives `TevScriptError` with a code from the case's explicit code tuple, or the exact documented validation exception for signed-envelope verification. `field_reorder` is `ACCEPT_CANONICAL_EQUIVALENT` and passes only when canonical bytes/hash remain identical. Unexpected exception classes, hangs, subprocess non-termination, or silent acceptance of a REJECT case fail the campaign.
+
+Use temporary local fixtures only. `malformed_utf8_file` writes invalid bytes and exercises the CLI/file-ingestion boundary; it must not convert invalid bytes to a Python string first. `oversize_source` uses `MAX_SOURCE_BYTES_V2 + 1` ASCII bytes. `oversize_read` uses `MAX_FILE_READ_BYTES_V2 + 1` bytes. IR rehash attacks recompute only the outer hash after mutating inner bound/hash-protected content, matching the existing Program IR V4 negative tests.
 
 - [ ] **Step 4: Run GREEN twice**
 
@@ -532,7 +411,7 @@ python -m unittest -v tests.test_v2_hardening_adversarial
 python -m unittest -v tests.test_v2_hardening_adversarial
 ```
 
-Expected: both runs PASS with identical case count and zero skips.
+Expected: both runs PASS, exactly 48 cases, zero skips.
 
 - [ ] **Step 5: Commit**
 
@@ -543,34 +422,33 @@ git commit -m "test: add finite V2 adversarial campaign"
 
 ---
 
-### Task 4: Add phase-level measurement and a self-hashed external baseline receipt
+### Task 4: Add phase-level measurement and sealed external baseline receipts
 
 **Files:**
-- Modify: `tools/tevprober_v2_hardening_performance.py`
 - Modify: `tools/v2_hardening_corpus.py`
+- Modify: `tools/tevprober_v2_hardening_performance.py`
 - Modify: `tests/test_tevprober_v2_hardening_performance.py`
 
 **Interfaces:**
-- `tools.v2_hardening_corpus.measure_once(case: BenchmarkCaseV2) -> dict[str, int | None]` returns phase metrics plus semantic witness.
-- `measure_case(case, *, warmups: int = 2, trials: int = 7) -> dict[str, Any]`.
-- `run_baseline(probe: Mapping[str, Any]) -> dict[str, Any]`.
-- `write_external_receipt_once(path: Path, receipt: Mapping[str, Any]) -> Path`.
+- Produces `measure_once(case: BenchmarkCaseV2) -> dict[str, int | None]`.
+- Produces `aggregate_samples(values: Sequence[int]) -> dict[str, int | float]`.
+- Produces `measure_case(case: BenchmarkCaseV2, *, warmups: int = 2, trials: int = 7) -> dict[str, Any]`.
+- Produces `run_baseline(probe_plan: Mapping[str, Any]) -> dict[str, Any]`.
+- Produces `verify_run_receipt(value: Mapping[str, Any]) -> bool`.
+- Produces `write_external_receipt_once(path: Path, receipt: Mapping[str, Any]) -> Path`.
 
-- [ ] **Step 1: Write aggregation/receipt tests before timing implementation**
-
-Use synthetic samples for median/dispersion logic so tests do not depend on machine speed:
+- [ ] **Step 1: Write aggregation and receipt-tamper tests**
 
 ```python
-def test_metric_aggregate_uses_median_and_reports_dispersion(self) -> None:
+def test_metric_aggregate_uses_median(self) -> None:
     value = probe.aggregate_samples([100, 101, 99, 100, 100, 102, 98])
     self.assertEqual(value["median"], 100)
     self.assertEqual(value["minimum"], 98)
     self.assertEqual(value["maximum"], 102)
     self.assertLess(value["relative_dispersion"], 0.05)
 
-
-def test_run_receipt_self_hash_detects_tamper(self) -> None:
-    receipt = probe._seal_run({"schema": probe.RUN_SCHEMA, "status": "PASS"})
+def test_run_receipt_tamper_is_rejected(self) -> None:
+    receipt = probe.seal_run({"schema": probe.RUN_SCHEMA, "status": "PASS"})
     self.assertTrue(probe.verify_run_receipt(receipt))
     tampered = dict(receipt)
     tampered["status"] = "FAIL"
@@ -579,54 +457,41 @@ def test_run_receipt_self_hash_detects_tamper(self) -> None:
 
 - [ ] **Step 2: Run RED**
 
-Run the focal probe test module. Expected: missing aggregation/run APIs.
+Run the focal probe test module. Expected: missing measurement/run APIs.
 
-- [ ] **Step 3: Implement explicit phase measurements**
+- [ ] **Step 3: Implement explicit timing boundaries**
 
-`measure_once` measures only phase boundaries owned by the adapter. For pure-source cases split at least:
+For `source_pure`, measure these exact boundaries independently using `time.perf_counter_ns()`:
 
-```python
-start = time.perf_counter_ns()
-parsed = parse_program_v2(source)
-parse_ns = time.perf_counter_ns() - start
-
-start = time.perf_counter_ns()
-compiled = compile_parsed_program_v2(parsed)
-static_analysis_and_lowering_ns = time.perf_counter_ns() - start
-
-start = time.perf_counter_ns()
-ir = export_program_ir_v4_pure(compiled)
-lowering_export_ns = time.perf_counter_ns() - start
-
-start = time.perf_counter_ns()
-validation = validate_program_ir_v4_pure(ir)
-ir_validation_ns = time.perf_counter_ns() - start
-
-start = time.perf_counter_ns()
-wire = canonical_program_ir_v4_bytes(ir)
-canonicalization_ns = time.perf_counter_ns() - start
-
-start = time.perf_counter_ns()
-receipt = run_program_ir_v4_pure(ir)
-execution_and_receipt_ns = time.perf_counter_ns() - start
+```text
+parse_ns                     parse_program_v2(source)
+compile_ns                   compile_parsed_program_v2(parsed)
+ir_export_ns                 export_program_ir_v4_pure(compiled)
+ir_validation_ns             validate_program_ir_v4_pure(ir)
+canonicalization_ns          canonical_program_ir_v4_bytes(ir)
+execution_receipt_ns         run_program_ir_v4_pure(ir)
 ```
 
-Where an API does not expose a clean internal phase boundary, record one combined named metric rather than estimating sub-phases. Missing phases are `None`, never zero.
+For `source_recursive`, use the recursive export/validate/run functions. For non-source cases expose named boundaries that correspond to real public calls, such as `scheduler_ns`, `module_link_ns`, `signature_verify_ns`, `filesystem_operation_ns`, or `canonicalization_ns`. A phase not exercised by a case is `None`, never `0`.
 
-For peak allocations, start `tracemalloc` immediately before one measured iteration, reset peak, run the case, capture `get_traced_memory()[1]`, and stop tracing. Timing trials and allocation trials are separate so tracemalloc overhead does not contaminate final wall-time numbers.
+Each timing sample must also rerun `semantic_witness(case)` after timing and require equality with the pre-timing witness. This ensures the measurement path cannot silently change behavior.
 
-- [ ] **Step 4: Implement robust aggregation**
+- [ ] **Step 4: Separate allocation measurement from timing**
 
-Use seven final trials after two warmups. `aggregate_samples` returns count, median, minimum, maximum, median absolute deviation, and `relative_dispersion = (maximum-minimum)/max(median,1)`. If any required metric exceeds `METRIC_POLICY["max_relative_dispersion"]`, classify the benchmark run `UNRELIABLE` rather than pretending an improvement.
+Use `tracemalloc` in a separate single execution after timing trials. Record `peak_memory_bytes`; do not include the tracemalloc run in timing samples. Record `source_bytes`, `ir_bytes`, and `receipt_bytes` where available; otherwise record `None`.
 
-- [ ] **Step 5: Build and verify the sealed baseline receipt**
+- [ ] **Step 5: Implement aggregation reliability**
 
-The baseline body includes:
+Seven final samples follow two warmups. `aggregate_samples` returns `count`, `median`, `minimum`, `maximum`, `median_absolute_deviation`, and `relative_dispersion=(maximum-minimum)/max(median,1)`. Any primary timing metric above `0.20` relative dispersion marks the case `UNRELIABLE`.
+
+- [ ] **Step 6: Seal the baseline receipt**
+
+The run body contains exactly these top-level fields before `run_hash` is added:
 
 ```text
 schema
 status
-mode=BASELINE
+mode
 plan_hash
 base_sha
 base_tree
@@ -639,29 +504,25 @@ metric_policy
 hardening_summary
 semantic_witnesses
 benchmark_results
-promotion_authority_bool=false
+hotspot_classification
+promotion_authority_bool
 ```
 
-Seal it as `run_hash = sha256(canonical body)`. `write_external_receipt_once` must reject paths inside the repo, reject pre-existing output, create once with `O_CREAT|O_EXCL`, flush and fsync.
+`promotion_authority_bool` is always false. `write_external_receipt_once` rejects any path inside the repository, rejects an existing file, creates with `O_CREAT|O_EXCL`, writes canonical JSON plus newline, flushes, and fsyncs.
 
-- [ ] **Step 6: Run focal tests**
+- [ ] **Step 7: Run focal tests and commit**
 
 ```powershell
 python -m unittest -v tests.test_tevprober_v2_hardening_performance tests.test_v2_hardening_adversarial
+git add tools/v2_hardening_corpus.py tools/tevprober_v2_hardening_performance.py tests/test_tevprober_v2_hardening_performance.py
+git commit -m "feat: measure sealed V2 hardening baseline"
 ```
 
 Expected: PASS, zero skips.
 
-- [ ] **Step 7: Commit**
-
-```powershell
-git add tools/tevprober_v2_hardening_performance.py tools/v2_hardening_corpus.py tests/test_tevprober_v2_hardening_performance.py
-git commit -m "feat: measure sealed V2 hardening baseline"
-```
-
 ---
 
-### Task 5: Add baseline/candidate comparison and the no-speculative-optimization gate
+### Task 5: Add comparison, hotspot classification, and the no-speculative-optimization gate
 
 **Files:**
 - Modify: `tools/tevprober_v2_hardening_performance.py`
@@ -670,104 +531,80 @@ git commit -m "feat: measure sealed V2 hardening baseline"
 **Interfaces:**
 - Produces `compare_runs(baseline: Mapping[str, Any], candidate: Mapping[str, Any]) -> dict[str, Any]`.
 - Produces `classify_hotspots(run: Mapping[str, Any]) -> dict[str, Any]`.
-- No comparison result has promotion authority.
 
-- [ ] **Step 1: Add synthetic comparison tests**
+- [ ] **Step 1: Write synthetic comparison tests**
 
-Cover exact-corpus/environment requirements, 10% material improvement, 5% unexplained regression cap, semantic mismatch veto, and the valid `NO_OPTIMIZATION_JUSTIFIED` result.
+Cover these exact rules:
 
-```python
-def test_semantic_mismatch_vetoes_fast_candidate(self) -> None:
-    baseline = self.synthetic_run(total_ns=1000, semantic="A")
-    candidate = self.synthetic_run(total_ns=500, semantic="B")
-    result = probe.compare_runs(baseline, candidate)
-    self.assertEqual(result["status"], "REJECT")
-    self.assertIn("semantic_witness_mismatch", result["reasons"])
-
-
-def test_ten_percent_improvement_passes_when_no_case_regresses_over_five_percent(self) -> None:
-    baseline = self.synthetic_run(total_ns=1000, semantic="A")
-    candidate = self.synthetic_run(total_ns=890, semantic="A")
-    result = probe.compare_runs(baseline, candidate)
-    self.assertEqual(result["status"], "IMPROVEMENT")
+```text
+corpus mismatch                    REJECT
+adversarial corpus mismatch        REJECT
+environment fingerprint mismatch   REJECT
+semantic witness mismatch          REJECT
+hardening summary regression       REJECT
+any primary case >5% slower        REJECT unless result declares exact explained case/metric
+>=10% material improvement         IMPROVEMENT when all vetoes are clear
+no >=10% improvement               NO_MATERIAL_CHANGE
+no stable hotspot                  NO_OPTIMIZATION_JUSTIFIED
+unreliable benchmark               UNRELIABLE_BASELINE
 ```
+
+Test a 50% faster candidate with changed semantic witness and require `REJECT`.
 
 - [ ] **Step 2: Run RED**
 
 Expected: missing compare/classify APIs.
 
-- [ ] **Step 3: Implement strict comparison invariants**
+- [ ] **Step 3: Implement comparison vetoes before speed comparisons**
 
-Before comparing performance require:
+The first checks are exact equality of `benchmark_corpus_hash`, `adversarial_corpus_hash`, `environment.fingerprint_hash`, `semantic_witnesses`, and a no-regression hardening summary. Only after those pass may timing/memory ratios be evaluated.
 
-```python
-if baseline["benchmark_corpus_hash"] != candidate["benchmark_corpus_hash"]:
-    return reject("benchmark_corpus_mismatch")
-if baseline["adversarial_corpus_hash"] != candidate["adversarial_corpus_hash"]:
-    return reject("adversarial_corpus_mismatch")
-if baseline["environment"]["fingerprint_hash"] != candidate["environment"]["fingerprint_hash"]:
-    return reject("environment_mismatch")
-if baseline["semantic_witnesses"] != candidate["semantic_witnesses"]:
-    return reject("semantic_witness_mismatch")
-if baseline["hardening_summary"] != candidate["hardening_summary"]:
-    return reject("hardening_regression")
-```
+- [ ] **Step 4: Implement hotspot classification**
 
-Then compare medians per case/metric. A candidate is `IMPROVEMENT` only when at least one declared primary metric improves by `>= 10%`, no governed case has unexplained median regression `> 5%`, and no reliability gate is `UNRELIABLE`. Otherwise return `NO_OPTIMIZATION_JUSTIFIED`, `NO_MATERIAL_CHANGE`, or `REJECT` with explicit reasons.
+A phase is a measured hotspot only when one named phase contributes at least 30% of measured case total in at least two scales of the same family. A scaling hotspot is also valid when the scale-1/2/3 ratios show repeatable superlinear growth in the same phase and all three measurements are reliable. Otherwise return `NO_OPTIMIZATION_JUSTIFIED`.
 
-- [ ] **Step 4: Implement hotspot classification without guessing**
+The classification record includes `status`, `family`, `phase`, `scale_evidence`, `contribution_ratios`, and `reasons`. For no-hotspot results, `family` and `phase` are `None`.
 
-For each case, compute contribution ratios from named phase medians to measured case total. Report a hotspot only when one phase contributes at least 30% of the case total in at least two scales of the same family, or when scale 1→2→3 growth demonstrates a repeatable superlinear regime. Otherwise the global classification is `NO_OPTIMIZATION_JUSTIFIED`.
-
-- [ ] **Step 5: Run GREEN**
+- [ ] **Step 5: Run GREEN and commit**
 
 ```powershell
 python -m unittest -v tests.test_tevprober_v2_hardening_performance
-```
-
-Expected: PASS, zero skips.
-
-- [ ] **Step 6: Commit**
-
-```powershell
 git add tools/tevprober_v2_hardening_performance.py tests/test_tevprober_v2_hardening_performance.py
 git commit -m "feat: gate V2 optimization on measured evidence"
 ```
 
+Expected: PASS, zero skips.
+
 ---
 
-### Task 6: Add the fail-closed CLI and certify campaign infrastructure
+### Task 6: Add the fail-closed CLI, certify infrastructure, and record the baseline
 
 **Files:**
 - Modify: `tools/tevprober_v2_hardening_performance.py`
 - Modify: `tests/test_tevprober_v2_hardening_performance.py`
+- No baseline result file is committed.
 
 **Interfaces:**
-- CLI commands:
-  - `plan`
-  - `hardening`
-  - `baseline --receipt-out <external-new-path>`
-  - `compare --baseline <external-file> --candidate <external-file>`
-- CLI never writes inside the repository and never mutates Git refs.
+- CLI commands: `plan`, `hardening`, `baseline --receipt-out <external-new-path>`, `compare --baseline <external-file> --candidate <external-file>`.
 
-- [ ] **Step 1: Add subprocess CLI tests**
+- [ ] **Step 1: Write subprocess CLI tests**
 
-Test that `plan` reports READY only on the exact infrastructure frontier, `baseline` rejects an in-repo receipt path, `compare` rejects tampered receipts, and every successful command prints `PROMOTION_AUTHORITY=NO`.
+Require `plan` READY only on the exact infrastructure frontier, `baseline` to reject an in-repo output path, `compare` to reject a tampered run receipt, and every successful command to print `PROMOTION_AUTHORITY=NO`.
 
 - [ ] **Step 2: Run RED**
 
-Expected: CLI argument/parser failures.
+Expected: CLI parser/command failures.
 
-- [ ] **Step 3: Implement CLI with bounded output**
+- [ ] **Step 3: Implement bounded fail-closed CLI output**
 
-Use `argparse`. On failure print a stable first-line marker and return non-zero:
+On failure print:
 
 ```text
 TEV_SCRIPT_V2_HARDENING_PERFORMANCE=FAIL
 PROMOTION_AUTHORITY=NO
 ```
 
-On successful infrastructure/baseline run print:
+On successful baseline print:
 
 ```text
 TEV_SCRIPT_V2_HARDENING_PERFORMANCE=PASS
@@ -777,21 +614,17 @@ PERFORMANCE_BASELINE=RECORDED
 PROMOTION_AUTHORITY=NO
 ```
 
-Do not print unbounded source/IR/receipt bodies. Cap diagnostic stdout/stderr snippets at 512 KiB and kill timed-out subprocesses/process groups fail-closed.
+Cap captured diagnostic output at 512 KiB. Subprocess timeouts must terminate the process tree and return non-zero.
 
-- [ ] **Step 4: Run campaign focal tests**
+- [ ] **Step 4: Run focal campaign tests**
 
 ```powershell
-python -m unittest -v `
-  tests.test_tevprober_v2_hardening_performance `
-  tests.test_v2_hardening_adversarial
+python -m unittest -v tests.test_tevprober_v2_hardening_performance tests.test_v2_hardening_adversarial
 ```
 
 Expected: PASS, zero skips.
 
-- [ ] **Step 5: Prove stable semantic authority files are unchanged**
-
-Run:
+- [ ] **Step 5: Prove semantic authority files are untouched**
 
 ```powershell
 $Base = "2bdb047dcad41f9d112219bd65925c25668c02e0"
@@ -810,9 +643,7 @@ if ($Touched.Count -ne 0) { throw "SEMANTIC_AUTHORITY_DRIFT: $($Touched -join ',
 Write-Host "SEMANTIC_AUTHORITY_DRIFT=NO"
 ```
 
-Expected: `SEMANTIC_AUTHORITY_DRIFT=NO`.
-
-- [ ] **Step 6: Run the full repository regression**
+- [ ] **Step 6: Run full regression**
 
 ```powershell
 python -m unittest discover -s tests -p "test*.py" -v
@@ -820,9 +651,7 @@ python -m unittest discover -s tests -p "test*.py" -v
 
 Expected: exit 0, `OK`, zero skips.
 
-- [ ] **Step 7: Run stable-profile V2 technical certification against the current stable main**
-
-Use the dedicated certification Python that already has certification tooling installed. The branch must be clean and `origin/main` must still equal the stable base.
+- [ ] **Step 7: Run stable-profile technical certification against current stable main**
 
 ```powershell
 $Base = "2bdb047dcad41f9d112219bd65925c25668c02e0"
@@ -837,56 +666,15 @@ $Receipt = "C:\TEV\TEV-SCRIPT-V2-HARDENING-CERT-$Stamp-$Nonce.json"
   --receipt-out $Receipt
 ```
 
-Expected terminal witnesses include `CERTIFY_V2=PASS`, `FULL_REGRESSION=PASS`, and `LANGUAGE_STABLE=NO` because this is technical certification, not a new Stable Admission.
+Require `CERTIFY_V2=PASS`, `FULL_REGRESSION=PASS`, and `LANGUAGE_STABLE=NO`. This is technical certification only; no new Stable Admission is requested.
 
-- [ ] **Step 8: Commit the CLI only after the full verification remains green**
-
-```powershell
-git add tools/tevprober_v2_hardening_performance.py tests/test_tevprober_v2_hardening_performance.py
-git commit -m "feat: expose V2 hardening performance probe"
-```
-
----
-
-### Task 7: Record the stable baseline and make the hotspot decision
-
-**Files:**
-- No repository file is created for baseline results; receipt is external.
-- No implementation optimization is authorized in this task.
-
-**Interfaces:**
-- Consumes the final `plan()` hash and exact campaign tooling identity.
-- Produces one external self-hashed baseline receipt and one hotspot classification.
-
-- [ ] **Step 1: Ensure exact clean campaign identity and current main base**
-
-```powershell
-if (@(git status --porcelain).Count -ne 0) { throw "dirty worktree" }
-git fetch origin main --prune
-$Base = "2bdb047dcad41f9d112219bd65925c25668c02e0"
-if ((git rev-parse origin/main).Trim() -ne $Base) { throw "origin/main drift" }
-```
-
-- [ ] **Step 2: Run the sealed hardening campaign**
-
-```powershell
-python .\tools\tevprober_v2_hardening_performance.py hardening
-```
-
-Require:
-
-```text
-TEV_SCRIPT_V2_HARDENING_PERFORMANCE=PASS
-HARDENING_CAMPAIGN=PASS
-PROMOTION_AUTHORITY=NO
-```
-
-- [ ] **Step 3: Record a fresh external baseline**
+- [ ] **Step 8: Record the external baseline**
 
 ```powershell
 $Stamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $Nonce = ([guid]::NewGuid().ToString("N")).Substring(0,8)
 $Baseline = "C:\TEV\TEV-SCRIPT-V2-HARDENING-BASELINE-$Stamp-$Nonce.json"
+python .\tools\tevprober_v2_hardening_performance.py hardening
 python .\tools\tevprober_v2_hardening_performance.py baseline --receipt-out $Baseline
 ```
 
@@ -894,30 +682,26 @@ Require:
 
 ```text
 TEV_SCRIPT_V2_HARDENING_PERFORMANCE=PASS
+HARDENING_CAMPAIGN=PASS
 SEMANTIC_EQUIVALENCE_BASELINE=PASS
 PERFORMANCE_BASELINE=RECORDED
 PROMOTION_AUTHORITY=NO
 ```
 
-- [ ] **Step 4: Classify hotspots from the sealed baseline**
+- [ ] **Step 9: Make the hotspot decision**
 
-The baseline command prints a bounded summary containing `HOTSPOT_CLASSIFICATION=<value>`. Accept only:
+Accept only `HOTSPOT_CLASSIFICATION=MEASURED_HOTSPOT`, `HOTSPOT_CLASSIFICATION=NO_OPTIMIZATION_JUSTIFIED`, or `HOTSPOT_CLASSIFICATION=UNRELIABLE_BASELINE`.
 
-```text
-MEASURED_HOTSPOT
-NO_OPTIMIZATION_JUSTIFIED
-UNRELIABLE_BASELINE
+If `UNRELIABLE_BASELINE`, stop and repair measurement reliability only. If `NO_OPTIMIZATION_JUSTIFIED`, finish the campaign infrastructure without implementation optimization. If `MEASURED_HOTSPOT`, record the exact family, phase, scale evidence, contribution ratios, baseline receipt hash, and implicated implementation files, then write a new focused design and TDD plan for exactly that hotspot.
+
+- [ ] **Step 10: Commit the final CLI implementation after verification**
+
+```powershell
+git add tools/tevprober_v2_hardening_performance.py tests/test_tevprober_v2_hardening_performance.py
+git commit -m "feat: expose V2 hardening performance probe"
 ```
 
-If `UNRELIABLE_BASELINE`, stop and repair measurement reliability only; do not optimize implementation code.
-
-If `NO_OPTIMIZATION_JUSTIFIED`, the campaign may end successfully with no runtime/compiler modification.
-
-If `MEASURED_HOTSPOT`, record the exact family, phase, contribution ratios, scaling evidence, baseline receipt hash, and candidate implementation files implicated. Then create a **new focused design/spec and TDD implementation plan** for exactly that hotspot. Do not optimize anything under this infrastructure plan.
-
-- [ ] **Step 5: Final infrastructure status**
-
-Report exactly the evidence available:
+Final infrastructure evidence must be:
 
 ```text
 BASE_IDENTITY_BOUND=PASS
@@ -932,4 +716,4 @@ PROMOTION_AUTHORITY=FALSE
 HOTSPOT_CLASSIFICATION=<MEASURED_HOTSPOT|NO_OPTIMIZATION_JUSTIFIED>
 ```
 
-Do not create a draft PR until this status and the full technical certification are both available.
+Do not create a draft PR until the full technical certification and baseline evidence are both available.
