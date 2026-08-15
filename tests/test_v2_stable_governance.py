@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -7,9 +9,31 @@ import tools.validate_v2_stable_governance as governance
 
 
 class V2StableGovernanceTests(unittest.TestCase):
-    def test_candidate_metadata_is_rejected_by_stable_governance(self) -> None:
-        with self.assertRaisesRegex(governance.V2StableGovernanceFailure, "PROFILE"):
-            governance.require_stable_release_metadata()
+    def test_candidate_metadata_is_rejected_even_on_a_stable_checkout(self) -> None:
+        candidate = {
+            "RELEASE_PROFILE": "candidate",
+            "RELEASE_STATUS": "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED",
+            "STABLE": False,
+            "CURRENT_V2_CERTIFY_FULL_CLAIM": False,
+            "CURRENT_V2_LANGUAGE_STABLE_CLAIM": False,
+            "TECHNICAL_PARENT_COMMIT": "",
+            "TECHNICAL_PARENT_CERTIFICATE_SHA256": "",
+        }
+        patches = [
+            patch.object(governance.release_metadata, name, value)
+            for name, value in candidate.items()
+        ]
+        for item in patches:
+            item.start()
+        try:
+            with self.assertRaisesRegex(
+                governance.V2StableGovernanceFailure,
+                "PROFILE",
+            ):
+                governance.require_stable_release_metadata()
+        finally:
+            for item in reversed(patches):
+                item.stop()
 
     def test_stable_metadata_requires_exact_parent_and_claims(self) -> None:
         values = {
@@ -48,6 +72,42 @@ class V2StableGovernanceTests(unittest.TestCase):
                 "EXACT_V2_STABLE_ADMISSION_PASS",
             },
         )
+
+    def test_release_documents_require_exact_v2_tokens_and_parent_binding(self) -> None:
+        parent = "1" * 40
+        certificate = "2" * 64
+        tokens = (
+            "V2_STABLE_ADMISSION=REQUESTED",
+            "V2_LANGUAGE_VERSION=2.0.0",
+            "V2_PYTHON_PACKAGE_VERSION=1.0.0",
+            "V2_TECHNICAL_PARENT_COMMIT=" + parent,
+            "V2_TECHNICAL_PARENT_CERTIFICATE_SHA256=" + certificate,
+        )
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            for relative in ("README.md", "CHANGELOG.md", "PROJECT_STATE.md"):
+                (root / relative).write_text(
+                    "\n".join(tokens) + "\n",
+                    encoding="utf-8",
+                )
+            with patch.object(governance, "ROOT", root):
+                governance._require_v2_release_documents(parent, certificate)
+                text = (root / "README.md").read_text(encoding="utf-8")
+                (root / "README.md").write_text(
+                    text.replace(
+                        "V2_LANGUAGE_VERSION=2.0.0",
+                        "2.0.0 STABLE_ADMISSION",
+                    ),
+                    encoding="utf-8",
+                )
+                with self.assertRaisesRegex(
+                    governance.V2StableGovernanceFailure,
+                    "V2_STABLE_GOVERNANCE_RELEASE_DOCUMENT",
+                ):
+                    governance._require_v2_release_documents(
+                        parent,
+                        certificate,
+                    )
 
 
 if __name__ == "__main__":
