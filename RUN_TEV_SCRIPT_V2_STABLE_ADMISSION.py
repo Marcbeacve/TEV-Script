@@ -48,7 +48,8 @@ def run(
     except subprocess.TimeoutExpired as error:
         raise V2StableAdmissionFailure(
             f"command timed out: {arguments!r}; "
-            f"stdout={support.bounded(error.stdout)}; stderr={support.bounded(error.stderr)}"
+            f"stdout={support.bounded(error.stdout)}; "
+            f"stderr={support.bounded(error.stderr)}"
         ) from error
     if completed.returncode != 0:
         raise V2StableAdmissionFailure(
@@ -222,6 +223,7 @@ def _require_v2_technical_receipt(
         )
     if (
         receipt.get("admission_profile") != "stable"
+        or receipt.get("branch") != identity.branch
         or receipt.get("commit_sha") != identity.commit_sha
         or receipt.get("tree_sha") != identity.tree_sha
         or receipt.get("base_sha") != identity.base_sha
@@ -245,6 +247,7 @@ def _require_v1_receipt(
         raise V2StableAdmissionFailure("V1 receipt announced hash mismatch")
     if (
         receipt.get("admission_profile") != "stable"
+        or receipt.get("branch") != identity.branch
         or receipt.get("commit") != identity.commit_sha
         or receipt.get("tree") != identity.tree_sha
         or receipt.get("certify_full") is not True
@@ -266,6 +269,7 @@ def _require_v2_python_receipt(
         )
     if (
         receipt.get("admission_profile") != "stable"
+        or receipt.get("branch") != identity.branch
         or receipt.get("commit_sha") != identity.commit_sha
         or receipt.get("tree_sha") != identity.tree_sha
         or receipt.get("base_sha") != identity.base_sha
