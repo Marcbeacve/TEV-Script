@@ -63,14 +63,36 @@ def git_text(*arguments: str) -> str:
     return run(["git", *arguments]).stdout.strip()
 
 
+def _require_release_path_modes(head: str, paths: list[str]) -> None:
+    for relative in paths:
+        row = git_text("ls-tree", head, "--", relative)
+        prefix = "100644 blob "
+        suffix = "\t" + relative
+        object_id = (
+            row[len(prefix) :].split("\t", 1)[0]
+            if row.startswith(prefix)
+            else ""
+        )
+        if (
+            not row.startswith(prefix)
+            or not row.endswith(suffix)
+            or len(object_id) != 40
+            or any(char not in "0123456789abcdef" for char in object_id)
+        ):
+            raise V2StableAdmissionFailure(
+                "V2_STABLE_RELEASE_PATH_NOT_REGULAR_BLOB:"
+                + relative
+                + ":"
+                + row
+            )
+
+
 def validate_release_diff(parent: str, head: str) -> list[str]:
     git_text("merge-base", "--is-ancestor", parent, head)
     changed = sorted(
         item
         for item in git_text(
-            "diff",
-            "--name-only",
-            parent + ".." + head,
+            "diff", "--name-only", parent + ".." + head
         ).splitlines()
         if item
     )
@@ -87,6 +109,7 @@ def validate_release_diff(parent: str, head: str) -> list[str]:
         )
     if changed_set != set(REQUIRED_RELEASE_PATHS):
         raise V2StableAdmissionFailure("V2_STABLE_RELEASE_DIFF_NOT_EXACT")
+    _require_release_path_modes(head, changed)
     return changed
 
 
@@ -131,13 +154,18 @@ def load_parent_certificate(
         raise V2StableAdmissionFailure(
             "V2 technical parent certificate commit mismatch"
         )
+    if receipt.get("base_sha") != parent:
+        raise V2StableAdmissionFailure(
+            "V2 technical parent certificate base mismatch"
+        )
     parent_tree = git_text("rev-parse", parent + "^{tree}")
     if receipt.get("tree_sha") != parent_tree:
         raise V2StableAdmissionFailure(
             "V2 technical parent certificate tree mismatch"
         )
     if (
-        receipt.get("certify_full") is not True
+        receipt.get("dirty") is not False
+        or receipt.get("certify_full") is not True
         or receipt.get("language_stable") is not False
     ):
         raise V2StableAdmissionFailure(
@@ -166,6 +194,88 @@ def _embedded_hash(receipt: dict[str, object]) -> str:
     observed = canonical_hash(body)
     if embedded != observed:
         raise V2StableAdmissionFailure("generated receipt self-hash mismatch")
+    return observed
+
+
+def _single_marker(stdout: str, prefix: str, label: str) -> str:
+    values = [
+        line[len(prefix) :]
+        for line in stdout.splitlines()
+        if line.startswith(prefix)
+    ]
+    if len(values) != 1:
+        raise V2StableAdmissionFailure(
+            f"{label} expected one {prefix!r} marker, observed={values!r}"
+        )
+    return values[0]
+
+
+def _require_v2_technical_receipt(
+    receipt: dict[str, object],
+    announced_hash: str,
+    identity: GitIdentity,
+) -> str:
+    observed = _embedded_hash(receipt)
+    if observed != announced_hash:
+        raise V2StableAdmissionFailure(
+            "V2 technical receipt announced hash mismatch"
+        )
+    if (
+        receipt.get("admission_profile") != "stable"
+        or receipt.get("commit_sha") != identity.commit_sha
+        or receipt.get("tree_sha") != identity.tree_sha
+        or receipt.get("base_sha") != identity.base_sha
+        or receipt.get("dirty") is not False
+        or receipt.get("certify_full") is not True
+        or receipt.get("language_stable") is not False
+    ):
+        raise V2StableAdmissionFailure(
+            "V2 technical receipt identity/claims mismatch"
+        )
+    return observed
+
+
+def _require_v1_receipt(
+    receipt: dict[str, object],
+    announced_hash: str,
+    identity: GitIdentity,
+) -> str:
+    observed = canonical_hash(receipt)
+    if observed != announced_hash:
+        raise V2StableAdmissionFailure("V1 receipt announced hash mismatch")
+    if (
+        receipt.get("admission_profile") != "stable"
+        or receipt.get("commit") != identity.commit_sha
+        or receipt.get("tree") != identity.tree_sha
+        or receipt.get("certify_full") is not True
+        or receipt.get("language_stable") is not False
+    ):
+        raise V2StableAdmissionFailure("V1 receipt identity/claims mismatch")
+    return observed
+
+
+def _require_v2_python_receipt(
+    receipt: dict[str, object],
+    announced_hash: str,
+    identity: GitIdentity,
+) -> str:
+    observed = _embedded_hash(receipt)
+    if observed != announced_hash:
+        raise V2StableAdmissionFailure(
+            "V2 Python receipt announced hash mismatch"
+        )
+    if (
+        receipt.get("admission_profile") != "stable"
+        or receipt.get("commit_sha") != identity.commit_sha
+        or receipt.get("tree_sha") != identity.tree_sha
+        or receipt.get("base_sha") != identity.base_sha
+        or receipt.get("dirty") is not False
+        or receipt.get("python_v2_certify_full") is not True
+        or receipt.get("language_stable") is not False
+    ):
+        raise V2StableAdmissionFailure(
+            "V2 Python receipt identity/claims mismatch"
+        )
     return observed
 
 
@@ -205,9 +315,7 @@ def build_receipt(
         "python_wheel_filename": wheel_filename,
         "python_wheel_sha256": wheel_sha256,
         "descriptor_hash": descriptor_hash,
-        "canonical_index_sha256": _file_sha256(
-            ROOT / "CANONICAL_INDEX.json"
-        ),
+        "canonical_index_sha256": _file_sha256(ROOT / "CANONICAL_INDEX.json"),
         "feature_matrix_sha256": _file_sha256(
             ROOT / "spec" / "TEV_SCRIPT_V2_FEATURE_MATRIX.json"
         ),
@@ -264,8 +372,7 @@ def certify(
         )
 
     artifact_root = support.require_external_empty_dir(
-        ROOT,
-        artifact_out_dir,
+        ROOT, artifact_out_dir
     )
     initial = support.collect_git_identity(ROOT, parent)
     _, observed_parent_hash = load_parent_certificate(
@@ -314,11 +421,15 @@ def certify(
         v2_technical_path,
         "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V2",
     )
-    v2_technical_hash = _embedded_hash(v2_technical)
-    if v2_technical.get("admission_profile") != "stable":
-        raise V2StableAdmissionFailure(
-            "V2 technical recertification profile mismatch"
-        )
+    v2_technical_hash = _require_v2_technical_receipt(
+        v2_technical,
+        _single_marker(
+            technical.stdout,
+            "TEV_SCRIPT_V2_RECEIPT_SHA256=",
+            "V2 technical recertification",
+        ),
+        initial,
+    )
 
     v1_path = artifact_root / "v1-global.json"
     v1 = run(
@@ -343,7 +454,15 @@ def certify(
         v1_path,
         "TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V2",
     )
-    v1_hash = canonical_hash(v1_receipt)
+    v1_hash = _require_v1_receipt(
+        v1_receipt,
+        _single_marker(
+            v1.stdout,
+            "V1_CERTIFY_FULL_RECEIPT_SHA256=",
+            "V1 non-regression",
+        ),
+        initial,
+    )
 
     python_dir = artifact_root / "python"
     python_receipt_path = artifact_root / "v2-python.json"
@@ -373,7 +492,15 @@ def certify(
         python_receipt_path,
         "TEV_SCRIPT_V2_PYTHON_CERTIFY_FULL_RECEIPT_V1",
     )
-    python_receipt_hash = _embedded_hash(python_receipt)
+    python_receipt_hash = _require_v2_python_receipt(
+        python_receipt,
+        _single_marker(
+            python_cert.stdout,
+            "TEV_SCRIPT_V2_PYTHON_RECEIPT_SHA256=",
+            "V2 Python certification",
+        ),
+        initial,
+    )
     wheel_filename = str(python_receipt.get("wheel_filename"))
     wheel_sha256 = str(python_receipt.get("wheel_sha256"))
     wheel = python_dir / wheel_filename
@@ -432,15 +559,9 @@ def main(argv: list[str] | None = None) -> int:
         description="TEV Script V2 stable release admission"
     )
     parser.add_argument(
-        "--technical-parent-certificate",
-        type=Path,
-        required=True,
+        "--technical-parent-certificate", type=Path, required=True
     )
-    parser.add_argument(
-        "--artifact-out-dir",
-        type=Path,
-        required=True,
-    )
+    parser.add_argument("--artifact-out-dir", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         receipt, receipt_path = certify(
