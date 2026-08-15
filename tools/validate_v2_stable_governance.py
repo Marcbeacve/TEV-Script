@@ -41,7 +41,8 @@ def require_sha256(value: object, code: str) -> str:
     require(isinstance(value, str), code, repr(value))
     text = str(value)
     require(
-        len(text) == 64 and all(char in "0123456789abcdef" for char in text),
+        len(text) == 64
+        and all(char in "0123456789abcdef" for char in text),
         code,
         text,
     )
@@ -126,6 +127,24 @@ def _stable_target(index: dict[str, object]) -> dict[str, object]:
         str(len(targets)),
     )
     return targets[0]
+
+
+def _require_v2_release_documents(parent: str, certificate: str) -> None:
+    required = (
+        "V2_STABLE_ADMISSION=REQUESTED",
+        "V2_LANGUAGE_VERSION=2.0.0",
+        "V2_PYTHON_PACKAGE_VERSION=1.0.0",
+        "V2_TECHNICAL_PARENT_COMMIT=" + parent,
+        "V2_TECHNICAL_PARENT_CERTIFICATE_SHA256=" + certificate,
+    )
+    for relative in ("README.md", "CHANGELOG.md", "PROJECT_STATE.md"):
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        for token in required:
+            require(
+                token in text,
+                "V2_STABLE_GOVERNANCE_RELEASE_DOCUMENT",
+                relative + ":" + token,
+            )
 
 
 def validate_stable_governance() -> None:
@@ -305,29 +324,13 @@ def validate_stable_governance() -> None:
         repr(scripts.get("tev-script-v2")),
     )
     require(
-        scripts.get("tev-script-v2-describe") == "tev_script.describe_v2:main",
+        scripts.get("tev-script-v2-describe")
+        == "tev_script.describe_v2:main",
         "V2_STABLE_GOVERNANCE_V2_DESCRIPTOR_CLI",
         repr(scripts.get("tev-script-v2-describe")),
     )
 
-    for relative in ("README.md", "CHANGELOG.md", "PROJECT_STATE.md"):
-        text = (ROOT / relative).read_text(encoding="utf-8")
-        require(
-            "2.0.0" in text and "STABLE_ADMISSION" in text,
-            "V2_STABLE_GOVERNANCE_RELEASE_DOCUMENT",
-            relative,
-        )
-    state = (ROOT / "PROJECT_STATE.md").read_text(encoding="utf-8")
-    require(
-        parent in state,
-        "V2_STABLE_GOVERNANCE_PROJECT_PARENT",
-        parent,
-    )
-    require(
-        certificate in state,
-        "V2_STABLE_GOVERNANCE_PROJECT_CERT",
-        certificate,
-    )
+    _require_v2_release_documents(parent, certificate)
 
 
 def main() -> int:
