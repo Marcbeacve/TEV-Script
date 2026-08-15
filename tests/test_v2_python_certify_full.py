@@ -66,6 +66,19 @@ class V2PythonCertifyFullTests(unittest.TestCase):
         ):
             gate.require_v1_python_receipt_identity(substituted, identity)
 
+    def test_installed_descriptor_hash_must_equal_checkout_descriptor_hash(self) -> None:
+        gate.require_descriptor_identity("a" * 64, "a" * 64)
+        with self.assertRaisesRegex(
+            gate.V2PythonCertificationFailure,
+            "descriptor identity",
+        ):
+            gate.require_descriptor_identity("a" * 64, "b" * 64)
+        with self.assertRaisesRegex(
+            gate.V2PythonCertificationFailure,
+            "descriptor identity",
+        ):
+            gate.require_descriptor_identity("A" * 64, "A" * 64)
+
     def test_receipt_binds_package_1_0_0_to_language_2_0_0_without_stable_claim(self) -> None:
         identity = gate.GitIdentity("agent/v2", "1" * 40, "2" * 40, "3" * 40)
         receipt = gate.build_receipt(
