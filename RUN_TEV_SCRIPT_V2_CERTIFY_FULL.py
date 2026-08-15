@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -15,12 +15,15 @@ sys.path.insert(0, str(ROOT))
 from jsonschema import Draft202012Validator  # noqa: E402
 
 from tev_script.canonical import canonical_hash, canonical_json  # noqa: E402
-from tev_script.descriptor_v2 import V2_CERTIFIED_BASE_SHA as CERTIFIED_BASE_SHA  # noqa: E402
+from tev_script.descriptor_v2 import (  # noqa: E402
+    V2_CERTIFIED_BASE_SHA as CERTIFIED_BASE_SHA,
+)
 from tools import v2_certification_support as certification_support  # noqa: E402
 
 REPOSITORY = "Marcbeacve/TEV-Script"
 GitIdentity = certification_support.GitIdentity
 V2CertificationFailure = certification_support.V2CertificationFailure
+_TEST_COUNT = re.compile(r"Ran ([0-9]+) tests? in ")
 
 
 def _git(root: Path, *arguments: str) -> str:
@@ -128,26 +131,64 @@ def run_checked(
     return completed
 
 
-def _run_v2_regression() -> int:
-    import re
+def _test_count(
+    label: str,
+    completed: subprocess.CompletedProcess[str],
+    *,
+    reject_skips: bool,
+) -> int:
+    combined = completed.stdout + "\n" + completed.stderr
+    lowered = combined.lower()
+    if reject_skips and (
+        "skipped=" in lowered
+        or "skipped '" in lowered
+        or "skipped \"" in lowered
+    ):
+        raise V2CertificationFailure(f"{label} contains a skip")
+    matches = _TEST_COUNT.findall(combined)
+    if len(matches) != 1 or int(matches[0]) <= 0:
+        raise V2CertificationFailure(
+            f"{label} test count is missing or ambiguous"
+        )
+    return int(matches[0])
 
+
+def _run_v2_regression() -> int:
     modules = v2_test_modules(ROOT)
     completed = run_checked(
         "V2 governed regression",
         [sys.executable, "-m", "unittest", "-v", *modules],
         ("OK",),
     )
-    combined = completed.stdout + "\n" + completed.stderr
-    if "skipped=" in combined.lower() or "skipped '" in combined.lower():
-        raise V2CertificationFailure(
-            "V2 governed regression contains a skip"
-        )
-    matches = re.findall(r"Ran ([0-9]+) tests? in ", combined)
-    if len(matches) != 1 or int(matches[0]) <= 0:
-        raise V2CertificationFailure(
-            "V2 governed regression test count is missing or ambiguous"
-        )
-    return int(matches[0])
+    return _test_count(
+        "V2 governed regression",
+        completed,
+        reject_skips=True,
+    )
+
+
+def _run_full_regression() -> int:
+    completed = run_checked(
+        "full regression",
+        [
+            sys.executable,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test*.py",
+            "-v",
+        ],
+        ("OK",),
+        timeout=7200,
+    )
+    return _test_count(
+        "full regression",
+        completed,
+        reject_skips=True,
+    )
 
 
 def _single_marker(stdout: str, prefix: str, label: str) -> str:
@@ -246,6 +287,7 @@ def _gate_receipt_fields() -> dict[str, str]:
 def _gate_receipt_fields_v2() -> dict[str, str]:
     return {
         **_gate_receipt_fields(),
+        "full_regression": "PASS",
         "stable_tooling_authority": "PASS",
     }
 
@@ -280,11 +322,16 @@ def build_receipt_v2(
     admission_profile: str,
     python_version: str,
     v2_test_count: int,
+    full_test_count: int,
     v1_receipt_sha256: str,
 ) -> dict[str, object]:
     if admission_profile not in {"candidate", "stable"}:
         raise V2CertificationFailure(
             f"unsupported V2 admission profile: {admission_profile!r}"
+        )
+    if full_test_count <= 0:
+        raise V2CertificationFailure(
+            "full regression test count must be positive"
         )
     body: dict[str, object] = {
         "schema": "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V2",
@@ -299,6 +346,8 @@ def build_receipt_v2(
         "gates": _gate_receipt_fields_v2(),
         "v2_test_count": v2_test_count,
         "v2_skipped_tests": 0,
+        "full_test_count": full_test_count,
+        "full_skipped_tests": 0,
         "v1_receipt_sha256": v1_receipt_sha256,
         "certify_full": True,
         "language_stable": False,
@@ -333,25 +382,11 @@ def _validate_receipt(
 
 
 def _write_receipt(path: Path, receipt: dict[str, object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    data = canonical_json(receipt).encode("utf-8")
-    descriptor, temporary_raw = tempfile.mkstemp(
-        prefix=f".{path.name}.",
-        suffix=".tmp",
-        dir=str(path.parent),
+    certification_support.write_external_bytes_once(
+        ROOT,
+        path,
+        canonical_json(receipt).encode("utf-8"),
     )
-    temporary = Path(temporary_raw)
-    try:
-        with os.fdopen(descriptor, "wb") as stream:
-            stream.write(data)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(temporary, path)
-    finally:
-        try:
-            temporary.unlink(missing_ok=True)
-        except OSError:
-            pass
 
 
 def certify(
@@ -433,7 +468,8 @@ def certify(
             "TEV_SCRIPT_V2_FILESYSTEM_SAFETY=PASS",
         ),
     )
-    test_count = _run_v2_regression()
+    v2_test_count = _run_v2_regression()
+    full_test_count = _run_full_regression() if current_base_mode else 0
     v1_receipt_sha256 = _run_v1_non_regression(initial)
     final = collect_git_identity(ROOT, base)
     if final != initial:
@@ -449,14 +485,15 @@ def certify(
             final,
             admission_profile=profile,
             python_version=python_version,
-            v2_test_count=test_count,
+            v2_test_count=v2_test_count,
+            full_test_count=full_test_count,
             v1_receipt_sha256=v1_receipt_sha256,
         )
         if current_base_mode
         else build_receipt(
             final,
             python_version=python_version,
-            v2_test_count=test_count,
+            v2_test_count=v2_test_count,
             v1_receipt_sha256=v1_receipt_sha256,
         )
     )
@@ -504,10 +541,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         "V2_SCHEMAS_CONTRACTS=PASS",
         "CLI_V2=PASS",
         "CERTIFY_V1=PASS",
-        "FULL_REGRESSION=PASS",
     ):
         print(witness)
     if receipt["schema"] == "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V2":
+        print(
+            "FULL_REGRESSION=PASS "
+            f"tests={receipt['full_test_count']} skips=0"
+        )
         print("V2_STABLE_TOOLING_AUTHORITY=PASS")
     print("TEV_SCRIPT_V2_COMMIT=" + str(receipt["commit_sha"]))
     print("TEV_SCRIPT_V2_TREE=" + str(receipt["tree_sha"]))
