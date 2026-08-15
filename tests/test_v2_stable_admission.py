@@ -270,6 +270,43 @@ class V2StableAdmissionTests(unittest.TestCase):
         observed = body.pop("receipt_hash")
         self.assertEqual(observed, gate.canonical_hash(body))
 
+    def test_stable_receipt_writer_is_create_once_and_race_safe(self) -> None:
+        receipt = {"schema": "TEST", "value": 1}
+        with tempfile.TemporaryDirectory() as raw:
+            target = Path(raw) / "stable.json"
+            selected = gate._write_stable_receipt(target, receipt)
+            self.assertEqual(selected, target.resolve())
+            original = target.read_bytes()
+            self.assertEqual(
+                original,
+                (gate.canonical_json(receipt) + "\n").encode("utf-8"),
+            )
+            with self.assertRaisesRegex(
+                gate.V2StableAdmissionFailure,
+                "already exists",
+            ):
+                gate._write_stable_receipt(target, receipt)
+            self.assertEqual(target.read_bytes(), original)
+
+        with tempfile.TemporaryDirectory() as raw:
+            target = Path(raw) / "raced.json"
+
+            def raced_precheck(_root: Path, _raw: Path) -> Path:
+                target.write_bytes(b"racer\n")
+                return target
+
+            with patch.object(
+                gate.support,
+                "require_external_output_path",
+                side_effect=raced_precheck,
+            ):
+                with self.assertRaisesRegex(
+                    gate.V2StableAdmissionFailure,
+                    "already exists",
+                ):
+                    gate._write_stable_receipt(target, receipt)
+            self.assertEqual(target.read_bytes(), b"racer\n")
+
     def test_only_stable_admission_gate_emits_language_stable_yes(self) -> None:
         self.assertIn(
             'print("LANGUAGE_STABLE=YES")',
