@@ -43,28 +43,37 @@ class V2PythonCertifyFullTests(unittest.TestCase):
         )
         receipt = {
             "admission_profile": "stable",
+            "branch": identity.branch,
             "commit": identity.commit_sha,
             "tree": identity.tree_sha,
             "package_name": gate.PACKAGE_NAME,
             "package_version": gate.PACKAGE_VERSION,
             "wheel_filename": gate.WHEEL_FILENAME,
             "wheel_sha256": "4" * 64,
+            "python_certify_full": True,
+            "language_stable": False,
+            "stable_release_authorized": False,
         }
         gate.require_v1_python_receipt_identity(receipt, identity)
-        substituted = dict(receipt)
-        substituted["commit"] = "9" * 40
-        with self.assertRaisesRegex(
-            gate.V2PythonCertificationFailure,
-            "identity",
+        for key, value in (
+            ("branch", "agent/other"),
+            ("commit", "9" * 40),
+            ("tree", "8" * 40),
+            ("python_certify_full", False),
+            ("language_stable", True),
+            ("stable_release_authorized", True),
         ):
-            gate.require_v1_python_receipt_identity(substituted, identity)
-        substituted = dict(receipt)
-        substituted["tree"] = "8" * 40
-        with self.assertRaisesRegex(
-            gate.V2PythonCertificationFailure,
-            "identity",
-        ):
-            gate.require_v1_python_receipt_identity(substituted, identity)
+            with self.subTest(key=key, value=value):
+                substituted = dict(receipt)
+                substituted[key] = value
+                with self.assertRaisesRegex(
+                    gate.V2PythonCertificationFailure,
+                    "identity",
+                ):
+                    gate.require_v1_python_receipt_identity(
+                        substituted,
+                        identity,
+                    )
 
     def test_installed_descriptor_hash_must_equal_checkout_descriptor_hash(self) -> None:
         gate.require_descriptor_identity("a" * 64, "a" * 64)
