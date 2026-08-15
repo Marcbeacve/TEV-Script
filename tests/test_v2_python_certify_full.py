@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from jsonschema import Draft202012Validator
@@ -152,7 +153,7 @@ class V2PythonCertifyFullTests(unittest.TestCase):
         observed = body.pop("receipt_hash")
         self.assertEqual(observed, gate.canonical_hash(body))
 
-    def test_receipt_writer_is_create_once(self) -> None:
+    def test_receipt_writer_is_create_once_and_race_safe(self) -> None:
         identity = gate.GitIdentity("agent/v2", "1" * 40, "2" * 40, "3" * 40)
         receipt = gate.build_receipt(
             identity,
@@ -177,6 +178,25 @@ class V2PythonCertifyFullTests(unittest.TestCase):
             ):
                 gate._write_receipt(target, receipt)
             self.assertEqual(target.read_bytes(), original)
+
+        with tempfile.TemporaryDirectory() as raw:
+            target = Path(raw) / "raced.json"
+
+            def raced_precheck(_root: Path, _raw: Path) -> Path:
+                target.write_bytes(b"racer\n")
+                return target
+
+            with patch.object(
+                gate.support,
+                "require_external_output_path",
+                side_effect=raced_precheck,
+            ):
+                with self.assertRaisesRegex(
+                    gate.V2PythonCertificationFailure,
+                    "already exists",
+                ):
+                    gate._write_receipt(target, receipt)
+            self.assertEqual(target.read_bytes(), b"racer\n")
 
     def test_artifact_directory_must_be_external_and_empty(self) -> None:
         with self.assertRaisesRegex(gate.V2PythonCertificationFailure, "outside"):
