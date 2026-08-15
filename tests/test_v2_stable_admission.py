@@ -95,6 +95,7 @@ class V2StableAdmissionTests(unittest.TestCase):
             admission_profile="candidate",
             python_version="3.14.6",
             v2_test_count=1,
+            full_test_count=1,
             v1_receipt_sha256="4" * 64,
         )
         with tempfile.TemporaryDirectory() as raw:
