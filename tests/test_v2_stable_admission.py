@@ -136,6 +136,7 @@ class V2StableAdmissionTests(unittest.TestCase):
         technical_receipt = {
             "schema": "TEV_SCRIPT_V2_CERTIFY_FULL_RECEIPT_V2",
             "admission_profile": "stable",
+            "branch": current.branch,
             "commit_sha": current.commit_sha,
             "tree_sha": current.tree_sha,
             "base_sha": current.base_sha,
@@ -159,10 +160,25 @@ class V2StableAdmissionTests(unittest.TestCase):
             gate._require_v2_technical_receipt(
                 technical_receipt, "f" * 64, current
             )
+        bad_branch = dict(technical_receipt)
+        bad_branch["branch"] = "agent/other"
+        body = dict(bad_branch)
+        body.pop("receipt_hash")
+        bad_branch["receipt_hash"] = gate.canonical_hash(body)
+        with self.assertRaisesRegex(
+            gate.V2StableAdmissionFailure,
+            "identity/claims",
+        ):
+            gate._require_v2_technical_receipt(
+                bad_branch,
+                str(bad_branch["receipt_hash"]),
+                current,
+            )
 
         python_receipt = {
             "schema": "TEV_SCRIPT_V2_PYTHON_CERTIFY_FULL_RECEIPT_V1",
             "admission_profile": "stable",
+            "branch": current.branch,
             "commit_sha": current.commit_sha,
             "tree_sha": current.tree_sha,
             "base_sha": current.base_sha,
@@ -177,7 +193,7 @@ class V2StableAdmissionTests(unittest.TestCase):
             current,
         )
         substituted = dict(python_receipt)
-        substituted["commit_sha"] = "9" * 40
+        substituted["branch"] = "agent/other"
         body = dict(substituted)
         body.pop("receipt_hash")
         substituted["receipt_hash"] = gate.canonical_hash(body)
@@ -194,6 +210,7 @@ class V2StableAdmissionTests(unittest.TestCase):
         v1 = {
             "schema": "TEV_SCRIPT_V1_CERTIFY_FULL_RECEIPT_V2",
             "admission_profile": "stable",
+            "branch": current.branch,
             "commit": current.commit_sha,
             "tree": current.tree_sha,
             "certify_full": True,
@@ -201,6 +218,17 @@ class V2StableAdmissionTests(unittest.TestCase):
         }
         v1_hash = gate.canonical_hash(v1)
         gate._require_v1_receipt(v1, v1_hash, current)
+        substituted_v1 = dict(v1)
+        substituted_v1["branch"] = "agent/other"
+        with self.assertRaisesRegex(
+            gate.V2StableAdmissionFailure,
+            "identity/claims",
+        ):
+            gate._require_v1_receipt(
+                substituted_v1,
+                gate.canonical_hash(substituted_v1),
+                current,
+            )
         with self.assertRaisesRegex(
             gate.V2StableAdmissionFailure,
             "announced hash",
