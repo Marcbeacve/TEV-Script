@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -19,6 +21,31 @@ class V2StableToolingAuthorityTests(unittest.TestCase):
         self.assertEqual(len(semantic_authority.AUTHORITY_PATHS), 8)
         for relative in tooling.SCHEMA_PATHS:
             self.assertNotIn(relative, semantic_authority.AUTHORITY_PATHS)
+
+    def test_validator_cli_can_import_package_from_tools_path_execution(self) -> None:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "tools" / "validate_v2_stable_tooling_authority.py"),
+                "--profile",
+                release_metadata.RELEASE_PROFILE,
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            completed.stdout + "\n" + completed.stderr,
+        )
+        self.assertIn(
+            "TEV_SCRIPT_V2_STABLE_TOOLING_AUTHORITY=PASS",
+            completed.stdout,
+        )
 
     def _fixture(self, root: Path, *, stable: bool) -> None:
         for relative in tooling.STABLE_TOOLING_PATHS:
