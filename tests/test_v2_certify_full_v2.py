@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -46,7 +47,7 @@ class V2CertifyFullV2Tests(unittest.TestCase):
             legacy = gate.collect_git_identity(ROOT)
         self.assertEqual(legacy.base_sha, gate.CERTIFIED_BASE_SHA)
 
-    def test_current_base_receipt_is_profile_bound_self_hashed_and_never_stable(self) -> None:
+    def test_current_base_receipt_binds_full_regression_and_never_stable(self) -> None:
         identity = gate.GitIdentity(
             "agent/v2", "1" * 40, "2" * 40, "3" * 40
         )
@@ -55,6 +56,7 @@ class V2CertifyFullV2Tests(unittest.TestCase):
             admission_profile="candidate",
             python_version="3.14.6",
             v2_test_count=123,
+            full_test_count=1165,
             v1_receipt_sha256="4" * 64,
         )
         schema = json.loads(
@@ -70,6 +72,9 @@ class V2CertifyFullV2Tests(unittest.TestCase):
         observed = body.pop("receipt_hash")
         self.assertEqual(observed, gate.canonical_hash(body))
         self.assertEqual(receipt["admission_profile"], "candidate")
+        self.assertEqual(receipt["gates"]["full_regression"], "PASS")
+        self.assertEqual(receipt["full_test_count"], 1165)
+        self.assertEqual(receipt["full_skipped_tests"], 0)
         self.assertIs(receipt["certify_full"], True)
         self.assertIs(receipt["language_stable"], False)
         self.assertEqual(
@@ -98,6 +103,61 @@ class V2CertifyFullV2Tests(unittest.TestCase):
         self.assertNotIn("certify_full", receipt)
         self.assertNotIn("language_stable", receipt)
         self.assertNotIn("stable_tooling_authority", receipt["gates"])
+        self.assertNotIn("full_regression", receipt["gates"])
+        self.assertNotIn("full_test_count", receipt)
+        self.assertNotIn("full_skipped_tests", receipt)
+
+    def test_full_regression_requires_single_positive_count_and_zero_skips(self) -> None:
+        passed = subprocess.CompletedProcess(
+            ["python"],
+            0,
+            "",
+            "Ran 1165 tests in 12.34s\n\nOK\n",
+        )
+        with patch.object(gate, "run_checked", return_value=passed) as run_checked:
+            self.assertEqual(gate._run_full_regression(), 1165)
+        run_checked.assert_called_once()
+        arguments = run_checked.call_args.args[1]
+        self.assertEqual(
+            arguments,
+            [
+                gate.sys.executable,
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
+                "test*.py",
+                "-v",
+            ],
+        )
+
+        skipped = subprocess.CompletedProcess(
+            ["python"],
+            0,
+            "",
+            "Ran 1165 tests in 12.34s\n\nOK (skipped=1)\n",
+        )
+        with patch.object(gate, "run_checked", return_value=skipped):
+            with self.assertRaisesRegex(
+                gate.V2CertificationFailure,
+                "full regression contains a skip",
+            ):
+                gate._run_full_regression()
+
+        ambiguous = subprocess.CompletedProcess(
+            ["python"],
+            0,
+            "Ran 1 test in 0.1s\n",
+            "Ran 1165 tests in 12.34s\nOK\n",
+        )
+        with patch.object(gate, "run_checked", return_value=ambiguous):
+            with self.assertRaisesRegex(
+                gate.V2CertificationFailure,
+                "count is missing or ambiguous",
+            ):
+                gate._run_full_regression()
 
     def test_v1_non_regression_receipt_binds_announced_hash_and_exact_identity(self) -> None:
         identity = gate.GitIdentity(
