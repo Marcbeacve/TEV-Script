@@ -342,6 +342,17 @@ def _validate_receipt(receipt: dict[str, object]) -> None:
     Draft202012Validator(schema).validate(receipt)
 
 
+def _write_stable_receipt(
+    path: Path,
+    receipt: dict[str, object],
+) -> Path:
+    return support.write_external_bytes_once(
+        ROOT,
+        path,
+        (canonical_json(receipt) + "\n").encode("utf-8"),
+    )
+
+
 def certify(
     *,
     technical_parent_certificate: Path,
@@ -546,14 +557,9 @@ def certify(
         descriptor_hash=descriptor_hash,
     )
     _validate_receipt(receipt)
-    receipt_path = (
-        artifact_root
-        / "tev-script-v2-stable-admission.receipt.json"
-    )
-    receipt_path.write_text(
-        canonical_json(receipt) + "\n",
-        encoding="utf-8",
-        newline="\n",
+    receipt_path = _write_stable_receipt(
+        artifact_root / "tev-script-v2-stable-admission.receipt.json",
+        receipt,
     )
     return receipt, receipt_path
 
