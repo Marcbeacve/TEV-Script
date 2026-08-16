@@ -1,0 +1,9 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"TEV_SCRIPT_V3_STABLE_ADMISSION_RECEIPT_V1","type":"object","additionalProperties":false,
+  "required":["schema","language_version","repository","branch","technical_parent_commit","technical_parent_receipt_sha256","release_commit_sha","release_tree_sha","release_diff_hash","descriptor_hash","v3_test_count","v3_skipped_tests","full_test_count","full_skipped_tests","wheel_filename","wheel_sha256","wheel_reproducible","installed_v3_smoke","installed_v2_compatibility","stable_admission","language_stable","publication_authorized","merge_authority","receipt_hash"],
+  "properties":{
+    "schema":{"const":"TEV_SCRIPT_V3_STABLE_ADMISSION_RECEIPT_V1"},"language_version":{"const":"3.0.0"},"repository":{"const":"Marcbeacve/TEV-Script"},"branch":{"const":"agent/tev-script-omega-kernel-v1"},
+    "technical_parent_commit":{"type":"string","pattern":"^[0-9a-f]{40}$"},"technical_parent_receipt_sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},"release_commit_sha":{"type":"string","pattern":"^[0-9a-f]{40}$"},"release_tree_sha":{"type":"string","pattern":"^[0-9a-f]{40}$"},"release_diff_hash":{"type":"string","pattern":"^[0-9a-f]{64}$"},"descriptor_hash":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "v3_test_count":{"type":"integer","minimum":1},"v3_skipped_tests":{"const":0},"full_test_count":{"type":"integer","minimum":1},"full_skipped_tests":{"const":0},"wheel_filename":{"type":"string","pattern":"-3\.0\.0-py3-none-any\.whl$"},"wheel_sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},"wheel_reproducible":{"const":true},"installed_v3_smoke":{"const":"PASS"},"installed_v2_compatibility":{"const":"PASS"},"stable_admission":{"const":true},"language_stable":{"const":true},"publication_authorized":{"const":true},"merge_authority":{"const":false},"receipt_hash":{"type":"string","pattern":"^[0-9a-f]{64}$"}
+  }
+}
