@@ -103,7 +103,12 @@ def _check(arguments: argparse.Namespace) -> int:
 
 
 def _compile(arguments: argparse.Namespace) -> int:
-    program = compile_semantic_process_v3(_read_source(arguments.source))
+    source_text = _read_source(arguments.source)
+    program = compile_semantic_process_v3(source_text)
+    from .translation_validation_v3 import validate_source_to_ir_v3
+    validation = validate_source_to_ir_v3(source_text, program)
+    if validation.status != "PASS":
+        raise TevScriptError("TEVS_V3_CLI_TRANSLATION_VALIDATION", "independent Source-to-IR validation rejected compiler output")
     payload = program_to_object(program)
     _atomic_write(arguments.output, (_canonical_json(payload) + "\n").encode("utf-8"))
     print(_canonical_json({
@@ -116,6 +121,8 @@ def _compile(arguments: argparse.Namespace) -> int:
         "source_semantic_hash": program.source_semantic_hash,
         "output": arguments.output.as_posix(),
         "artifact_commit": ARTIFACT_COMMIT_POLICY_V3,
+        "translation_validation_status": validation.status,
+        "translation_validation_receipt_hash": validation.receipt_hash,
         "stable": False,
     }))
     return 0
