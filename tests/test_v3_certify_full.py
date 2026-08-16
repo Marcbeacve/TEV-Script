@@ -1,12 +1,34 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 import copy
+import json
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import unittest
 
 import RUN_TEV_SCRIPT_V3_CERTIFY_FULL as cert
+from tev_script.canonical import canonical_json
+from tev_script.program_ir_v5_semantic import checkpoint_to_object, initial_process_checkpoint, program_to_object
 from tev_script.release_metadata_v3 import validate_release_metadata_v3
+from tev_script.runtime_v5_semantic import run_semantic_quantum
+from tev_script.source_semantic_process_v3 import compile_semantic_process_v3
+
+
+_JS_SMOKE_SOURCE = '''
+process CertParity version "3.0.0";
+authority 3333333333333333333333333333333333333333333333333333333333333333;
+quantum_steps 4;
+fact closed = door.state ["café"];
+fact opened = door.state ["ouvert"];
+field theory = [closed];
+transform realize effects 1111111111111111111111111111111111111111111111111111111111111111 resources 2222222222222222222222222222222222222222222222222222222222222222 profile world remove [closed] add [opened];
+label start = apply realize done;
+label done = halt;
+entry start;
+'''
 
 
 class V3ReleaseMetadataTests(unittest.TestCase):
@@ -70,6 +92,31 @@ class V3CertifyFullContractTests(unittest.TestCase):
             path.write_text("occupied", encoding="utf-8")
             with self.assertRaises(ValueError):
                 cert.validate_external_receipt_path(path)
+
+    def test_focal_certification_requires_python_javascript_runtime_parity(self) -> None:
+        node = shutil.which("node")
+        self.assertIsNotNone(node, "Node.js is required for V3 independent-runtime certification")
+        runtime = cert.ROOT / "runtime_js_v3" / "runtime_v5_semantic.mjs"
+        self.assertTrue(runtime.is_file())
+        program = compile_semantic_process_v3(_JS_SMOKE_SOURCE)
+        checkpoint = initial_process_checkpoint(program)
+        expected = run_semantic_quantum(program, checkpoint)
+        request = {
+            "program": program_to_object(program),
+            "checkpoint": checkpoint_to_object(checkpoint, program),
+        }
+        completed = subprocess.run(
+            (str(node), str(runtime)),
+            input=canonical_json(request),
+            text=True,
+            capture_output=True,
+            cwd=cert.ROOT,
+            timeout=30,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(completed.stdout, canonical_json(asdict(expected)) + "\n")
+        self.assertEqual(json.loads(completed.stdout)["field"]["profile"], "world")
 
 
 if __name__ == "__main__":
