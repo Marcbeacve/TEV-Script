@@ -10,12 +10,18 @@ from tev_script.release_metadata_v3 import validate_release_metadata_v3
 
 
 class V3ReleaseMetadataTests(unittest.TestCase):
-    def test_candidate_metadata_is_nonstable_nonpromotional(self) -> None:
+    def test_release_metadata_profile_is_internally_coherent(self) -> None:
         value = validate_release_metadata_v3()
         self.assertEqual(value["language_version"], "3.0.0")
-        self.assertEqual(value["release_profile"], "candidate")
-        self.assertFalse(value["stable"])
         self.assertFalse(value["publication_authority"])
+        self.assertFalse(value["merge_authority"])
+        if value["release_profile"] == "candidate":
+            self.assertFalse(value["stable"])
+            self.assertEqual(value["release_status"], "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED")
+        else:
+            self.assertEqual(value["release_profile"], "stable_request")
+            self.assertTrue(value["stable"])
+            self.assertEqual(value["release_status"], "STABLE_ADMISSION_REQUESTED")
 
 
 class V3CertifyFullContractTests(unittest.TestCase):
@@ -35,6 +41,9 @@ class V3CertifyFullContractTests(unittest.TestCase):
             full_skipped_tests=0,
             schema_validation="PASS",
             v2_authority_validation="PASS",
+            v3_wheel_filename="tev_script_portable_reference-3.0.0-py3-none-any.whl",
+            v3_wheel_sha256="6" * 64,
+            v3_wheel_reproducible=True,
         )
 
     def test_receipt_is_self_hashed_and_nonpromotional(self) -> None:
@@ -42,6 +51,8 @@ class V3CertifyFullContractTests(unittest.TestCase):
         self.assertFalse(body["promotion_authority"])
         self.assertFalse(body["language_stable"])
         self.assertTrue(body["certify_full"])
+        self.assertEqual(body["package_release_shape"], "V3_3_0_0_WHEEL_REPRODUCIBLE")
+        self.assertTrue(body["v3_wheel_reproducible"])
         receipt = cert.seal_receipt(body)
         self.assertTrue(cert.verify_receipt(receipt))
 
