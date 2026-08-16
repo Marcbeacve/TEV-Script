@@ -9,7 +9,7 @@
     "language_id":{"const":"TEV-Script"},
     "language_version":{"const":"3.0.0"},
     "release_name":{"const":"TEVScript MAX"},
-    "stable":{"const":false},
+    "stable":{"type":"boolean"},
     "promotion_authority":{"const":false},
     "source_profiles":{"const":["semantic_process","v2_explicit_compatibility"]},
     "program_ir_profiles":{"const":["TEV_SCRIPT_PROGRAM_IR_V5_SEMANTIC_PROCESS_V1","V2_PROGRAM_IR_V4_EXPLICIT_COMPATIBILITY"]},
