@@ -20,6 +20,7 @@ from tev_script import release_metadata_v3 as release
 ROOT = Path(__file__).resolve().parent
 REPOSITORY = "Marcbeacve/TEV-Script"
 EXPECTED_BRANCH = "agent/tev-script-omega-kernel-v1"
+V2_AUTHORITY_PROFILE = technical.V2_AUTHORITY_PROFILE
 SCHEMA = "TEV_SCRIPT_V3_STABLE_ADMISSION_RECEIPT_V1"
 RELEASE_DIFF_WHITELIST = tuple(sorted((
     "CANONICAL_INDEX.json",
@@ -182,7 +183,7 @@ def certify(*, technical_parent_certificate: str | Path, artifact_out_dir: str |
     v3_result = _run((sys.executable, "-m", "unittest", "-v", *technical.V3_TEST_MODULES)); v3_count, v3_skips = _parse_counts(v3_result)
     full_result = _run((sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test*.py", "-v")); full_count, full_skips = _parse_counts(full_result)
     if v3_skips or full_skips: raise V3StableAdmissionFailure("zero skips required")
-    _run((sys.executable, "tools/validate_v2_authority.py"), timeout=1800)
+    _run((sys.executable, "tools/validate_v2_authority.py", "--profile", V2_AUTHORITY_PROFILE), timeout=1800)
     wheel, wheel_sha = _build_final_wheel(artifacts)
     v3_smoke, v2_smoke = _installed_smoke(wheel)
     diff_hash = hashlib.sha256(_canonical_bytes(list(paths))).hexdigest()
