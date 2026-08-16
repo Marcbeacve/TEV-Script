@@ -1,0 +1,120 @@
+{
+  "compatibility": {
+    "v2_semantics_reinterpreted": false,
+    "v3_semantics_reinterpreted": false,
+    "v4_child_artifacts_reinterpreted": false
+  },
+  "language_stable": false,
+  "language_version": "3.1.0",
+  "merge_authorized": false,
+  "post_cert_allowed_paths": [
+    "CANONICAL_INDEX.json",
+    "CHANGELOG.md",
+    "README.md",
+    "RUN_TEV_SCRIPT_V31_STABLE_ADMISSION.py",
+    "packaging/v31/pyproject.toml",
+    "packaging/v31/tools/tev_script_build_backend_v31.py",
+    "schemas/tev-script-v31-stable-admission-receipt.schema.json",
+    "tests/test_v31_packaging.py",
+    "tests/test_v31_stable_admission.py"
+  ],
+  "predecessor_v3": {
+    "commit_sha": "edd868cf481c358a2b435eb014af8dfee7ab7417",
+    "language_version": "3.0.0",
+    "tag": "v3.0.0",
+    "tree_sha": "5c17d42967965e4f6ec5316bb84d41a75f141edc"
+  },
+  "production_gates": [
+    "V31_MATRIX_PASS",
+    "V31_DESCRIPTOR_PASS",
+    "V31_CORE_ZERO_SKIP_PASS",
+    "V31_JS_PARITY_ZERO_SKIP_PASS",
+    "V3_BYTE_IDENTITY_PASS",
+    "V2_BYTE_IDENTITY_PASS",
+    "MINIMALITY_PASS",
+    "V3_AUTHORITY_REGRESSION_PASS",
+    "V2_AUTHORITY_REGRESSION_PASS",
+    "PREDECESSOR_TESTS_PASS",
+    "V31_CERTIFY_FULL_PASS"
+  ],
+  "profile": "total_core",
+  "program_ir_version": 5,
+  "publication_authorized": false,
+  "required_features": [
+    {
+      "id": "TOTAL_CORE_CANONICAL_IR",
+      "status": "CLOSED"
+    },
+    {
+      "id": "EXACT_V4_CHILD_IDENTITY",
+      "status": "CLOSED"
+    },
+    {
+      "id": "CANONICAL_V4_RESULT_BRIDGE",
+      "status": "CLOSED"
+    },
+    {
+      "id": "EXTERNAL_PROOF_ADMISSION",
+      "status": "CLOSED"
+    },
+    {
+      "id": "BOUNDED_QUANTA_OMEGA_CONTINUATION",
+      "status": "CLOSED"
+    },
+    {
+      "id": "UNIFIED_V31_SOURCE",
+      "status": "CLOSED"
+    },
+    {
+      "id": "V31_CLI_DESCRIPTOR",
+      "status": "CLOSED"
+    },
+    {
+      "id": "INDEPENDENT_JAVASCRIPT_TOTAL_CORE",
+      "status": "CLOSED"
+    },
+    {
+      "id": "EFFECT_EVIDENCE_SEPARATION",
+      "status": "CLOSED"
+    },
+    {
+      "id": "PHYSICAL_COMMIT_EXTERNAL",
+      "status": "CLOSED"
+    }
+  ],
+  "schema": "TEV_SCRIPT_V31_FEATURE_MATRIX_V1",
+  "stable": false,
+  "status": "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED",
+  "technical_governed_paths": [
+    "RUN_TEV_SCRIPT_V31_CERTIFY_FULL.py",
+    "conformance/v31-total-core-parity.json",
+    "docs/superpowers/plans/2026-08-16-tevscript-max-3-1-total-core.md",
+    "docs/superpowers/specs/2026-08-16-tevscript-max-3-1-total-core-design.md",
+    "docs/superpowers/specs/2026-08-16-tevscript-max-3-1-total-core-effect-input-amendment.md",
+    "docs/superpowers/specs/2026-08-16-tevscript-max-3-1-total-core-js-parity-amendment.md",
+    "runtime_js_v31/core.mjs",
+    "runtime_js_v31/runtime_v5_total.mjs",
+    "runtime_js_v31/v4_governed.mjs",
+    "schemas/tev-script-program-ir-v5-total-core.schema.json",
+    "schemas/tev-script-v31-certify-full-receipt.schema.json",
+    "schemas/tev-script-v31-descriptor.schema.json",
+    "spec/TEV_SCRIPT_V31_FEATURE_MATRIX.json",
+    "spec/TEV_SCRIPT_V31_TOTAL_CORE.md",
+    "tests/test_cli_v31.py",
+    "tests/test_program_ir_v5_total.py",
+    "tests/test_runtime_v5_total.py",
+    "tests/test_runtime_v5_total_js_parity.py",
+    "tests/test_runtime_v5_total_proof.py",
+    "tests/test_source_total_core_v31.py",
+    "tests/test_v31_authority.py",
+    "tests/test_v31_certify_full.py",
+    "tests/test_v31_descriptor.py",
+    "tev_script/__init__.py",
+    "tev_script/cli_v31.py",
+    "tev_script/describe_v31.py",
+    "tev_script/descriptor_v31.py",
+    "tev_script/program_ir_v5_total.py",
+    "tev_script/runtime_v5_total.py",
+    "tev_script/source_total_core_v31.py"
+  ]
+}
