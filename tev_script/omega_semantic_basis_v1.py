@@ -46,10 +46,7 @@ def _stable(value: Any, name: str, pattern: re.Pattern[str]) -> str:
 
 
 def _fact_body(relation: str, arguments: Sequence[Any]) -> dict[str, Any]:
-    return {
-        "relation": relation,
-        "arguments": to_json_value(list(arguments)),
-    }
+    return {"relation": relation, "arguments": to_json_value(list(arguments))}
 
 
 def field_fact(relation: str, arguments: Sequence[Any]) -> FieldFactV1:
@@ -69,21 +66,13 @@ def _field_body(profile: str, facts: Sequence[FieldFactV1]) -> dict[str, Any]:
         "schema": SEMANTIC_FIELD_SCHEMA,
         "profile": profile,
         "facts": [
-            {
-                "relation": item.relation,
-                "arguments": list(item.arguments),
-                "fact_hash": item.fact_hash,
-            }
+            {"relation": item.relation, "arguments": list(item.arguments), "fact_hash": item.fact_hash}
             for item in facts
         ],
     }
 
 
-def semantic_field(
-    facts: Sequence[FieldFactV1],
-    *,
-    profile: str = "actual",
-) -> SemanticFieldV1:
+def semantic_field(facts: Sequence[FieldFactV1], *, profile: str = "actual") -> SemanticFieldV1:
     if isinstance(facts, (str, bytes)):
         _fail("TEVS_MAX_V3_FIELD_FACTS", "field facts must be a sequence")
     prof = _stable(profile, "profile", _PROFILE)
@@ -142,6 +131,7 @@ def validate_semantic_field(value: object) -> SemanticFieldV1:
         _fail("TEVS_MAX_V3_FIELD_ORDER", "semantic Field facts must be canonical hash order")
     return expected
 
+
 FIELD_TRANSFORMATION_SCHEMA = "TEV_SCRIPT_MAX_V3_FIELD_TRANSFORMATION_V1"
 
 
@@ -150,6 +140,7 @@ class FieldTransformationV1:
     schema: str
     transformation_id: str
     required_before_hash: str | None
+    result_profile: str | None
     remove_fact_hashes: tuple[str, ...]
     add_facts: tuple[FieldFactV1, ...]
     effect_set_hash: str
@@ -170,6 +161,7 @@ def _ordered_unique_hashes(values: Sequence[str], name: str) -> tuple[str, ...]:
 def _transformation_body(
     transformation_id: str,
     required_before_hash: str | None,
+    result_profile: str | None,
     remove_fact_hashes: Sequence[str],
     add_facts: Sequence[FieldFactV1],
     effect_set_hash: str,
@@ -180,13 +172,10 @@ def _transformation_body(
         "schema": FIELD_TRANSFORMATION_SCHEMA,
         "transformation_id": transformation_id,
         "required_before_hash": required_before_hash,
+        "result_profile": result_profile,
         "remove_fact_hashes": list(remove_fact_hashes),
         "add_facts": [
-            {
-                "relation": item.relation,
-                "arguments": list(item.arguments),
-                "fact_hash": item.fact_hash,
-            }
+            {"relation": item.relation, "arguments": list(item.arguments), "fact_hash": item.fact_hash}
             for item in add_facts
         ],
         "effect_set_hash": effect_set_hash,
@@ -201,12 +190,14 @@ def field_transformation(
     remove_fact_hashes: Sequence[str] = (),
     add_facts: Sequence[FieldFactV1] = (),
     required_before_hash: str | None = None,
+    result_profile: str | None = None,
     effect_set_hash: str,
     resource_vector_hash: str,
     proof_requirement_hashes: Sequence[str] = (),
 ) -> FieldTransformationV1:
     tid = _stable(transformation_id, "transformation_id", _RELATION)
     before = None if required_before_hash is None else _sha(required_before_hash, "required_before_hash")
+    result = None if result_profile is None else _stable(result_profile, "result_profile", _PROFILE)
     removes = _ordered_unique_hashes(remove_fact_hashes, "remove_fact_hash")
     if isinstance(add_facts, (str, bytes)):
         _fail("TEVS_MAX_V3_TRANSFORM_ADDS", "add_facts must be a sequence")
@@ -214,24 +205,16 @@ def field_transformation(
     add_hashes = [item.fact_hash for item in adds_checked]
     if len(set(add_hashes)) != len(add_hashes):
         _fail("TEVS_MAX_V3_TRANSFORM_ADD_DUPLICATE", "add_facts contains duplicates")
-    collision = set(removes).intersection(add_hashes)
-    if collision:
+    if set(removes).intersection(add_hashes):
         _fail("TEVS_MAX_V3_TRANSFORM_COLLISION", "a transformation cannot remove and add the same fact")
     adds = tuple(sorted(adds_checked, key=lambda item: item.fact_hash))
     effects = _sha(effect_set_hash, "effect_set_hash")
     resources = _sha(resource_vector_hash, "resource_vector_hash")
     proofs = _ordered_unique_hashes(proof_requirement_hashes, "proof_requirement_hash")
-    body = _transformation_body(tid, before, removes, adds, effects, resources, proofs)
+    body = _transformation_body(tid, before, result, removes, adds, effects, resources, proofs)
     return FieldTransformationV1(
-        FIELD_TRANSFORMATION_SCHEMA,
-        tid,
-        before,
-        removes,
-        adds,
-        effects,
-        resources,
-        proofs,
-        canonical_hash(body),
+        FIELD_TRANSFORMATION_SCHEMA, tid, before, result, removes, adds,
+        effects, resources, proofs, canonical_hash(body)
     )
 
 
@@ -242,6 +225,7 @@ def validate_field_transformation(value: object) -> FieldTransformationV1:
             remove_fact_hashes=value.remove_fact_hashes,
             add_facts=value.add_facts,
             required_before_hash=value.required_before_hash,
+            result_profile=value.result_profile,
             effect_set_hash=value.effect_set_hash,
             resource_vector_hash=value.resource_vector_hash,
             proof_requirement_hashes=value.proof_requirement_hashes,
@@ -252,9 +236,8 @@ def validate_field_transformation(value: object) -> FieldTransformationV1:
     if not isinstance(value, Mapping):
         _fail("TEVS_MAX_V3_TRANSFORM", "transformation must be FieldTransformationV1 or mapping")
     expected_fields = {
-        "schema", "transformation_id", "required_before_hash", "remove_fact_hashes",
-        "add_facts", "effect_set_hash", "resource_vector_hash",
-        "proof_requirement_hashes", "transformation_hash",
+        "schema", "transformation_id", "required_before_hash", "result_profile", "remove_fact_hashes",
+        "add_facts", "effect_set_hash", "resource_vector_hash", "proof_requirement_hashes", "transformation_hash",
     }
     if set(value) != expected_fields:
         _fail("TEVS_MAX_V3_TRANSFORM_FIELDS", "transformation field set mismatch")
@@ -271,6 +254,7 @@ def validate_field_transformation(value: object) -> FieldTransformationV1:
         remove_fact_hashes=removes,
         add_facts=adds,
         required_before_hash=value.get("required_before_hash"),
+        result_profile=value.get("result_profile"),
         effect_set_hash=value.get("effect_set_hash"),
         resource_vector_hash=value.get("resource_vector_hash"),
         proof_requirement_hashes=proofs,
@@ -284,6 +268,7 @@ def validate_field_transformation(value: object) -> FieldTransformationV1:
     if tuple(proofs) != expected.proof_requirement_hashes:
         _fail("TEVS_MAX_V3_TRANSFORM_ORDER", "proof requirement hashes must use canonical order")
     return expected
+
 
 APPLY_RECEIPT_SCHEMA = "TEV_SCRIPT_MAX_V3_APPLY_RECEIPT_V1"
 _APPLY_STATUSES = frozenset({"PASS", "PROOF_REQUIRED", "REJECT"})
@@ -303,14 +288,9 @@ class ApplyReceiptV1:
 
 
 def _apply_receipt_body(
-    *,
-    before_field_hash: str,
-    transformation_hash: str,
-    after_field_hash: str,
-    effect_set_hash: str,
-    resource_vector_hash: str,
-    proof_requirement_hashes: Sequence[str],
-    status: str,
+    *, before_field_hash: str, transformation_hash: str, after_field_hash: str,
+    effect_set_hash: str, resource_vector_hash: str,
+    proof_requirement_hashes: Sequence[str], status: str,
 ) -> dict[str, Any]:
     return {
         "schema": APPLY_RECEIPT_SCHEMA,
@@ -325,14 +305,9 @@ def _apply_receipt_body(
 
 
 def _build_apply_receipt(
-    *,
-    before_field_hash: str,
-    transformation_hash: str,
-    after_field_hash: str,
-    effect_set_hash: str,
-    resource_vector_hash: str,
-    proof_requirement_hashes: Sequence[str],
-    status: str,
+    *, before_field_hash: str, transformation_hash: str, after_field_hash: str,
+    effect_set_hash: str, resource_vector_hash: str,
+    proof_requirement_hashes: Sequence[str], status: str,
 ) -> ApplyReceiptV1:
     before = _sha(before_field_hash, "before_field_hash")
     transformation = _sha(transformation_hash, "transformation_hash")
@@ -347,24 +322,13 @@ def _build_apply_receipt(
     if status == "PROOF_REQUIRED" and not proofs:
         _fail("TEVS_MAX_V3_APPLY_PROOF", "PROOF_REQUIRED must bind unresolved proof requirements")
     body = _apply_receipt_body(
-        before_field_hash=before,
-        transformation_hash=transformation,
-        after_field_hash=after,
-        effect_set_hash=effects,
-        resource_vector_hash=resources,
-        proof_requirement_hashes=proofs,
-        status=status,
+        before_field_hash=before, transformation_hash=transformation, after_field_hash=after,
+        effect_set_hash=effects, resource_vector_hash=resources,
+        proof_requirement_hashes=proofs, status=status,
     )
     return ApplyReceiptV1(
-        APPLY_RECEIPT_SCHEMA,
-        before,
-        transformation,
-        after,
-        effects,
-        resources,
-        proofs,
-        status,
-        canonical_hash(body),
+        APPLY_RECEIPT_SCHEMA, before, transformation, after, effects,
+        resources, proofs, status, canonical_hash(body)
     )
 
 
@@ -376,19 +340,19 @@ def apply_field_transformation(
     tx = validate_field_transformation(transformation)
     if tx.required_before_hash is not None and tx.required_before_hash != current.field_hash:
         _fail("TEVS_MAX_V3_APPLY_BEFORE", "transformation before-field pin mismatch")
-
     remaining = {item.fact_hash: item for item in current.facts}
     for fact_hash in tx.remove_fact_hashes:
         if fact_hash not in remaining:
             _fail("TEVS_MAX_V3_APPLY_REMOVE", "transformation removal target is absent")
         del remaining[fact_hash]
-
     for fact in tx.add_facts:
         if fact.fact_hash in remaining:
             _fail("TEVS_MAX_V3_APPLY_ADD", "transformation addition duplicates a remaining fact")
         remaining[fact.fact_hash] = fact
-
-    after = semantic_field(tuple(remaining.values()), profile=current.profile)
+    after = semantic_field(
+        tuple(remaining.values()),
+        profile=current.profile if tx.result_profile is None else tx.result_profile,
+    )
     status = "PROOF_REQUIRED" if tx.proof_requirement_hashes else "PASS"
     receipt = _build_apply_receipt(
         before_field_hash=current.field_hash,
@@ -420,8 +384,7 @@ def validate_apply_receipt(value: object) -> ApplyReceiptV1:
         _fail("TEVS_MAX_V3_APPLY_RECEIPT", "Apply receipt must be ApplyReceiptV1 or mapping")
     expected_fields = {
         "schema", "before_field_hash", "transformation_hash", "after_field_hash",
-        "effect_set_hash", "resource_vector_hash", "proof_requirement_hashes",
-        "status", "receipt_hash",
+        "effect_set_hash", "resource_vector_hash", "proof_requirement_hashes", "status", "receipt_hash",
     }
     if set(value) != expected_fields:
         _fail("TEVS_MAX_V3_APPLY_RECEIPT_FIELDS", "Apply receipt field set mismatch")
