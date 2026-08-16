@@ -13,6 +13,7 @@ from tev_script.program_ir_v5_semantic import (
     program_to_object,
 )
 from tev_script.source_semantic_process_v3 import compile_semantic_process_v3
+from tev_script.release_metadata_v3 import RELEASE_STATUS, STABLE
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = '''
@@ -52,8 +53,8 @@ class V3SchemaMetadataTests(unittest.TestCase):
         matrix = self._json("spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json")
         self.assertEqual(matrix["language_version"], "3.0.0")
         self.assertEqual(matrix["program_ir_version"], "5")
-        self.assertEqual(matrix["status"], "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED")
-        self.assertFalse(matrix["stable"])
+        self.assertEqual(matrix["status"], RELEASE_STATUS)
+        self.assertIs(matrix["stable"], STABLE)
         self.assertFalse(matrix["publication_authorized"])
         self.assertFalse(matrix["merge_authorized"])
         features = {row["id"]: row["status"] for row in matrix["required_features"]}
