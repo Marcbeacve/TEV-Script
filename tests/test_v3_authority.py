@@ -17,7 +17,9 @@ class V3AuthorityTests(unittest.TestCase):
         return json.loads((ROOT / "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json").read_text(encoding="utf-8"))
 
     def test_matrix_closes_exact_v3_authority_surface(self) -> None:
-        report = validate_v3_matrix(self._matrix(), validate_release_metadata_v3(), v3_descriptor())
+        matrix = self._matrix()
+        descriptor = v3_descriptor()
+        report = validate_v3_matrix(matrix, validate_release_metadata_v3(), descriptor)
         self.assertEqual(report["status"], "PASS")
         self.assertTrue(report["all_required_features_closed"])
         self.assertTrue(report["governed_paths_unique"])
@@ -26,6 +28,12 @@ class V3AuthorityTests(unittest.TestCase):
         self.assertIn("RUN_TEV_SCRIPT_V3_STABLE_ADMISSION.py", report["governed_paths"])
         self.assertIn("packaging/v3/pyproject.toml", report["governed_paths"])
         self.assertIn("tev_script/translation_validation_v3.py", report["governed_paths"])
+        self.assertIn("runtime_js_v3/runtime_v5_semantic.mjs", report["governed_paths"])
+        self.assertNotIn("runtime-js/v3/runtime_v5_semantic.mjs", report["governed_paths"])
+        self.assertEqual(descriptor["runtime_targets"], ["python_reference", "javascript_independent"])
+        feature_map = {row["id"]: row["status"] for row in matrix["required_features"]}
+        self.assertEqual(feature_map["INDEPENDENT_JAVASCRIPT_RUNTIME"], "CLOSED")
+        self.assertIn("V3_INDEPENDENT_JS_PARITY_PASS", matrix["production_gates"])
 
     def test_matrix_tamper_and_missing_governed_path_reject(self) -> None:
         matrix = self._matrix()
