@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parent
 REPOSITORY = "Marcbeacve/TEV-Script"
 EXPECTED_BRANCH = "agent/tev-script-omega-kernel-v1"
 V2_BASE_SHA = "2bdb047dcad41f9d112219bd65925c25668c02e0"
+V2_AUTHORITY_PROFILE = "stable"
 LANGUAGE_VERSION = "3.0.0"
 SCHEMA = "TEV_SCRIPT_V3_CERTIFY_FULL_RECEIPT_V1"
 FEATURE_MATRIX_PATH = "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json"
@@ -273,7 +274,7 @@ def certify(*, receipt_out: str | Path) -> dict[str, Any]:
     if authority.get("status") != "PASS" or authority.get("v2_byte_identity") != "PASS":
         raise V3CertificationFailure("V3 authority or inherited V2 byte identity did not PASS")
     v3_count, v3_skips = _run_modules(V3_TEST_MODULES)
-    _run((sys.executable, "tools/validate_v2_authority.py"), timeout=1800)
+    _run((sys.executable, "tools/validate_v2_authority.py", "--profile", V2_AUTHORITY_PROFILE), timeout=1800)
     full_count, full_skips = _run_full()
     wheel_filename, wheel_sha256 = build_reproducible_v3_wheel()
     if v3_skips or full_skips:
