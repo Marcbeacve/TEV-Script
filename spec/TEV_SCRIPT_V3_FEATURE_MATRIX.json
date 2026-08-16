@@ -82,6 +82,7 @@
       "tests/test_translation_validation_v3.py",
       "tests/test_v3_authority.py",
       "tests/test_v3_certify_full.py",
+      "tests/test_v3_descriptor_runtime_targets.py",
       "tests/test_v3_javascript_runtime_authority.py",
       "tests/test_v3_packaging.py",
       "tests/test_v3_schemas_metadata.py",
