@@ -2,7 +2,7 @@
   "$schema":"https://json-schema.org/draft/2020-12/schema",
   "$id":"TEV_SCRIPT_V3_CERTIFY_FULL_RECEIPT_V1",
   "type":"object","additionalProperties":false,
-  "required":["schema","language_version","repository","branch","commit_sha","tree_sha","v2_base_sha","feature_matrix_sha256","descriptor_hash","basis_report_hash","v3_test_count","v3_skipped_tests","full_test_count","full_skipped_tests","schema_validation","v2_authority_validation","v3_wheel_filename","v3_wheel_sha256","v3_wheel_reproducible","package_release_shape","promotion_authority","language_stable","certify_full","receipt_hash"],
+  "required":["schema","language_version","repository","branch","commit_sha","tree_sha","v2_base_sha","feature_matrix_sha256","descriptor_hash","basis_report_hash","v3_test_count","v3_skipped_tests","full_test_count","full_skipped_tests","schema_validation","v3_authority_validation","v2_byte_identity","v2_authority_validation","v3_wheel_filename","v3_wheel_sha256","v3_wheel_reproducible","package_release_shape","promotion_authority","language_stable","certify_full","receipt_hash"],
   "properties":{
     "schema":{"const":"TEV_SCRIPT_V3_CERTIFY_FULL_RECEIPT_V1"},"language_version":{"const":"3.0.0"},
     "repository":{"const":"Marcbeacve/TEV-Script"},"branch":{"const":"agent/tev-script-omega-kernel-v1"},
@@ -10,7 +10,7 @@
     "v2_base_sha":{"const":"2bdb047dcad41f9d112219bd65925c25668c02e0"},
     "feature_matrix_sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},"descriptor_hash":{"type":"string","pattern":"^[0-9a-f]{64}$"},"basis_report_hash":{"type":"string","pattern":"^[0-9a-f]{64}$"},
     "v3_test_count":{"type":"integer","minimum":1},"v3_skipped_tests":{"const":0},"full_test_count":{"type":"integer","minimum":1},"full_skipped_tests":{"const":0},
-    "schema_validation":{"const":"PASS"},"v2_authority_validation":{"const":"PASS"},"v3_wheel_filename":{"type":"string","pattern":"-3\.0\.0-py3-none-any\.whl$"},"v3_wheel_sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},"v3_wheel_reproducible":{"const":true},"package_release_shape":{"const":"V3_3_0_0_WHEEL_REPRODUCIBLE"},
+    "schema_validation":{"const":"PASS"},"v3_authority_validation":{"const":"PASS"},"v2_byte_identity":{"const":"PASS"},"v2_authority_validation":{"const":"PASS"},"v3_wheel_filename":{"type":"string","pattern":"-3\.0\.0-py3-none-any\.whl$"},"v3_wheel_sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},"v3_wheel_reproducible":{"const":true},"package_release_shape":{"const":"V3_3_0_0_WHEEL_REPRODUCIBLE"},
     "promotion_authority":{"const":false},"language_stable":{"const":false},"certify_full":{"const":true},"receipt_hash":{"type":"string","pattern":"^[0-9a-f]{64}$"}
   }
 }
