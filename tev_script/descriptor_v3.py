@@ -2,6 +2,7 @@ from __future__ import annotations
 import hmac
 from typing import Any, Mapping
 from .canonical import canonical_hash
+from .release_metadata_v3 import STABLE
 
 DESCRIPTOR_SCHEMA = "TEV_SCRIPT_V3_DESCRIPTOR_V1"
 
@@ -11,7 +12,7 @@ def v3_descriptor() -> dict[str, Any]:
         "language_id": "TEV-Script",
         "language_version": "3.0.0",
         "release_name": "TEVScript MAX",
-        "stable": False,
+        "stable": STABLE,
         "promotion_authority": False,
         "source_profiles": ["semantic_process", "v2_explicit_compatibility"],
         "program_ir_profiles": ["TEV_SCRIPT_PROGRAM_IR_V5_SEMANTIC_PROCESS_V1", "V2_PROGRAM_IR_V4_EXPLICIT_COMPATIBILITY"],
