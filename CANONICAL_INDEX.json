@@ -271,56 +271,6 @@
       "feature_matrix": "spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json",
       "publication_authorized": false,
       "merge_authorized": false
-    },
-    {
-      "language_version": "3.0.0",
-      "status": "STABLE_ADMISSION_REQUESTED",
-      "stable": true,
-      "technical_certification": {
-        "commit_sha": "b02c56c0e96109cb08965f0f1419144826b238f6",
-        "tree_sha": "1858d21074ebe9845e8e6483b93449a8bc130161",
-        "receipt_hash": "9ddfc5c4d9c3a1bc37eaf689f0014bae2cb8fb94b8d62829c0e86d42cc295e64",
-        "receipt_file_sha256": "4b863f7342414c7eec0162ba2fd24ba20c59cc2e89951ea645a015117a518a5f",
-        "v3_test_count": 94,
-        "v3_skipped_tests": 0,
-        "full_test_count": 1335,
-        "full_skipped_tests": 0,
-        "wheel_sha256": "0cb9828c634f3d9dce3b4b8ef2b6a90a548373a141c59fec22569b34cc7fbbc9"
-      },
-      "authority_files": [
-        "spec/TEV_SCRIPT_PROGRAM_IR_V5_SEMANTIC_PROCESS.md",
-        "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json",
-        "spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md",
-        "schemas/tev-script-program-ir-v5-semantic-process.schema.json",
-        "schemas/tev-script-v3-certify-full-receipt.schema.json",
-        "schemas/tev-script-v3-descriptor.schema.json",
-        "schemas/tev-script-v3-process-checkpoint.schema.json",
-        "schemas/tev-script-v3-stable-admission-receipt.schema.json",
-        "tev_script/descriptor_v3.py",
-        "tev_script/release_metadata_v3.py",
-        "RUN_TEV_SCRIPT_V3_CERTIFY_FULL.py",
-        "RUN_TEV_SCRIPT_V3_STABLE_ADMISSION.py",
-        "tools/validate_v3_authority.py"
-      ],
-      "feature_matrix": "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json",
-      "stable_release_surface": {
-        "release_metadata": "tev_script/release_metadata_v3.py",
-        "admission_gate": "RUN_TEV_SCRIPT_V3_STABLE_ADMISSION.py",
-        "receipt_schema": "TEV_SCRIPT_V3_STABLE_ADMISSION_RECEIPT_V1",
-        "exact_parent_certificate_required": true,
-        "release_diff_whitelist_required": true,
-        "artifact_byte_identity_required": true,
-        "stable_claim": true
-      },
-      "public_interfaces": {
-        "python_package": "tev_script",
-        "v3_cli": "tev-script-v3",
-        "v3_descriptor_cli": "tev-script-v3-describe",
-        "v3_module_cli": "python -m tev_script.cli_v3",
-        "v3_descriptor_module_cli": "python -m tev_script.describe_v3"
-      },
-      "publication_authorized": false,
-      "merge_authorized": false
     }
   ],
   "reference_implementations": [

@@ -494,33 +494,3 @@ V2_TECHNICAL_PARENT_CERTIFICATE_SHA256=49ccf5f6e5c4bf9962ccc6823ecade5f61f616787
 ```
 
 This is the release-only Phase S source shape. It is bound to the exact independently recertified technical parent above. The source claim remains pending until `RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py` emits `STABLE_ADMISSION=PASS`. No tag, package publication, or main promotion is implied by this metadata alone.
-
----
-
-## TEVScript MAX 3.0.0 stable-admission request
-
-```text
-V3_STABLE_ADMISSION=REQUESTED
-V3_LANGUAGE_VERSION=3.0.0
-V3_TECHNICAL_PARENT_COMMIT=b02c56c0e96109cb08965f0f1419144826b238f6
-V3_TECHNICAL_PARENT_TREE=1858d21074ebe9845e8e6483b93449a8bc130161
-V3_TECHNICAL_RECEIPT_HASH=9ddfc5c4d9c3a1bc37eaf689f0014bae2cb8fb94b8d62829c0e86d42cc295e64
-V3_TECHNICAL_RECEIPT_FILE_SHA256=4b863f7342414c7eec0162ba2fd24ba20c59cc2e89951ea645a015117a518a5f
-V3_TECHNICAL_V3_TEST_COUNT=94
-V3_TECHNICAL_FULL_TEST_COUNT=1335
-V3_TECHNICAL_SKIPPED_TESTS=0
-V3_TECHNICAL_WHEEL_SHA256=0cb9828c634f3d9dce3b4b8ef2b6a90a548373a141c59fec22569b34cc7fbbc9
-V3_PUBLICATION_AUTHORITY=NO_UNTIL_STABLE_ADMISSION
-V3_MERGE_AUTHORITY=NO
-```
-
-The certified technical parent completed V3 focal and full-repository
-regression with zero skips. This release-shaped commit changes only the
-governed V3 stable-request whitelist and binds the exact external technical
-certificate.
-
-stable=true in the V3 release metadata is a Stable Admission request, not
-publication authority. Only RUN_TEV_SCRIPT_V3_STABLE_ADMISSION.py may emit
-V3_STABLE_ADMISSION=PASS and V3_LANGUAGE_STABLE=YES for the exact release
-commit and exact final wheel. The Stable Admission receipt never grants merge
-authority.

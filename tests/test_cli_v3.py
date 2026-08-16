@@ -46,7 +46,7 @@ class DescriptorV3Tests(unittest.TestCase):
         self.assertIn("semantic_process", value["source_profiles"])
         self.assertTrue(verify_v3_descriptor(value))
         tampered = dict(value)
-        tampered["stable"] = True
+        tampered["stable"] = not value["stable"]
         self.assertFalse(verify_v3_descriptor(tampered))
 
 
