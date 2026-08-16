@@ -78,7 +78,10 @@ class CliV3Tests(unittest.TestCase):
             self.assertEqual(code, 0, err)
             program = validate_semantic_process_program(load_strict_json(target))
             self.assertEqual(program.language_version, "3.0.0")
-            self.assertEqual(json.loads(out)["program_ir_hash"], program.program_hash)
+            summary = json.loads(out)
+            self.assertEqual(summary["program_ir_hash"], program.program_hash)
+            self.assertEqual(summary["translation_validation_status"], "PASS")
+            self.assertEqual(len(summary["translation_validation_receipt_hash"]), 64)
 
     def test_run_halts_and_cycle_remains_cli_bounded(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
