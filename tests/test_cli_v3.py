@@ -11,6 +11,7 @@ from tev_script.cli_v3 import main
 from tev_script.descriptor_v3 import v3_descriptor, verify_v3_descriptor
 from tev_script.json_io import load_strict_json
 from tev_script.program_ir_v5_semantic import validate_semantic_process_program
+from tev_script.release_metadata_v3 import STABLE
 
 SOURCE = '''
 process Door version "3.0.0";
@@ -40,7 +41,7 @@ class DescriptorV3Tests(unittest.TestCase):
     def test_descriptor_is_self_hashed_non_promotional(self) -> None:
         value = v3_descriptor()
         self.assertEqual(value["language_version"], "3.0.0")
-        self.assertFalse(value["stable"])
+        self.assertIs(value["stable"], STABLE)
         self.assertFalse(value["promotion_authority"])
         self.assertIn("semantic_process", value["source_profiles"])
         self.assertTrue(verify_v3_descriptor(value))
