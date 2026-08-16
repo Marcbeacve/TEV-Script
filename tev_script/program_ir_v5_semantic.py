@@ -102,6 +102,7 @@ def _tx_wire(value: FieldTransformationV1) -> dict[str, Any]:
         "schema": value.schema,
         "transformation_id": value.transformation_id,
         "required_before_hash": value.required_before_hash,
+        "result_profile": value.result_profile,
         "remove_fact_hashes": list(value.remove_fact_hashes),
         "add_facts": [
             {"relation": f.relation, "arguments": list(f.arguments), "fact_hash": f.fact_hash}
