@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "TEV_SCRIPT_MAX_V3_BASIS_CERTIFY_RECEIPT_V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "language_version", "repository", "branch", "commit_sha", "tree_sha",
+    "omega0_base_sha", "omega0_base_tree_sha", "v2_base_sha", "design_sha256",
+    "plan_sha256", "frontier_plan_hash", "basis_report_hash", "basis_test_count",
+    "basis_skipped_tests", "omega0_test_count", "omega0_skipped_tests",
+    "full_test_count", "full_skipped_tests", "v2_governed_files_unchanged",
+    "omega0_files_unchanged", "v2_authority_validation", "promotion_authority",
+    "language_stable", "certify_full", "receipt_hash"
+  ],
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_MAX_V3_BASIS_CERTIFY_RECEIPT_V1"},
+    "language_version": {"const": "3.0.0"},
+    "repository": {"const": "Marcbeacve/TEV-Script"},
+    "branch": {"const": "agent/tev-script-omega-kernel-v1"},
+    "commit_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "tree_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "omega0_base_sha": {"const": "35046a16b2787438f03cffd0d376fbb68d63a5df"},
+    "omega0_base_tree_sha": {"const": "60267f52b41886d41c39d52ee866a1672e6fedd3"},
+    "v2_base_sha": {"const": "2bdb047dcad41f9d112219bd65925c25668c02e0"},
+    "design_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "plan_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "frontier_plan_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "basis_report_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "basis_test_count": {"type": "integer", "minimum": 1},
+    "basis_skipped_tests": {"const": 0},
+    "omega0_test_count": {"type": "integer", "minimum": 1},
+    "omega0_skipped_tests": {"const": 0},
+    "full_test_count": {"type": "integer", "minimum": 1},
+    "full_skipped_tests": {"const": 0},
+    "v2_governed_files_unchanged": {"const": true},
+    "omega0_files_unchanged": {"const": true},
+    "v2_authority_validation": {"const": "PASS"},
+    "promotion_authority": {"const": false},
+    "language_stable": {"const": false},
+    "certify_full": {"const": true},
+    "receipt_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
