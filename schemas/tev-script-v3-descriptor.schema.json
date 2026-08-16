@@ -3,7 +3,7 @@
   "$id":"TEV_SCRIPT_V3_DESCRIPTOR_V1",
   "type":"object",
   "additionalProperties":false,
-  "required":["schema","language_id","language_version","release_name","stable","promotion_authority","source_profiles","program_ir_profiles","semantic_basis","open_computation","implicit_unbounded_execution","ambient_authority","epistemic_qualifiers","derived_stdlib","descriptor_hash"],
+  "required":["schema","language_id","language_version","release_name","stable","promotion_authority","source_profiles","program_ir_profiles","runtime_targets","semantic_basis","open_computation","implicit_unbounded_execution","ambient_authority","epistemic_qualifiers","derived_stdlib","descriptor_hash"],
   "properties":{
     "schema":{"const":"TEV_SCRIPT_V3_DESCRIPTOR_V1"},
     "language_id":{"const":"TEV-Script"},
@@ -13,6 +13,7 @@
     "promotion_authority":{"const":false},
     "source_profiles":{"const":["semantic_process","v2_explicit_compatibility"]},
     "program_ir_profiles":{"const":["TEV_SCRIPT_PROGRAM_IR_V5_SEMANTIC_PROCESS_V1","V2_PROGRAM_IR_V4_EXPLICIT_COMPATIBILITY"]},
+    "runtime_targets":{"const":["python_reference","javascript_independent"]},
     "semantic_basis":{"const":["Field","Transformation","Apply"]},
     "open_computation":{"const":"BOUNDED_QUANTA_WITH_OMEGA_CONTINUATIONS_V1"},
     "implicit_unbounded_execution":{"const":false},
