@@ -31,10 +31,12 @@
     {"id":"NATIVE_V3_SOURCE_PROFILE","status":"CLOSED"},
     {"id":"SOURCE_TO_IR_TRANSLATION_VALIDATION","status":"CLOSED"},
     {"id":"DERIVED_SEMANTIC_STDLIB","status":"CLOSED"},
-    {"id":"EXPLICIT_V2_COMPATIBILITY_LANE","status":"CLOSED"}
+    {"id":"EXPLICIT_V2_COMPATIBILITY_LANE","status":"CLOSED"},
+    {"id":"INDEPENDENT_JAVASCRIPT_RUNTIME","status":"CLOSED"}
   ],
   "governed_paths":{
     "implementation":[
+      "runtime-js/v3/runtime_v5_semantic.mjs",
       "tev_script/cli_v3.py",
       "tev_script/describe_v3.py",
       "tev_script/descriptor_v3.py",
@@ -51,6 +53,7 @@
       "docs/superpowers/specs/2026-08-16-tevscript-max-v3-primitive-basis-design.md",
       "docs/superpowers/specs/2026-08-16-tevscript-max-v3-semantic-stdlib-design.md",
       "docs/superpowers/specs/2026-08-16-tevscript-max-v3-type-effect-design.md",
+      "docs/superpowers/specs/2026-08-16-tevscript-max-v3-independent-js-runtime-design.md",
       "schemas/tev-script-max-v3-basis-certify-receipt.schema.json",
       "schemas/tev-script-program-ir-v5-semantic-process.schema.json",
       "schemas/tev-script-v3-certify-full-receipt.schema.json",
@@ -71,6 +74,7 @@
       "tests/test_omega_semantic_basis_v1.py",
       "tests/test_omega_type_effect_v1.py",
       "tests/test_program_ir_v5_semantic.py",
+      "tests/test_runtime_v5_javascript_parity.py",
       "tests/test_runtime_v5_semantic.py",
       "tests/test_semantic_stdlib_v1.py",
       "tests/test_source_semantic_process_v3.py",
@@ -78,6 +82,7 @@
       "tests/test_translation_validation_v3.py",
       "tests/test_v3_authority.py",
       "tests/test_v3_certify_full.py",
+      "tests/test_v3_javascript_runtime_authority.py",
       "tests/test_v3_packaging.py",
       "tests/test_v3_schemas_metadata.py",
       "tests/test_v3_stable_admission.py"
@@ -100,6 +105,7 @@
     "V3_AUTHORITY_PASS",
     "V3_SCHEMA_CONTRACTS_PASS",
     "V3_FOCAL_ZERO_SKIP_PASS",
+    "V3_INDEPENDENT_JS_PARITY_PASS",
     "V2_BYTE_IDENTITY_PASS",
     "V2_REGRESSION_PASS",
     "FULL_REPOSITORY_REGRESSION_PASS",
