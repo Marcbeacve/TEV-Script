@@ -70,6 +70,9 @@ class V3CertifyFullContractTests(unittest.TestCase):
             v3_wheel_reproducible=True,
         )
 
+    def test_v2_authority_gate_uses_stable_profile(self) -> None:
+        self.assertEqual(cert.V2_AUTHORITY_PROFILE, "stable")
+
     def test_receipt_is_self_hashed_and_nonpromotional(self) -> None:
         body = self._body()
         self.assertFalse(body["promotion_authority"])
