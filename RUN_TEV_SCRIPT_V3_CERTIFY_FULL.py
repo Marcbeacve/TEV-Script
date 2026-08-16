@@ -28,18 +28,21 @@ FEATURE_MATRIX_PATH = "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json"
 V3_WHEEL_SOURCE_DATE_EPOCH = "946684800"
 V3_WHEEL_BACKEND_PATH = "packaging/v3/tools/tev_script_build_backend_v3.py"
 V3_TEST_MODULES = (
+    "tests.test_max_v3_basis_certify",
     "tests.test_omega_semantic_basis_v1",
     "tests.test_omega_type_effect_v1",
     "tests.test_program_ir_v5_semantic",
     "tests.test_runtime_v5_semantic",
     "tests.test_semantic_stdlib_v1",
     "tests.test_source_semantic_process_v3",
+    "tests.test_tevprober_max_basis_v1",
     "tests.test_translation_validation_v3",
     "tests.test_cli_v3",
-    "tests.test_tevprober_max_basis_v1",
-    "tests.test_v3_schemas_metadata",
-    "tests.test_v3_certify_full",
     "tests.test_v3_authority",
+    "tests.test_v3_certify_full",
+    "tests.test_v3_packaging",
+    "tests.test_v3_schemas_metadata",
+    "tests.test_v3_stable_admission",
 )
 _RAN = re.compile(r"Ran\s+(\d+)\s+tests?")
 _SKIPPED = re.compile(r"skipped=(\d+)")
