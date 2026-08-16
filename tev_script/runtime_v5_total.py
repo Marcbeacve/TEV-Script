@@ -346,6 +346,71 @@ def _append_bridge_fact(
     return after, apply_receipt.receipt_hash
 
 
+def _apply_total_core_transformation(
+    program: TotalCoreProgramV1,
+    field: SemanticFieldV1,
+    transformation: Any,
+) -> tuple[SemanticFieldV1, Any, str | None]:
+    # The canonical transformation is never mutated. Proof-open execution
+    # uses an execution-local derivative bound to exact VERIFIED admissions.
+    if not transformation.proof_requirement_hashes:
+        after, receipt = apply_field_transformation(field, transformation)
+        return after, receipt, None
+
+    admissions_by_requirement = {
+        admission.requirement_hash: admission
+        for admission in program.proof_admissions
+    }
+    selected = []
+    for requirement_hash in transformation.proof_requirement_hashes:
+        admission = admissions_by_requirement.get(requirement_hash)
+        if admission is None:
+            _fail(
+                "TEVS_V31_RUNTIME_PROOF_REQUIRED",
+                "proof-open Apply has no exact runtime admission",
+            )
+        if admission.status != "VERIFIED":
+            _fail(
+                "TEVS_V31_RUNTIME_PROOF_STATUS",
+                "proof admission is not VERIFIED",
+            )
+        if admission.authority_hash != program.authority_hash:
+            _fail(
+                "TEVS_V31_RUNTIME_PROOF_AUTHORITY",
+                "proof admission authority differs from program authority",
+            )
+        selected.append(admission)
+
+    admission_hashes = tuple(admission.admission_hash for admission in selected)
+    proof_use_hash = canonical_hash(
+        {
+            "schema": "TEV_SCRIPT_PROGRAM_IR_V5_PROOF_ADMISSION_USE_V1",
+            "program_hash": program.program_hash,
+            "authority_hash": program.authority_hash,
+            "transformation_hash": transformation.transformation_hash,
+            "requirement_hashes": list(transformation.proof_requirement_hashes),
+            "admission_hashes": list(admission_hashes),
+        }
+    )
+    execution_local = field_transformation(
+        transformation_id=f"tev.total.proof_admitted.{proof_use_hash[:32]}",
+        remove_fact_hashes=transformation.remove_fact_hashes,
+        add_facts=transformation.add_facts,
+        required_before_hash=transformation.required_before_hash,
+        result_profile=transformation.result_profile,
+        effect_set_hash=transformation.effect_set_hash,
+        resource_vector_hash=transformation.resource_vector_hash,
+        proof_requirement_hashes=(),
+    )
+    after, receipt = apply_field_transformation(field, execution_local)
+    if receipt.status != "PASS":
+        _fail(
+            "TEVS_V31_RUNTIME_PROOF_APPLY",
+            "proof-admitted execution-local Apply did not close as PASS",
+        )
+    return after, receipt, proof_use_hash
+
+
 def _result_semantic_hash(status: str, field_hash: str, pc: int) -> str:
     return canonical_hash({"status": status, "field_hash": field_hash, "pc": pc})
 
@@ -559,13 +624,19 @@ def run_total_core_quantum(
                 and instruction.next_pc is not None
             )
             transformation = transformations[instruction.transformation_hash]
-            field, receipt = apply_field_transformation(field, transformation)
+            field, receipt, proof_use_hash = _apply_total_core_transformation(
+                program,
+                field,
+                transformation,
+            )
             if receipt.status != "PASS":
                 _fail(
                     "TEVS_V31_RUNTIME_APPLY_OPEN",
-                    "runtime cannot execute proof-open Apply without execution admission",
+                    "runtime Apply did not close as PASS",
                 )
             apply_receipt_hashes.append(receipt.receipt_hash)
+            if proof_use_hash is not None:
+                effect_hashes.append(proof_use_hash)
             effect_hashes.append(receipt.effect_set_hash)
             pc = instruction.next_pc
 
