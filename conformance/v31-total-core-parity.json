@@ -1,0 +1,62 @@
+{
+  "schema": "TEV_SCRIPT_V31_JS_TOTAL_CORE_CONFORMANCE_V1",
+  "language_version": "3.1.0",
+  "program_ir_version": 5,
+  "profile": "total_core",
+  "python_reference": "tev_script.runtime_v5_total",
+  "javascript_runtime": "runtime_js_v31/runtime_v5_total.mjs",
+  "v5_instruction_kinds": [
+    "apply",
+    "branch_fact",
+    "halt",
+    "invoke_v4",
+    "jump"
+  ],
+  "v4_governed_subset": {
+    "pure": {
+      "expression_ops": [
+        "BINARY",
+        "CONST",
+        "IF",
+        "LET",
+        "PARAM",
+        "UNARY"
+      ]
+    },
+    "recursive": {
+      "expression_ops": [
+        "BINARY",
+        "CONST",
+        "IF",
+        "LET",
+        "PARAM",
+        "SELF_CALL",
+        "UNARY"
+      ],
+      "contract": "decreases_int_r1"
+    },
+    "effects": {
+      "action_ops": [
+        "ASSERT",
+        "LET_LOCAL",
+        "OBSERVE",
+        "SET_STATE"
+      ],
+      "capability_kind": "observation"
+    }
+  },
+  "proof_admission": "external_verified_exact_authority_v1",
+  "checkpoint_continuation": "omega_v1",
+  "unsupported_v4_behavior": "FAIL_CLOSED",
+  "forbidden_delegation_tokens": [
+    "child_process",
+    "python",
+    "python3",
+    "py.exe",
+    "spawn(",
+    "exec(",
+    "eval(",
+    "new Function",
+    "fetch("
+  ]
+}
