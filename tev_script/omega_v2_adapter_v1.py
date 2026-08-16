@@ -146,6 +146,17 @@ def project_run_receipt_v4(raw_ir: Mapping[str, Any], receipt: Any) -> dict[str,
     return {**payload, "projection_hash": omega_hash(payload)}
 
 
+def replay_and_project_program_ir_v4(raw_ir: Mapping[str, Any]) -> dict[str, object]:
+    """Replay one V2 Program IR artifact behind the adapter and project its result.
+
+    Callers need only the canonical Program IR V4 artifact. V2 runtime receipt
+    classes stay inside this adapter boundary instead of leaking into Ω/V3 code.
+    """
+
+    receipt = _replay_program_ir_v4(raw_ir)
+    return project_run_receipt_v4(raw_ir, receipt)
+
+
 def omega_epoch_from_v2(
     raw_ir: Mapping[str, Any],
     receipt: Any,
@@ -178,6 +189,45 @@ def omega_epoch_from_v2(
         resources_hash=vector.vector_hash,
     )
     return epoch, continuation
+
+
+def omega_epoch_from_v2_replay(
+    raw_ir: Mapping[str, Any],
+    *,
+    epoch_index: int,
+    input_state_hash: str,
+    authority_hash: str,
+    previous_continuation_hash: str | None,
+    resources: ResourceVectorV1,
+) -> tuple[EpochIdentityV1, ContinuationReceiptV1]:
+    """Replay V2 internally and expose only the Ω epoch/continuation boundary."""
+
+    receipt = _replay_program_ir_v4(raw_ir)
+    return omega_epoch_from_v2(
+        raw_ir,
+        receipt,
+        epoch_index=epoch_index,
+        input_state_hash=input_state_hash,
+        authority_hash=authority_hash,
+        previous_continuation_hash=previous_continuation_hash,
+        resources=resources,
+    )
+
+
+def _replay_program_ir_v4(raw_ir: Mapping[str, Any]) -> Any:
+    """Return the authoritative deterministic V2 run/plan result for one IR artifact."""
+
+    project_program_ir_v4(raw_ir)
+    schema = raw_ir.get("schema") if isinstance(raw_ir, Mapping) else None
+    if schema == PROGRAM_IR_V4_PURE_SCHEMA:
+        return run_program_ir_v4_pure(raw_ir)
+    if schema == PROGRAM_IR_V4_RECURSIVE_SCHEMA:
+        return run_program_ir_v4_recursive(raw_ir)
+    if schema == PROGRAM_IR_V4_EFFECTS_SCHEMA:
+        return run_program_ir_v4_effects(raw_ir)
+    if schema == PROGRAM_IR_V4_EFFECTS_R2_SCHEMA:
+        return plan_program_ir_v4_effects_r2(raw_ir)
+    _fail("TEVS_OMEGA_V2_PROFILE", f"unsupported V2 Program IR schema {schema!r}")
 
 
 def _normalize_r2_receipt(
