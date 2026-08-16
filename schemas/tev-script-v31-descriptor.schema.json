@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "TEV_SCRIPT_V31_DESCRIPTOR_V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "language_id",
+    "language_version",
+    "release_name",
+    "stable",
+    "promotion_authority",
+    "program_ir_version",
+    "profiles",
+    "predecessor_v3",
+    "v2_units_embedded_without_reinterpretation",
+    "proof_admission_external_only",
+    "physical_effect_commit_inside_runtime",
+    "semantic_basis",
+    "open_computation",
+    "runtime_targets",
+    "descriptor_hash"
+  ],
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_V31_DESCRIPTOR_V1"},
+    "language_id": {"const": "TEV-Script"},
+    "language_version": {"const": "3.1.0"},
+    "release_name": {"const": "TEVScript MAX"},
+    "stable": {"type": "boolean"},
+    "promotion_authority": {"const": false},
+    "program_ir_version": {"const": 5},
+    "profiles": {
+      "const": ["total_core"]
+    },
+    "predecessor_v3": {"const": "3.0.0"},
+    "v2_units_embedded_without_reinterpretation": {"const": true},
+    "proof_admission_external_only": {"const": true},
+    "physical_effect_commit_inside_runtime": {"const": false},
+    "semantic_basis": {
+      "const": ["Field", "Transformation", "Apply"]
+    },
+    "open_computation": {
+      "const": "BOUNDED_QUANTA_WITH_OMEGA_CONTINUATIONS_V1"
+    },
+    "runtime_targets": {
+      "const": ["python_reference", "javascript_independent_required"]
+    },
+    "descriptor_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

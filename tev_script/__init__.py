@@ -73,6 +73,28 @@ from .python_host_v1 import (
     build_python_program_v1_paths,
 )
 
+
+# Additive TEVScript MAX 3.1 Total-Core surface.
+from .program_ir_v5_total import (
+    TotalCoreInstructionV1,
+    TotalCoreProgramV1,
+    TotalCoreUnitV1,
+    VerifiedProofAdmissionV1,
+    canonical_total_core_program_bytes,
+    total_core_program_to_mapping,
+    validate_total_core_program,
+)
+from .runtime_v5_total import (
+    TotalCoreCheckpointV1,
+    TotalCoreQuantumResultV1,
+    initial_total_core_checkpoint,
+    run_total_core_quantum,
+    validate_total_core_checkpoint,
+    validate_total_core_quantum_result,
+)
+from .source_total_core_v31 import compile_total_core_v31
+from .descriptor_v31 import v31_descriptor, verify_v31_descriptor
+
 __all__ = [
     # Certified V0.2 surface.
     "CompilationBundle",
@@ -134,6 +156,23 @@ __all__ = [
     "EmittedEventV3",
     "RuntimeCheckpointV2",
     "ScriptRuntimeV3",
+    # Additive TEVScript MAX 3.1 Total-Core surface.
+    "TotalCoreInstructionV1",
+    "TotalCoreProgramV1",
+    "TotalCoreUnitV1",
+    "VerifiedProofAdmissionV1",
+    "canonical_total_core_program_bytes",
+    "total_core_program_to_mapping",
+    "validate_total_core_program",
+    "TotalCoreCheckpointV1",
+    "TotalCoreQuantumResultV1",
+    "initial_total_core_checkpoint",
+    "run_total_core_quantum",
+    "validate_total_core_checkpoint",
+    "validate_total_core_quantum_result",
+    "compile_total_core_v31",
+    "v31_descriptor",
+    "verify_v31_descriptor",
     # Python production host surface. Source build and runtime execution stay
     # distinct: PythonRuntimeHostV1 accepts only precompiled validated IR V3.
     "PythonCapabilityContractV1",
