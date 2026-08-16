@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import json
 import re
 from typing import Any, Sequence
 
-from .canonical import canonical_hash
+from .canonical import canonical_hash, to_json_value
 from .diagnostics import TevScriptError
+from .json_io import parse_strict_json
 from .omega_semantic_basis_v1 import FieldFactV1, field_fact, field_transformation, semantic_field
 from .program_ir_v5_semantic import (
     SemanticProcessProgramV1,
@@ -20,6 +20,7 @@ from .program_ir_v5_semantic import (
 SOURCE_MODEL_SCHEMA = "TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE_MODEL_V1"
 LANGUAGE_VERSION = "3.0.0"
 _NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
+_SHA = re.compile(r"^[0-9a-f]{64}$")
 _HEADER = re.compile(r'^process\s+([A-Za-z_][A-Za-z0-9_.:/-]*)\s+version\s+"([^"]+)"$')
 _AUTHORITY = re.compile(r"^authority\s+([0-9a-f]{64})$")
 _QUANTUM = re.compile(r"^quantum_steps\s+([0-9]+)$")
@@ -27,7 +28,8 @@ _FACT = re.compile(r"^fact\s+([A-Za-z_][A-Za-z0-9_.:/-]*)\s*=\s*([A-Za-z_][A-Za-
 _FIELD = re.compile(r"^field\s+([A-Za-z_][A-Za-z0-9_.:/-]*)\s*=\s*(\[.*\])$")
 _TRANSFORM = re.compile(
     r"^transform\s+([A-Za-z_][A-Za-z0-9_.:/-]*)\s+effects\s+([0-9a-f]{64})\s+"
-    r"resources\s+([0-9a-f]{64})\s+remove\s+(\[.*?\])\s+add\s+(\[.*\])$"
+    r"resources\s+([0-9a-f]{64})(?:\s+profile\s+([A-Za-z_][A-Za-z0-9_.:/-]*))?"
+    r"\s+remove\s+(\[.*?\])\s+add\s+(\[.*\])$"
 )
 _LABEL = re.compile(r"^label\s+([A-Za-z_][A-Za-z0-9_.:/-]*)\s*=\s*(.+)$")
 _ENTRY = re.compile(r"^entry\s+([A-Za-z_][A-Za-z0-9_.:/-]*)$")
@@ -46,6 +48,7 @@ class SourceTransformV3:
     name: str
     effect_set_hash: str
     resource_vector_hash: str
+    result_profile: str | None
     remove_names: tuple[str, ...]
     add_names: tuple[str, ...]
 
@@ -80,7 +83,12 @@ def _fail(code: str, message: str) -> None:
 def _split_statements(source: str) -> tuple[str, ...]:
     if not isinstance(source, str):
         _fail("TEVS_V3_SOURCE_TYPE", "source must be text")
-    cleaned_lines = [raw for raw in source.splitlines() if not raw.lstrip().startswith("#")]
+    cleaned_lines: list[str] = []
+    for raw in source.splitlines():
+        stripped = raw.lstrip()
+        if stripped.startswith("#"):
+            continue
+        cleaned_lines.append(raw)
     text = "\n".join(cleaned_lines)
     statements: list[str] = []
     buf: list[str] = []
@@ -124,12 +132,21 @@ def _split_statements(source: str) -> tuple[str, ...]:
 
 def _json_array(text: str, what: str) -> list[Any]:
     try:
-        value = json.loads(text)
-    except json.JSONDecodeError as error:
-        _fail("TEVS_V3_SOURCE_JSON", f"invalid {what}: {error.msg}")
+        value = parse_strict_json(text)
+    except TevScriptError:
+        raise
     if not isinstance(value, list):
         _fail("TEVS_V3_SOURCE_JSON", f"{what} must be JSON array")
     return value
+
+
+def _name_list(text: str, what: str) -> tuple[str, ...]:
+    raw = _json_array(text, what)
+    if any(not isinstance(item, str) or _NAME.fullmatch(item) is None for item in raw):
+        _fail("TEVS_V3_SOURCE_NAME_LIST", f"{what} must contain stable string names")
+    if len(set(raw)) != len(raw):
+        _fail("TEVS_V3_SOURCE_DUPLICATE_REF", f"{what} contains duplicate name")
+    return tuple(sorted(raw))
 
 
 def _bare_name_list(text: str, what: str) -> tuple[str, ...]:
@@ -162,9 +179,15 @@ def _label_body(name: str, body: str) -> SourceLabelV3:
 
 
 def _source_model_object(
-    *, program_id: str, authority_hash: str, quantum_step_limit: int,
-    facts: Sequence[SourceFactV3], field_profile: str, field_fact_names: Sequence[str],
-    transformations: Sequence[SourceTransformV3], labels: Sequence[SourceLabelV3],
+    *,
+    program_id: str,
+    authority_hash: str,
+    quantum_step_limit: int,
+    facts: Sequence[SourceFactV3],
+    field_profile: str,
+    field_fact_names: Sequence[str],
+    transformations: Sequence[SourceTransformV3],
+    labels: Sequence[SourceLabelV3],
     entry_label: str,
 ) -> dict[str, Any]:
     return {
@@ -183,6 +206,7 @@ def _source_model_object(
                 "name": row.name,
                 "effect_set_hash": row.effect_set_hash,
                 "resource_vector_hash": row.resource_vector_hash,
+                "result_profile": row.result_profile,
                 "remove_names": list(row.remove_names),
                 "add_names": list(row.add_names),
             }
@@ -243,11 +267,14 @@ def parse_semantic_process_v3(source: str) -> SemanticProcessSourceV3:
             field_names = _bare_name_list(names_text, "field fact list")
             continue
         if match := _TRANSFORM.fullmatch(statement):
-            name, effects, resources, removes_text, adds_text = match.groups()
+            name, effects, resources, result_profile, removes_text, adds_text = match.groups()
             if name in transforms:
                 _fail("TEVS_V3_SOURCE_DUPLICATE", f"duplicate transform {name}")
             transforms[name] = SourceTransformV3(
-                name, effects, resources,
+                name,
+                effects,
+                resources,
+                result_profile,
                 _bare_name_list(removes_text, "transform remove list"),
                 _bare_name_list(adds_text, "transform add list"),
             )
@@ -303,16 +330,30 @@ def parse_semantic_process_v3(source: str) -> SemanticProcessSourceV3:
     facts = tuple(sorted(fact_rows.values(), key=lambda row: row.name))
     txs = tuple(sorted(transforms.values(), key=lambda row: row.name))
     label_rows = tuple(sorted(labels.values(), key=lambda row: row.name))
-    source_object = _source_model_object(
-        program_id=program_id, authority_hash=authority_hash,
-        quantum_step_limit=quantum_step_limit, facts=facts,
-        field_profile=field_profile, field_fact_names=field_names,
-        transformations=txs, labels=label_rows, entry_label=entry_label,
+    model = _source_model_object(
+        program_id=program_id,
+        authority_hash=authority_hash,
+        quantum_step_limit=quantum_step_limit,
+        facts=facts,
+        field_profile=field_profile,
+        field_fact_names=field_names,
+        transformations=txs,
+        labels=label_rows,
+        entry_label=entry_label,
     )
     return SemanticProcessSourceV3(
-        SOURCE_MODEL_SCHEMA, LANGUAGE_VERSION, program_id, authority_hash,
-        quantum_step_limit, facts, field_profile, field_names, txs, label_rows,
-        entry_label, canonical_hash(source_object),
+        SOURCE_MODEL_SCHEMA,
+        LANGUAGE_VERSION,
+        program_id,
+        authority_hash,
+        quantum_step_limit,
+        facts,
+        field_profile,
+        field_names,
+        txs,
+        label_rows,
+        entry_label,
+        canonical_hash(model),
     )
 
 
@@ -325,6 +366,7 @@ def compile_semantic_process_v3(source: str) -> SemanticProcessProgramV1:
             transformation_id=row.name,
             remove_fact_hashes=tuple(facts[name].fact_hash for name in row.remove_names),
             add_facts=tuple(facts[name] for name in row.add_names),
+            result_profile=row.result_profile,
             effect_set_hash=row.effect_set_hash,
             resource_vector_hash=row.resource_vector_hash,
         )
@@ -343,13 +385,7 @@ def compile_semantic_process_v3(source: str) -> SemanticProcessProgramV1:
             instructions.append(instruction_apply(tx_by_name[tx_name].transformation_hash, next_pc=pc[next_label]))
         else:
             fact_name, present, absent = label.operands
-            instructions.append(
-                instruction_branch_fact(
-                    facts[fact_name].fact_hash,
-                    present_pc=pc[present],
-                    absent_pc=pc[absent],
-                )
-            )
+            instructions.append(instruction_branch_fact(facts[fact_name].fact_hash, present_pc=pc[present], absent_pc=pc[absent]))
     return semantic_process_program(
         program_id=model.program_id,
         source_semantic_hash=model.source_semantic_hash,
