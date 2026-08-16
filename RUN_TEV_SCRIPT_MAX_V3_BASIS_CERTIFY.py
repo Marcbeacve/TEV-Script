@@ -21,6 +21,7 @@ SCHEMA = "TEV_SCRIPT_MAX_V3_BASIS_CERTIFY_RECEIPT_V1"
 OMEGA0_BASE_SHA = frontier.OMEGA0_BASE_SHA
 OMEGA0_BASE_TREE = frontier.OMEGA0_BASE_TREE
 V2_BASE_SHA = frontier.V2_BASE_SHA
+V2_AUTHORITY_PROFILE = "stable"
 DESIGN_PATH = "docs/superpowers/specs/2026-08-16-tevscript-max-v3-primitive-basis-design.md"
 PLAN_PATH = "docs/superpowers/plans/2026-08-16-tevscript-max-v3-primitive-basis.md"
 
@@ -331,7 +332,7 @@ def certify(*, expected_omega0_base: str, receipt_out: str | Path) -> dict[str, 
 
     basis_count, basis_skips = _run_unittest_modules(BASIS_TEST_MODULES)
     omega_count, omega_skips = _run_unittest_modules(OMEGA0_TEST_MODULES)
-    _run((sys.executable, "tools/validate_v2_authority.py"), timeout=1800)
+    _run((sys.executable, "tools/validate_v2_authority.py", "--profile", V2_AUTHORITY_PROFILE), timeout=1800)
     full_count, full_skips = _run_full_regression()
     if basis_skips or omega_skips or full_skips:
         raise MaxV3BasisCertificationFailure(
