@@ -557,7 +557,17 @@ def _require_git_identity(root: Path) -> tuple[str, str, str]:
     ).returncode != 0:
         raise V31CertificationFailure("V3 stable release is not an ancestor")
 
-    origin_main = _git(root, "rev-parse", "refs/remotes/origin/main")
+    remote_main = _git(root, "ls-remote", "origin", "refs/heads/main")
+    rows = [
+        line.split()
+        for line in remote_main.splitlines()
+        if line.strip()
+    ]
+    if len(rows) != 1 or len(rows[0]) != 2 or rows[0][1] != "refs/heads/main":
+        raise V31CertificationFailure(
+            "cannot resolve exact origin/main through remote authority"
+        )
+    origin_main = rows[0][0]
     if origin_main != V3_STABLE_SHA:
         raise V31CertificationFailure(
             "origin/main moved; expected V3 stable "

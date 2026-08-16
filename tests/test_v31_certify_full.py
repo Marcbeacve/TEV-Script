@@ -4,7 +4,9 @@ import copy
 import json
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
+from unittest.mock import patch
 
 from RUN_TEV_SCRIPT_V31_CERTIFY_FULL import (
     EXPECTED_BRANCH,
@@ -18,6 +20,7 @@ from RUN_TEV_SCRIPT_V31_CERTIFY_FULL import (
     seal_receipt,
     validate_external_receipt_path,
     verify_receipt,
+    _require_git_identity,
 )
 
 
@@ -112,6 +115,82 @@ class V31CertifyFullTests(unittest.TestCase):
                 validate_external_receipt_path(target)
         with self.assertRaises(ValueError):
             validate_external_receipt_path(ROOT / "forbidden-v31-receipt.json")
+
+    def test_git_identity_resolves_origin_main_in_single_branch_clone(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            seed = base / "seed"
+            remote = base / "remote.git"
+            clone = base / "clone"
+            seed.mkdir()
+
+            def run(*args: str, cwd: Path) -> str:
+                completed = subprocess.run(
+                    ("git", *args),
+                    cwd=cwd,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=30,
+                )
+                self.assertEqual(
+                    completed.returncode,
+                    0,
+                    msg=completed.stdout + "\n" + completed.stderr,
+                )
+                return completed.stdout.strip()
+
+            run("init", "-b", "main", cwd=seed)
+            run("config", "user.name", "TEV Test", cwd=seed)
+            run("config", "user.email", "tev-test@example.invalid", cwd=seed)
+            (seed / "stable.txt").write_text("v3\n", encoding="utf-8")
+            run("add", "stable.txt", cwd=seed)
+            run("commit", "-m", "stable", cwd=seed)
+            stable_sha = run("rev-parse", "HEAD", cwd=seed)
+            stable_tree = run("rev-parse", "HEAD^{tree}", cwd=seed)
+            run("tag", "v3.0.0", cwd=seed)
+
+            run("checkout", "-b", "candidate", cwd=seed)
+            (seed / "candidate.txt").write_text("v31\n", encoding="utf-8")
+            run("add", "candidate.txt", cwd=seed)
+            run("commit", "-m", "candidate", cwd=seed)
+
+            run("init", "--bare", str(remote), cwd=base)
+            run("remote", "add", "origin", str(remote), cwd=seed)
+            run("push", "origin", "main", "candidate", "v3.0.0", cwd=seed)
+
+            run(
+                "clone",
+                "--single-branch",
+                "--branch",
+                "candidate",
+                str(remote),
+                str(clone),
+                cwd=base,
+            )
+            missing = subprocess.run(
+                ("git", "rev-parse", "--verify", "refs/remotes/origin/main"),
+                cwd=clone,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            self.assertNotEqual(missing.returncode, 0)
+
+            with (
+                patch("RUN_TEV_SCRIPT_V31_CERTIFY_FULL.EXPECTED_BRANCH", "candidate"),
+                patch("RUN_TEV_SCRIPT_V31_CERTIFY_FULL.V3_STABLE_SHA", stable_sha),
+                patch("RUN_TEV_SCRIPT_V31_CERTIFY_FULL.V3_STABLE_TREE", stable_tree),
+                patch("RUN_TEV_SCRIPT_V31_CERTIFY_FULL.V3_STABLE_TAG", "v3.0.0"),
+            ):
+                branch, head, tree = _require_git_identity(clone)
+
+            self.assertEqual(branch, "candidate")
+            self.assertEqual(head, run("rev-parse", "HEAD", cwd=clone))
+            self.assertEqual(tree, run("rev-parse", "HEAD^{tree}", cwd=clone))
 
     def test_receipt_schema_closes_release_authority(self) -> None:
         path = ROOT / "schemas/tev-script-v31-certify-full-receipt.schema.json"
