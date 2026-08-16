@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.0.0 - stable admission requested
+
+TEVScript MAX 3.0.0 has completed technical certification and this release-only
+commit requests Stable Admission. The request is bound to the exact certified
+technical parent and external certificate below.
+
+```text
+V3_TECHNICAL_PARENT_COMMIT=b02c56c0e96109cb08965f0f1419144826b238f6
+V3_TECHNICAL_PARENT_TREE=1858d21074ebe9845e8e6483b93449a8bc130161
+V3_TECHNICAL_RECEIPT_HASH=9ddfc5c4d9c3a1bc37eaf689f0014bae2cb8fb94b8d62829c0e86d42cc295e64
+V3_TECHNICAL_RECEIPT_FILE_SHA256=4b863f7342414c7eec0162ba2fd24ba20c59cc2e89951ea645a015117a518a5f
+V3_TECHNICAL_V3_TEST_COUNT=94
+V3_TECHNICAL_FULL_TEST_COUNT=1335
+V3_TECHNICAL_SKIPS=0
+V3_TECHNICAL_WHEEL_SHA256=0cb9828c634f3d9dce3b4b8ef2b6a90a548373a141c59fec22569b34cc7fbbc9
+```
+
+The candidate closes the Field + Transformation + Apply semantic basis,
+bounded continuation-linked computation, Program IR V5 semantic processes,
+native V3 source, explicit epistemic/effect refinements, derived semantic
+stdlib, Source-to-IR validation, explicit V2 compatibility, an independent
+JavaScript runtime, and reproducible V3 wheel construction.
+
+This entry does not itself authorize publication or merge.
+RUN_TEV_SCRIPT_V3_STABLE_ADMISSION.py must pass on the exact direct-child
+release commit. A successful Stable Admission may authorize publication of
+its exact artifacts; merge authority remains false.
+
 ## 1.0.0 — stable admission requested
 
 This release-shaped commit is the exact TEV Script V1.0.0 stable candidate built on the fully certified P6 technical parent. Its metadata declares the stable profile, but publication authority remains conditional on `STABLE_ADMISSION=PASS` for this exact Git commit/tree and the exact release artifacts produced by that admission.
