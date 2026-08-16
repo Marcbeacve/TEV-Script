@@ -27,7 +27,7 @@ REQUIRED_FEATURES = frozenset({
 
 REQUIRED_GOVERNED_PATHS = {
     "implementation": frozenset({
-        "runtime-js/v3/runtime_v5_semantic.mjs",
+        "runtime_js_v3/runtime_v5_semantic.mjs",
         "tev_script/cli_v3.py",
         "tev_script/describe_v3.py",
         "tev_script/descriptor_v3.py",
@@ -65,7 +65,7 @@ REQUIRED_GOVERNED_PATHS = {
         "tests/test_omega_semantic_basis_v1.py",
         "tests/test_omega_type_effect_v1.py",
         "tests/test_program_ir_v5_semantic.py",
-        "tests/test_runtime_v5_javascript_parity.py",
+        "tests/test_runtime_v5_js_parity.py",
         "tests/test_runtime_v5_semantic.py",
         "tests/test_semantic_stdlib_v1.py",
         "tests/test_source_semantic_process_v3.py",
