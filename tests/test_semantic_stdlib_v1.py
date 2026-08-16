@@ -4,11 +4,7 @@ from dataclasses import replace
 import unittest
 
 from tev_script.diagnostics import TevScriptError
-from tev_script.omega_semantic_basis_v1 import (
-    field_fact,
-    field_transformation,
-    semantic_field,
-)
+from tev_script.omega_semantic_basis_v1 import field_fact, field_transformation, semantic_field
 from tev_script.semantic_stdlib_v1 import (
     admission,
     closure_residual,
@@ -29,17 +25,10 @@ class ResidualStdlibTests(unittest.TestCase):
         view = parse_residual(closed)
         self.assertEqual(view.status, "CLOSED")
         self.assertEqual(view.obstructions, ())
-
         a = residual_obstruction("missing.proof", "lemma-a", expected=True, observed=False)
         b = residual_obstruction("missing.data", "sample-b", expected=3, observed=1)
-        left = residual_field(
-            domain="math", judgment_id="J", judgment={"ok": True}, source={"x": 1},
-            obstructions=(a, b),
-        )
-        right = residual_field(
-            domain="math", judgment_id="J", judgment={"ok": True}, source={"x": 1},
-            obstructions=(b, a),
-        )
+        left = residual_field(domain="math", judgment_id="J", judgment={"ok": True}, source={"x": 1}, obstructions=(a, b))
+        right = residual_field(domain="math", judgment_id="J", judgment={"ok": True}, source={"x": 1}, obstructions=(b, a))
         self.assertEqual(left, right)
         self.assertEqual(parse_residual(left).status, "OPEN")
 
@@ -64,17 +53,11 @@ class ResidualStdlibTests(unittest.TestCase):
 
 class DecisionStdlibTests(unittest.TestCase):
     def _candidates(self):
-        return (
-            decision_candidate("a", "1" * 64, rank=1),
-            decision_candidate("b", "2" * 64, rank=2),
-        )
+        return (decision_candidate("a", "1" * 64, rank=1), decision_candidate("b", "2" * 64, rank=2))
 
     def test_unique_best_admitted_is_selected(self) -> None:
         a, b = self._candidates()
-        result = resolve_candidates(
-            (a, b),
-            (admission("a", "PASS"), admission("b", "REJECT")),
-        )
+        result = resolve_candidates((a, b), (admission("a", "PASS"), admission("b", "REJECT")))
         self.assertEqual(result.status, "SELECTED")
         self.assertEqual(result.selected_candidate_id, "a")
         field = decision_field((a, b), (admission("a", "PASS"), admission("b", "REJECT")), result)
@@ -82,19 +65,13 @@ class DecisionStdlibTests(unittest.TestCase):
 
     def test_open_candidate_forces_indeterminate_even_with_current_pass(self) -> None:
         a, b = self._candidates()
-        result = resolve_candidates(
-            (a, b),
-            (admission("a", "PASS"), admission("b", "PROOF_REQUIRED")),
-        )
+        result = resolve_candidates((a, b), (admission("a", "PASS"), admission("b", "PROOF_REQUIRED")))
         self.assertEqual(result.status, "INDETERMINATE")
         self.assertIsNone(result.selected_candidate_id)
 
     def test_all_rejected_is_closed_no_admissible(self) -> None:
         a, b = self._candidates()
-        result = resolve_candidates(
-            (a, b),
-            (admission("a", "REJECT"), admission("b", "REJECT")),
-        )
+        result = resolve_candidates((a, b), (admission("a", "REJECT"), admission("b", "REJECT")))
         self.assertEqual(result.status, "NO_ADMISSIBLE_REALIZATION")
         self.assertIsNone(result.selected_candidate_id)
 
@@ -118,21 +95,27 @@ class DiscoveryRealizationStdlibTests(unittest.TestCase):
         world_fact = field_fact("world.value", (1,))
         theory = semantic_field((theory_fact,), profile="theory")
         realization = field_transformation(
-            transformation_id="realize",
-            remove_fact_hashes=(theory_fact.fact_hash,), add_facts=(world_fact,),
+            transformation_id="realize", remove_fact_hashes=(theory_fact.fact_hash,), add_facts=(world_fact,),
             effect_set_hash=self.EFFECTS, resource_vector_hash=self.RESOURCES,
         )
         discovery = field_transformation(
-            transformation_id="discover",
-            remove_fact_hashes=(world_fact.fact_hash,), add_facts=(theory_fact,),
+            transformation_id="discover", remove_fact_hashes=(world_fact.fact_hash,), add_facts=(theory_fact,),
             effect_set_hash=self.EFFECTS, resource_vector_hash=self.RESOURCES,
         )
         cycle, residual = discovery_realization_closure(theory, realization, discovery)
         self.assertEqual(parse_residual(residual).status, "CLOSED")
-        self.assertEqual(
-            {f.relation for f in cycle.facts},
-            {"tev.std.discovery_realization"},
-        )
+        self.assertEqual({f.relation for f in cycle.facts}, {"tev.std.discovery_realization"})
+
+    def test_profile_mismatch_is_an_exact_closure_obstruction(self) -> None:
+        fact = field_fact("theory.value", (1,))
+        expected = semantic_field((fact,), profile="theory")
+        recovered = semantic_field((fact,), profile="actual")
+        view = parse_residual(closure_residual(expected, recovered))
+        self.assertEqual(view.status, "OPEN")
+        self.assertEqual(len(view.obstructions), 1)
+        self.assertEqual(view.obstructions[0].kind, "profile.mismatch")
+        self.assertEqual(view.obstructions[0].expected, "theory")
+        self.assertEqual(view.obstructions[0].observed, "actual")
 
     def test_mismatched_recovery_is_open_with_exact_obstruction(self) -> None:
         expected = semantic_field((field_fact("theory.value", (1,)),), profile="theory")
