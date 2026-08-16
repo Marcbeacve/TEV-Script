@@ -4,8 +4,11 @@ import argparse
 import hashlib
 import hmac
 import json
+import importlib.util
+import os
 from pathlib import Path
 import re
+import tempfile
 import subprocess
 import sys
 from typing import Any, Mapping, Sequence
@@ -21,6 +24,8 @@ V2_BASE_SHA = "2bdb047dcad41f9d112219bd65925c25668c02e0"
 LANGUAGE_VERSION = "3.0.0"
 SCHEMA = "TEV_SCRIPT_V3_CERTIFY_FULL_RECEIPT_V1"
 FEATURE_MATRIX_PATH = "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json"
+V3_WHEEL_SOURCE_DATE_EPOCH = "946684800"
+V3_WHEEL_BACKEND_PATH = "packaging/v3/tools/tev_script_build_backend_v3.py"
 V3_TEST_MODULES = (
     "tests.test_omega_semantic_basis_v1",
     "tests.test_omega_type_effect_v1",
@@ -75,6 +80,7 @@ def build_receipt_body(
     basis_report_hash: str, v3_test_count: int, v3_skipped_tests: int,
     full_test_count: int, full_skipped_tests: int,
     schema_validation: str, v2_authority_validation: str,
+    v3_wheel_filename: str, v3_wheel_sha256: str, v3_wheel_reproducible: bool,
 ) -> dict[str, Any]:
     if repository != REPOSITORY or branch != EXPECTED_BRANCH:
         raise ValueError("repository/branch identity mismatch")
@@ -84,6 +90,10 @@ def build_receipt_body(
         raise ValueError("V3 certification requires zero skips")
     if schema_validation != "PASS" or v2_authority_validation != "PASS":
         raise ValueError("V3 certification requires schema and V2 authority PASS")
+    if v3_wheel_reproducible is not True:
+        raise ValueError("V3 certification requires reproducible wheel")
+    if not isinstance(v3_wheel_filename, str) or not v3_wheel_filename.endswith("-3.0.0-py3-none-any.whl"):
+        raise ValueError("invalid V3 wheel filename")
     return {
         "schema": SCHEMA,
         "language_version": LANGUAGE_VERSION,
@@ -101,7 +111,10 @@ def build_receipt_body(
         "full_skipped_tests": 0,
         "schema_validation": "PASS",
         "v2_authority_validation": "PASS",
-        "package_release_shape": "DEFERRED_TO_STABLE_ADMISSION",
+        "v3_wheel_filename": v3_wheel_filename,
+        "v3_wheel_sha256": _sha64(v3_wheel_sha256, "v3_wheel_sha256"),
+        "v3_wheel_reproducible": True,
+        "package_release_shape": "V3_3_0_0_WHEEL_REPRODUCIBLE",
         "promotion_authority": False,
         "language_stable": False,
         "certify_full": True,
@@ -129,6 +142,8 @@ def verify_receipt(value: Mapping[str, Any]) -> bool:
             v3_test_count=observed["v3_test_count"], v3_skipped_tests=observed["v3_skipped_tests"],
             full_test_count=observed["full_test_count"], full_skipped_tests=observed["full_skipped_tests"],
             schema_validation=observed["schema_validation"], v2_authority_validation=observed["v2_authority_validation"],
+            v3_wheel_filename=observed["v3_wheel_filename"], v3_wheel_sha256=observed["v3_wheel_sha256"],
+            v3_wheel_reproducible=observed["v3_wheel_reproducible"],
         )
         return _canonical_bytes(observed) == _canonical_bytes(expected)
     except (KeyError, TypeError, ValueError, OverflowError):
@@ -167,8 +182,7 @@ def _parse_counts(completed: subprocess.CompletedProcess[str]) -> tuple[int, int
     matches = _RAN.findall(text)
     if len(matches) != 1:
         raise V3CertificationFailure("cannot determine unittest count")
-    skipped_matches = _SKIPPED.findall(text)
-    skipped = int(skipped_matches[-1]) if skipped_matches else 0
+    skipped = int(_SKIPPED.findall(text)[-1]) if _SKIPPED.findall(text) else 0
     return int(matches[0]), skipped
 
 
@@ -202,6 +216,40 @@ def _sha256_file(relative: str) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _load_v3_wheel_backend():
+    path = ROOT / V3_WHEEL_BACKEND_PATH
+    if not path.is_file():
+        raise V3CertificationFailure("missing V3 wheel backend")
+    spec = importlib.util.spec_from_file_location("tev_script_build_backend_v3_certify", path)
+    if spec is None or spec.loader is None:
+        raise V3CertificationFailure("cannot load V3 wheel backend")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def build_reproducible_v3_wheel() -> tuple[str, str]:
+    backend = _load_v3_wheel_backend()
+    old = os.environ.get("SOURCE_DATE_EPOCH")
+    os.environ["SOURCE_DATE_EPOCH"] = V3_WHEEL_SOURCE_DATE_EPOCH
+    try:
+        with tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
+            name1 = backend.build_wheel(first)
+            name2 = backend.build_wheel(second)
+            if name1 != name2:
+                raise V3CertificationFailure("V3 wheel filenames differ")
+            left = (Path(first) / name1).read_bytes()
+            right = (Path(second) / name2).read_bytes()
+            if left != right:
+                raise V3CertificationFailure("V3 wheel builds are not byte-identical")
+            return name1, hashlib.sha256(left).hexdigest()
+    finally:
+        if old is None:
+            os.environ.pop("SOURCE_DATE_EPOCH", None)
+        else:
+            os.environ["SOURCE_DATE_EPOCH"] = old
+
+
 def certify(*, receipt_out: str | Path) -> dict[str, Any]:
     output = validate_external_receipt_path(receipt_out)
     metadata = validate_release_metadata_v3()
@@ -217,6 +265,7 @@ def certify(*, receipt_out: str | Path) -> dict[str, Any]:
     v3_count, v3_skips = _run_modules(V3_TEST_MODULES)
     _run((sys.executable, "tools/validate_v2_authority.py"), timeout=1800)
     full_count, full_skips = _run_full()
+    wheel_filename, wheel_sha256 = build_reproducible_v3_wheel()
     if v3_skips or full_skips:
         raise V3CertificationFailure(f"zero skips required: v3={v3_skips} full={full_skips}")
     body = build_receipt_body(
@@ -228,13 +277,13 @@ def certify(*, receipt_out: str | Path) -> dict[str, Any]:
         v3_test_count=v3_count, v3_skipped_tests=v3_skips,
         full_test_count=full_count, full_skipped_tests=full_skips,
         schema_validation="PASS", v2_authority_validation="PASS",
+        v3_wheel_filename=wheel_filename, v3_wheel_sha256=wheel_sha256, v3_wheel_reproducible=True,
     )
     receipt = seal_receipt(body)
     if not verify_receipt(receipt):
         raise V3CertificationFailure("generated receipt failed self-verification")
     with output.open("x", encoding="utf-8", newline="\n") as stream:
-        json.dump(receipt, stream, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-        stream.write("\n")
+        json.dump(receipt, stream, sort_keys=True, separators=(",", ":"), ensure_ascii=True); stream.write("\n")
     return receipt
 
 
