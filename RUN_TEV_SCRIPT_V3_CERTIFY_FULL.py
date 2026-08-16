@@ -16,6 +16,7 @@ from typing import Any, Mapping, Sequence
 from tev_script.descriptor_v3 import v3_descriptor, verify_v3_descriptor
 from tev_script.release_metadata_v3 import validate_release_metadata_v3
 from tools.tevprober_max_basis_v1 import evaluate_basis, verify_basis_report
+from tools.validate_v3_authority import validate_v3_authority
 
 ROOT = Path(__file__).resolve().parent
 REPOSITORY = "Marcbeacve/TEV-Script"
@@ -38,6 +39,7 @@ V3_TEST_MODULES = (
     "tests.test_tevprober_max_basis_v1",
     "tests.test_v3_schemas_metadata",
     "tests.test_v3_certify_full",
+    "tests.test_v3_authority",
 )
 _RAN = re.compile(r"Ran\s+(\d+)\s+tests?")
 _SKIPPED = re.compile(r"skipped=(\d+)")
@@ -79,7 +81,7 @@ def build_receipt_body(
     v2_base_sha: str, feature_matrix_sha256: str, descriptor_hash: str,
     basis_report_hash: str, v3_test_count: int, v3_skipped_tests: int,
     full_test_count: int, full_skipped_tests: int,
-    schema_validation: str, v2_authority_validation: str,
+    schema_validation: str, v3_authority_validation: str, v2_byte_identity: str, v2_authority_validation: str,
     v3_wheel_filename: str, v3_wheel_sha256: str, v3_wheel_reproducible: bool,
 ) -> dict[str, Any]:
     if repository != REPOSITORY or branch != EXPECTED_BRANCH:
@@ -88,8 +90,8 @@ def build_receipt_body(
         raise ValueError("V2 base identity mismatch")
     if v3_skipped_tests != 0 or full_skipped_tests != 0:
         raise ValueError("V3 certification requires zero skips")
-    if schema_validation != "PASS" or v2_authority_validation != "PASS":
-        raise ValueError("V3 certification requires schema and V2 authority PASS")
+    if schema_validation != "PASS" or v3_authority_validation != "PASS" or v2_byte_identity != "PASS" or v2_authority_validation != "PASS":
+        raise ValueError("V3 certification requires schema, V3 authority, V2 byte identity and V2 authority PASS")
     if v3_wheel_reproducible is not True:
         raise ValueError("V3 certification requires reproducible wheel")
     if not isinstance(v3_wheel_filename, str) or not v3_wheel_filename.endswith("-3.0.0-py3-none-any.whl"):
@@ -110,6 +112,8 @@ def build_receipt_body(
         "full_test_count": _count(full_test_count, "full_test_count"),
         "full_skipped_tests": 0,
         "schema_validation": "PASS",
+        "v3_authority_validation": "PASS",
+        "v2_byte_identity": "PASS",
         "v2_authority_validation": "PASS",
         "v3_wheel_filename": v3_wheel_filename,
         "v3_wheel_sha256": _sha64(v3_wheel_sha256, "v3_wheel_sha256"),
@@ -141,7 +145,7 @@ def verify_receipt(value: Mapping[str, Any]) -> bool:
             descriptor_hash=observed["descriptor_hash"], basis_report_hash=observed["basis_report_hash"],
             v3_test_count=observed["v3_test_count"], v3_skipped_tests=observed["v3_skipped_tests"],
             full_test_count=observed["full_test_count"], full_skipped_tests=observed["full_skipped_tests"],
-            schema_validation=observed["schema_validation"], v2_authority_validation=observed["v2_authority_validation"],
+            schema_validation=observed["schema_validation"], v3_authority_validation=observed["v3_authority_validation"], v2_byte_identity=observed["v2_byte_identity"], v2_authority_validation=observed["v2_authority_validation"],
             v3_wheel_filename=observed["v3_wheel_filename"], v3_wheel_sha256=observed["v3_wheel_sha256"],
             v3_wheel_reproducible=observed["v3_wheel_reproducible"],
         )
@@ -262,6 +266,9 @@ def certify(*, receipt_out: str | Path) -> dict[str, Any]:
     basis = evaluate_basis()
     if basis.get("status") != "PASS" or not verify_basis_report(basis):
         raise V3CertificationFailure("MAX primitive basis probe did not PASS")
+    authority = validate_v3_authority(ROOT, require_git=True)
+    if authority.get("status") != "PASS" or authority.get("v2_byte_identity") != "PASS":
+        raise V3CertificationFailure("V3 authority or inherited V2 byte identity did not PASS")
     v3_count, v3_skips = _run_modules(V3_TEST_MODULES)
     _run((sys.executable, "tools/validate_v2_authority.py"), timeout=1800)
     full_count, full_skips = _run_full()
@@ -276,7 +283,7 @@ def certify(*, receipt_out: str | Path) -> dict[str, Any]:
         basis_report_hash=str(basis["report_hash"]),
         v3_test_count=v3_count, v3_skipped_tests=v3_skips,
         full_test_count=full_count, full_skipped_tests=full_skips,
-        schema_validation="PASS", v2_authority_validation="PASS",
+        schema_validation="PASS", v3_authority_validation="PASS", v2_byte_identity="PASS", v2_authority_validation="PASS",
         v3_wheel_filename=wheel_filename, v3_wheel_sha256=wheel_sha256, v3_wheel_reproducible=True,
     )
     receipt = seal_receipt(body)
