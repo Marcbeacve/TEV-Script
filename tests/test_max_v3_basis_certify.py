@@ -73,6 +73,9 @@ class MaxV3BasisCertifierTests(unittest.TestCase):
     def _body(self) -> dict:
         return cert.build_receipt_body(**self._args())
 
+    def test_v2_authority_gate_uses_stable_profile(self) -> None:
+        self.assertEqual(cert.V2_AUTHORITY_PROFILE, "stable")
+
     def test_receipt_is_self_hashed_non_promotional_and_v3_candidate(self) -> None:
         body = self._body()
         self.assertEqual(body["language_version"], "3.0.0")
