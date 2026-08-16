@@ -53,6 +53,23 @@ class SemanticProcessV3SourceTests(unittest.TestCase):
         self.assertEqual(result.status, "HALTED")
         self.assertEqual({f.arguments[0] for f in result.field.facts}, {"open"})
 
+    def test_transform_can_change_field_profile_from_source(self) -> None:
+        source = r'''
+process Profile version "3.0.0";
+authority 3333333333333333333333333333333333333333333333333333333333333333;
+quantum_steps 2;
+fact value = state.value [1];
+field theory = [value];
+transform realize effects 1111111111111111111111111111111111111111111111111111111111111111 resources 2222222222222222222222222222222222222222222222222222222222222222 profile actual remove [] add [];
+label start = apply realize done;
+label done = halt;
+entry start;
+'''
+        program = compile_semantic_process_v3(source)
+        result = run_semantic_quantum(program, initial_process_checkpoint(program))
+        self.assertEqual(result.status, "HALTED")
+        self.assertEqual(result.field.profile, "actual")
+
     def test_cyclic_source_is_admitted_but_quantum_is_bounded(self) -> None:
         source = r'''
 process Cycle version "3.0.0";
@@ -73,6 +90,19 @@ entry loop;
             compile_semantic_process_v3(SOURCE_A.replace("apply open done", "apply missing done"))
         with self.assertRaises(TevScriptError):
             compile_semantic_process_v3(SOURCE_A.replace('fact opened = door.state ["open"];', 'fact closed = door.state ["open"];'))
+
+    def test_duplicate_json_object_keys_fail_closed_before_canonicalization(self) -> None:
+        source = r'''
+process Dup version "3.0.0";
+authority 3333333333333333333333333333333333333333333333333333333333333333;
+quantum_steps 1;
+fact bad = data.value [{"a":1,"a":2}];
+field actual = [bad];
+label done = halt;
+entry done;
+'''
+        with self.assertRaises(TevScriptError):
+            compile_semantic_process_v3(source)
 
     def test_version_quantum_and_json_fail_closed(self) -> None:
         with self.assertRaises(TevScriptError):
