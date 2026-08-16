@@ -30,6 +30,9 @@ class V3StableAdmissionContractTests(unittest.TestCase):
             installed_v2_compatibility="PASS",
         )
 
+    def test_v2_authority_gate_uses_stable_profile(self) -> None:
+        self.assertEqual(stable.V2_AUTHORITY_PROFILE, "stable")
+
     def test_receipt_authorizes_exact_publication_but_not_merge(self) -> None:
         body = self._body()
         self.assertTrue(body["stable_admission"])
