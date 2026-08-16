@@ -40,6 +40,8 @@ class V3CertifyFullContractTests(unittest.TestCase):
             full_test_count=2000,
             full_skipped_tests=0,
             schema_validation="PASS",
+            v3_authority_validation="PASS",
+            v2_byte_identity="PASS",
             v2_authority_validation="PASS",
             v3_wheel_filename="tev_script_portable_reference-3.0.0-py3-none-any.whl",
             v3_wheel_sha256="6" * 64,
