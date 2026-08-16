@@ -1,0 +1,15 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"TEV_SCRIPT_PROGRAM_IR_V5_PROCESS_CHECKPOINT_V1",
+  "$defs":{
+    "sha":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "stableId":{"type":"string","pattern":"^[A-Za-z_][A-Za-z0-9_.:/-]*$"},
+    "value":{"oneOf":[{"type":"null"},{"type":"boolean"},{"type":"integer"},{"type":"string"},{"type":"array","items":{"$ref":"#/$defs/value"}},{"type":"object","additionalProperties":{"$ref":"#/$defs/value"}}]},
+    "fact":{"type":"object","additionalProperties":false,"required":["relation","arguments","fact_hash"],"properties":{"relation":{"$ref":"#/$defs/stableId"},"arguments":{"type":"array","items":{"$ref":"#/$defs/value"}},"fact_hash":{"$ref":"#/$defs/sha"}}},
+    "field":{"type":"object","additionalProperties":false,"required":["schema","profile","facts","field_hash"],"properties":{"schema":{"const":"TEV_SCRIPT_MAX_V3_SEMANTIC_FIELD_V1"},"profile":{"$ref":"#/$defs/stableId"},"facts":{"type":"array","items":{"$ref":"#/$defs/fact"}},"field_hash":{"$ref":"#/$defs/sha"}}},
+    "continuation":{"type":"object","additionalProperties":false,"required":["schema","epoch_hash","epoch_index","previous_continuation_hash","result_hash","state_hash","observations_hash","effects_hash","resources_hash","continuation_hash"],"properties":{"schema":{"const":"TEV_SCRIPT_OMEGA_CONTINUATION_RECEIPT_V1"},"epoch_hash":{"$ref":"#/$defs/sha"},"epoch_index":{"type":"integer","minimum":0},"previous_continuation_hash":{"oneOf":[{"type":"null"},{"$ref":"#/$defs/sha"}]},"result_hash":{"$ref":"#/$defs/sha"},"state_hash":{"$ref":"#/$defs/sha"},"observations_hash":{"$ref":"#/$defs/sha"},"effects_hash":{"$ref":"#/$defs/sha"},"resources_hash":{"$ref":"#/$defs/sha"},"continuation_hash":{"$ref":"#/$defs/sha"}}}
+  },
+  "type":"object","additionalProperties":false,
+  "required":["schema","program_hash","field","pc","next_epoch_index","previous_continuation","halted","checkpoint_hash"],
+  "properties":{"schema":{"const":"TEV_SCRIPT_PROGRAM_IR_V5_PROCESS_CHECKPOINT_V1"},"program_hash":{"$ref":"#/$defs/sha"},"field":{"$ref":"#/$defs/field"},"pc":{"type":"integer","minimum":0},"next_epoch_index":{"type":"integer","minimum":0},"previous_continuation":{"oneOf":[{"type":"null"},{"$ref":"#/$defs/continuation"}]},"halted":{"type":"boolean"},"checkpoint_hash":{"$ref":"#/$defs/sha"}}
+}
