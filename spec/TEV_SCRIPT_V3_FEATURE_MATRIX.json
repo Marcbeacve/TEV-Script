@@ -9,13 +9,19 @@
   "native_v3_external_effects":"NOT_SUPPORTED_IN_SEMANTIC_PROCESS_V1",
   "compatibility":{"v2_semantics_reinterpreted":false,"v2_lane":"EXPLICIT_PASSTHROUGH_ONLY"},
   "authority_files":[
-    "docs/superpowers/specs/2026-08-16-tevscript-max-v3-primitive-basis-design.md",
     "spec/TEV_SCRIPT_PROGRAM_IR_V5_SEMANTIC_PROCESS.md",
-    "spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md",
     "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json",
-    "schemas/tev-script-v3-descriptor.schema.json",
+    "spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md",
     "schemas/tev-script-program-ir-v5-semantic-process.schema.json",
-    "schemas/tev-script-v3-process-checkpoint.schema.json"
+    "schemas/tev-script-v3-certify-full-receipt.schema.json",
+    "schemas/tev-script-v3-descriptor.schema.json",
+    "schemas/tev-script-v3-process-checkpoint.schema.json",
+    "schemas/tev-script-v3-stable-admission-receipt.schema.json",
+    "tev_script/descriptor_v3.py",
+    "tev_script/release_metadata_v3.py",
+    "RUN_TEV_SCRIPT_V3_CERTIFY_FULL.py",
+    "RUN_TEV_SCRIPT_V3_STABLE_ADMISSION.py",
+    "tools/validate_v3_authority.py"
   ],
   "required_features":[
     {"id":"MINIMAL_FIELD_TRANSFORMATION_APPLY_BASIS","status":"CLOSED"},
@@ -27,9 +33,74 @@
     {"id":"DERIVED_SEMANTIC_STDLIB","status":"CLOSED"},
     {"id":"EXPLICIT_V2_COMPATIBILITY_LANE","status":"CLOSED"}
   ],
+  "governed_paths":{
+    "implementation":[
+      "tev_script/cli_v3.py",
+      "tev_script/describe_v3.py",
+      "tev_script/descriptor_v3.py",
+      "tev_script/omega_semantic_basis_v1.py",
+      "tev_script/omega_type_effect_v1.py",
+      "tev_script/program_ir_v5_semantic.py",
+      "tev_script/release_metadata_v3.py",
+      "tev_script/runtime_v5_semantic.py",
+      "tev_script/semantic_stdlib_v1.py",
+      "tev_script/source_semantic_process_v3.py",
+      "tev_script/translation_validation_v3.py"
+    ],
+    "specification":[
+      "docs/superpowers/specs/2026-08-16-tevscript-max-v3-primitive-basis-design.md",
+      "docs/superpowers/specs/2026-08-16-tevscript-max-v3-semantic-stdlib-design.md",
+      "docs/superpowers/specs/2026-08-16-tevscript-max-v3-type-effect-design.md",
+      "schemas/tev-script-max-v3-basis-certify-receipt.schema.json",
+      "schemas/tev-script-program-ir-v5-semantic-process.schema.json",
+      "schemas/tev-script-v3-certify-full-receipt.schema.json",
+      "schemas/tev-script-v3-descriptor.schema.json",
+      "schemas/tev-script-v3-process-checkpoint.schema.json",
+      "schemas/tev-script-v3-stable-admission-receipt.schema.json",
+      "spec/TEV_SCRIPT_PROGRAM_IR_V5_SEMANTIC_PROCESS.md",
+      "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json",
+      "spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md"
+    ],
+    "packaging":[
+      "packaging/v3/pyproject.toml",
+      "packaging/v3/tools/tev_script_build_backend_v3.py"
+    ],
+    "tests":[
+      "tests/test_cli_v3.py",
+      "tests/test_max_v3_basis_certify.py",
+      "tests/test_omega_semantic_basis_v1.py",
+      "tests/test_omega_type_effect_v1.py",
+      "tests/test_program_ir_v5_semantic.py",
+      "tests/test_runtime_v5_semantic.py",
+      "tests/test_semantic_stdlib_v1.py",
+      "tests/test_source_semantic_process_v3.py",
+      "tests/test_tevprober_max_basis_v1.py",
+      "tests/test_translation_validation_v3.py",
+      "tests/test_v3_authority.py",
+      "tests/test_v3_certify_full.py",
+      "tests/test_v3_packaging.py",
+      "tests/test_v3_schemas_metadata.py",
+      "tests/test_v3_stable_admission.py"
+    ],
+    "gates":[
+      "RUN_TEV_SCRIPT_MAX_V3_BASIS_CERTIFY.py",
+      "RUN_TEV_SCRIPT_V3_CERTIFY_FULL.py",
+      "RUN_TEV_SCRIPT_V3_STABLE_ADMISSION.py",
+      "tools/tevprober_max_basis_v1.py",
+      "tools/tevprober_max_v3_basis_frontier.py",
+      "tools/validate_v3_authority.py"
+    ]
+  },
+  "inherited_authority":[
+    "RUN_TEV_SCRIPT_OMEGA0_CERTIFY.py",
+    "tev_script/omega_kernel_v1.py",
+    "tev_script/omega_v2_adapter_v1.py"
+  ],
   "production_gates":[
+    "V3_AUTHORITY_PASS",
     "V3_SCHEMA_CONTRACTS_PASS",
     "V3_FOCAL_ZERO_SKIP_PASS",
+    "V2_BYTE_IDENTITY_PASS",
     "V2_REGRESSION_PASS",
     "FULL_REPOSITORY_REGRESSION_PASS",
     "V3_PACKAGE_REPRODUCIBLE_PASS",
