@@ -12,6 +12,7 @@ from tev_script.release_metadata_v3 import validate_release_metadata_v3
 ROOT = Path(__file__).resolve().parents[1]
 V2_BASE_SHA = "2bdb047dcad41f9d112219bd65925c25668c02e0"
 MATRIX_PATH = "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json"
+
 REQUIRED_FEATURES = frozenset({
     "MINIMAL_FIELD_TRANSFORMATION_APPLY_BASIS",
     "EPISTEMIC_TYPE_EFFECT_LAYER",
@@ -21,48 +22,99 @@ REQUIRED_FEATURES = frozenset({
     "SOURCE_TO_IR_TRANSLATION_VALIDATION",
     "DERIVED_SEMANTIC_STDLIB",
     "EXPLICIT_V2_COMPATIBILITY_LANE",
+    "INDEPENDENT_JAVASCRIPT_RUNTIME",
 })
+
 REQUIRED_GOVERNED_PATHS = {
     "implementation": frozenset({
-        "tev_script/cli_v3.py", "tev_script/describe_v3.py", "tev_script/descriptor_v3.py",
-        "tev_script/omega_semantic_basis_v1.py", "tev_script/omega_type_effect_v1.py",
-        "tev_script/program_ir_v5_semantic.py", "tev_script/release_metadata_v3.py",
-        "tev_script/runtime_v5_semantic.py", "tev_script/semantic_stdlib_v1.py",
-        "tev_script/source_semantic_process_v3.py", "tev_script/translation_validation_v3.py",
+        "runtime-js/v3/runtime_v5_semantic.mjs",
+        "tev_script/cli_v3.py",
+        "tev_script/describe_v3.py",
+        "tev_script/descriptor_v3.py",
+        "tev_script/omega_semantic_basis_v1.py",
+        "tev_script/omega_type_effect_v1.py",
+        "tev_script/program_ir_v5_semantic.py",
+        "tev_script/release_metadata_v3.py",
+        "tev_script/runtime_v5_semantic.py",
+        "tev_script/semantic_stdlib_v1.py",
+        "tev_script/source_semantic_process_v3.py",
+        "tev_script/translation_validation_v3.py",
     }),
     "specification": frozenset({
         "docs/superpowers/specs/2026-08-16-tevscript-max-v3-primitive-basis-design.md",
         "docs/superpowers/specs/2026-08-16-tevscript-max-v3-semantic-stdlib-design.md",
         "docs/superpowers/specs/2026-08-16-tevscript-max-v3-type-effect-design.md",
+        "docs/superpowers/specs/2026-08-16-tevscript-max-v3-independent-js-runtime-design.md",
         "schemas/tev-script-max-v3-basis-certify-receipt.schema.json",
         "schemas/tev-script-program-ir-v5-semantic-process.schema.json",
-        "schemas/tev-script-v3-certify-full-receipt.schema.json", "schemas/tev-script-v3-descriptor.schema.json",
-        "schemas/tev-script-v3-process-checkpoint.schema.json", "schemas/tev-script-v3-stable-admission-receipt.schema.json",
-        "spec/TEV_SCRIPT_PROGRAM_IR_V5_SEMANTIC_PROCESS.md", "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json",
+        "schemas/tev-script-v3-certify-full-receipt.schema.json",
+        "schemas/tev-script-v3-descriptor.schema.json",
+        "schemas/tev-script-v3-process-checkpoint.schema.json",
+        "schemas/tev-script-v3-stable-admission-receipt.schema.json",
+        "spec/TEV_SCRIPT_PROGRAM_IR_V5_SEMANTIC_PROCESS.md",
+        "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json",
         "spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md",
     }),
-    "packaging": frozenset({"packaging/v3/pyproject.toml", "packaging/v3/tools/tev_script_build_backend_v3.py"}),
+    "packaging": frozenset({
+        "packaging/v3/pyproject.toml",
+        "packaging/v3/tools/tev_script_build_backend_v3.py",
+    }),
     "tests": frozenset({
-        "tests/test_cli_v3.py", "tests/test_max_v3_basis_certify.py", "tests/test_omega_semantic_basis_v1.py",
-        "tests/test_omega_type_effect_v1.py", "tests/test_program_ir_v5_semantic.py", "tests/test_runtime_v5_semantic.py",
-        "tests/test_semantic_stdlib_v1.py", "tests/test_source_semantic_process_v3.py", "tests/test_tevprober_max_basis_v1.py",
-        "tests/test_translation_validation_v3.py", "tests/test_v3_authority.py", "tests/test_v3_certify_full.py",
-        "tests/test_v3_packaging.py", "tests/test_v3_schemas_metadata.py", "tests/test_v3_stable_admission.py",
+        "tests/test_cli_v3.py",
+        "tests/test_max_v3_basis_certify.py",
+        "tests/test_omega_semantic_basis_v1.py",
+        "tests/test_omega_type_effect_v1.py",
+        "tests/test_program_ir_v5_semantic.py",
+        "tests/test_runtime_v5_javascript_parity.py",
+        "tests/test_runtime_v5_semantic.py",
+        "tests/test_semantic_stdlib_v1.py",
+        "tests/test_source_semantic_process_v3.py",
+        "tests/test_tevprober_max_basis_v1.py",
+        "tests/test_translation_validation_v3.py",
+        "tests/test_v3_authority.py",
+        "tests/test_v3_certify_full.py",
+        "tests/test_v3_javascript_runtime_authority.py",
+        "tests/test_v3_packaging.py",
+        "tests/test_v3_schemas_metadata.py",
+        "tests/test_v3_stable_admission.py",
     }),
     "gates": frozenset({
-        "RUN_TEV_SCRIPT_MAX_V3_BASIS_CERTIFY.py", "RUN_TEV_SCRIPT_V3_CERTIFY_FULL.py",
-        "RUN_TEV_SCRIPT_V3_STABLE_ADMISSION.py", "tools/tevprober_max_basis_v1.py",
-        "tools/tevprober_max_v3_basis_frontier.py", "tools/validate_v3_authority.py",
+        "RUN_TEV_SCRIPT_MAX_V3_BASIS_CERTIFY.py",
+        "RUN_TEV_SCRIPT_V3_CERTIFY_FULL.py",
+        "RUN_TEV_SCRIPT_V3_STABLE_ADMISSION.py",
+        "tools/tevprober_max_basis_v1.py",
+        "tools/tevprober_max_v3_basis_frontier.py",
+        "tools/validate_v3_authority.py",
     }),
 }
+
 REQUIRED_AUTHORITY_FILES = frozenset({
-    "spec/TEV_SCRIPT_PROGRAM_IR_V5_SEMANTIC_PROCESS.md", "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json",
-    "spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md", "schemas/tev-script-program-ir-v5-semantic-process.schema.json",
-    "schemas/tev-script-v3-certify-full-receipt.schema.json", "schemas/tev-script-v3-descriptor.schema.json",
-    "schemas/tev-script-v3-process-checkpoint.schema.json", "schemas/tev-script-v3-stable-admission-receipt.schema.json",
-    "tev_script/descriptor_v3.py", "tev_script/release_metadata_v3.py", "RUN_TEV_SCRIPT_V3_CERTIFY_FULL.py",
-    "RUN_TEV_SCRIPT_V3_STABLE_ADMISSION.py", "tools/validate_v3_authority.py",
+    "spec/TEV_SCRIPT_PROGRAM_IR_V5_SEMANTIC_PROCESS.md",
+    "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json",
+    "spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md",
+    "schemas/tev-script-program-ir-v5-semantic-process.schema.json",
+    "schemas/tev-script-v3-certify-full-receipt.schema.json",
+    "schemas/tev-script-v3-descriptor.schema.json",
+    "schemas/tev-script-v3-process-checkpoint.schema.json",
+    "schemas/tev-script-v3-stable-admission-receipt.schema.json",
+    "tev_script/descriptor_v3.py",
+    "tev_script/release_metadata_v3.py",
+    "RUN_TEV_SCRIPT_V3_CERTIFY_FULL.py",
+    "RUN_TEV_SCRIPT_V3_STABLE_ADMISSION.py",
+    "tools/validate_v3_authority.py",
 })
+
+PRODUCTION_GATES = [
+    "V3_AUTHORITY_PASS",
+    "V3_SCHEMA_CONTRACTS_PASS",
+    "V3_FOCAL_ZERO_SKIP_PASS",
+    "V3_INDEPENDENT_JS_PARITY_PASS",
+    "V2_BYTE_IDENTITY_PASS",
+    "V2_REGRESSION_PASS",
+    "FULL_REPOSITORY_REGRESSION_PASS",
+    "V3_PACKAGE_REPRODUCIBLE_PASS",
+    "V3_STABLE_ADMISSION_PASS",
+]
 
 
 def _list_text(value: Any) -> tuple[str, ...] | None:
@@ -71,19 +123,35 @@ def _list_text(value: Any) -> tuple[str, ...] | None:
     return tuple(value)
 
 
-def validate_v3_matrix(matrix: Mapping[str, Any], metadata: Mapping[str, Any], descriptor: Mapping[str, Any]) -> dict[str, Any]:
+def validate_v3_matrix(
+    matrix: Mapping[str, Any],
+    metadata: Mapping[str, Any],
+    descriptor: Mapping[str, Any],
+) -> dict[str, Any]:
     errors: list[str] = []
-    if matrix.get("schema") != "TEV_SCRIPT_V3_FEATURE_MATRIX_V1" or matrix.get("language_version") != "3.0.0" or matrix.get("program_ir_version") != "5":
+    if (
+        matrix.get("schema") != "TEV_SCRIPT_V3_FEATURE_MATRIX_V1"
+        or matrix.get("language_version") != "3.0.0"
+        or matrix.get("program_ir_version") != "5"
+    ):
         errors.append("matrix_identity")
     if matrix.get("status") != metadata.get("release_status") or matrix.get("stable") is not metadata.get("stable"):
         errors.append("release_metadata_binding")
     if matrix.get("publication_authorized") is not False or matrix.get("merge_authorized") is not False:
         errors.append("matrix_authority")
-    if descriptor.get("language_version") != "3.0.0" or descriptor.get("stable") is not metadata.get("stable") or descriptor.get("promotion_authority") is not False or not verify_v3_descriptor(descriptor):
+    if (
+        descriptor.get("language_version") != "3.0.0"
+        or descriptor.get("stable") is not metadata.get("stable")
+        or descriptor.get("promotion_authority") is not False
+        or not verify_v3_descriptor(descriptor)
+    ):
         errors.append("descriptor_binding")
     if matrix.get("native_v3_external_effects") != "NOT_SUPPORTED_IN_SEMANTIC_PROCESS_V1":
         errors.append("native_effect_boundary")
-    if matrix.get("compatibility") != {"v2_semantics_reinterpreted": False, "v2_lane": "EXPLICIT_PASSTHROUGH_ONLY"}:
+    if matrix.get("compatibility") != {
+        "v2_semantics_reinterpreted": False,
+        "v2_lane": "EXPLICIT_PASSTHROUGH_ONLY",
+    }:
         errors.append("v2_compatibility_boundary")
 
     features = matrix.get("required_features")
@@ -92,13 +160,19 @@ def validate_v3_matrix(matrix: Mapping[str, Any], metadata: Mapping[str, Any], d
         errors.append("required_features_shape")
     else:
         for row in features:
-            if not isinstance(row, Mapping) or set(row) != {"id", "status"} or not isinstance(row.get("id"), str) or not isinstance(row.get("status"), str):
+            if (
+                not isinstance(row, Mapping)
+                or set(row) != {"id", "status"}
+                or not isinstance(row.get("id"), str)
+                or not isinstance(row.get("status"), str)
+            ):
                 errors.append("required_features_shape")
                 continue
-            if row["id"] in feature_map:
+            feature_id = str(row["id"])
+            if feature_id in feature_map:
                 errors.append("required_features_duplicate")
-            feature_map[str(row["id"])] = str(row["status"])
-        if frozenset(feature_map) != REQUIRED_FEATURES or any(value != "CLOSED" for value in feature_map.values()):
+            feature_map[feature_id] = str(row["status"])
+        if frozenset(feature_map) != REQUIRED_FEATURES or any(status != "CLOSED" for status in feature_map.values()):
             errors.append("required_features_not_closed")
 
     governed = matrix.get("governed_paths")
@@ -114,15 +188,13 @@ def validate_v3_matrix(matrix: Mapping[str, Any], metadata: Mapping[str, Any], d
                 flat.extend(values)
     if len(flat) != len(set(flat)):
         errors.append("governed_paths_cross_duplicate")
+
     authority_files = _list_text(matrix.get("authority_files"))
     if authority_files is None or frozenset(authority_files) != REQUIRED_AUTHORITY_FILES or len(authority_files) != len(set(authority_files)):
         errors.append("authority_files")
-    expected_gates = [
-        "V3_AUTHORITY_PASS", "V3_SCHEMA_CONTRACTS_PASS", "V3_FOCAL_ZERO_SKIP_PASS", "V2_BYTE_IDENTITY_PASS",
-        "V2_REGRESSION_PASS", "FULL_REPOSITORY_REGRESSION_PASS", "V3_PACKAGE_REPRODUCIBLE_PASS", "V3_STABLE_ADMISSION_PASS",
-    ]
-    if matrix.get("production_gates") != expected_gates:
+    if matrix.get("production_gates") != PRODUCTION_GATES:
         errors.append("production_gates")
+
     return {
         "status": "PASS" if not errors else "FAIL",
         "errors": errors,
@@ -145,7 +217,16 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 
 def _git(root: Path, *args: str) -> str:
-    result = subprocess.run(("git", *args), cwd=root, check=False, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+    result = subprocess.run(
+        ("git", *args),
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=60,
+    )
     if result.returncode != 0:
         raise RuntimeError("git failed: " + " ".join(args) + ": " + result.stderr[-4096:])
     return result.stdout.strip()
