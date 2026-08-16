@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 from pathlib import Path
 import tempfile
 import subprocess
@@ -21,6 +22,7 @@ from RUN_TEV_SCRIPT_V31_CERTIFY_FULL import (
     validate_external_receipt_path,
     verify_receipt,
     _require_git_identity,
+    _run_v3_authority_gate,
 )
 
 
@@ -191,6 +193,11 @@ class V31CertifyFullTests(unittest.TestCase):
             self.assertEqual(branch, "candidate")
             self.assertEqual(head, run("rev-parse", "HEAD", cwd=clone))
             self.assertEqual(tree, run("rev-parse", "HEAD^{tree}", cwd=clone))
+
+    def test_v3_authority_subprocess_has_repo_import_root_in_clean_environment(self) -> None:
+        with patch.dict(os.environ, {"PYTHONPATH": ""}, clear=False):
+            gate_hash = _run_v3_authority_gate()
+        self.assertRegex(gate_hash, r"^[0-9a-f]{64}$")
 
     def test_receipt_schema_closes_release_authority(self) -> None:
         path = ROOT / "schemas/tev-script-v31-certify-full-receipt.schema.json"
