@@ -38,16 +38,16 @@ class SourceToIrValidationReceiptV1:
 def _independent_lower(model: SemanticProcessSourceV3) -> SemanticProcessProgramV1:
     facts = {row.name: row.fact for row in model.facts}
     initial = semantic_field(tuple(facts[name] for name in model.field_fact_names), profile=model.field_profile)
-    txs = {
-        row.name: field_transformation(
+    txs = {}
+    for row in model.transformations:
+        txs[row.name] = field_transformation(
             transformation_id=row.name,
             remove_fact_hashes=tuple(facts[name].fact_hash for name in row.remove_names),
             add_facts=tuple(facts[name] for name in row.add_names),
+            result_profile=row.result_profile,
             effect_set_hash=row.effect_set_hash,
             resource_vector_hash=row.resource_vector_hash,
         )
-        for row in model.transformations
-    }
     labels = tuple(sorted(model.labels, key=lambda row: row.name))
     label_pc = {row.name: index for index, row in enumerate(labels)}
     code = []
@@ -95,26 +95,26 @@ def validate_source_to_ir_v3(source: str, candidate: SemanticProcessProgramV1) -
     expected = _independent_lower(model)
     candidate = validate_semantic_process_program(candidate)
     artifact_hash = canonical_hash(program_to_object(candidate))
-    status = "PASS" if candidate.source_semantic_hash == model.source_semantic_hash and candidate.program_hash == expected.program_hash else "REJECT"
+    status = "PASS" if (
+        candidate.source_semantic_hash == model.source_semantic_hash
+        and candidate.program_hash == expected.program_hash
+    ) else "REJECT"
     body = _body(model.source_semantic_hash, expected.program_hash, candidate.program_hash, artifact_hash, status)
     return SourceToIrValidationReceiptV1(
-        RECEIPT_SCHEMA,
-        VERIFIER_ID,
-        model.source_semantic_hash,
-        expected.program_hash,
-        candidate.program_hash,
-        artifact_hash,
-        status,
-        True,
-        False,
-        canonical_hash(body),
+        RECEIPT_SCHEMA, VERIFIER_ID, model.source_semantic_hash,
+        expected.program_hash, candidate.program_hash, artifact_hash, status,
+        True, False, canonical_hash(body)
     )
 
 
 def verify_source_to_ir_validation(source: str, candidate: SemanticProcessProgramV1, receipt: SourceToIrValidationReceiptV1) -> bool:
     try:
         expected = validate_source_to_ir_v3(source, candidate)
-        return bool(isinstance(receipt, SourceToIrValidationReceiptV1) and hmac.compare_digest(receipt.receipt_hash, expected.receipt_hash) and receipt == expected)
+        return bool(
+            isinstance(receipt, SourceToIrValidationReceiptV1)
+            and hmac.compare_digest(receipt.receipt_hash, expected.receipt_hash)
+            and receipt == expected
+        )
     except Exception:
         return False
 
@@ -137,4 +137,7 @@ def source_to_ir_validation_field(receipt: SourceToIrValidationReceiptV1):
         ),
     ),), profile="proof_validation")
 
-__all__ = ["SourceToIrValidationReceiptV1", "source_to_ir_validation_field", "validate_source_to_ir_v3", "verify_source_to_ir_validation"]
+__all__ = [
+    "SourceToIrValidationReceiptV1", "source_to_ir_validation_field",
+    "validate_source_to_ir_v3", "verify_source_to_ir_validation",
+]
