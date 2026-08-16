@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "TEV_SCRIPT_PROGRAM_IR_V5_TOTAL_CORE_V1",
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "stableId": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_.:/-]*$"},
+    "value": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "boolean"},
+        {"type": "integer"},
+        {"type": "string"},
+        {"type": "array", "items": {"$ref": "#/$defs/value"}},
+        {"type": "object", "additionalProperties": {"$ref": "#/$defs/value"}}
+      ]
+    },
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relation", "arguments", "fact_hash"],
+      "properties": {
+        "relation": {"$ref": "#/$defs/stableId"},
+        "arguments": {"type": "array", "items": {"$ref": "#/$defs/value"}},
+        "fact_hash": {"$ref": "#/$defs/sha"}
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "profile", "facts", "field_hash"],
+      "properties": {
+        "schema": {"const": "TEV_SCRIPT_MAX_V3_SEMANTIC_FIELD_V1"},
+        "profile": {"$ref": "#/$defs/stableId"},
+        "facts": {"type": "array", "items": {"$ref": "#/$defs/fact"}},
+        "field_hash": {"$ref": "#/$defs/sha"}
+      }
+    },
+    "transformation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema", "transformation_id", "required_before_hash", "result_profile",
+        "remove_fact_hashes", "add_facts", "effect_set_hash", "resource_vector_hash",
+        "proof_requirement_hashes", "transformation_hash"
+      ],
+      "properties": {
+        "schema": {"const": "TEV_SCRIPT_MAX_V3_FIELD_TRANSFORMATION_V1"},
+        "transformation_id": {"$ref": "#/$defs/stableId"},
+        "required_before_hash": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha"}]},
+        "result_profile": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/stableId"}]},
+        "remove_fact_hashes": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/sha"}},
+        "add_facts": {"type": "array", "items": {"$ref": "#/$defs/fact"}},
+        "effect_set_hash": {"$ref": "#/$defs/sha"},
+        "resource_vector_hash": {"$ref": "#/$defs/sha"},
+        "proof_requirement_hashes": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/sha"}},
+        "transformation_hash": {"$ref": "#/$defs/sha"}
+      }
+    },
+    "v4Program": {
+      "type": "object",
+      "required": ["schema", "program_ir_hash"],
+      "properties": {
+        "schema": {
+          "enum": [
+            "TEV_SCRIPT_PROGRAM_IR_V4_PURE_V1",
+            "TEV_SCRIPT_PROGRAM_IR_V4_RECURSIVE_V1",
+            "TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_V1"
+          ]
+        },
+        "program_ir_hash": {"$ref": "#/$defs/sha"}
+      }
+    },
+    "unit": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema", "unit_id", "profile", "program_ir_v4", "program_ir_hash", "unit_hash"],
+          "properties": {
+            "schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V5_TOTAL_UNIT_V1"},
+            "unit_id": {"$ref": "#/$defs/stableId"},
+            "profile": {"const": "pure"},
+            "program_ir_v4": {"allOf": [{"$ref": "#/$defs/v4Program"}, {"properties": {"schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V4_PURE_V1"}}}]},
+            "program_ir_hash": {"$ref": "#/$defs/sha"},
+            "unit_hash": {"$ref": "#/$defs/sha"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema", "unit_id", "profile", "program_ir_v4", "program_ir_hash", "unit_hash"],
+          "properties": {
+            "schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V5_TOTAL_UNIT_V1"},
+            "unit_id": {"$ref": "#/$defs/stableId"},
+            "profile": {"const": "recursive"},
+            "program_ir_v4": {"allOf": [{"$ref": "#/$defs/v4Program"}, {"properties": {"schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V4_RECURSIVE_V1"}}}]},
+            "program_ir_hash": {"$ref": "#/$defs/sha"},
+            "unit_hash": {"$ref": "#/$defs/sha"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema", "unit_id", "profile", "program_ir_v4", "program_ir_hash", "unit_hash"],
+          "properties": {
+            "schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V5_TOTAL_UNIT_V1"},
+            "unit_id": {"$ref": "#/$defs/stableId"},
+            "profile": {"const": "effects"},
+            "program_ir_v4": {"allOf": [{"$ref": "#/$defs/v4Program"}, {"properties": {"schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_V1"}}}]},
+            "program_ir_hash": {"$ref": "#/$defs/sha"},
+            "unit_hash": {"$ref": "#/$defs/sha"}
+          }
+        }
+      ]
+    },
+    "proofAdmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema", "requirement_hash", "verification_receipt_hash", "verifier_identity_hash",
+        "authority_hash", "status", "admission_hash"
+      ],
+      "properties": {
+        "schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V5_PROOF_ADMISSION_V1"},
+        "requirement_hash": {"$ref": "#/$defs/sha"},
+        "verification_receipt_hash": {"$ref": "#/$defs/sha"},
+        "verifier_identity_hash": {"$ref": "#/$defs/sha"},
+        "authority_hash": {"$ref": "#/$defs/sha"},
+        "status": {"const": "VERIFIED"},
+        "admission_hash": {"$ref": "#/$defs/sha"}
+      }
+    },
+    "instruction": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["schema", "kind", "transformation_hash", "next_pc", "fact_hash", "present_pc", "absent_pc", "target_pc", "unit_hash", "result_relation", "instruction_hash"],
+          "properties": {
+            "schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V5_TOTAL_INSTRUCTION_V1"}, "kind": {"const": "apply"},
+            "transformation_hash": {"$ref": "#/$defs/sha"}, "next_pc": {"type": "integer", "minimum": 0},
+            "fact_hash": {"type": "null"}, "present_pc": {"type": "null"}, "absent_pc": {"type": "null"},
+            "target_pc": {"type": "null"}, "unit_hash": {"type": "null"}, "result_relation": {"type": "null"},
+            "instruction_hash": {"$ref": "#/$defs/sha"}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["schema", "kind", "transformation_hash", "next_pc", "fact_hash", "present_pc", "absent_pc", "target_pc", "unit_hash", "result_relation", "instruction_hash"],
+          "properties": {
+            "schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V5_TOTAL_INSTRUCTION_V1"}, "kind": {"const": "branch_fact"},
+            "transformation_hash": {"type": "null"}, "next_pc": {"type": "null"},
+            "fact_hash": {"$ref": "#/$defs/sha"}, "present_pc": {"type": "integer", "minimum": 0}, "absent_pc": {"type": "integer", "minimum": 0},
+            "target_pc": {"type": "null"}, "unit_hash": {"type": "null"}, "result_relation": {"type": "null"},
+            "instruction_hash": {"$ref": "#/$defs/sha"}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["schema", "kind", "transformation_hash", "next_pc", "fact_hash", "present_pc", "absent_pc", "target_pc", "unit_hash", "result_relation", "instruction_hash"],
+          "properties": {
+            "schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V5_TOTAL_INSTRUCTION_V1"}, "kind": {"const": "jump"},
+            "transformation_hash": {"type": "null"}, "next_pc": {"type": "null"}, "fact_hash": {"type": "null"},
+            "present_pc": {"type": "null"}, "absent_pc": {"type": "null"}, "target_pc": {"type": "integer", "minimum": 0},
+            "unit_hash": {"type": "null"}, "result_relation": {"type": "null"}, "instruction_hash": {"$ref": "#/$defs/sha"}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["schema", "kind", "transformation_hash", "next_pc", "fact_hash", "present_pc", "absent_pc", "target_pc", "unit_hash", "result_relation", "instruction_hash"],
+          "properties": {
+            "schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V5_TOTAL_INSTRUCTION_V1"}, "kind": {"const": "halt"},
+            "transformation_hash": {"type": "null"}, "next_pc": {"type": "null"}, "fact_hash": {"type": "null"},
+            "present_pc": {"type": "null"}, "absent_pc": {"type": "null"}, "target_pc": {"type": "null"},
+            "unit_hash": {"type": "null"}, "result_relation": {"type": "null"}, "instruction_hash": {"$ref": "#/$defs/sha"}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["schema", "kind", "transformation_hash", "next_pc", "fact_hash", "present_pc", "absent_pc", "target_pc", "unit_hash", "result_relation", "instruction_hash"],
+          "properties": {
+            "schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V5_TOTAL_INSTRUCTION_V1"}, "kind": {"const": "invoke_v4"},
+            "transformation_hash": {"type": "null"}, "next_pc": {"type": "integer", "minimum": 0}, "fact_hash": {"type": "null"},
+            "present_pc": {"type": "null"}, "absent_pc": {"type": "null"}, "target_pc": {"type": "null"},
+            "unit_hash": {"$ref": "#/$defs/sha"}, "result_relation": {"$ref": "#/$defs/stableId"},
+            "instruction_hash": {"$ref": "#/$defs/sha"}
+          }
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "language_version", "profile", "program_id", "source_semantic_hash", "initial_field",
+    "transformations", "v4_units", "proof_admissions", "instructions", "entry_pc", "quantum_step_limit",
+    "authority_hash", "program_hash"
+  ],
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_PROGRAM_IR_V5_TOTAL_CORE_V1"},
+    "language_version": {"const": "3.1.0"},
+    "profile": {"const": "total_core"},
+    "program_id": {"$ref": "#/$defs/stableId"},
+    "source_semantic_hash": {"$ref": "#/$defs/sha"},
+    "initial_field": {"$ref": "#/$defs/field"},
+    "transformations": {"type": "array", "items": {"$ref": "#/$defs/transformation"}},
+    "v4_units": {"type": "array", "items": {"$ref": "#/$defs/unit"}},
+    "proof_admissions": {"type": "array", "items": {"$ref": "#/$defs/proofAdmission"}},
+    "instructions": {"type": "array", "minItems": 1, "maxItems": 65536, "items": {"$ref": "#/$defs/instruction"}},
+    "entry_pc": {"type": "integer", "minimum": 0},
+    "quantum_step_limit": {"type": "integer", "minimum": 1, "maximum": 1000000},
+    "authority_hash": {"$ref": "#/$defs/sha"},
+    "program_hash": {"$ref": "#/$defs/sha"}
+  }
+}
