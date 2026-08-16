@@ -6,19 +6,12 @@ from typing import Any, Mapping, Sequence
 
 from .canonical import canonical_hash
 from .diagnostics import TevScriptError
-from .omega_semantic_basis_v1 import (
-    FieldFactV1,
-    SemanticFieldV1,
-    field_fact,
-    semantic_field,
-)
+from .omega_semantic_basis_v1 import FieldFactV1, SemanticFieldV1, field_fact, semantic_field
 
 EPISTEMIC_TYPE_SCHEMA = "TEV_SCRIPT_MAX_V3_EPISTEMIC_TYPE_V1"
 EPISTEMIC_REFINEMENT_SCHEMA = "TEV_SCRIPT_MAX_V3_EPISTEMIC_REFINEMENT_RECEIPT_V1"
 EFFECT_ROW_SCHEMA = "TEV_SCRIPT_MAX_V3_EFFECT_ROW_V1"
-EPISTEMIC_QUALIFIERS = frozenset(
-    {"Observed", "Inferred", "Predicted", "Hypothesis", "Verified"}
-)
+EPISTEMIC_QUALIFIERS = frozenset({"Observed", "Inferred", "Predicted", "Hypothesis", "Verified"})
 _REFINEMENT_STATUSES = frozenset({"PASS", "PROOF_REQUIRED", "REJECT"})
 _HEX = frozenset("0123456789abcdef")
 _TYPE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:<>,]*$")
@@ -72,12 +65,7 @@ def _optional_sha(value: Any, name: str) -> str | None:
     return None if value is None else _sha(value, name)
 
 
-def _closed_unique_ids(
-    values: Sequence[str],
-    *,
-    name: str,
-    pattern: re.Pattern[str],
-) -> tuple[str, ...]:
+def _closed_unique_ids(values: Sequence[str], *, name: str, pattern: re.Pattern[str]) -> tuple[str, ...]:
     if isinstance(values, (str, bytes)):
         _fail("TEVS_MAX_V3_TYPE_EFFECT_SEQUENCE", f"{name} must be a sequence")
     checked: list[str] = []
@@ -95,17 +83,8 @@ def epistemic_type(base_type: str, qualifier: str) -> EpistemicTypeV1:
         _fail("TEVS_MAX_V3_EPISTEMIC_BASE_TYPE", "invalid epistemic base type")
     if qualifier not in EPISTEMIC_QUALIFIERS:
         _fail("TEVS_MAX_V3_EPISTEMIC_QUALIFIER", "unknown epistemic qualifier")
-    body = {
-        "schema": EPISTEMIC_TYPE_SCHEMA,
-        "base_type": base_type,
-        "qualifier": qualifier,
-    }
-    return EpistemicTypeV1(
-        EPISTEMIC_TYPE_SCHEMA,
-        base_type,
-        qualifier,
-        canonical_hash(body),
-    )
+    body = {"schema": EPISTEMIC_TYPE_SCHEMA, "base_type": base_type, "qualifier": qualifier}
+    return EpistemicTypeV1(EPISTEMIC_TYPE_SCHEMA, base_type, qualifier, canonical_hash(body))
 
 
 def validate_epistemic_type(value: object) -> EpistemicTypeV1:
@@ -126,10 +105,7 @@ def validate_epistemic_type(value: object) -> EpistemicTypeV1:
     return expected
 
 
-def can_implicitly_assign_epistemic(
-    source: EpistemicTypeV1,
-    target: EpistemicTypeV1,
-) -> bool:
+def can_implicitly_assign_epistemic(source: EpistemicTypeV1, target: EpistemicTypeV1) -> bool:
     left = validate_epistemic_type(source)
     right = validate_epistemic_type(target)
     return left.base_type == right.base_type and left.qualifier == right.qualifier
@@ -161,8 +137,8 @@ def _refinement_status(
         return "REJECT", "model_evidence_required"
     if target.qualifier == "Hypothesis" and provenance_evidence_hash is None:
         return "REJECT", "provenance_evidence_required"
-    if target.qualifier == "Verified" and not proof_witness_hashes:
-        return "PROOF_REQUIRED", "verification_proof_required"
+    if target.qualifier == "Verified":
+        return "PROOF_REQUIRED", "admitted_subject_bound_proof_required"
     return "PASS", "explicit_refinement_admitted"
 
 
@@ -262,11 +238,7 @@ def validate_epistemic_refinement(value: object) -> EpistemicRefinementReceiptV1
         return value
     if not isinstance(value, Mapping):
         _fail("TEVS_MAX_V3_EPISTEMIC_REFINEMENT", "refinement receipt must be object")
-    expected_fields = {
-        "schema", "source_type_hash", "target_type_hash", "transformation_hash",
-        "observation_evidence_hash", "model_evidence_hash", "provenance_evidence_hash",
-        "proof_witness_hashes", "status", "reason", "receipt_hash",
-    }
+    expected_fields = {"schema", "source_type_hash", "target_type_hash", "transformation_hash", "observation_evidence_hash", "model_evidence_hash", "provenance_evidence_hash", "proof_witness_hashes", "status", "reason", "receipt_hash"}
     if set(value) != expected_fields or value.get("schema") != EPISTEMIC_REFINEMENT_SCHEMA:
         _fail("TEVS_MAX_V3_EPISTEMIC_REFINEMENT_FIELDS", "refinement receipt fields mismatch")
     proofs_raw = value.get("proof_witness_hashes")
@@ -308,26 +280,11 @@ def validate_epistemic_refinement(value: object) -> EpistemicRefinementReceiptV1
     )
 
 
-def effect_row(
-    *,
-    effects: Sequence[str] = (),
-    capabilities: Sequence[str] = (),
-) -> EffectRowV1:
+def effect_row(*, effects: Sequence[str] = (), capabilities: Sequence[str] = ()) -> EffectRowV1:
     effect_ids = _closed_unique_ids(effects, name="effect", pattern=_EFFECT)
     capability_ids = _closed_unique_ids(capabilities, name="capability", pattern=_CAPABILITY)
-    body = {
-        "schema": EFFECT_ROW_SCHEMA,
-        "effects": list(effect_ids),
-        "capabilities": list(capability_ids),
-        "grants_authority": False,
-    }
-    return EffectRowV1(
-        EFFECT_ROW_SCHEMA,
-        effect_ids,
-        capability_ids,
-        False,
-        canonical_hash(body),
-    )
+    body = {"schema": EFFECT_ROW_SCHEMA, "effects": list(effect_ids), "capabilities": list(capability_ids), "grants_authority": False}
+    return EffectRowV1(EFFECT_ROW_SCHEMA, effect_ids, capability_ids, False, canonical_hash(body))
 
 
 def validate_effect_row(value: object) -> EffectRowV1:
@@ -357,9 +314,7 @@ def validate_effect_row(value: object) -> EffectRowV1:
 def effect_row_substitutable(actual: EffectRowV1, allowed: EffectRowV1) -> bool:
     actual_row = validate_effect_row(actual)
     allowed_row = validate_effect_row(allowed)
-    return set(actual_row.effects).issubset(allowed_row.effects) and set(
-        actual_row.capabilities
-    ).issubset(allowed_row.capabilities)
+    return set(actual_row.effects).issubset(allowed_row.effects) and set(actual_row.capabilities).issubset(allowed_row.capabilities)
 
 
 def _lower_one(value: object) -> FieldFactV1:
@@ -368,22 +323,10 @@ def _lower_one(value: object) -> FieldFactV1:
         return field_fact("tev.type.epistemic", (item.type_hash, item.base_type, item.qualifier))
     if isinstance(value, EffectRowV1):
         item = validate_effect_row(value)
-        return field_fact(
-            "tev.type.effect_row",
-            (item.row_hash, list(item.effects), list(item.capabilities), item.grants_authority),
-        )
+        return field_fact("tev.type.effect_row", (item.row_hash, list(item.effects), list(item.capabilities), item.grants_authority))
     if isinstance(value, EpistemicRefinementReceiptV1):
         item = validate_epistemic_refinement(value)
-        return field_fact(
-            "tev.type.epistemic_refinement",
-            (
-                item.receipt_hash,
-                item.source_type_hash,
-                item.target_type_hash,
-                item.transformation_hash,
-                item.status,
-            ),
-        )
+        return field_fact("tev.type.epistemic_refinement", (item.receipt_hash, item.source_type_hash, item.target_type_hash, item.transformation_hash, item.status))
     _fail("TEVS_MAX_V3_TYPE_EFFECT_LOWER", "unsupported type/effect object")
 
 
@@ -393,18 +336,4 @@ def lower_type_effect_to_field(*values: object) -> SemanticFieldV1:
     return semantic_field(tuple(_lower_one(value) for value in values), profile="type_effect")
 
 
-__all__ = [
-    "EPISTEMIC_QUALIFIERS",
-    "EffectRowV1",
-    "EpistemicRefinementReceiptV1",
-    "EpistemicTypeV1",
-    "can_implicitly_assign_epistemic",
-    "effect_row",
-    "effect_row_substitutable",
-    "epistemic_type",
-    "lower_type_effect_to_field",
-    "refine_epistemic_type",
-    "validate_effect_row",
-    "validate_epistemic_refinement",
-    "validate_epistemic_type",
-]
+__all__ = ["EPISTEMIC_QUALIFIERS", "EffectRowV1", "EpistemicRefinementReceiptV1", "EpistemicTypeV1", "can_implicitly_assign_epistemic", "effect_row", "effect_row_substitutable", "epistemic_type", "lower_type_effect_to_field", "refine_epistemic_type", "validate_effect_row", "validate_epistemic_refinement", "validate_epistemic_type"]
