@@ -18,6 +18,7 @@ published 3.1.0 Total-Core semantic core
 + deterministic Total-Core differential fuzzing
 + Total-Core constitutional invariant witnesses
 + clean-source reproducible artifact/SBOM/provenance evidence
++ full repository zero-skip non-regression
 = platform completion candidate 3.1.1
 ```
 
@@ -56,7 +57,7 @@ checkpoint
 package
 ```
 
-`platform_compatibility.py` requires every authority path to exist, every declared entrypoint to resolve, exactly one current row for current domains, exact current package/language identity and the `total_core` profile for the current source/IR/runtime/checkpoint routes. Numeric equality never implies compatibility.
+`platform_compatibility.py` requires every authority path to exist, every declared entrypoint to resolve against the files of the checkout being certified, exactly one current row for current domains, exact current package/language identity and the `total_core` profile for the current source/IR/runtime/checkpoint routes. Numeric equality never implies compatibility and a module importable from some other checkout cannot satisfy the gate.
 
 ## Current tooling boundary
 
@@ -128,7 +129,7 @@ CROSS_RUNTIME_EQUIVALENCE
 UPGRADE_NO_FORK
 ```
 
-The first five are now direct Total-Core V5 witnesses. Cross-runtime equivalence is witnessed by the independent JavaScript V5 parity suite. Governed update/no-fork retains its independently certified update witness. Witness targets are themselves content-addressed; missing tools are HOLD and identity mismatch is FAIL.
+The first five are direct Total-Core V5 witnesses. Cross-runtime equivalence is witnessed by the independent JavaScript V5 parity suite. Governed update/no-fork retains its independently certified update witness. Witness targets are themselves content-addressed; missing tools are HOLD and identity mismatch is FAIL.
 
 ## Reproducible release evidence
 
@@ -151,34 +152,62 @@ runtime dependency count = 0
 
 No timestamp participates in canonical provenance identity. Schema V1 remains preserved historically; V2 has its own schema file.
 
+## Full repository regression
+
+`platform_regression.py` is the repository-wide non-regression authority. It runs:
+
+```text
+python -m pytest -q --disable-warnings --junitxml=<external-temporary-path>
+```
+
+and admits PASS only when all of the following hold:
+
+```text
+test_count > 0
+failure_count = 0
+error_count = 0
+skipped_count = 0
+returncode = 0
+worktree_clean_before = true
+worktree_clean_after = true
+HEAD_before = HEAD_after
+TREE_before = TREE_after
+```
+
+The JUnit bytes are SHA-256 bound into `TEV_SCRIPT_PLATFORM_FULL_REGRESSION_V2`. The receipt has its own verifier and schema. A specialized conformance/invariant gate cannot substitute for this full-repository guard.
+
+The aggregate additionally requires the `source_commit/source_tree` from `FULL_REGRESSION` to equal the identity bound by `REPRODUCIBLE_RELEASE`. This prevents a wheel from one source state and a regression result from another source state from being combined into one completion claim.
+
 ## Aggregate authority
 
 Run from a complete clean checkout with Python and Node available:
 
 ```powershell
-python .\RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py --receipt TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT.json
+python .\RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py `
+  --receipt .\TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT.json
 ```
 
-The runner executes all eight gates and prints:
+The runner executes all nine gates in this order:
 
 ```text
+VERSION_IDENTITY=<PASS|HOLD|FAIL>
+NORMATIVE_SPEC=<PASS|HOLD|FAIL>
+VERSION_MATRIX=<PASS|HOLD|FAIL>
+TOOLING_3X=<PASS|HOLD|FAIL>
 CONFORMANCE=<PASS|HOLD|FAIL>
 DIFFERENTIAL_FUZZ=<PASS|HOLD|FAIL>
-NORMATIVE_SPEC=<PASS|HOLD|FAIL>
-REPRODUCIBLE_RELEASE=<PASS|HOLD|FAIL>
 SEMANTIC_INVARIANTS=<PASS|HOLD|FAIL>
-TOOLING_3X=<PASS|HOLD|FAIL>
-VERSION_IDENTITY=<PASS|HOLD|FAIL>
-VERSION_MATRIX=<PASS|HOLD|FAIL>
+REPRODUCIBLE_RELEASE=<PASS|HOLD|FAIL>
+FULL_REGRESSION=<PASS|HOLD|FAIL>
 PLATFORM_COMPLETION=<PASS|HOLD|FAIL>
 ```
 
-A single FAIL makes the aggregate FAIL. If no gate fails but one or more are HOLD, the aggregate is HOLD. Only eight simultaneous PASS values authorize `PLATFORM_COMPLETION=PASS`.
+A single FAIL makes the aggregate FAIL. If no gate fails but one or more are HOLD, the aggregate is HOLD. Only nine simultaneous PASS values on one exact commit/tree authorize `PLATFORM_COMPLETION=PASS`.
 
-This gate grants no merge, release, tag or stable-promotion authority.
+The aggregate receipt is `TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT_V2`, has a Draft 2020-12 schema, binds the full-regression receipt/test count and has a verifier that detects tampering. The completion gate grants no merge, release, tag or stable-promotion authority.
 
 ## Verification status in this implementation environment
 
-The connector/container used for implementation cannot materialize the complete GitHub checkout through its local network path. Focused/synthetic TDD was used while building the isolated platform organs, and several false-PASS conditions were found and removed (unsupported current LSP, unresolved version authorities, inherited-only invariant claims, incomplete fuzz families, incomplete conformance coverage and dirty-source release evidence).
+The connector/container used for implementation cannot materialize the complete GitHub checkout through its local network path. Focused/synthetic TDD was used while building the isolated platform organs, and multiple false-PASS conditions were found and removed: unsupported current LSP, unresolved or cross-root version authorities, inherited-only invariant claims, incomplete fuzz families, incomplete conformance coverage, dirty-source release evidence, historical receipt transcription drift, missing full-repository regression and cross-gate source-identity drift.
 
 Those focused checks are development evidence only. They are not promoted to full-repository certification. The authoritative result remains pending execution of `RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py` from a complete clean checkout.
