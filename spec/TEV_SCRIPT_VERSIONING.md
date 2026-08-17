@@ -36,7 +36,7 @@ language=3.1.0
 source_profile=3.1.0/total_core
 program_ir=5/total_core
 runtime_abi=v5-total-v1
-a checkpoint=v5-total-checkpoint-v1
+checkpoint=v5-total-checkpoint-v1
 ```
 
 The line above intentionally separates package `3.1.1` from language `3.1.0`: this candidate changes platform/tooling authority, not Total-Core language semantics. Published package/tag `3.1.0` remains the immutable predecessor.
