@@ -13,8 +13,10 @@ from RUN_TEV_SCRIPT_V31_STABLE_ADMISSION import (
     REPOSITORY,
     SCHEMA,
     build_receipt_body,
+    expected_v31_index_target,
     seal_receipt,
     validate_artifact_dir,
+    validate_v31_index_target,
     verify_receipt,
     verify_release_diff_paths,
 )
@@ -70,6 +72,26 @@ class V31StableAdmissionTests(unittest.TestCase):
         self.assertFalse(
             verify_release_diff_paths((*RELEASE_DIFF_WHITELIST, RELEASE_DIFF_WHITELIST[0]))
         )
+
+    def test_canonical_index_target_is_exact_stable_governance(self) -> None:
+        target = expected_v31_index_target()
+        self.assertTrue(validate_v31_index_target(target))
+        self.assertEqual(target["language_version"], "3.1.0")
+        self.assertEqual(target["status"], "STABLE_ADMISSION_REQUESTED")
+        self.assertTrue(target["stable"])
+        self.assertFalse(target["publication_authorized"])
+        self.assertFalse(target["merge_authorized"])
+        self.assertEqual(
+            target["stable_release_surface"]["release_metadata"],
+            "tev_script/release_metadata_v31.py",
+        )
+        self.assertEqual(
+            target["gates"]["stable_admission"],
+            "RUN_TEV_SCRIPT_V31_STABLE_ADMISSION.py",
+        )
+        tampered = copy.deepcopy(target)
+        tampered["stable"] = False
+        self.assertFalse(validate_v31_index_target(tampered))
 
     def test_stable_receipt_grants_stability_but_not_operator_actions(self) -> None:
         body = _body()
