@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 import tomllib
 
@@ -29,6 +30,117 @@ def describe_current_platform() -> dict[str, object]:
     }
 
 
+def _tree(path: Path) -> ast.Module:
+    return ast.parse(path.read_text(encoding="utf-8"), filename=path.as_posix())
+
+
+def _has_import_alias(
+    tree: ast.Module,
+    *,
+    module: str,
+    imported: str,
+    alias: str,
+) -> bool:
+    return any(
+        isinstance(node, ast.ImportFrom)
+        and node.level == 1
+        and node.module == module
+        and any(
+            row.name == imported and row.asname == alias
+            for row in node.names
+        )
+        for node in ast.walk(tree)
+    )
+
+
+def _function(tree: ast.Module, name: str) -> ast.FunctionDef | ast.AsyncFunctionDef:
+    matches = [
+        node
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name
+    ]
+    if len(matches) != 1:
+        raise ValueError(f"tooling function missing or ambiguous: {name}")
+    return matches[0]
+
+
+def _function_has_name_and_literal(
+    tree: ast.Module,
+    function_name: str,
+    *,
+    name: str,
+    literal: str,
+) -> bool:
+    function = _function(tree, function_name)
+    names = {
+        node.id
+        for node in ast.walk(function)
+        if isinstance(node, ast.Name)
+    }
+    literals = {
+        node.value
+        for node in ast.walk(function)
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+    }
+    return name in names and literal in literals
+
+
+def _cli_route_errors(root: Path) -> list[str]:
+    path = root / "tev_script" / "cli.py"
+    tree = _tree(path)
+    errors: list[str] = []
+    if not _has_import_alias(
+        tree,
+        module="cli_v31",
+        imported="main",
+        alias="v31_main",
+    ):
+        errors.append("CURRENT_CLI_V31_IMPORT")
+    for function_name, command in (
+        ("_check_current", "check-total"),
+        ("_compile_current", "compile-total"),
+        ("_run_current", "run-total"),
+    ):
+        if not _function_has_name_and_literal(
+            tree,
+            function_name,
+            name="v31_main",
+            literal=command,
+        ):
+            errors.append(f"CURRENT_CLI_ROUTE:{function_name}:{command}")
+    return errors
+
+
+def _lsp_route_errors(root: Path) -> list[str]:
+    path = root / "tev_script" / "lsp.py"
+    tree = _tree(path)
+    function = _function(tree, "select_lsp_main")
+    errors: list[str] = []
+    if not _has_import_alias(
+        ast.Module(body=list(function.body), type_ignores=[]),
+        module="lsp_v31",
+        imported="main",
+        alias="v31_main",
+    ):
+        errors.append("CURRENT_LSP_V31_IMPORT")
+    names = {
+        node.id
+        for node in ast.walk(function)
+        if isinstance(node, ast.Name)
+    }
+    if "CURRENT_LANGUAGE_VERSION" not in names or "v31_main" not in names:
+        errors.append("CURRENT_LSP_V31_ROUTE")
+    if not any(
+        isinstance(node, ast.Raise)
+        and isinstance(node.exc, ast.Call)
+        and isinstance(node.exc.func, ast.Name)
+        and node.exc.func.id == "RuntimeError"
+        for node in ast.walk(function)
+    ):
+        errors.append("CURRENT_LSP_UNKNOWN_VERSION_FAIL_CLOSED")
+    return errors
+
+
 def validate_tooling_surface(root: Path) -> dict[str, object]:
     try:
         root = Path(root)
@@ -40,46 +152,64 @@ def validate_tooling_surface(root: Path) -> dict[str, object]:
         scripts = project.get("scripts")
         if not isinstance(scripts, dict):
             raise ValueError("missing [project.scripts] table")
-        mismatches = [
+        mismatches: list[dict[str, object]] = [
             {
-                "script": name,
+                "surface": name,
                 "expected": target,
                 "observed": scripts.get(name),
             }
             for name, target in sorted(REQUIRED_CURRENT_SCRIPTS.items())
             if scripts.get(name) != target
         ]
-        for relative in ("tev_script/lsp.py", "tev_script/lsp_v31.py"):
+        for relative in (
+            "tev_script/cli.py",
+            "tev_script/cli_v31.py",
+            "tev_script/lsp.py",
+            "tev_script/lsp_v31.py",
+        ):
             if not (root / relative).is_file():
                 mismatches.append(
                     {
-                        "script": "tev-script-lsp",
-                        "expected": relative,
+                        "surface": relative,
+                        "expected": "present",
                         "observed": None,
                     }
                 )
-
-        from .lsp import select_lsp_main
-        from .lsp_v31 import main as lsp_v31_main
-
-        if select_lsp_main(CURRENT_LANGUAGE_VERSION) is not lsp_v31_main:
-            mismatches.append(
-                {
-                    "script": "tev-script-lsp",
-                    "expected": "TEVScript 3.1 Total-Core semantic dispatcher",
-                    "observed": "non-current semantic dispatcher",
-                }
-            )
+        if not mismatches:
+            for error in _cli_route_errors(root):
+                mismatches.append(
+                    {
+                        "surface": "tev-script",
+                        "expected": "current Total-Core V31 delegation",
+                        "observed": error,
+                    }
+                )
+            for error in _lsp_route_errors(root):
+                mismatches.append(
+                    {
+                        "surface": "tev-script-lsp",
+                        "expected": "current Total-Core V31 dispatch",
+                        "observed": error,
+                    }
+                )
         return {
-            "schema": "TEV_SCRIPT_PLATFORM_TOOLING_VALIDATION_V2",
+            "schema": "TEV_SCRIPT_PLATFORM_TOOLING_VALIDATION_V3",
             "status": "PASS" if not mismatches else "FAIL",
+            "current_cli_semantics": "SUPPORTED" if not mismatches else "INVALID",
             "current_lsp_semantics": "SUPPORTED" if not mismatches else "INVALID",
             "mismatches": mismatches,
         }
-    except (OSError, ValueError, RuntimeError, tomllib.TOMLDecodeError) as error:
+    except (
+        OSError,
+        UnicodeError,
+        ValueError,
+        SyntaxError,
+        tomllib.TOMLDecodeError,
+    ) as error:
         return {
-            "schema": "TEV_SCRIPT_PLATFORM_TOOLING_VALIDATION_V2",
+            "schema": "TEV_SCRIPT_PLATFORM_TOOLING_VALIDATION_V3",
             "status": "FAIL",
+            "current_cli_semantics": "INVALID",
             "current_lsp_semantics": "INVALID",
             "mismatches": [],
             "error": str(error),
