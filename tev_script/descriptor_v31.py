@@ -4,17 +4,19 @@ import hmac
 from typing import Any, Mapping
 
 from .canonical import canonical_hash
+from .release_metadata_v31 import STABLE, validate_release_metadata_v31
 
 DESCRIPTOR_SCHEMA_V31 = "TEV_SCRIPT_V31_DESCRIPTOR_V1"
 
 
 def v31_descriptor() -> dict[str, Any]:
+    validate_release_metadata_v31()
     body = {
         "schema": DESCRIPTOR_SCHEMA_V31,
         "language_id": "TEV-Script",
         "language_version": "3.1.0",
         "release_name": "TEVScript MAX",
-        "stable": False,
+        "stable": STABLE,
         "promotion_authority": False,
         "program_ir_version": 5,
         "profiles": ["total_core"],
