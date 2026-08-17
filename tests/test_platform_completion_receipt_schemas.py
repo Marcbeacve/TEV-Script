@@ -15,7 +15,8 @@ def _load(name: str) -> dict:
 def test_full_regression_schema_requires_zero_skip_pass_contract() -> None:
     schema = _load("tev-script-platform-full-regression-v2.schema.json")
     assert schema["properties"]["schema"]["const"] == "TEV_SCRIPT_PLATFORM_FULL_REGRESSION_V2"
-    pass_contract = schema["allOf"][0]["then"]["properties"]
+    then = schema["allOf"][0]["then"]
+    pass_contract = then["properties"]
     assert pass_contract["returncode"]["const"] == 0
     assert pass_contract["test_count"]["minimum"] == 1
     assert pass_contract["failure_count"]["const"] == 0
@@ -24,6 +25,7 @@ def test_full_regression_schema_requires_zero_skip_pass_contract() -> None:
     assert pass_contract["identity_stable"]["const"] is True
     assert pass_contract["worktree_clean_before"]["const"] is True
     assert pass_contract["worktree_clean_after"]["const"] is True
+    assert then["not"]["required"] == ["error"]
 
 
 def test_completion_schema_requires_all_nine_gates_only_for_pass() -> None:
