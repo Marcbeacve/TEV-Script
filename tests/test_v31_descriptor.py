@@ -10,6 +10,17 @@ from contextlib import redirect_stdout
 import tev_script
 from tev_script.descriptor_v31 import v31_descriptor, verify_v31_descriptor
 from tev_script.describe_v31 import main as describe_main
+from tev_script.release_metadata_v31 import (
+    LANGUAGE_VERSION as RELEASE_LANGUAGE_VERSION,
+    MERGE_AUTHORITY,
+    PUBLICATION_AUTHORITY,
+    RELEASE_PROFILE,
+    RELEASE_STATUS,
+    STABLE,
+    TECHNICAL_PARENT_COMMIT,
+    TECHNICAL_PARENT_RECEIPT_SHA256,
+    validate_release_metadata_v31,
+)
 
 
 class V31DescriptorTests(unittest.TestCase):
@@ -25,8 +36,22 @@ class V31DescriptorTests(unittest.TestCase):
         self.assertTrue(descriptor["proof_admission_external_only"])
         self.assertFalse(descriptor["physical_effect_commit_inside_runtime"])
         self.assertFalse(descriptor["promotion_authority"])
+        self.assertEqual(descriptor["stable"], STABLE)
         self.assertEqual(len(descriptor["descriptor_hash"]), 64)
         self.assertTrue(verify_v31_descriptor(descriptor))
+
+    def test_candidate_release_metadata_is_explicit_and_authority_free(self) -> None:
+        metadata = validate_release_metadata_v31()
+        self.assertEqual(RELEASE_LANGUAGE_VERSION, "3.1.0")
+        self.assertEqual(RELEASE_PROFILE, "candidate")
+        self.assertEqual(RELEASE_STATUS, "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED")
+        self.assertFalse(STABLE)
+        self.assertFalse(PUBLICATION_AUTHORITY)
+        self.assertFalse(MERGE_AUTHORITY)
+        self.assertEqual(TECHNICAL_PARENT_COMMIT, "")
+        self.assertEqual(TECHNICAL_PARENT_RECEIPT_SHA256, "")
+        self.assertEqual(metadata["release_profile"], "candidate")
+        self.assertFalse(metadata["stable"])
 
     def test_descriptor_tamper_is_rejected(self) -> None:
         descriptor = copy.deepcopy(v31_descriptor())
