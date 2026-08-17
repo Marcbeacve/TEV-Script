@@ -524,3 +524,15 @@ publication authority. Only RUN_TEV_SCRIPT_V3_STABLE_ADMISSION.py may emit
 V3_STABLE_ADMISSION=PASS and V3_LANGUAGE_STABLE=YES for the exact release
 commit and exact final wheel. The Stable Admission receipt never grants merge
 authority.
+
+## TEVScript MAX 3.1.0 Total-Core — Stable Admission Request
+
+- Language/package version: `3.1.0`
+- Technical parent: `6c82905cb1343c989b183b7a50b4d67d7b1a5ce9`
+- Technical certificate file SHA-256: `1f0c60f8f50322a5dfde69073cbc84e419aebdcf0f46bb99613167a13d8efc46`
+- Program IR: V5 Total-Core
+- Independent JavaScript parity: required
+- Stable Admission: requested on this exact release-shaped commit
+- Publication eligibility depends on Stable Admission.
+- Publication authority: **not granted**.
+- Merge authority: **not granted**.

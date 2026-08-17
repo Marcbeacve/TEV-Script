@@ -104,3 +104,15 @@ V2_TECHNICAL_PARENT_CERTIFICATE_SHA256=49ccf5f6e5c4bf9962ccc6823ecade5f61f616787
 ```
 
 This is the release-only Phase S source shape. It is bound to the exact independently recertified technical parent above. The source claim remains pending until `RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py` emits `STABLE_ADMISSION=PASS`. No tag, package publication, or main promotion is implied by this metadata alone.
+
+## TEVScript MAX 3.1.0 Total-Core — Stable Admission Request
+
+- Language/package version: `3.1.0`
+- Technical parent: `6c82905cb1343c989b183b7a50b4d67d7b1a5ce9`
+- Technical certificate file SHA-256: `1f0c60f8f50322a5dfde69073cbc84e419aebdcf0f46bb99613167a13d8efc46`
+- Program IR: V5 Total-Core
+- Independent JavaScript parity: required
+- Stable Admission: requested on this exact release-shaped commit
+- Publication eligibility depends on Stable Admission.
+- Publication authority: **not granted**.
+- Merge authority: **not granted**.

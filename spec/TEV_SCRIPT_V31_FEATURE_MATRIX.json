@@ -4,7 +4,7 @@
     "v3_semantics_reinterpreted": false,
     "v4_child_artifacts_reinterpreted": false
   },
-  "language_stable": false,
+  "language_stable": true,
   "language_version": "3.1.0",
   "merge_authorized": false,
   "post_cert_allowed_paths": [
@@ -41,20 +41,50 @@
     "tev_script/release_metadata_v31.py"
   ],
   "required_features": [
-    {"id": "TOTAL_CORE_CANONICAL_IR", "status": "CLOSED"},
-    {"id": "EXACT_V4_CHILD_IDENTITY", "status": "CLOSED"},
-    {"id": "CANONICAL_V4_RESULT_BRIDGE", "status": "CLOSED"},
-    {"id": "EXTERNAL_PROOF_ADMISSION", "status": "CLOSED"},
-    {"id": "BOUNDED_QUANTA_OMEGA_CONTINUATION", "status": "CLOSED"},
-    {"id": "UNIFIED_V31_SOURCE", "status": "CLOSED"},
-    {"id": "V31_CLI_DESCRIPTOR", "status": "CLOSED"},
-    {"id": "INDEPENDENT_JAVASCRIPT_TOTAL_CORE", "status": "CLOSED"},
-    {"id": "EFFECT_EVIDENCE_SEPARATION", "status": "CLOSED"},
-    {"id": "PHYSICAL_COMMIT_EXTERNAL", "status": "CLOSED"}
+    {
+      "id": "TOTAL_CORE_CANONICAL_IR",
+      "status": "CLOSED"
+    },
+    {
+      "id": "EXACT_V4_CHILD_IDENTITY",
+      "status": "CLOSED"
+    },
+    {
+      "id": "CANONICAL_V4_RESULT_BRIDGE",
+      "status": "CLOSED"
+    },
+    {
+      "id": "EXTERNAL_PROOF_ADMISSION",
+      "status": "CLOSED"
+    },
+    {
+      "id": "BOUNDED_QUANTA_OMEGA_CONTINUATION",
+      "status": "CLOSED"
+    },
+    {
+      "id": "UNIFIED_V31_SOURCE",
+      "status": "CLOSED"
+    },
+    {
+      "id": "V31_CLI_DESCRIPTOR",
+      "status": "CLOSED"
+    },
+    {
+      "id": "INDEPENDENT_JAVASCRIPT_TOTAL_CORE",
+      "status": "CLOSED"
+    },
+    {
+      "id": "EFFECT_EVIDENCE_SEPARATION",
+      "status": "CLOSED"
+    },
+    {
+      "id": "PHYSICAL_COMMIT_EXTERNAL",
+      "status": "CLOSED"
+    }
   ],
   "schema": "TEV_SCRIPT_V31_FEATURE_MATRIX_V1",
-  "stable": false,
-  "status": "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED",
+  "stable": true,
+  "status": "STABLE_ADMISSION_REQUESTED",
   "technical_governed_paths": [
     "RUN_TEV_SCRIPT_V31_CERTIFY_FULL.py",
     "RUN_TEV_SCRIPT_V31_STABLE_ADMISSION.py",
