@@ -35,19 +35,22 @@ The aggregate completion authority is:
 ```text
 VERSION_IDENTITY
 NORMATIVE_SPEC
+VERSION_MATRIX
+TOOLING_3X
 CONFORMANCE
 DIFFERENTIAL_FUZZ
 SEMANTIC_INVARIANTS
-VERSION_MATRIX
-TOOLING_3X
 REPRODUCIBLE_RELEASE
+FULL_REGRESSION
 ```
 
-Only eight simultaneous PASS results may produce:
+Only nine simultaneous PASS results may produce:
 
 ```text
 PLATFORM_COMPLETION=PASS
 ```
+
+`FULL_REGRESSION` is the final repository-wide non-regression guard. It requires a non-empty pytest suite, zero failures, zero errors and zero skips, and the same clean HEAD/tree before and after execution. Its source identity must equal the source identity bound by `REPRODUCIBLE_RELEASE`.
 
 Current implementation state:
 
@@ -64,6 +67,10 @@ DETERMINISTIC_TOTAL_CORE_DIFFERENTIAL_FUZZ=IMPLEMENTED
 TOTAL_CORE_CONSTITUTIONAL_WITNESSES=IMPLEMENTED
 CLEAN_TREE_REPRODUCIBLE_WHEEL_GATE=IMPLEMENTED
 SBOM_PROVENANCE_CONFORMANCE_ENVIRONMENT_BINDING=IMPLEMENTED
+FULL_ZERO_SKIP_REGRESSION_GATE=IMPLEMENTED
+SOURCE_IDENTITY_CROSS_GATE_BINDING=IMPLEMENTED
+SEALED_RECEIPT_VERIFIERS=IMPLEMENTED
+PLATFORM_COMPLETION_RECEIPT_V2_SCHEMA=IMPLEMENTED
 AGGREGATE_PLATFORM_COMPLETION_GATE=IMPLEMENTED
 ```
 
@@ -78,10 +85,11 @@ PLATFORM_COMPLETION_CERTIFICATION=PENDING_COMPLETE_CLEAN_CHECKOUT_EXECUTION
 The implementation environment cannot materialize the complete GitHub checkout through its container network path. Synthetic/focused TDD is therefore development evidence only and is not promoted to repository-wide certification. The authoritative aggregate must be run from a complete clean checkout:
 
 ```powershell
-python .\RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py
+python .\RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py `
+  --receipt .\TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT.json
 ```
 
-A HOLD remains HOLD; it is never converted into PASS. The completion receipt does not grant merge, tag or publication authority.
+A HOLD remains HOLD; it is never converted into PASS. A FAIL in any specialized gate or in the full regression blocks completion. The completion receipt does not grant merge, tag or publication authority.
 
 ## Historical V0.2/V1 lineage
 
