@@ -36,17 +36,6 @@
     "gates": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "VERSION_IDENTITY",
-        "NORMATIVE_SPEC",
-        "VERSION_MATRIX",
-        "TOOLING_3X",
-        "CONFORMANCE",
-        "DIFFERENTIAL_FUZZ",
-        "SEMANTIC_INVARIANTS",
-        "REPRODUCIBLE_RELEASE",
-        "FULL_REGRESSION"
-      ],
       "properties": {
         "VERSION_IDENTITY": {"$ref": "#/$defs/gate"},
         "NORMATIVE_SPEC": {"$ref": "#/$defs/gate"},
@@ -80,7 +69,20 @@
           "missing_gates": {"maxItems": 0},
           "extra_gates": {"maxItems": 0},
           "failed_gates": {"maxItems": 0},
-          "hold_gates": {"maxItems": 0}
+          "hold_gates": {"maxItems": 0},
+          "gates": {
+            "required": [
+              "VERSION_IDENTITY",
+              "NORMATIVE_SPEC",
+              "VERSION_MATRIX",
+              "TOOLING_3X",
+              "CONFORMANCE",
+              "DIFFERENTIAL_FUZZ",
+              "SEMANTIC_INVARIANTS",
+              "REPRODUCIBLE_RELEASE",
+              "FULL_REGRESSION"
+            ]
+          }
         }
       }
     }
