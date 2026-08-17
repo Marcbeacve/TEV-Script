@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import importlib
+import ast
 import json
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -64,23 +64,51 @@ def _authority_path(root: Path, raw: object) -> Path:
     return resolved
 
 
-def _resolve_entrypoint(raw: object) -> None:
+def _module_source_path(root: Path, module_name: str) -> Path:
+    if not module_name or any(not part for part in module_name.split(".")):
+        raise ValueError(f"entrypoint unavailable: {module_name}")
+    relative = Path(*module_name.split("."))
+    module_file = root / relative.with_suffix(".py")
+    package_file = root / relative / "__init__.py"
+    if module_file.is_file():
+        return module_file
+    if package_file.is_file():
+        return package_file
+    raise ValueError(f"entrypoint module missing: {module_name}")
+
+
+def _top_level_symbols(path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=path.as_posix())
+    symbols: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            symbols.add(node.name)
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    symbols.add(target.id)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                symbols.add(alias.asname or alias.name.split(".", 1)[0])
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                if alias.name != "*":
+                    symbols.add(alias.asname or alias.name)
+    return symbols
+
+
+def _resolve_entrypoint(root: Path, raw: object) -> None:
     if not isinstance(raw, str) or not raw:
         raise ValueError("entrypoint must be text")
     module_name, separator, attribute = raw.partition(":")
-    if not module_name:
+    source_path = _module_source_path(root, module_name)
+    if not separator:
+        return
+    if not attribute or "." in attribute:
         raise ValueError(f"entrypoint unavailable: {raw}")
-    try:
-        value: object = importlib.import_module(module_name)
-        if separator:
-            if not attribute:
-                raise AttributeError("empty attribute")
-            for part in attribute.split("."):
-                if not part:
-                    raise AttributeError("empty attribute component")
-                value = getattr(value, part)
-    except (ImportError, AttributeError) as error:
-        raise ValueError(f"entrypoint unavailable: {raw}") from error
+    if attribute not in _top_level_symbols(source_path):
+        raise ValueError(f"entrypoint symbol missing: {raw}")
 
 
 def validate_version_matrix(root: Path) -> dict[str, object]:
@@ -127,7 +155,7 @@ def validate_version_matrix(root: Path) -> dict[str, object]:
                 _authority_path(root, authority)
                 authorities.add(str(authority))
                 if "entrypoint" in raw:
-                    _resolve_entrypoint(raw["entrypoint"])
+                    _resolve_entrypoint(root, raw["entrypoint"])
                     entrypoint_count += 1
                 if status == "current":
                     current += 1
@@ -152,7 +180,7 @@ def validate_version_matrix(root: Path) -> dict[str, object]:
                 raise ValueError(f"current profile mismatch in domain: {domain}")
 
         return {
-            "schema": "TEV_SCRIPT_VERSION_MATRIX_VALIDATION_V2",
+            "schema": "TEV_SCRIPT_VERSION_MATRIX_VALIDATION_V3",
             "status": "PASS",
             "current_language": CURRENT_LANGUAGE_VERSION,
             "current_package": PACKAGE_VERSION,
@@ -162,9 +190,9 @@ def validate_version_matrix(root: Path) -> dict[str, object]:
             "entrypoint_count": entrypoint_count,
             "current_counts": current_counts,
         }
-    except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as error:
+    except (OSError, UnicodeError, ValueError, SyntaxError, json.JSONDecodeError) as error:
         return {
-            "schema": "TEV_SCRIPT_VERSION_MATRIX_VALIDATION_V2",
+            "schema": "TEV_SCRIPT_VERSION_MATRIX_VALIDATION_V3",
             "status": "FAIL",
             "current_language": CURRENT_LANGUAGE_VERSION,
             "current_package": PACKAGE_VERSION,
