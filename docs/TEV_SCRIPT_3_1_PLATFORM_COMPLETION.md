@@ -1,6 +1,6 @@
 # TEVScript 3.1 Platform Completion
 
-Status: implementation candidate. Full-repository certification is required before merge or any new release claim.
+Status: certified 3.1.2 correction candidate. Merge, tag, publication and stable promotion remain separate operator-authorized gates.
 
 ## Purpose
 

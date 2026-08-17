@@ -78,8 +78,8 @@ Certification state:
 
 ```text
 FOCUSED_TDD=PASS
-DOGFOOD_STATIC_CLOSURE_V15=PASS_2033_TESTS_ZERO_SKIP
-PLATFORM_COMPLETION_CERTIFICATION_3_1_2=PENDING_EXACT_HEAD_RECERTIFICATION
+DOGFOOD_STATIC_CLOSURE_V20=PASS_2033_TESTS_ZERO_SKIP
+PLATFORM_COMPLETION_CERTIFICATION_3_1_2=PASS_2033_TESTS_ZERO_SKIP
 ```
 
 The implementation environment cannot materialize the complete GitHub checkout through its container network path. Synthetic/focused TDD is therefore development evidence only and is not promoted to repository-wide certification. The authoritative aggregate must be run from a complete clean checkout:

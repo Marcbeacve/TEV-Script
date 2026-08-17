@@ -46,9 +46,9 @@ Completion/full-regression receipt V2 schemas:          IMPLEMENTED
 PyPI Markdown long-description metadata:                IMPLEMENTED
 Nine-gate aggregate completion authority:               IMPLEMENTED
 
-FULL_REPOSITORY_REGRESSION_3_1_1:                     PASS 2027 TESTS / 0 SKIPS
-DOGFOOD_STATIC_CLOSURE_V15:                               PASS 2033 TESTS / 0 SKIPS
-PLATFORM_COMPLETION_CERTIFICATION_3_1_2:                   PENDING EXACT-HEAD RECERTIFICATION
+FULL_REPOSITORY_REGRESSION_3_1_1:                         PASS 2027 TESTS / 0 SKIPS
+DOGFOOD_STATIC_CLOSURE_V20:                               PASS 2033 TESTS / 0 SKIPS
+PLATFORM_COMPLETION_CERTIFICATION_3_1_2:                   PASS 2033 TESTS / 0 SKIPS
 ```
 
 The connector/container used for implementation cannot materialize the complete GitHub checkout because its local network path cannot resolve GitHub. Focused and synthetic TDD was used to build and falsify individual platform organs; those checks are development evidence only and are not promoted to full-repository certification.
