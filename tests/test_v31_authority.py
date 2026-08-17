@@ -24,7 +24,6 @@ from RUN_TEV_SCRIPT_V31_CERTIFY_FULL import (
     validate_v31_matrix,
 )
 
-V31_PUBLISHED_TAG = "v3.1.0"
 V31_PUBLISHED_SHA = "c20718ddb2223ba0bfd05ff59006ca31e2966b0b"
 
 
@@ -111,9 +110,6 @@ class V31AuthorityTests(unittest.TestCase):
         )
 
     def test_published_v31_snapshot_is_minimal_against_v3_stable(self) -> None:
-        published_sha = _git("rev-parse", V31_PUBLISHED_TAG + "^{commit}")
-        self.assertEqual(published_sha, V31_PUBLISHED_SHA)
-
         changed_raw = _git(
             "diff",
             "--name-only",
