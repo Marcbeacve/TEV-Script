@@ -15,6 +15,8 @@ from tev_script.platform_completion import (
 
 SOURCE_COMMIT = "a" * 40
 SOURCE_TREE = "b" * 40
+NORMATIVE_SET_SHA256 = "1" * 64
+CONFORMANCE_SHA256 = "2" * 64
 
 
 def _canonical_json_bytes(value: object) -> bytes:
@@ -25,6 +27,10 @@ def _canonical_json_bytes(value: object) -> bytes:
         ensure_ascii=True,
         allow_nan=False,
     ).encode("utf-8")
+
+
+def _hash_object(value: object) -> str:
+    return hashlib.sha256(_canonical_json_bytes(value)).hexdigest()
 
 
 def _full_regression_receipt(
@@ -50,23 +56,39 @@ def _full_regression_receipt(
     }
     return {
         **body,
-        "receipt_sha256": hashlib.sha256(_canonical_json_bytes(body)).hexdigest(),
+        "receipt_sha256": _hash_object(body),
     }
 
 
-def _gate_receipt(name: str, status: str) -> dict[str, object]:
-    receipt: dict[str, object] = {"status": status, "gate": name}
-    if name == "REPRODUCIBLE_RELEASE" and status == "PASS":
-        receipt["source_commit"] = SOURCE_COMMIT
-        receipt["source_tree"] = SOURCE_TREE
-    if name == "FULL_REGRESSION" and status == "PASS":
-        return _full_regression_receipt()
-    return receipt
+def _pass_receipts() -> dict[str, dict[str, object]]:
+    receipts: dict[str, dict[str, object]] = {
+        name: {"status": "PASS", "gate": name}
+        for name in EXPECTED_GATES
+    }
+    receipts["NORMATIVE_SPEC"] = {
+        "status": "PASS",
+        "normative_set_sha256": NORMATIVE_SET_SHA256,
+    }
+    receipts["CONFORMANCE"] = {
+        "status": "PASS",
+        "receipt_sha256": CONFORMANCE_SHA256,
+    }
+    receipts["FULL_REGRESSION"] = _full_regression_receipt()
+    receipts["REPRODUCIBLE_RELEASE"] = {
+        "status": "PASS",
+        "source_commit": SOURCE_COMMIT,
+        "source_tree": SOURCE_TREE,
+        "version_identity_sha256": _hash_object(receipts["VERSION_IDENTITY"]),
+        "normative_set_sha256": NORMATIVE_SET_SHA256,
+        "conformance_sha256": CONFORMANCE_SHA256,
+    }
+    return receipts
 
 
-def _gates(status: str = "PASS"):
+def _gates():
+    receipts = _pass_receipts()
     return {
-        name: (lambda root, _name=name: _gate_receipt(_name, status))
+        name: (lambda root, _name=name: copy.deepcopy(receipts[_name]))
         for name in EXPECTED_GATES
     }
 
@@ -126,12 +148,15 @@ def test_release_and_regression_identity_mismatch_blocks_completion(tmp_path: Pa
         receipt["gates"]["FULL_REGRESSION"]["reason"]
         == "SOURCE_IDENTITY_MISMATCH_WITH_RELEASE"
     )
+    assert "regression_receipt" in receipt["gates"]["FULL_REGRESSION"]
     assert verify_platform_completion_receipt(receipt)
 
 
 def test_missing_source_identity_on_pass_fails_closed(tmp_path: Path) -> None:
     gates = _gates()
-    gates["REPRODUCIBLE_RELEASE"] = lambda root: {"status": "PASS"}
+    release = _pass_receipts()["REPRODUCIBLE_RELEASE"]
+    release.pop("source_commit")
+    gates["REPRODUCIBLE_RELEASE"] = lambda root: copy.deepcopy(release)
     receipt = validate_platform_completion(tmp_path, gate_functions=gates)
     assert receipt["status"] == "FAIL"
     assert receipt["failed_gates"] == ["REPRODUCIBLE_RELEASE"]
@@ -139,6 +164,40 @@ def test_missing_source_identity_on_pass_fails_closed(tmp_path: Path) -> None:
         receipt["gates"]["REPRODUCIBLE_RELEASE"]["reason"]
         == "SOURCE_IDENTITY_MISSING"
     )
+    assert "upstream_receipt" in receipt["gates"]["REPRODUCIBLE_RELEASE"]
+    assert verify_platform_completion_receipt(receipt)
+
+
+def test_release_version_identity_hash_mismatch_fails_closed(tmp_path: Path) -> None:
+    gates = _gates()
+    release = _pass_receipts()["REPRODUCIBLE_RELEASE"]
+    release["version_identity_sha256"] = "f" * 64
+    gates["REPRODUCIBLE_RELEASE"] = lambda root: copy.deepcopy(release)
+    receipt = validate_platform_completion(tmp_path, gate_functions=gates)
+    assert receipt["status"] == "FAIL"
+    assert receipt["failed_gates"] == ["REPRODUCIBLE_RELEASE"]
+    assert (
+        receipt["gates"]["REPRODUCIBLE_RELEASE"]["reason"]
+        == "RELEASE_EVIDENCE_MISMATCH"
+    )
+    assert receipt["gates"]["REPRODUCIBLE_RELEASE"]["mismatches"] == [
+        "VERSION_IDENTITY"
+    ]
+    assert verify_platform_completion_receipt(receipt)
+
+
+def test_release_normative_and_conformance_hash_mismatch_fails_closed(tmp_path: Path) -> None:
+    gates = _gates()
+    release = _pass_receipts()["REPRODUCIBLE_RELEASE"]
+    release["normative_set_sha256"] = "e" * 64
+    release["conformance_sha256"] = "f" * 64
+    gates["REPRODUCIBLE_RELEASE"] = lambda root: copy.deepcopy(release)
+    receipt = validate_platform_completion(tmp_path, gate_functions=gates)
+    assert receipt["status"] == "FAIL"
+    assert receipt["gates"]["REPRODUCIBLE_RELEASE"]["mismatches"] == [
+        "CONFORMANCE",
+        "NORMATIVE_SPEC",
+    ]
     assert verify_platform_completion_receipt(receipt)
 
 
