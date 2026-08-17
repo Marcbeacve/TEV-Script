@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -9,6 +10,7 @@ from tev_script.platform_release import (
     build_sbom,
     compare_artifacts,
     validate_platform_release,
+    verify_platform_release_receipt,
 )
 
 
@@ -127,6 +129,18 @@ def _builder(root: Path, destination: Path) -> Path:
     return target
 
 
+def _release(root: Path, **overrides):
+    arguments = {
+        "builder": _builder,
+        "identity_resolver": lambda root: ("a" * 40, "b" * 40),
+        "worktree_clean_resolver": lambda root: True,
+        "conformance_runner": _conformance,
+        "environment_resolver": _environment,
+    }
+    arguments.update(overrides)
+    return validate_platform_release(root, **arguments)
+
+
 def test_sbom_is_deterministic_and_dependency_explicit(tmp_path: Path) -> None:
     _platform_fixture(tmp_path)
     assert build_sbom(tmp_path) == build_sbom(tmp_path)
@@ -166,14 +180,7 @@ def test_provenance_has_no_timestamp_identity(tmp_path: Path) -> None:
 
 def test_full_release_evidence_requires_byte_reproducibility(tmp_path: Path) -> None:
     _platform_fixture(tmp_path)
-    receipt = validate_platform_release(
-        tmp_path,
-        builder=_builder,
-        identity_resolver=lambda root: ("a" * 40, "b" * 40),
-        worktree_clean_resolver=lambda root: True,
-        conformance_runner=_conformance,
-        environment_resolver=_environment,
-    )
+    receipt = _release(tmp_path)
     assert receipt["status"] == "PASS"
     assert receipt["package_version"] == "3.1.1"
     assert receipt["runtime_dependency_count"] == 0
@@ -182,34 +189,40 @@ def test_full_release_evidence_requires_byte_reproducibility(tmp_path: Path) -> 
     assert receipt["conformance_sha256"] == "c" * 64
     assert len(receipt["build_environment_descriptor_sha256"]) == 64
     assert len(receipt["provenance_sha256"]) == 64
+    assert verify_platform_release_receipt(receipt)
+
+
+def test_release_receipt_tamper_is_rejected(tmp_path: Path) -> None:
+    _platform_fixture(tmp_path)
+    receipt = _release(tmp_path)
+    tampered = copy.deepcopy(receipt)
+    tampered["wheel_sha256"] = "0" * 64
+    assert not verify_platform_release_receipt(tampered)
+    tampered = copy.deepcopy(receipt)
+    tampered["source_commit"] = "c" * 40
+    assert not verify_platform_release_receipt(tampered)
 
 
 def test_dirty_worktree_blocks_release_evidence(tmp_path: Path) -> None:
     _platform_fixture(tmp_path)
-    receipt = validate_platform_release(
+    receipt = _release(
         tmp_path,
-        builder=_builder,
-        identity_resolver=lambda root: ("a" * 40, "b" * 40),
         worktree_clean_resolver=lambda root: False,
-        conformance_runner=_conformance,
-        environment_resolver=_environment,
     )
     assert receipt["status"] == "FAIL"
     assert receipt["error"] == "git working tree is not clean"
+    assert verify_platform_release_receipt(receipt)
 
 
 def test_nonpassing_conformance_blocks_release_evidence(tmp_path: Path) -> None:
     _platform_fixture(tmp_path)
-    receipt = validate_platform_release(
+    receipt = _release(
         tmp_path,
-        builder=_builder,
-        identity_resolver=lambda root: ("a" * 40, "b" * 40),
-        worktree_clean_resolver=lambda root: True,
         conformance_runner=lambda root: {
             "status": "HOLD",
             "receipt_sha256": "d" * 64,
         },
-        environment_resolver=_environment,
     )
     assert receipt["status"] == "HOLD"
     assert receipt["error"] == "conformance not PASS"
+    assert verify_platform_release_receipt(receipt)
