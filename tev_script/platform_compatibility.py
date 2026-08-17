@@ -74,7 +74,9 @@ def _module_source_path(root: Path, module_name: str) -> Path:
         return module_file
     if package_file.is_file():
         return package_file
-    raise ValueError(f"entrypoint module missing: {module_name}")
+    raise ValueError(
+        f"entrypoint unavailable; entrypoint module missing: {module_name}"
+    )
 
 
 def _top_level_symbols(path: Path) -> set[str]:
