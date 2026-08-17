@@ -16,7 +16,7 @@ The normative machine-readable matrix is `TEV_SCRIPT_VERSION_MATRIX.json`.
 
 ## Status
 
-- `current`: first-class platform 3.1 surface.
+- `current`: first-class platform surface for the declared domain.
 - `compatible`: preserved and supported compatibility authority, not current semantics.
 - `historical`: immutable predecessor evidence; no current compatibility is inferred.
 
@@ -24,8 +24,21 @@ The normative machine-readable matrix is `TEV_SCRIPT_VERSION_MATRIX.json`.
 
 A tool or runtime route is valid only when one exact matrix row matches its domain, version and profile. Unsupported or ambiguous routes fail closed. Numeric equality, filename similarity or implementation reuse never creates compatibility authority.
 
+Every declared authority path must exist and every declared implementation entrypoint must resolve. Current-domain rows are unique; the current package and language/profile identities must agree with `tev_script/version.py`.
+
 ## Current composition
 
-The current 3.1 composition is `language=3.1.0`, `source_profile=total_core`, `program_ir=5/total_core`, `runtime_abi=v5-total-v1`, and `checkpoint=v5-total-checkpoint-v1`. V4 child programs remain compatible embedded artifacts and retain their own identities.
+The platform-completion candidate is:
 
-V3 semantic-process, V2 general-language and V1 linked/portable surfaces remain explicit compatibility or historical rows. They are not silently promoted to 3.1 semantics.
+```text
+package=3.1.1
+language=3.1.0
+source_profile=3.1.0/total_core
+program_ir=5/total_core
+runtime_abi=v5-total-v1
+a checkpoint=v5-total-checkpoint-v1
+```
+
+The line above intentionally separates package `3.1.1` from language `3.1.0`: this candidate changes platform/tooling authority, not Total-Core language semantics. Published package/tag `3.1.0` remains the immutable predecessor.
+
+V4 child programs remain compatible embedded artifacts and retain their own identities. V3 semantic-process, V2 general-language and V1 linked/portable surfaces remain explicit compatibility or historical rows. They are not silently promoted to 3.1 semantics.
