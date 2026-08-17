@@ -5,8 +5,8 @@ backend-path = ["tools"]
 
 [project]
 name = "tev-script-portable-reference"
-version = "3.1.0"
-description = "TEVScript MAX 3.1 Total-Core portable compiler and bounded runtime"
+version = "3.1.1"
+description = "TEVScript 3.1 platform completion over the Total-Core 3.1.0 language"
 requires-python = ">=3.11"
 dependencies = []
 
