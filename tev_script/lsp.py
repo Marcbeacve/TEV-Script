@@ -16,10 +16,9 @@ def select_lsp_main(language_version: str) -> Callable[[list[str] | None], int]:
 
         return v1_main
     if language_version == CURRENT_LANGUAGE_VERSION:
-        raise RuntimeError(
-            "TEVS_LSP_CURRENT_UNSUPPORTED: TEVScript 3.1.0 LSP semantics are not "
-            "implemented; the V1 LSP must not be used as a semantic fallback"
-        )
+        from .lsp_v31 import main as v31_main
+
+        return v31_main
     raise RuntimeError(
         f"TEVS_LSP_VERSION_UNSUPPORTED: unsupported language version {language_version}"
     )
