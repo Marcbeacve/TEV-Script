@@ -10,6 +10,8 @@ from typing import Callable
 import xml.etree.ElementTree as ET
 
 RegressionRunner = Callable[[Path, Path], int]
+IdentityResolver = Callable[[Path], tuple[str, str]]
+WorktreeCleanResolver = Callable[[Path], bool]
 
 
 def _canonical_json_bytes(value: object) -> bytes:
@@ -20,6 +22,36 @@ def _canonical_json_bytes(value: object) -> bytes:
         ensure_ascii=True,
         allow_nan=False,
     ).encode("utf-8")
+
+
+def _git(root: Path, *arguments: str) -> str:
+    completed = subprocess.run(
+        ("git", *arguments),
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    if completed.returncode != 0:
+        raise RuntimeError("git source identity unavailable")
+    return completed.stdout.strip()
+
+
+def _default_identity(root: Path) -> tuple[str, str]:
+    return _git(root, "rev-parse", "HEAD"), _git(root, "rev-parse", "HEAD^{tree}")
+
+
+def _default_worktree_clean(root: Path) -> bool:
+    return _git(root, "status", "--porcelain=v1", "--untracked-files=all") == ""
+
+
+def _is_git_sha(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 40
+        and all(character in "0123456789abcdef" for character in value)
+    )
 
 
 def _default_runner(root: Path, junit_path: Path) -> int:
@@ -56,7 +88,8 @@ def _junit_counts(path: Path) -> tuple[int, int, int, int]:
     if root.tag in {"testsuite", "testsuites"} and all(
         name in root.attrib for name in names
     ):
-        return tuple(_integer_attribute(root, name) for name in names)  # type: ignore[return-value]
+        values = tuple(_integer_attribute(root, name) for name in names)
+        return values[0], values[1], values[2], values[3]
 
     suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
     if not suites:
@@ -72,53 +105,117 @@ def run_full_regression(
     root: Path | str,
     *,
     runner: RegressionRunner | None = None,
+    identity_resolver: IdentityResolver | None = None,
+    worktree_clean_resolver: WorktreeCleanResolver | None = None,
 ) -> dict[str, object]:
     root = Path(root)
     execute = _default_runner if runner is None else runner
+    resolve_identity = _default_identity if identity_resolver is None else identity_resolver
+    resolve_clean = (
+        _default_worktree_clean
+        if worktree_clean_resolver is None
+        else worktree_clean_resolver
+    )
     body: dict[str, object]
     try:
-        with tempfile.TemporaryDirectory(prefix="tevscript-full-regression-") as temporary:
-            junit_path = Path(temporary) / "pytest-junit.xml"
-            returncode = int(execute(root, junit_path))
-            if not junit_path.is_file():
-                body = {
-                    "schema": "TEV_SCRIPT_PLATFORM_FULL_REGRESSION_V1",
-                    "status": "FAIL",
-                    "reason": "JUNIT_RESULT_MISSING",
-                    "returncode": returncode,
-                    "test_count": 0,
-                    "failure_count": 0,
-                    "error_count": 0,
-                    "skipped_count": 0,
-                    "junit_sha256": "",
-                }
-            else:
-                junit_bytes = junit_path.read_bytes()
-                tests, failures, errors, skipped = _junit_counts(junit_path)
-                clean = (
-                    returncode == 0
-                    and tests > 0
-                    and failures == 0
-                    and errors == 0
-                    and skipped == 0
-                )
-                body = {
-                    "schema": "TEV_SCRIPT_PLATFORM_FULL_REGRESSION_V1",
-                    "status": "PASS" if clean else "FAIL",
-                    "reason": "" if clean else "FULL_REGRESSION_NOT_CLEAN",
-                    "returncode": returncode,
-                    "test_count": tests,
-                    "failure_count": failures,
-                    "error_count": errors,
-                    "skipped_count": skipped,
-                    "junit_sha256": hashlib.sha256(junit_bytes).hexdigest(),
-                }
-    except (OSError, ValueError, ET.ParseError, subprocess.SubprocessError) as error:
+        source_before = resolve_identity(root)
+        if not all(_is_git_sha(value) for value in source_before):
+            raise ValueError("invalid Git source identity")
+        clean_before = bool(resolve_clean(root))
+        if not clean_before:
+            body = {
+                "schema": "TEV_SCRIPT_PLATFORM_FULL_REGRESSION_V2",
+                "status": "FAIL",
+                "reason": "SOURCE_IDENTITY_NOT_STABLE",
+                "source_commit": source_before[0],
+                "source_tree": source_before[1],
+                "identity_stable": False,
+                "worktree_clean_before": False,
+                "worktree_clean_after": False,
+                "returncode": -1,
+                "test_count": 0,
+                "failure_count": 0,
+                "error_count": 0,
+                "skipped_count": 0,
+                "junit_sha256": "",
+            }
+        else:
+            with tempfile.TemporaryDirectory(prefix="tevscript-full-regression-") as temporary:
+                junit_path = Path(temporary) / "pytest-junit.xml"
+                returncode = int(execute(root, junit_path))
+                source_after = resolve_identity(root)
+                if not all(_is_git_sha(value) for value in source_after):
+                    raise ValueError("invalid Git source identity after regression")
+                clean_after = bool(resolve_clean(root))
+                identity_stable = source_after == source_before
+
+                if not junit_path.is_file():
+                    body = {
+                        "schema": "TEV_SCRIPT_PLATFORM_FULL_REGRESSION_V2",
+                        "status": "FAIL",
+                        "reason": "JUNIT_RESULT_MISSING",
+                        "source_commit": source_before[0],
+                        "source_tree": source_before[1],
+                        "identity_stable": identity_stable,
+                        "worktree_clean_before": clean_before,
+                        "worktree_clean_after": clean_after,
+                        "returncode": returncode,
+                        "test_count": 0,
+                        "failure_count": 0,
+                        "error_count": 0,
+                        "skipped_count": 0,
+                        "junit_sha256": "",
+                    }
+                else:
+                    junit_bytes = junit_path.read_bytes()
+                    tests, failures, errors, skipped = _junit_counts(junit_path)
+                    test_clean = (
+                        returncode == 0
+                        and tests > 0
+                        and failures == 0
+                        and errors == 0
+                        and skipped == 0
+                    )
+                    source_clean = clean_before and clean_after and identity_stable
+                    passed = test_clean and source_clean
+                    reason = ""
+                    if not source_clean:
+                        reason = "SOURCE_IDENTITY_NOT_STABLE"
+                    elif not test_clean:
+                        reason = "FULL_REGRESSION_NOT_CLEAN"
+                    body = {
+                        "schema": "TEV_SCRIPT_PLATFORM_FULL_REGRESSION_V2",
+                        "status": "PASS" if passed else "FAIL",
+                        "reason": reason,
+                        "source_commit": source_before[0],
+                        "source_tree": source_before[1],
+                        "identity_stable": identity_stable,
+                        "worktree_clean_before": clean_before,
+                        "worktree_clean_after": clean_after,
+                        "returncode": returncode,
+                        "test_count": tests,
+                        "failure_count": failures,
+                        "error_count": errors,
+                        "skipped_count": skipped,
+                        "junit_sha256": hashlib.sha256(junit_bytes).hexdigest(),
+                    }
+    except (
+        OSError,
+        ValueError,
+        RuntimeError,
+        ET.ParseError,
+        subprocess.SubprocessError,
+    ) as error:
         body = {
-            "schema": "TEV_SCRIPT_PLATFORM_FULL_REGRESSION_V1",
+            "schema": "TEV_SCRIPT_PLATFORM_FULL_REGRESSION_V2",
             "status": "FAIL",
             "reason": "FULL_REGRESSION_EXECUTION_ERROR",
             "error": f"{type(error).__name__}: {error}",
+            "source_commit": "",
+            "source_tree": "",
+            "identity_stable": False,
+            "worktree_clean_before": False,
+            "worktree_clean_after": False,
             "returncode": -1,
             "test_count": 0,
             "failure_count": 0,
@@ -132,4 +229,9 @@ def run_full_regression(
     }
 
 
-__all__ = ["RegressionRunner", "run_full_regression"]
+__all__ = [
+    "IdentityResolver",
+    "RegressionRunner",
+    "WorktreeCleanResolver",
+    "run_full_regression",
+]
