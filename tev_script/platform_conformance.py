@@ -8,10 +8,25 @@ import subprocess
 import sys
 from typing import Callable, Sequence
 
-from .version import CURRENT_LANGUAGE_VERSION
+from .version import CURRENT_LANGUAGE_VERSION, CURRENT_PROFILE
 
 MANIFEST_PATH = Path("conformance/v31-platform-manifest.json")
-MANIFEST_SCHEMA = "TEV_SCRIPT_PLATFORM_CONFORMANCE_MANIFEST_V1"
+MANIFEST_SCHEMA = "TEV_SCRIPT_PLATFORM_CONFORMANCE_MANIFEST_V2"
+REQUIRED_SEMANTIC_AREAS = frozenset(
+    {
+        "total_core_ir",
+        "total_core_runtime",
+        "total_core_source",
+        "collections_generics_protocols",
+        "tasks_continuations",
+        "effects_capabilities",
+        "budget_exhaustion",
+        "malformed_ir_rejection",
+        "proof_admission_boundary",
+        "checkpoint_replay",
+        "cross_runtime_parity",
+    }
+)
 
 Executor = Callable[[Sequence[str], Path], int]
 ToolResolver = Callable[[str], str | None]
@@ -72,19 +87,30 @@ def run_platform_conformance(
     resolve = shutil.which if tool_resolver is None else tool_resolver
     outcomes: list[dict[str, object]] = []
     try:
-        manifest = load_platform_manifest(root)
+        manifest_path = root / MANIFEST_PATH
+        manifest_bytes = manifest_path.read_bytes()
+        manifest = json.loads(manifest_bytes.decode("utf-8"))
+        if not isinstance(manifest, dict):
+            raise ValueError("platform conformance manifest must be an object")
         if manifest.get("schema") != MANIFEST_SCHEMA:
             raise ValueError("platform conformance manifest schema mismatch")
         if manifest.get("language_version") != CURRENT_LANGUAGE_VERSION:
             raise ValueError("platform conformance language version mismatch")
+        if manifest.get("profile") != CURRENT_PROFILE:
+            raise ValueError("platform conformance profile mismatch")
         cases = manifest.get("cases")
         if not isinstance(cases, list) or not cases:
             raise ValueError("platform conformance cases missing")
+
         seen: set[str] = set()
+        covered: set[str] = set()
+        normalized: list[dict[str, object]] = []
         for raw in cases:
             if not isinstance(raw, dict):
                 raise ValueError("platform conformance case must be an object")
             case_id = raw.get("case_id")
+            semantic_area = raw.get("semantic_area")
+            expected_status = raw.get("expected_status")
             kind = raw.get("kind")
             target = raw.get("target")
             tools = raw.get("required_tools", ["python"])
@@ -92,21 +118,63 @@ def run_platform_conformance(
             if not isinstance(case_id, str) or not case_id or case_id in seen:
                 raise ValueError("invalid or duplicate conformance case_id")
             seen.add(case_id)
+            if semantic_area not in REQUIRED_SEMANTIC_AREAS:
+                raise ValueError(f"unknown semantic area: {case_id}")
+            covered.add(str(semantic_area))
+            if expected_status != "PASS":
+                raise ValueError(f"unsupported expected status: {case_id}")
             if kind != "pytest" or not isinstance(target, str):
                 raise ValueError(f"unsupported conformance case kind: {case_id}")
             if not isinstance(tools, list) or any(
                 not isinstance(tool, str) or not tool for tool in tools
             ):
                 raise ValueError(f"invalid tool list: {case_id}")
+            normalized.append(
+                {
+                    "case_id": case_id,
+                    "semantic_area": str(semantic_area),
+                    "target": target,
+                    "tools": list(tools),
+                    "expected_blob": expected_blob,
+                }
+            )
+
+        missing_areas = sorted(REQUIRED_SEMANTIC_AREAS - covered)
+        if missing_areas:
+            body = {
+                "schema": "TEV_SCRIPT_PLATFORM_CONFORMANCE_RECEIPT_V2",
+                "language_version": CURRENT_LANGUAGE_VERSION,
+                "profile": CURRENT_PROFILE,
+                "status": "FAIL",
+                "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+                "covered_semantic_areas": sorted(covered),
+                "missing_semantic_areas": missing_areas,
+                "outcomes": [],
+                "failed_cases": [],
+                "hold_cases": [],
+            }
+            return {
+                **body,
+                "receipt_sha256": hashlib.sha256(_canonical_json_bytes(body)).hexdigest(),
+            }
+
+        for row in normalized:
+            case_id = str(row["case_id"])
+            semantic_area = str(row["semantic_area"])
+            target = str(row["target"])
+            tools = list(row["tools"])
             file_path = _target_file(target)
             data = (root / Path(file_path)).read_bytes()
             observed_blob = _git_blob_sha1(data)
-            if not isinstance(expected_blob, str) or observed_blob != expected_blob:
+            target_sha256 = hashlib.sha256(data).hexdigest()
+            if not isinstance(row["expected_blob"], str) or observed_blob != row["expected_blob"]:
                 outcomes.append(
                     {
                         "case_id": case_id,
+                        "semantic_area": semantic_area,
                         "status": "FAIL",
                         "reason": "TARGET_IDENTITY_MISMATCH",
+                        "target_sha256": target_sha256,
                     }
                 )
                 continue
@@ -117,9 +185,11 @@ def run_platform_conformance(
                 outcomes.append(
                     {
                         "case_id": case_id,
+                        "semantic_area": semantic_area,
                         "status": "HOLD",
                         "reason": "MISSING_TOOL",
                         "tools": sorted(unavailable),
+                        "target_sha256": target_sha256,
                     }
                 )
                 continue
@@ -130,10 +200,13 @@ def run_platform_conformance(
             outcomes.append(
                 {
                     "case_id": case_id,
+                    "semantic_area": semantic_area,
                     "status": "PASS" if returncode == 0 else "FAIL",
                     "returncode": returncode,
+                    "target_sha256": target_sha256,
                 }
             )
+
         failed = sorted(
             str(row["case_id"]) for row in outcomes if row["status"] == "FAIL"
         )
@@ -142,9 +215,13 @@ def run_platform_conformance(
         )
         status = "FAIL" if failed else ("HOLD" if hold else "PASS")
         body = {
-            "schema": "TEV_SCRIPT_PLATFORM_CONFORMANCE_RECEIPT_V1",
+            "schema": "TEV_SCRIPT_PLATFORM_CONFORMANCE_RECEIPT_V2",
             "language_version": CURRENT_LANGUAGE_VERSION,
+            "profile": CURRENT_PROFILE,
             "status": status,
+            "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+            "covered_semantic_areas": sorted(covered),
+            "missing_semantic_areas": [],
             "outcomes": sorted(outcomes, key=lambda row: str(row["case_id"])),
             "failed_cases": failed,
             "hold_cases": hold,
@@ -155,9 +232,13 @@ def run_platform_conformance(
         }
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as error:
         body = {
-            "schema": "TEV_SCRIPT_PLATFORM_CONFORMANCE_RECEIPT_V1",
+            "schema": "TEV_SCRIPT_PLATFORM_CONFORMANCE_RECEIPT_V2",
             "language_version": CURRENT_LANGUAGE_VERSION,
+            "profile": CURRENT_PROFILE,
             "status": "FAIL",
+            "manifest_sha256": "",
+            "covered_semantic_areas": [],
+            "missing_semantic_areas": sorted(REQUIRED_SEMANTIC_AREAS),
             "outcomes": outcomes,
             "failed_cases": [],
             "hold_cases": [],
@@ -172,6 +253,7 @@ def run_platform_conformance(
 __all__ = [
     "MANIFEST_PATH",
     "MANIFEST_SCHEMA",
+    "REQUIRED_SEMANTIC_AREAS",
     "load_platform_manifest",
     "run_platform_conformance",
 ]
