@@ -4,6 +4,7 @@ import copy
 import unittest
 
 from tev_script.descriptor_v31 import v31_descriptor
+from tev_script.release_metadata_v31 import STABLE
 
 from RUN_TEV_SCRIPT_V31_CERTIFY_FULL import (
     EXPECTED_BRANCH,
@@ -23,14 +24,14 @@ from RUN_TEV_SCRIPT_V31_CERTIFY_FULL import (
 
 
 class V31AuthorityTests(unittest.TestCase):
-    def test_matrix_closes_total_core_features_without_release_authority(self) -> None:
+    def test_matrix_closes_total_core_features_without_operator_authority(self) -> None:
         matrix = load_feature_matrix(ROOT)
         report = validate_v31_matrix(matrix, v31_descriptor())
         self.assertEqual(report["status"], "PASS", report["errors"])
         self.assertTrue(report["all_required_features_closed"])
         self.assertFalse(report["publication_authorized"])
         self.assertFalse(report["merge_authorized"])
-        self.assertFalse(report["language_stable"])
+        self.assertEqual(report["language_stable"], STABLE)
 
     def test_matrix_pins_exact_stable_v3_predecessor(self) -> None:
         matrix = load_feature_matrix(ROOT)
@@ -73,7 +74,12 @@ class V31AuthorityTests(unittest.TestCase):
         )
         self.assertEqual(
             RELEASE_MUTABLE_PATHS,
-            frozenset({"tev_script/release_metadata_v31.py"}),
+            frozenset(
+                {
+                    "spec/TEV_SCRIPT_V31_FEATURE_MATRIX.json",
+                    "tev_script/release_metadata_v31.py",
+                }
+            ),
         )
 
     def test_current_candidate_is_minimal_against_v3_stable(self) -> None:
