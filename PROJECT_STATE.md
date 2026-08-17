@@ -1,6 +1,124 @@
 # [ESTADO ACTUAL DEL PROYECTO]
 
-## Progreso
+## Estado canónico actual
+
+```text
+PUBLISHED_PACKAGE_VERSION=3.1.0
+PUBLISHED_LANGUAGE_VERSION=3.1.0
+PUBLISHED_PROFILE=total_core
+PUBLISHED_TAG=v3.1.0
+PUBLISHED_COMMIT=c20718ddb2223ba0bfd05ff59006ca31e2966b0b
+PUBLISHED_TREE=812b140c5e6fb7232ef379773d9c37e8f3459f4c
+PUBLISHED_STABLE_ADMISSION=PASS
+
+PLATFORM_CANDIDATE_PACKAGE_VERSION=3.1.1
+PLATFORM_CANDIDATE_LANGUAGE_VERSION=3.1.0
+PLATFORM_CANDIDATE_PROFILE=total_core
+PLATFORM_CANDIDATE_BRANCH=agent/tevscript-platform-completion-v1
+MERGE_AUTHORITY=FALSE
+PUBLICATION_AUTHORITY=FALSE
+TAG_AUTHORITY=FALSE
+```
+
+`3.1.1` is a platform/tooling completion patch over unchanged Total-Core language semantics `3.1.0`. The published `v3.1.0` package/tag remains immutable predecessor authority.
+
+## Progreso del cierre de plataforma
+
+```text
+Canonical package/language/profile version domains:    IMPLEMENTED
+Public __version__ / CLI version binding:               IMPLEMENTED
+Normative 3.1 platform integration:                     IMPLEMENTED
+Content-addressed normative authority set:              IMPLEMENTED
+Explicit Language/IR/Runtime/ABI/checkpoint matrix:     IMPLEMENTED
+Resolvable authority/entrypoint validation:             IMPLEMENTED
+Current generic Total-Core CLI:                         IMPLEMENTED
+Current Total-Core LSP:                                 IMPLEMENTED
+Semantic-area conformance manifest:                     IMPLEMENTED
+Deterministic Total-Core differential fuzzing:          IMPLEMENTED
+Direct Total-Core constitutional witnesses:             IMPLEMENTED
+Clean-source reproducible wheel gate:                   IMPLEMENTED
+SBOM + provenance + conformance/environment binding:    IMPLEMENTED
+PyPI Markdown long-description metadata:                IMPLEMENTED
+Eight-gate aggregate completion authority:              IMPLEMENTED
+
+FULL_REPOSITORY_REGRESSION_IN_CONNECTOR_ENVIRONMENT:     NOT EXECUTED
+PLATFORM_COMPLETION_CERTIFICATION:                       PENDING CLEAN CHECKOUT
+```
+
+The connector/container used for implementation cannot materialize the complete GitHub checkout because its local network path cannot resolve GitHub. Focused and synthetic TDD was used to build and falsify individual platform organs; those checks are development evidence only and are not promoted to full-repository certification.
+
+## Completion authority
+
+The exact aggregate gate is:
+
+```text
+VERSION_IDENTITY
+NORMATIVE_SPEC
+CONFORMANCE
+DIFFERENTIAL_FUZZ
+SEMANTIC_INVARIANTS
+VERSION_MATRIX
+TOOLING_3X
+REPRODUCIBLE_RELEASE
+```
+
+Only eight simultaneous PASS values on one exact clean commit/tree may emit:
+
+```text
+PLATFORM_COMPLETION=PASS
+```
+
+A FAIL blocks completion. A HOLD remains HOLD. The completion receipt never grants merge, tag, release or stable-promotion authority.
+
+Authoritative execution from a complete clean checkout:
+
+```powershell
+python .\RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py --receipt TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT.json
+```
+
+## Current architecture
+
+```text
+.tevs 3.1 Total-Core project
+        ↓
+current generic CLI / current Total-Core LSP
+        ↓
+compile_total_core_v31
+        ↓
+TEV_SCRIPT_PROGRAM_IR_V5_TOTAL_CORE_V1
+        ↓
+validated V4 child units + Field / Transformation / Apply
+        ↓
+bounded quantum execution
+        ↓
+content-addressed checkpoint / continuation / receipts
+        ↓
+Python reference runtime ⇄ independent JavaScript witness
+```
+
+Production runtimes execute validated canonical IR/artifacts only. Source declarations never grant physical authority; effects cross explicit capabilities/providers. Exact `Int`/`Rat`, bounded execution, canonical identity, replay and cross-runtime equivalence remain constitutional properties.
+
+## Current documentation / authority map
+
+```text
+README.md
+docs/STATUS.md
+docs/TEV_SCRIPT_3_1_PLATFORM_COMPLETION.md
+spec/TEV_SCRIPT_3_1_PLATFORM.md
+spec/TEV_SCRIPT_3_1_NORMATIVE_INDEX.json
+spec/TEV_SCRIPT_VERSIONING.md
+spec/TEV_SCRIPT_VERSION_MATRIX.json
+conformance/v31-platform-manifest.json
+RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py
+```
+
+---
+
+# Historical V1/S4 project-state snapshot — preserved
+
+The material below is retained as historical release-line evidence. It is not the current project state.
+
+## Progreso histórico
 
 ```text
 V0.2 exact source grammar / static semantics:          PASS CERTIFIED LOCAL
@@ -52,7 +170,7 @@ evidence, but they cannot substitute for `CERTIFY_V2`. Certification receipts ar
 written outside the repository so certification cannot mutate the identity it
 attests.
 
-## Verificación / autoridades exactas
+## Verificación / autoridades exactas históricas
 
 ### V0.2 oracle preservado
 
@@ -95,7 +213,7 @@ P6_CERTIFICATION_SETUPTOOLS_VERSION=82.0.1
 
 These are candidate-profile P6 identities. They are evidence for the parent, not publication artifacts for V1.0.0. Stable Admission will rebuild and re-certify the exact S4 `1.0.0` wheel and JavaScript tarball and bind their bytes into the stable-admission receipt.
 
-## Rama / release shape actual
+## Rama / release shape histórica
 
 ```text
 BRANCH=agent/tev-script-v1-stable-release-1-0-0-v4
@@ -115,7 +233,7 @@ PUBLISHED=NO
 
 The `stable=true` metadata is deliberately a claim awaiting admission. It does not itself establish `LANGUAGE_STABLE=YES`. Only a successful exact Stable Admission receipt for this S identity can authorize that conclusion.
 
-## S4 release-diff confinement
+## S4 release-diff confinement histórico
 
 S4 must differ from P6 in exactly these eight paths and no others:
 
@@ -132,7 +250,7 @@ tev_script/release_metadata_v1.py
 
 No parser, linker, static semantic, compiler, IR, runtime, C#, Browser-WASM, WASI, signed-update implementation, test, build backend, or certification-gate change is permitted in S4. Any technical failure requiring such a change invalidates S4 and requires a new technically certified parent.
 
-## Log de cambios de cierre
+## Log de cambios histórico
 
 1. The historical V1 technical base was integrated to `main` without claiming language stability.
 2. The old release-shaped S2 remained bound to an obsolete technical parent and was not reused.
@@ -143,7 +261,7 @@ No parser, linker, static semantic, compiler, IR, runtime, C#, Browser-WASM, WAS
 7. Exact P6 passed global and Python candidate-profile certification with stable HEAD/TREE and a clean worktree.
 8. S4 changes only governed release metadata/documentation/version paths and binds the exact P6 canonical certificate SHA.
 
-## Canonical V1 source/runtime boundary
+## Canonical V1 source/runtime boundary histórico
 
 ```text
 V1 source set
@@ -170,13 +288,13 @@ Key V1.0.0 language surface:
 - exact `Int` and `Rat` semantics;
 - no recursion, unbounded loops, reflection, dynamic code, hidden host objects or implicit concurrency.
 
-## Runtime / portability model
+## Runtime / portability model histórico
 
 IR V3 keeps the finite acyclic machine model and adds closed immutable algebraic values through a canonical type table. Runtime implementations are Python, JavaScript and C#; global certification also covers Browser-WASM AOT, WASI fresh/restore, checkpoint parity and governed signed updates.
 
 The Python distribution uses an in-tree PEP 517 backend whose build requirements are empty. The backend is packaging authority only; it does not participate in TEV language semantics or runtime execution. Python project runtime dependencies remain exactly zero.
 
-## Hipótesis falsables activas
+## Hipótesis falsables históricas
 
 ### H1 — exact parent binding
 Stable Admission must reject any mismatch in P6 certificate bytes, canonical receipt SHA, commit or tree.
@@ -202,7 +320,7 @@ A later rebuild must not silently replace the Python wheel or JavaScript tarball
 ### H8 — V0.2 non-regression
 No V1 release operation may alter or reinterpret the certified V0.2 semantic/runtime oracle.
 
-## Tareas siguientes
+## Tareas históricas
 
 1. Materialize a clean checkout of exact S4.
 2. Preserve the exact canonical P6 receipt file generated during certification.
@@ -226,7 +344,7 @@ Python capability implementations remain trusted embedding code. Untrusted callb
 
 ---
 
-## TEV Script V2 stable-admission request
+## TEV Script V2 stable-admission request histórico
 
 ```text
 V2_STABLE_ADMISSION=REQUESTED
@@ -236,4 +354,4 @@ V2_TECHNICAL_PARENT_COMMIT=64d31f9c726ab82719a152bf551dc524abe82373
 V2_TECHNICAL_PARENT_CERTIFICATE_SHA256=49ccf5f6e5c4bf9962ccc6823ecade5f61f616787d3f7c5f0b596b51d4ff1bc7
 ```
 
-This is the release-only Phase S source shape. It is bound to the exact independently recertified technical parent above. The source claim remains pending until `RUN_TEV_SCRIPT_V2_STABLE_ADMISSION.py` emits `STABLE_ADMISSION=PASS`. No tag, package publication, or main promotion is implied by this metadata alone.
+This is the historical release-only Phase S source shape. It is retained as predecessor evidence and is not current platform state.
