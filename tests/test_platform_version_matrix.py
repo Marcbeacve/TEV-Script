@@ -13,14 +13,30 @@ from tev_script.platform_compatibility import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _write_authority(root: Path, relative: str) -> None:
+    path = root / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.write_text("synthetic authority\n", encoding="utf-8")
+
+
 def _write_matrix(root: Path, *, duplicate: bool = False) -> None:
     spec = root / "spec"
     spec.mkdir(parents=True)
+    authorities = {
+        "spec/platform.md",
+        "spec/total.md",
+        "spec/linked.md",
+        "tev_script/version.py",
+    }
+    for authority in authorities:
+        _write_authority(root, authority)
     package_rows = [
         {
-            "version": "3.1.0",
+            "version": "3.1.1",
             "status": "current",
             "authority": "tev_script/version.py",
+            "entrypoint": "tev_script",
         }
     ]
     if duplicate:
@@ -68,6 +84,7 @@ def _write_matrix(root: Path, *, duplicate: bool = False) -> None:
                     "profile": "total_core",
                     "status": "current",
                     "authority": "spec/total.md",
+                    "entrypoint": "tev_script.runtime_v5_total:run_total_core_quantum",
                 }
             ],
             "checkpoint": [
@@ -76,6 +93,7 @@ def _write_matrix(root: Path, *, duplicate: bool = False) -> None:
                     "profile": "total_core",
                     "status": "current",
                     "authority": "spec/total.md",
+                    "entrypoint": "tev_script.runtime_v5_total:TotalCoreCheckpointV1",
                 }
             ],
             "package": package_rows,
@@ -91,8 +109,11 @@ def test_repository_version_matrix_is_explicit_and_current() -> None:
     receipt = validate_version_matrix(ROOT)
     assert receipt["status"] == "PASS"
     assert receipt["current_language"] == "3.1.0"
+    assert receipt["current_package"] == "3.1.1"
     assert "total_core" in receipt["current_profiles"]
     assert receipt["row_count"] >= 10
+    assert receipt["authority_count"] >= 1
+    assert receipt["entrypoint_count"] >= 1
 
 
 def test_total_core_runtime_route_is_exact() -> None:
@@ -106,6 +127,37 @@ def test_duplicate_version_route_fails_closed(tmp_path: Path) -> None:
     receipt = validate_version_matrix(tmp_path)
     assert receipt["status"] == "FAIL"
     assert "duplicate version row" in receipt["error"]
+
+
+def test_missing_authority_file_fails_closed(tmp_path: Path) -> None:
+    _write_matrix(tmp_path)
+    path = tmp_path / "spec" / "platform.md"
+    path.unlink()
+    receipt = validate_version_matrix(tmp_path)
+    assert receipt["status"] == "FAIL"
+    assert "authority path missing" in receipt["error"]
+
+
+def test_unresolvable_entrypoint_fails_closed(tmp_path: Path) -> None:
+    _write_matrix(tmp_path)
+    path = tmp_path / "spec" / "TEV_SCRIPT_VERSION_MATRIX.json"
+    matrix = json.loads(path.read_text(encoding="utf-8"))
+    matrix["domains"]["program_ir"][0]["entrypoint"] = "tev_script.missing:nope"
+    path.write_text(json.dumps(matrix), encoding="utf-8")
+    receipt = validate_version_matrix(tmp_path)
+    assert receipt["status"] == "FAIL"
+    assert "entrypoint unavailable" in receipt["error"]
+
+
+def test_current_package_must_match_package_authority(tmp_path: Path) -> None:
+    _write_matrix(tmp_path)
+    path = tmp_path / "spec" / "TEV_SCRIPT_VERSION_MATRIX.json"
+    matrix = json.loads(path.read_text(encoding="utf-8"))
+    matrix["domains"]["package"][0]["version"] = "9.9.9"
+    path.write_text(json.dumps(matrix), encoding="utf-8")
+    receipt = validate_version_matrix(tmp_path)
+    assert receipt["status"] == "FAIL"
+    assert "current package mismatch" in receipt["error"]
 
 
 def test_unknown_route_is_not_inferred(tmp_path: Path) -> None:
