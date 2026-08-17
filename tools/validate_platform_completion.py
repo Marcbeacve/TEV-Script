@@ -4,7 +4,10 @@ import argparse
 import json
 from pathlib import Path
 
-from tev_script.platform_completion import validate_platform_completion
+from tev_script.platform_completion import (
+    validate_platform_completion,
+    verify_platform_completion_receipt,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -23,8 +26,10 @@ def main(argv: list[str] | None = None) -> int:
         fuzz_seed=arguments.fuzz_seed,
         fuzz_count=arguments.fuzz_count,
     )
+    verified = verify_platform_completion_receipt(receipt)
     print(json.dumps(receipt, sort_keys=True, separators=(",", ":"), ensure_ascii=True))
-    return 0 if receipt["status"] == "PASS" else 1
+    print("PLATFORM_COMPLETION_RECEIPT_VERIFY=" + ("PASS" if verified else "FAIL"))
+    return 0 if verified and receipt["status"] == "PASS" else 1
 
 
 if __name__ == "__main__":
