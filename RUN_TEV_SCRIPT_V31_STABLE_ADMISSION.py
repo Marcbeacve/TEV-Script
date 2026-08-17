@@ -261,6 +261,11 @@ def validate_artifact_dir(path: str | Path) -> Path:
     return candidate
 
 
+def validate_finalization_root(path: str | Path) -> Path:
+    candidate = validate_artifact_dir(path)
+    return candidate
+
+
 def _environment(*, include_repo: bool) -> dict[str, str]:
     env = os.environ.copy()
     if include_repo:
@@ -307,6 +312,14 @@ def _git(*args: str) -> str:
     return _run(("git", *args), timeout=120).stdout.strip()
 
 
+def _remote_branch_sha() -> str:
+    raw = _git("ls-remote", "origin", "refs/heads/" + EXPECTED_BRANCH)
+    rows = [line.split() for line in raw.splitlines() if line.strip()]
+    if len(rows) != 1 or len(rows[0]) != 2:
+        raise V31StableAdmissionFailure("cannot resolve exact candidate branch")
+    return rows[0][0]
+
+
 def _parse_pytest_counts(result: subprocess.CompletedProcess[str]) -> tuple[int, int]:
     text = result.stdout + "\n" + result.stderr
     passed = [int(match.group("count")) for match in _PASSED.finditer(text)]
@@ -348,10 +361,10 @@ def _require_release_identity(parent: str) -> tuple[str, str, tuple[str, ...]]:
     )
     if not verify_release_diff_paths(paths):
         raise V31StableAdmissionFailure("release diff whitelist mismatch")
-    remote = _git("ls-remote", "origin", "refs/heads/" + EXPECTED_BRANCH)
-    rows = [line.split() for line in remote.splitlines() if line.strip()]
-    if len(rows) != 1 or rows[0][0] != head:
-        raise V31StableAdmissionFailure("release branch is not pushed at exact HEAD")
+    if _remote_branch_sha() != parent:
+        raise V31StableAdmissionFailure(
+            "remote branch must remain at technical parent until Stable Admission PASS"
+        )
     return head, tree, paths
 
 
@@ -430,14 +443,15 @@ def _installed_smoke(wheel: Path) -> tuple[str, str, str]:
             include_repo=False,
         )
 
-        v31 = _run(
-            (str(python), "-m", "tev_script.describe_v31"),
-            timeout=120,
-            cwd=workspace,
-            include_repo=False,
+        v31 = json.loads(
+            _run(
+                (str(python), "-m", "tev_script.describe_v31"),
+                timeout=120,
+                cwd=workspace,
+                include_repo=False,
+            ).stdout
         )
-        descriptor = json.loads(v31.stdout)
-        if descriptor.get("language_version") != "3.1.0" or descriptor.get("stable") is not True:
+        if v31.get("language_version") != "3.1.0" or v31.get("stable") is not True:
             raise V31StableAdmissionFailure("installed V31 descriptor is not stable")
 
         process_path = workspace / "process.tevs"
@@ -479,19 +493,21 @@ def _installed_smoke(wheel: Path) -> tuple[str, str, str]:
             cwd=workspace,
             include_repo=False,
         )
-        run = _run(
-            (
-                str(python),
-                "-m",
-                "tev_script.cli_v31",
-                "run-total",
-                str(program_path),
-            ),
-            timeout=120,
-            cwd=workspace,
-            include_repo=False,
+        result = json.loads(
+            _run(
+                (
+                    str(python),
+                    "-m",
+                    "tev_script.cli_v31",
+                    "run-total",
+                    str(program_path),
+                ),
+                timeout=120,
+                cwd=workspace,
+                include_repo=False,
+            ).stdout
         )
-        if json.loads(run.stdout).get("status") != "HALTED":
+        if result.get("status") != "HALTED":
             raise V31StableAdmissionFailure("installed V31 Total-Core smoke did not halt")
 
         v3 = json.loads(
@@ -515,7 +531,6 @@ def _installed_smoke(wheel: Path) -> tuple[str, str, str]:
         )
         if v2.get("language_version") != "2.0.0" or v2.get("stable") is not True:
             raise V31StableAdmissionFailure("installed V2 compatibility failed")
-
         return "PASS", "PASS", "PASS"
 
 
@@ -624,12 +639,285 @@ def certify(
     return receipt
 
 
+def _stable_release_metadata_text(parent: str, certificate_sha: str) -> str:
+    return f'''from __future__ import annotations
+
+LANGUAGE_VERSION = "3.1.0"
+RELEASE_PROFILE = "stable_request"
+RELEASE_STATUS = "STABLE_ADMISSION_REQUESTED"
+STABLE = True
+PUBLICATION_AUTHORITY = False
+MERGE_AUTHORITY = False
+TECHNICAL_PARENT_COMMIT = "{parent}"
+TECHNICAL_PARENT_RECEIPT_SHA256 = "{certificate_sha}"
+
+
+def _is_sha(value: str, length: int) -> bool:
+    return len(value) == length and all(c in "0123456789abcdef" for c in value)
+
+
+def validate_release_metadata_v31() -> dict[str, object]:
+    if LANGUAGE_VERSION != "3.1.0":
+        raise RuntimeError("TEVS_V31_RELEASE_LANGUAGE_VERSION")
+    if RELEASE_PROFILE == "candidate":
+        if RELEASE_STATUS != "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED":
+            raise RuntimeError("TEVS_V31_RELEASE_CANDIDATE_STATUS")
+        if STABLE or PUBLICATION_AUTHORITY or MERGE_AUTHORITY:
+            raise RuntimeError("TEVS_V31_RELEASE_CANDIDATE_AUTHORITY")
+        if TECHNICAL_PARENT_COMMIT or TECHNICAL_PARENT_RECEIPT_SHA256:
+            raise RuntimeError("TEVS_V31_RELEASE_CANDIDATE_PARENT")
+    elif RELEASE_PROFILE == "stable_request":
+        if RELEASE_STATUS != "STABLE_ADMISSION_REQUESTED":
+            raise RuntimeError("TEVS_V31_RELEASE_STABLE_STATUS")
+        if not STABLE or PUBLICATION_AUTHORITY or MERGE_AUTHORITY:
+            raise RuntimeError("TEVS_V31_RELEASE_STABLE_AUTHORITY")
+        if not _is_sha(TECHNICAL_PARENT_COMMIT, 40):
+            raise RuntimeError("TEVS_V31_RELEASE_PARENT_COMMIT")
+        if not _is_sha(TECHNICAL_PARENT_RECEIPT_SHA256, 64):
+            raise RuntimeError("TEVS_V31_RELEASE_PARENT_RECEIPT")
+    else:
+        raise RuntimeError("TEVS_V31_RELEASE_PROFILE")
+    return {{
+        "language_version": LANGUAGE_VERSION,
+        "release_profile": RELEASE_PROFILE,
+        "release_status": RELEASE_STATUS,
+        "stable": STABLE,
+        "publication_authority": PUBLICATION_AUTHORITY,
+        "merge_authority": MERGE_AUTHORITY,
+        "technical_parent_commit": TECHNICAL_PARENT_COMMIT,
+        "technical_parent_receipt_sha256": TECHNICAL_PARENT_RECEIPT_SHA256,
+    }}
+
+
+__all__ = [
+    "LANGUAGE_VERSION",
+    "MERGE_AUTHORITY",
+    "PUBLICATION_AUTHORITY",
+    "RELEASE_PROFILE",
+    "RELEASE_STATUS",
+    "STABLE",
+    "TECHNICAL_PARENT_COMMIT",
+    "TECHNICAL_PARENT_RECEIPT_SHA256",
+    "validate_release_metadata_v31",
+]
+'''
+
+
+def _append_release_note(path: Path, parent: str, certificate_sha: str) -> None:
+    marker = "## TEVScript MAX 3.1.0 Total-Core — Stable Admission Request"
+    text = path.read_text(encoding="utf-8")
+    if marker in text:
+        raise V31StableAdmissionFailure("release marker already present: " + path.name)
+    if text and not text.endswith("\n"):
+        text += "\n"
+    block = f'''\n{marker}\n\n- Language/package version: `3.1.0`\n- Technical parent: `{parent}`\n- Technical certificate file SHA-256: `{certificate_sha}`\n- Program IR: V5 Total-Core\n- Independent JavaScript parity: required\n- Stable Admission: requested on this exact release-shaped commit\n- Publication eligibility depends on Stable Admission.\n- Publication authority: **not granted**.\n- Merge authority: **not granted**.\n'''
+    path.write_text(text + block, encoding="utf-8", newline="\n")
+
+
+def _shape_release(parent: str, certificate_sha: str) -> None:
+    metadata = release.validate_release_metadata_v31()
+    if metadata["release_profile"] != "candidate" or metadata["stable"] is not False:
+        raise V31StableAdmissionFailure("release shaping requires candidate metadata")
+
+    (ROOT / "tev_script/release_metadata_v31.py").write_text(
+        _stable_release_metadata_text(parent, certificate_sha),
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    matrix_path = ROOT / "spec/TEV_SCRIPT_V31_FEATURE_MATRIX.json"
+    matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
+    if (
+        matrix.get("status") != "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED"
+        or matrix.get("stable") is not False
+        or matrix.get("language_stable") is not False
+    ):
+        raise V31StableAdmissionFailure("candidate feature matrix required")
+    matrix["status"] = "STABLE_ADMISSION_REQUESTED"
+    matrix["stable"] = True
+    matrix["language_stable"] = True
+    matrix["publication_authorized"] = False
+    matrix["merge_authorized"] = False
+    matrix_path.write_text(
+        json.dumps(matrix, indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    index_path = ROOT / "CANONICAL_INDEX.json"
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    targets = index.get("candidate_language_targets")
+    if not isinstance(targets, list):
+        raise V31StableAdmissionFailure("canonical index target list missing")
+    if any(
+        isinstance(item, Mapping) and item.get("language_version") == "3.1.0"
+        for item in targets
+    ):
+        raise V31StableAdmissionFailure("canonical index already has V31 target")
+    targets.append(expected_v31_index_target())
+    index_path.write_text(
+        json.dumps(index, indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    _append_release_note(ROOT / "CHANGELOG.md", parent, certificate_sha)
+    _append_release_note(ROOT / "README.md", parent, certificate_sha)
+
+    paths = tuple(
+        sorted(filter(None, _git("diff", "--name-only", "HEAD", "--").splitlines()))
+    )
+    if not verify_release_diff_paths(paths):
+        raise V31StableAdmissionFailure("release shaping changed wrong paths")
+    _run(("git", "diff", "--check"), timeout=120)
+
+
+def _release_focal() -> None:
+    command = (
+        sys.executable,
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "-o",
+        "addopts=",
+        "tests/test_v31_authority.py",
+        "tests/test_v31_certify_full.py",
+        "tests/test_v31_descriptor.py",
+        "tests/test_v31_packaging.py",
+        "tests/test_v31_stable_admission.py",
+    )
+    result = _run(command, timeout=3600)
+    _count_value, skips = _parse_pytest_counts(result)
+    if skips:
+        raise V31StableAdmissionFailure("release focal requires zero skips")
+
+    descriptor = v31_descriptor()
+    report = technical.validate_v31_matrix(technical.load_feature_matrix(ROOT), descriptor)
+    if report["status"] != "PASS" or report["language_stable"] is not True:
+        raise V31StableAdmissionFailure("release focal matrix/descriptor mismatch")
+    identity = technical.require_predecessor_byte_identity(ROOT)
+    if identity["canonical_index_predecessor_identity"] != "PASS":
+        raise V31StableAdmissionFailure("release focal predecessor index mismatch")
+    _require_v31_index_target()
+
+
+def _commit_release(parent: str) -> tuple[str, str]:
+    if _remote_branch_sha() != parent:
+        raise V31StableAdmissionFailure("remote branch moved before release commit")
+    _run(("git", "add", *RELEASE_DIFF_WHITELIST), timeout=120)
+    staged = tuple(
+        sorted(filter(None, _git("diff", "--cached", "--name-only").splitlines()))
+    )
+    if staged != RELEASE_DIFF_WHITELIST:
+        raise V31StableAdmissionFailure("staged release diff mismatch")
+    _run(
+        (
+            "git",
+            "-c",
+            "user.name=MCBA",
+            "-c",
+            "user.email=benaventmarcamaya@gmail.com",
+            "commit",
+            "-m",
+            "release(v31): request stable admission for Total-Core 3.1.0",
+        ),
+        timeout=120,
+    )
+    head = _git("rev-parse", "HEAD")
+    tree = _git("rev-parse", "HEAD^{tree}")
+    if _git("rev-parse", "HEAD^") != parent:
+        raise V31StableAdmissionFailure("release commit parent mismatch")
+    return head, tree
+
+
+def finalize_candidate(finalization_root: str | Path) -> dict[str, Any]:
+    output = validate_finalization_root(finalization_root)
+    candidate = release.validate_release_metadata_v31()
+    if candidate["release_profile"] != "candidate" or candidate["stable"] is not False:
+        raise V31StableAdmissionFailure("finalization requires candidate release metadata")
+    if _git("status", "--porcelain=v1", "--untracked-files=all"):
+        raise V31StableAdmissionFailure("finalization requires clean candidate checkout")
+
+    parent = _git("rev-parse", "HEAD")
+    parent_tree = _git("rev-parse", "HEAD^{tree}")
+    if _remote_branch_sha() != parent:
+        raise V31StableAdmissionFailure("local candidate is not exact remote candidate")
+
+    technical_receipt_path = output / "TEV_SCRIPT_V31_CERTIFY_FULL_RECEIPT.json"
+    technical_receipt = technical.certify(receipt_out=technical_receipt_path)
+    if technical_receipt["commit_sha"] != parent or technical_receipt["tree_sha"] != parent_tree:
+        raise V31StableAdmissionFailure("technical certificate identity mismatch")
+    certificate_sha = hashlib.sha256(technical_receipt_path.read_bytes()).hexdigest()
+
+    _shape_release(parent, certificate_sha)
+    _release_focal()
+    release_head, release_tree = _commit_release(parent)
+
+    stable_artifacts = output / "stable-artifacts"
+    stable_artifacts.mkdir()
+    stable_receipt = certify(
+        technical_parent_certificate=technical_receipt_path,
+        artifact_out_dir=stable_artifacts,
+    )
+    if stable_receipt["release_commit_sha"] != release_head:
+        raise V31StableAdmissionFailure("stable receipt release commit mismatch")
+    if stable_receipt["release_tree_sha"] != release_tree:
+        raise V31StableAdmissionFailure("stable receipt release tree mismatch")
+
+    if _remote_branch_sha() != parent:
+        raise V31StableAdmissionFailure("remote branch moved during Stable Admission")
+    _run(("git", "push", "origin", "HEAD:refs/heads/" + EXPECTED_BRANCH), timeout=1800)
+    if _remote_branch_sha() != release_head:
+        raise V31StableAdmissionFailure("release push verification failed")
+    if _git("status", "--porcelain=v1", "--untracked-files=all"):
+        raise V31StableAdmissionFailure("final release checkout is dirty")
+
+    wheel = stable_artifacts / stable_receipt["wheel_filename"]
+    stable_receipt_path = stable_artifacts / "TEV_SCRIPT_V31_STABLE_ADMISSION_RECEIPT_V1.json"
+    return {
+        "technical_parent_head": parent,
+        "technical_parent_tree": parent_tree,
+        "technical_receipt_path": technical_receipt_path.resolve().as_posix(),
+        "technical_receipt_file_sha256": certificate_sha,
+        "release_head": release_head,
+        "release_tree": release_tree,
+        "stable_receipt_path": stable_receipt_path.resolve().as_posix(),
+        "stable_receipt_file_sha256": hashlib.sha256(stable_receipt_path.read_bytes()).hexdigest(),
+        "wheel_path": wheel.resolve().as_posix(),
+        "wheel_sha256": stable_receipt["wheel_sha256"],
+        "language_stable": True,
+        "publication_eligible": True,
+        "publication_authorized": False,
+        "merge_authorized": False,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="TEVScript MAX 3.1 Stable Admission")
-    parser.add_argument("--technical-parent-certificate", required=True)
-    parser.add_argument("--artifact-out-dir", required=True)
+    parser.add_argument("--technical-parent-certificate")
+    parser.add_argument("--artifact-out-dir")
+    parser.add_argument("--finalize-candidate-root")
     args = parser.parse_args(argv)
     try:
+        if args.finalize_candidate_root:
+            if args.technical_parent_certificate or args.artifact_out_dir:
+                raise ValueError("finalize mode is exclusive")
+            result = finalize_candidate(args.finalize_candidate_root)
+            print("TEVSCRIPT_V31_STABLE_CLOSURE=PASS")
+            print("V31_CERTIFY_FULL=PASS")
+            print("V31_STABLE_ADMISSION=PASS")
+            print("V31_LANGUAGE_STABLE=YES")
+            print("V31_PUBLICATION_ELIGIBLE=YES")
+            print("V31_PUBLICATION_AUTHORIZED=NO")
+            print("V31_MERGE_AUTHORIZED=NO")
+            for key, value in result.items():
+                print("V31_FINAL_" + key.upper() + "=" + str(value))
+            return 0
+
+        if not args.technical_parent_certificate or not args.artifact_out_dir:
+            raise ValueError("technical certificate and artifact dir are required")
         receipt = certify(
             technical_parent_certificate=args.technical_parent_certificate,
             artifact_out_dir=args.artifact_out_dir,
