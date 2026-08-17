@@ -30,7 +30,7 @@ Public __version__ / CLI version binding:               IMPLEMENTED
 Normative 3.1 platform integration:                     IMPLEMENTED
 Content-addressed normative authority set:              IMPLEMENTED
 Explicit Language/IR/Runtime/ABI/checkpoint matrix:     IMPLEMENTED
-Resolvable authority/entrypoint validation:             IMPLEMENTED
+Root-bound authority/entrypoint validation:             IMPLEMENTED
 Current generic Total-Core CLI:                         IMPLEMENTED
 Current Total-Core LSP:                                 IMPLEMENTED
 Semantic-area conformance manifest:                     IMPLEMENTED
@@ -38,8 +38,12 @@ Deterministic Total-Core differential fuzzing:          IMPLEMENTED
 Direct Total-Core constitutional witnesses:             IMPLEMENTED
 Clean-source reproducible wheel gate:                   IMPLEMENTED
 SBOM + provenance + conformance/environment binding:    IMPLEMENTED
+Full repository zero-skip regression gate:              IMPLEMENTED
+Release/regression exact source identity binding:       IMPLEMENTED
+Sealed receipt verifiers:                               IMPLEMENTED
+Completion/full-regression receipt V2 schemas:          IMPLEMENTED
 PyPI Markdown long-description metadata:                IMPLEMENTED
-Eight-gate aggregate completion authority:              IMPLEMENTED
+Nine-gate aggregate completion authority:               IMPLEMENTED
 
 FULL_REPOSITORY_REGRESSION_IN_CONNECTOR_ENVIRONMENT:     NOT EXECUTED
 PLATFORM_COMPLETION_CERTIFICATION:                       PENDING CLEAN CHECKOUT
@@ -49,31 +53,35 @@ The connector/container used for implementation cannot materialize the complete 
 
 ## Completion authority
 
-The exact aggregate gate is:
+The exact aggregate gate order is:
 
 ```text
 VERSION_IDENTITY
 NORMATIVE_SPEC
+VERSION_MATRIX
+TOOLING_3X
 CONFORMANCE
 DIFFERENTIAL_FUZZ
 SEMANTIC_INVARIANTS
-VERSION_MATRIX
-TOOLING_3X
 REPRODUCIBLE_RELEASE
+FULL_REGRESSION
 ```
 
-Only eight simultaneous PASS values on one exact clean commit/tree may emit:
+Only nine simultaneous PASS values on one exact clean commit/tree may emit:
 
 ```text
 PLATFORM_COMPLETION=PASS
 ```
+
+`FULL_REGRESSION` requires a non-empty pytest suite, zero failures, zero errors and zero skips; it binds JUnit bytes, HEAD/tree and worktree cleanliness before/after execution. Its source identity must equal the source identity from `REPRODUCIBLE_RELEASE`. The aggregate and full-regression receipts are both sealed, externally verifiable V2 receipts.
 
 A FAIL blocks completion. A HOLD remains HOLD. The completion receipt never grants merge, tag, release or stable-promotion authority.
 
 Authoritative execution from a complete clean checkout:
 
 ```powershell
-python .\RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py --receipt TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT.json
+python .\RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py `
+  --receipt .\TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT.json
 ```
 
 ## Current architecture
@@ -109,6 +117,8 @@ spec/TEV_SCRIPT_3_1_NORMATIVE_INDEX.json
 spec/TEV_SCRIPT_VERSIONING.md
 spec/TEV_SCRIPT_VERSION_MATRIX.json
 conformance/v31-platform-manifest.json
+schemas/tev-script-platform-full-regression-v2.schema.json
+schemas/tev-script-platform-completion-receipt-v2.schema.json
 RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py
 ```
 
