@@ -80,7 +80,7 @@ def _platform_fixture(root: Path) -> None:
         "# Changelog\n\n"
         "## 3.1.1 - platform completion candidate\n"
         "P_PYTHON_CERTIFY_FULL_RECEIPT_SHA256="
-        "271d3fbdf6d1e9284b8fede03823fbff1c98ba3fab81c0e2dd1602420a5437c8\n"
+        "271d3fbdf6d1e9284b8fede03823fbff1c98ba3fab81a0e2dd1602420a5437c8\n"
         "Technical certificate file SHA-256: "
         "`1f0c60f8f50322a5dfde69073cbc84e419aebdcf0f46bb99613167a13d8efc46`\n",
         encoding="utf-8",
