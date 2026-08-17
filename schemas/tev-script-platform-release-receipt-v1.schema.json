@@ -21,7 +21,7 @@
   "properties": {
     "schema": {"const": "TEV_SCRIPT_PLATFORM_RELEASE_RECEIPT_V1"},
     "status": {"const": "PASS"},
-    "package_version": {"const": "3.1.0"},
+    "package_version": {"const": "3.1.1"},
     "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
     "source_tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
     "wheel_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
