@@ -18,6 +18,23 @@ GATE_ORDER = (
 )
 EXPECTED_GATES = frozenset(GATE_ORDER)
 GateFunction = Callable[[Path], dict[str, object]]
+_COMPLETION_FIELDS = frozenset(
+    {
+        "schema",
+        "status",
+        "platform_completion",
+        "missing_gates",
+        "extra_gates",
+        "failed_gates",
+        "hold_gates",
+        "gates",
+        "source_commit",
+        "source_tree",
+        "full_regression_receipt_sha256",
+        "full_regression_test_count",
+        "receipt_sha256",
+    }
+)
 
 
 def _canonical_json_bytes(value: object) -> bytes:
@@ -30,12 +47,16 @@ def _canonical_json_bytes(value: object) -> bytes:
     ).encode("utf-8")
 
 
-def _is_git_sha(value: object) -> bool:
+def _is_hex(value: object, length: int) -> bool:
     return (
         isinstance(value, str)
-        and len(value) == 40
+        and len(value) == length
         and all(character in "0123456789abcdef" for character in value)
     )
+
+
+def _is_git_sha(value: object) -> bool:
+    return _is_hex(value, 40)
 
 
 def _default_gate_functions(
@@ -78,9 +99,9 @@ def _enforce_source_identity(outcomes: dict[str, dict[str, object]]) -> None:
             receipt.get("source_tree")
         ):
             outcomes[name] = {
-                **receipt,
                 "status": "FAIL",
                 "reason": "SOURCE_IDENTITY_MISSING",
+                "upstream_receipt": receipt,
             }
 
     release = outcomes["REPRODUCIBLE_RELEASE"]
@@ -91,12 +112,102 @@ def _enforce_source_identity(outcomes: dict[str, dict[str, object]]) -> None:
     regression_identity = (regression["source_commit"], regression["source_tree"])
     if release_identity != regression_identity:
         outcomes["FULL_REGRESSION"] = {
-            **regression,
             "status": "FAIL",
             "reason": "SOURCE_IDENTITY_MISMATCH_WITH_RELEASE",
             "release_source_commit": release["source_commit"],
             "release_source_tree": release["source_tree"],
+            "regression_receipt": regression,
         }
+
+
+def verify_platform_completion_receipt(value: object) -> bool:
+    from .platform_regression import verify_full_regression_receipt
+
+    if not isinstance(value, Mapping):
+        return False
+    receipt = dict(value)
+    if set(receipt) - _COMPLETION_FIELDS:
+        return False
+    observed_hash = receipt.pop("receipt_sha256", None)
+    if not _is_hex(observed_hash, 64):
+        return False
+    if hashlib.sha256(_canonical_json_bytes(receipt)).hexdigest() != observed_hash:
+        return False
+    if receipt.get("schema") != "TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT_V2":
+        return False
+    status = receipt.get("status")
+    if status not in {"PASS", "HOLD", "FAIL"}:
+        return False
+    if receipt.get("platform_completion") != status:
+        return False
+    for name in ("missing_gates", "extra_gates", "failed_gates", "hold_gates"):
+        rows = receipt.get(name)
+        if not isinstance(rows, list) or any(not isinstance(row, str) for row in rows):
+            return False
+        if rows != sorted(set(rows)):
+            return False
+
+    missing = receipt["missing_gates"]
+    extra = receipt["extra_gates"]
+    gates = receipt.get("gates")
+    if not isinstance(gates, Mapping):
+        return False
+    gate_map = dict(gates)
+    if set(gate_map) - EXPECTED_GATES:
+        return False
+    if missing or extra:
+        return bool(
+            status == "FAIL"
+            and receipt["failed_gates"] == []
+            and receipt["hold_gates"] == []
+            and gate_map == {}
+        )
+    if set(gate_map) != EXPECTED_GATES:
+        return False
+
+    for gate_receipt in gate_map.values():
+        if not isinstance(gate_receipt, Mapping):
+            return False
+        if gate_receipt.get("status") not in {"PASS", "HOLD", "FAIL"}:
+            return False
+
+    failed = sorted(
+        name for name, gate_receipt in gate_map.items() if gate_receipt["status"] == "FAIL"
+    )
+    held = sorted(
+        name for name, gate_receipt in gate_map.items() if gate_receipt["status"] == "HOLD"
+    )
+    expected_status = "FAIL" if failed else ("HOLD" if held else "PASS")
+    if receipt["failed_gates"] != failed or receipt["hold_gates"] != held:
+        return False
+    if status != expected_status:
+        return False
+
+    if status == "PASS":
+        regression = gate_map["FULL_REGRESSION"]
+        release = gate_map["REPRODUCIBLE_RELEASE"]
+        if not verify_full_regression_receipt(regression):
+            return False
+        if not _is_git_sha(release.get("source_commit")) or not _is_git_sha(
+            release.get("source_tree")
+        ):
+            return False
+        if (release["source_commit"], release["source_tree"]) != (
+            regression["source_commit"],
+            regression["source_tree"],
+        ):
+            return False
+        if receipt.get("source_commit") != release["source_commit"]:
+            return False
+        if receipt.get("source_tree") != release["source_tree"]:
+            return False
+        if receipt.get("full_regression_receipt_sha256") != regression.get(
+            "receipt_sha256"
+        ):
+            return False
+        if receipt.get("full_regression_test_count") != regression.get("test_count"):
+            return False
+    return True
 
 
 def validate_platform_completion(
@@ -121,6 +232,8 @@ def validate_platform_completion(
             "platform_completion": "FAIL",
             "missing_gates": missing,
             "extra_gates": extra,
+            "failed_gates": [],
+            "hold_gates": [],
             "gates": {},
         }
         return {
@@ -170,4 +283,9 @@ def validate_platform_completion(
     }
 
 
-__all__ = ["GATE_ORDER", "EXPECTED_GATES", "validate_platform_completion"]
+__all__ = [
+    "GATE_ORDER",
+    "EXPECTED_GATES",
+    "validate_platform_completion",
+    "verify_platform_completion_receipt",
+]
