@@ -19,35 +19,51 @@ EXPECTED_INVARIANTS = frozenset(
     }
 )
 
+_V31_INVARIANT_BLOB = "d12e6940e1507c5394e1a21695048a0fb78cac34"
 DEFAULT_WITNESSES: dict[str, dict[str, object]] = {
     "DETERMINISM": {
-        "kind": "python_script",
-        "target": "tools/validate_distributed_determinism_gate7a_7e.py",
-        "git_blob_sha1": "882fa01c2069a16246855d6e36678608d4325565",
+        "kind": "pytest",
+        "target": (
+            "tests/test_platform_invariants_v31.py::"
+            "test_total_core_determinism_same_input_same_canonical_result"
+        ),
+        "git_blob_sha1": _V31_INVARIANT_BLOB,
         "required_tools": ["python"],
     },
     "CAPABILITY_NON_ESCALATION": {
         "kind": "pytest",
-        "target": "tests/test_ir_v4_effect_commands.py",
-        "git_blob_sha1": "83715252884d2f1c14d48773fed276f600a06b27",
+        "target": (
+            "tests/test_platform_invariants_v31.py::"
+            "test_total_core_capability_non_escalation_requires_external_effect_input"
+        ),
+        "git_blob_sha1": _V31_INVARIANT_BLOB,
         "required_tools": ["python"],
     },
     "BOUNDED_EXECUTION": {
         "kind": "pytest",
-        "target": "tests/test_step_limit_v2.py",
-        "git_blob_sha1": "4b7881dac9f2923126d8bccf4644c022429ee562",
+        "target": (
+            "tests/test_platform_invariants_v31.py::"
+            "test_total_core_bounded_execution_suspends_exactly_at_quantum_limit"
+        ),
+        "git_blob_sha1": _V31_INVARIANT_BLOB,
         "required_tools": ["python"],
     },
     "CANONICAL_IDENTITY": {
         "kind": "pytest",
-        "target": "tests/test_program_ir_v5_total.py",
-        "git_blob_sha1": "916a548a3ff287503cc04c8fb1aabc60d392996e",
+        "target": (
+            "tests/test_platform_invariants_v31.py::"
+            "test_total_core_canonical_identity_rejects_program_hash_tamper"
+        ),
+        "git_blob_sha1": _V31_INVARIANT_BLOB,
         "required_tools": ["python"],
     },
     "CHECKPOINT_REPLAY_EQUIVALENCE": {
         "kind": "pytest",
-        "target": "tests/test_runtime_checkpoint_v2.py",
-        "git_blob_sha1": "56128d0b6c8f29781e32c9fba81b7c7e1b22a6c2",
+        "target": (
+            "tests/test_platform_invariants_v31.py::"
+            "test_total_core_checkpoint_replay_is_canonically_equivalent"
+        ),
+        "git_blob_sha1": _V31_INVARIANT_BLOB,
         "required_tools": ["python"],
     },
     "CROSS_RUNTIME_EQUIVALENCE": {
@@ -116,7 +132,7 @@ def validate_platform_invariants(
     extra = sorted(set(selected) - EXPECTED_INVARIANTS)
     if missing or extra:
         return {
-            "schema": "TEV_SCRIPT_PLATFORM_INVARIANTS_V1",
+            "schema": "TEV_SCRIPT_PLATFORM_INVARIANTS_V2",
             "status": "FAIL",
             "missing_witnesses": missing,
             "extra_witnesses": extra,
@@ -172,7 +188,7 @@ def validate_platform_invariants(
         )
         status = "FAIL" if failures else ("HOLD" if holds else "PASS")
         return {
-            "schema": "TEV_SCRIPT_PLATFORM_INVARIANTS_V1",
+            "schema": "TEV_SCRIPT_PLATFORM_INVARIANTS_V2",
             "status": status,
             "missing_witnesses": [],
             "extra_witnesses": [],
@@ -182,7 +198,7 @@ def validate_platform_invariants(
         }
     except (OSError, UnicodeError, ValueError) as error:
         return {
-            "schema": "TEV_SCRIPT_PLATFORM_INVARIANTS_V1",
+            "schema": "TEV_SCRIPT_PLATFORM_INVARIANTS_V2",
             "status": "FAIL",
             "missing_witnesses": [],
             "extra_witnesses": [],
