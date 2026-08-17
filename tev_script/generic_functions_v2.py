@@ -142,10 +142,13 @@ class GenericPureFunctionRegistryV2:
             if not isinstance(parameter_name, str) or _NAME.fullmatch(parameter_name) is None or parameter_name in seen_names:
                 _fail("TEVS_V2_GENERIC_FUNCTION_PARAMETERS", f"invalid or duplicate parameter {parameter_name!r}")
             seen_names.add(parameter_name)
-            parsed_parameters.append(
-                GenericFunctionParameterTemplateV2(parameter_name, parse_type_ref_v2(type_text, generic_arities))
-            )
+            parsed_type = parse_type_ref_v2(type_text, generic_arities)
+            if not type_params:
+                self.types.materialize_source_type(type_text)
+            parsed_parameters.append(GenericFunctionParameterTemplateV2(parameter_name, parsed_type))
         parsed_return = parse_type_ref_v2(return_type, generic_arities)
+        if not type_params:
+            self.types.materialize_source_type(return_type)
         canonical_body = canonical_expression_v4(body)
         for const_type in _const_type_refs(canonical_body, generic_arities):
             if _mentions_parameters(const_type, set(type_params)):
