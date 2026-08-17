@@ -167,7 +167,8 @@ def verify_full_regression_receipt(value: object) -> bool:
         return False
     if status == "PASS":
         return bool(
-            receipt.get("reason") == ""
+            "error" not in receipt
+            and receipt.get("reason") == ""
             and _is_git_sha(source_commit)
             and _is_git_sha(source_tree)
             and receipt.get("identity_stable") is True
