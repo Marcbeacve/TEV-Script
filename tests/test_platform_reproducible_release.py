@@ -26,15 +26,19 @@ def _platform_fixture(root: Path) -> None:
         'LANGUAGE_VERSION = "3.1.0"\n', encoding="utf-8"
     )
     (root / "packaging" / "v31").mkdir(parents=True)
-    root_project = (
+    (root / "pyproject.toml").write_text(
+        "[project]\n"
+        'name = "tev-script-portable-reference"\n'
+        'version = "3.1.1"\n'
+        "dependencies = []\n",
+        encoding="utf-8",
+    )
+    (root / "packaging" / "v31" / "pyproject.toml").write_text(
         "[project]\n"
         'name = "tev-script-portable-reference"\n'
         'version = "3.1.0"\n'
-        "dependencies = []\n"
-    )
-    (root / "pyproject.toml").write_text(root_project, encoding="utf-8")
-    (root / "packaging" / "v31" / "pyproject.toml").write_text(
-        root_project, encoding="utf-8"
+        "dependencies = []\n",
+        encoding="utf-8",
     )
     (root / "spec").mkdir()
     data = b"normative\n"
@@ -62,7 +66,7 @@ def test_sbom_is_deterministic_and_dependency_explicit(tmp_path: Path) -> None:
     _platform_fixture(tmp_path)
     assert build_sbom(tmp_path) == build_sbom(tmp_path)
     sbom = build_sbom(tmp_path)
-    assert sbom["package_version"] == "3.1.0"
+    assert sbom["package_version"] == "3.1.1"
     assert sbom["dependencies"] == []
     assert len(sbom["sbom_sha256"]) == 64
 
@@ -86,6 +90,7 @@ def test_provenance_has_no_timestamp_identity(tmp_path: Path) -> None:
         normative_set_sha256="c" * 64,
         version_identity_sha256="d" * 64,
     )
+    assert receipt["package_version"] == "3.1.1"
     assert "timestamp" not in receipt
     assert len(receipt["provenance_sha256"]) == 64
 
@@ -106,6 +111,7 @@ def test_full_release_evidence_requires_byte_reproducibility(tmp_path: Path) -> 
         identity_resolver=lambda root: ("a" * 40, "b" * 40),
     )
     assert receipt["status"] == "PASS"
+    assert receipt["package_version"] == "3.1.1"
     assert receipt["runtime_dependency_count"] == 0
     assert receipt["source_commit"] == "a" * 40
     assert receipt["source_tree"] == "b" * 40
