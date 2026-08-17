@@ -1,3 +1,57 @@
+# TEV Script — current platform
+
+TEVScript is a bounded, statically typed, deterministic language/platform with exact values, explicit capability boundaries and replaceable conforming runtimes.
+
+## Current published release
+
+```text
+PACKAGE_VERSION=3.1.0
+LANGUAGE_VERSION=3.1.0
+PROFILE=total_core
+TAG=v3.1.0
+RELEASE_COMMIT=c20718ddb2223ba0bfd05ff59006ca31e2966b0b
+RELEASE_TREE=812b140c5e6fb7232ef379773d9c37e8f3459f4c
+STABLE_ADMISSION=PASS
+INDEPENDENT_JAVASCRIPT_PARITY=PASS
+```
+
+The published `v3.1.0` release is immutable predecessor authority. The current development branch `agent/tevscript-platform-completion-v1` adds platform-completion machinery around that semantic core; it does not rewrite the published release.
+
+Current normative/platform entry points:
+
+```text
+spec/TEV_SCRIPT_3_1_PLATFORM.md
+spec/TEV_SCRIPT_3_1_NORMATIVE_INDEX.json
+spec/TEV_SCRIPT_VERSIONING.md
+spec/TEV_SCRIPT_VERSION_MATRIX.json
+docs/TEV_SCRIPT_3_1_PLATFORM_COMPLETION.md
+docs/STATUS.md
+RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py
+```
+
+Platform completion requires simultaneous PASS for:
+
+```text
+VERSION_IDENTITY
+NORMATIVE_SPEC
+CONFORMANCE
+DIFFERENTIAL_FUZZ
+SEMANTIC_INVARIANTS
+VERSION_MATRIX
+TOOLING_3X
+REPRODUCIBLE_RELEASE
+```
+
+A FAIL blocks completion. A HOLD remains HOLD. Only eight PASS results may emit `PLATFORM_COMPLETION=PASS`. The completion gate never grants merge, tag or publication authority.
+
+Current tooling deliberately preserves predecessor semantics. `tev-script-v31` remains the explicit Total-Core compile/run entry point. The generic `tev-script-lsp` fails closed for 3.1 until a genuine 3.1 LSP exists; the V1 LSP is used only when version `1.0.0` is explicitly requested.
+
+The sections below are preserved historical release-line documentation. Where a historical status statement conflicts with the current block above, the current 3.1 platform specification/status is authoritative.
+
+---
+
+# Historical release-line documentation — preserved
+
 # TEV Script
 
 TEV Script is a bounded, statically typed, deterministic reactive language with explicit host-capability boundaries.
