@@ -6,12 +6,33 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
-from typing import Callable
+from typing import Callable, Mapping
 import xml.etree.ElementTree as ET
 
 RegressionRunner = Callable[[Path, Path], int]
 IdentityResolver = Callable[[Path], tuple[str, str]]
 WorktreeCleanResolver = Callable[[Path], bool]
+
+_FULL_REGRESSION_FIELDS = frozenset(
+    {
+        "schema",
+        "status",
+        "reason",
+        "error",
+        "source_commit",
+        "source_tree",
+        "identity_stable",
+        "worktree_clean_before",
+        "worktree_clean_after",
+        "returncode",
+        "test_count",
+        "failure_count",
+        "error_count",
+        "skipped_count",
+        "junit_sha256",
+        "receipt_sha256",
+    }
+)
 
 
 def _canonical_json_bytes(value: object) -> bytes:
@@ -22,6 +43,14 @@ def _canonical_json_bytes(value: object) -> bytes:
         ensure_ascii=True,
         allow_nan=False,
     ).encode("utf-8")
+
+
+def _is_sha(value: object, length: int) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == length
+        and all(character in "0123456789abcdef" for character in value)
+    )
 
 
 def _git(root: Path, *arguments: str) -> str:
@@ -47,11 +76,7 @@ def _default_worktree_clean(root: Path) -> bool:
 
 
 def _is_git_sha(value: object) -> bool:
-    return (
-        isinstance(value, str)
-        and len(value) == 40
-        and all(character in "0123456789abcdef" for character in value)
-    )
+    return _is_sha(value, 40)
 
 
 def _default_runner(root: Path, junit_path: Path) -> int:
@@ -99,6 +124,63 @@ def _junit_counts(path: Path) -> tuple[int, int, int, int]:
         for index, name in enumerate(names):
             totals[index] += _integer_attribute(suite, name)
     return totals[0], totals[1], totals[2], totals[3]
+
+
+def verify_full_regression_receipt(value: object) -> bool:
+    if not isinstance(value, Mapping):
+        return False
+    receipt = dict(value)
+    if set(receipt) - _FULL_REGRESSION_FIELDS:
+        return False
+    observed_hash = receipt.pop("receipt_sha256", None)
+    if not _is_sha(observed_hash, 64):
+        return False
+    if hashlib.sha256(_canonical_json_bytes(receipt)).hexdigest() != observed_hash:
+        return False
+    if receipt.get("schema") != "TEV_SCRIPT_PLATFORM_FULL_REGRESSION_V2":
+        return False
+    status = receipt.get("status")
+    if status not in {"PASS", "FAIL"}:
+        return False
+    if not isinstance(receipt.get("reason"), str):
+        return False
+    if "error" in receipt and not isinstance(receipt.get("error"), str):
+        return False
+    for name in ("identity_stable", "worktree_clean_before", "worktree_clean_after"):
+        if not isinstance(receipt.get(name), bool):
+            return False
+    returncode = receipt.get("returncode")
+    if not isinstance(returncode, int) or isinstance(returncode, bool):
+        return False
+    for name in ("test_count", "failure_count", "error_count", "skipped_count"):
+        count = receipt.get(name)
+        if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+            return False
+    source_commit = receipt.get("source_commit")
+    source_tree = receipt.get("source_tree")
+    if source_commit != "" and not _is_git_sha(source_commit):
+        return False
+    if source_tree != "" and not _is_git_sha(source_tree):
+        return False
+    junit_sha = receipt.get("junit_sha256")
+    if junit_sha != "" and not _is_sha(junit_sha, 64):
+        return False
+    if status == "PASS":
+        return bool(
+            receipt.get("reason") == ""
+            and _is_git_sha(source_commit)
+            and _is_git_sha(source_tree)
+            and receipt.get("identity_stable") is True
+            and receipt.get("worktree_clean_before") is True
+            and receipt.get("worktree_clean_after") is True
+            and returncode == 0
+            and receipt.get("test_count", 0) > 0
+            and receipt.get("failure_count") == 0
+            and receipt.get("error_count") == 0
+            and receipt.get("skipped_count") == 0
+            and _is_sha(junit_sha, 64)
+        )
+    return True
 
 
 def run_full_regression(
@@ -234,4 +316,5 @@ __all__ = [
     "RegressionRunner",
     "WorktreeCleanResolver",
     "run_full_regression",
+    "verify_full_regression_receipt",
 ]
