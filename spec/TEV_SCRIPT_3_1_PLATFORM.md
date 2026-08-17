@@ -7,12 +7,13 @@ This document does not replace predecessor language, IR, value-model or runtime 
 ## 1. Current identity
 
 ```text
-package_version  = 3.1.0
-language_version = 3.1.0
-current_profile  = total_core
+package_version              = 3.1.1
+language_version             = 3.1.0
+current_profile              = total_core
+published_predecessor_package = 3.1.0
 ```
 
-The current identity is defined in `tev_script/version.py`. Historical V1/V2/V3 identities remain valid only for their explicitly versioned compatibility surfaces.
+The current source-code identities are defined in `tev_script/version.py`. Package version and language version are independent domains: package `3.1.1` is the platform/tooling completion candidate over the unchanged Total-Core language semantics `3.1.0`. The already-published package/tag `3.1.0` remains immutable predecessor authority and MUST NOT be rebuilt with different bytes under the same version. Historical V1/V2/V3 identities remain valid only for their explicitly versioned compatibility surfaces.
 
 ## 2. Authority rule
 
