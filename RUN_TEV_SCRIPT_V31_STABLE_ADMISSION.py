@@ -803,6 +803,62 @@ def _release_focal() -> None:
     _require_v31_index_target()
 
 
+def _run_release_focal_fresh() -> None:
+    command = (
+        sys.executable,
+        "-c",
+        (
+            "import RUN_TEV_SCRIPT_V31_STABLE_ADMISSION as gate; "
+            "gate._release_focal(); "
+            "print('V31_RELEASE_FOCAL=PASS')"
+        ),
+    )
+    result = _run(command, timeout=3600)
+    if "V31_RELEASE_FOCAL=PASS" not in result.stdout:
+        raise V31StableAdmissionFailure(
+            "fresh release focal did not report PASS"
+        )
+
+
+def _run_stable_certify_fresh(
+    *,
+    technical_parent_certificate: Path,
+    artifact_out_dir: Path,
+) -> dict[str, Any]:
+    command = (
+        sys.executable,
+        str(ROOT / "RUN_TEV_SCRIPT_V31_STABLE_ADMISSION.py"),
+        "--technical-parent-certificate",
+        str(technical_parent_certificate),
+        "--artifact-out-dir",
+        str(artifact_out_dir),
+    )
+    result = _run(command, timeout=7200)
+    if "V31_STABLE_ADMISSION=PASS" not in result.stdout:
+        raise V31StableAdmissionFailure(
+            "fresh Stable Admission subprocess did not report PASS"
+        )
+
+    receipt_path = (
+        artifact_out_dir / "TEV_SCRIPT_V31_STABLE_ADMISSION_RECEIPT_V1.json"
+    )
+    if not receipt_path.is_file():
+        raise V31StableAdmissionFailure(
+            "fresh Stable Admission did not emit receipt"
+        )
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise V31StableAdmissionFailure(
+            "fresh Stable Admission receipt is invalid JSON"
+        ) from error
+    if not isinstance(receipt, dict) or not verify_receipt(receipt):
+        raise V31StableAdmissionFailure(
+            "fresh Stable Admission receipt failed verification"
+        )
+    return receipt
+
+
 def _commit_release(parent: str) -> tuple[str, str]:
     if _remote_branch_sha() != parent:
         raise V31StableAdmissionFailure("remote branch moved before release commit")
@@ -852,12 +908,12 @@ def finalize_candidate(finalization_root: str | Path) -> dict[str, Any]:
     certificate_sha = hashlib.sha256(technical_receipt_path.read_bytes()).hexdigest()
 
     _shape_release(parent, certificate_sha)
-    _release_focal()
+    _run_release_focal_fresh()
     release_head, release_tree = _commit_release(parent)
 
     stable_artifacts = output / "stable-artifacts"
     stable_artifacts.mkdir()
-    stable_receipt = certify(
+    stable_receipt = _run_stable_certify_fresh(
         technical_parent_certificate=technical_receipt_path,
         artifact_out_dir=stable_artifacts,
     )
