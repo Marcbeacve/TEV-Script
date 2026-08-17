@@ -35,6 +35,12 @@ _COMPLETION_FIELDS = frozenset(
         "receipt_sha256",
     }
 )
+_BINDING_FIELDS = (
+    "source_commit",
+    "source_tree",
+    "full_regression_receipt_sha256",
+    "full_regression_test_count",
+)
 
 
 def _canonical_json_bytes(value: object) -> bytes:
@@ -92,6 +98,28 @@ def _default_gate_functions(
         "REPRODUCIBLE_RELEASE": validate_platform_release,
         "FULL_REGRESSION": run_full_regression,
     }
+
+
+def _enforce_child_receipt_integrity(
+    outcomes: dict[str, dict[str, object]],
+) -> None:
+    from .platform_regression import verify_full_regression_receipt
+    from .platform_release_receipt import verify_platform_release_receipt
+
+    checks = {
+        "REPRODUCIBLE_RELEASE": verify_platform_release_receipt,
+        "FULL_REGRESSION": verify_full_regression_receipt,
+    }
+    for name, verifier in checks.items():
+        receipt = outcomes[name]
+        if receipt.get("status") != "PASS":
+            continue
+        if not verifier(receipt):
+            outcomes[name] = {
+                "status": "FAIL",
+                "reason": "INVALID_CHILD_RECEIPT",
+                "upstream_receipt": receipt,
+            }
 
 
 def _enforce_source_identity(outcomes: dict[str, dict[str, object]]) -> None:
@@ -180,9 +208,49 @@ def _release_evidence_matches(
     )
 
 
-def verify_platform_completion_receipt(value: object) -> bool:
+def _verify_bound_children(
+    receipt: dict[str, object],
+    gate_map: dict[str, Mapping[str, object]],
+) -> bool:
     from .platform_regression import verify_full_regression_receipt
+    from .platform_release_receipt import verify_platform_release_receipt
 
+    release = gate_map["REPRODUCIBLE_RELEASE"]
+    regression = gate_map["FULL_REGRESSION"]
+    if release.get("status") == "PASS" and not verify_platform_release_receipt(release):
+        return False
+    if regression.get("status") == "PASS" and not verify_full_regression_receipt(
+        regression
+    ):
+        return False
+
+    dependencies_pass = all(
+        gate_map[name].get("status") == "PASS"
+        for name in ("VERSION_IDENTITY", "NORMATIVE_SPEC", "CONFORMANCE")
+    )
+    if release.get("status") == "PASS" and dependencies_pass:
+        if not _release_evidence_matches(gate_map):
+            return False
+
+    both_pass = release.get("status") == "PASS" and regression.get("status") == "PASS"
+    if not both_pass:
+        return not any(name in receipt for name in _BINDING_FIELDS)
+
+    if (release.get("source_commit"), release.get("source_tree")) != (
+        regression.get("source_commit"),
+        regression.get("source_tree"),
+    ):
+        return False
+    return bool(
+        receipt.get("source_commit") == release.get("source_commit")
+        and receipt.get("source_tree") == release.get("source_tree")
+        and receipt.get("full_regression_receipt_sha256")
+        == regression.get("receipt_sha256")
+        and receipt.get("full_regression_test_count") == regression.get("test_count")
+    )
+
+
+def verify_platform_completion_receipt(value: object) -> bool:
     if not isinstance(value, Mapping):
         return False
     receipt = dict(value)
@@ -221,6 +289,7 @@ def verify_platform_completion_receipt(value: object) -> bool:
             and receipt["failed_gates"] == []
             and receipt["hold_gates"] == []
             and gate_map == {}
+            and not any(name in receipt for name in _BINDING_FIELDS)
         )
     if set(gate_map) != EXPECTED_GATES:
         return False
@@ -242,34 +311,7 @@ def verify_platform_completion_receipt(value: object) -> bool:
         return False
     if status != expected_status:
         return False
-
-    if status == "PASS":
-        regression = gate_map["FULL_REGRESSION"]
-        release = gate_map["REPRODUCIBLE_RELEASE"]
-        if not verify_full_regression_receipt(regression):
-            return False
-        if not _release_evidence_matches(gate_map):
-            return False
-        if not _is_git_sha(release.get("source_commit")) or not _is_git_sha(
-            release.get("source_tree")
-        ):
-            return False
-        if (release["source_commit"], release["source_tree"]) != (
-            regression["source_commit"],
-            regression["source_tree"],
-        ):
-            return False
-        if receipt.get("source_commit") != release["source_commit"]:
-            return False
-        if receipt.get("source_tree") != release["source_tree"]:
-            return False
-        if receipt.get("full_regression_receipt_sha256") != regression.get(
-            "receipt_sha256"
-        ):
-            return False
-        if receipt.get("full_regression_test_count") != regression.get("test_count"):
-            return False
-    return True
+    return _verify_bound_children(receipt, gate_map)
 
 
 def validate_platform_completion(
@@ -298,10 +340,7 @@ def validate_platform_completion(
             "hold_gates": [],
             "gates": {},
         }
-        return {
-            **body,
-            "receipt_sha256": _hash_object(body),
-        }
+        return {**body, "receipt_sha256": _hash_object(body)}
 
     outcomes: dict[str, dict[str, object]] = {}
     for name in GATE_ORDER:
@@ -313,6 +352,7 @@ def validate_platform_completion(
             receipt = {"status": "FAIL", "error": "INVALID_GATE_STATUS"}
         outcomes[name] = receipt
 
+    _enforce_child_receipt_integrity(outcomes)
     _enforce_source_identity(outcomes)
     _enforce_release_evidence_binding(outcomes)
 
@@ -340,10 +380,7 @@ def validate_platform_completion(
         body["source_tree"] = release["source_tree"]
         body["full_regression_receipt_sha256"] = regression.get("receipt_sha256")
         body["full_regression_test_count"] = regression.get("test_count")
-    return {
-        **body,
-        "receipt_sha256": _hash_object(body),
-    }
+    return {**body, "receipt_sha256": _hash_object(body)}
 
 
 __all__ = [
