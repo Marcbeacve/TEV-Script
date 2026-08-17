@@ -40,18 +40,29 @@ class V31DescriptorTests(unittest.TestCase):
         self.assertEqual(len(descriptor["descriptor_hash"]), 64)
         self.assertTrue(verify_v31_descriptor(descriptor))
 
-    def test_candidate_release_metadata_is_explicit_and_authority_free(self) -> None:
+    def test_release_metadata_is_explicit_and_authority_free(self) -> None:
         metadata = validate_release_metadata_v31()
         self.assertEqual(RELEASE_LANGUAGE_VERSION, "3.1.0")
-        self.assertEqual(RELEASE_PROFILE, "candidate")
-        self.assertEqual(RELEASE_STATUS, "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED")
-        self.assertFalse(STABLE)
         self.assertFalse(PUBLICATION_AUTHORITY)
         self.assertFalse(MERGE_AUTHORITY)
-        self.assertEqual(TECHNICAL_PARENT_COMMIT, "")
-        self.assertEqual(TECHNICAL_PARENT_RECEIPT_SHA256, "")
-        self.assertEqual(metadata["release_profile"], "candidate")
-        self.assertFalse(metadata["stable"])
+        self.assertEqual(metadata["release_profile"], RELEASE_PROFILE)
+        self.assertEqual(metadata["stable"], STABLE)
+
+        if RELEASE_PROFILE == "candidate":
+            self.assertEqual(
+                RELEASE_STATUS,
+                "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED",
+            )
+            self.assertFalse(STABLE)
+            self.assertEqual(TECHNICAL_PARENT_COMMIT, "")
+            self.assertEqual(TECHNICAL_PARENT_RECEIPT_SHA256, "")
+        elif RELEASE_PROFILE == "stable_request":
+            self.assertEqual(RELEASE_STATUS, "STABLE_ADMISSION_REQUESTED")
+            self.assertTrue(STABLE)
+            self.assertRegex(TECHNICAL_PARENT_COMMIT, r"^[0-9a-f]{40}$")
+            self.assertRegex(TECHNICAL_PARENT_RECEIPT_SHA256, r"^[0-9a-f]{64}$")
+        else:
+            self.fail(f"unsupported release profile {RELEASE_PROFILE!r}")
 
     def test_descriptor_tamper_is_rejected(self) -> None:
         descriptor = copy.deepcopy(v31_descriptor())
