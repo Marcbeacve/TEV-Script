@@ -7,6 +7,7 @@ import pytest
 
 from tev_script import cli, lsp
 from tev_script.lsp_v1 import main as lsp_v1_main
+from tev_script.lsp_v31 import main as lsp_v31_main
 from tev_script.platform_tooling import (
     describe_current_platform,
     platform_check,
@@ -23,6 +24,7 @@ def test_current_platform_description_binds_package_311_language_310() -> None:
     assert value["profile"] == "total_core"
     assert value["runtime_source_compilation"] is False
     assert value["implicit_physical_effects"] is False
+    assert value["generic_lsp_current_semantics"] == "SUPPORTED"
 
 
 def test_repository_tooling_surface_is_current() -> None:
@@ -46,9 +48,8 @@ def test_lsp_v1_dispatch_is_explicit() -> None:
     assert lsp.select_lsp_main("1.0.0") is lsp_v1_main
 
 
-def test_current_lsp_fails_closed_instead_of_using_v1() -> None:
-    with pytest.raises(RuntimeError, match="3.1.0"):
-        lsp.select_lsp_main("3.1.0")
+def test_current_lsp_dispatches_to_total_core_semantics() -> None:
+    assert lsp.select_lsp_main("3.1.0") is lsp_v31_main
 
 
 def test_unknown_lsp_version_is_not_inferred() -> None:
