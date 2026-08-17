@@ -82,8 +82,15 @@ class V31AuthorityTests(unittest.TestCase):
         self.assertEqual(report["unexpected_paths"], [])
         self.assertEqual(report["missing_technical_paths"], [])
         self.assertEqual(
-            frozenset(report["changed_paths"]),
+            frozenset(report["technical_changed_paths"]),
             TECHNICAL_REQUIRED_PATHS,
+        )
+        self.assertTrue(
+            set(report["post_cert_changed_paths"]).issubset(POST_CERT_ALLOWED_PATHS)
+        )
+        self.assertEqual(
+            set(report["changed_paths"]),
+            set(report["technical_changed_paths"]).union(report["post_cert_changed_paths"]),
         )
 
     def test_v3_and_inherited_v2_governed_bytes_are_unchanged(self) -> None:
