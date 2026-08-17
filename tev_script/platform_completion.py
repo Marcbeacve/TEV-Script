@@ -5,18 +5,18 @@ import json
 from pathlib import Path
 from typing import Callable, Mapping
 
-EXPECTED_GATES = frozenset(
-    {
-        "VERSION_IDENTITY",
-        "NORMATIVE_SPEC",
-        "CONFORMANCE",
-        "DIFFERENTIAL_FUZZ",
-        "SEMANTIC_INVARIANTS",
-        "VERSION_MATRIX",
-        "TOOLING_3X",
-        "REPRODUCIBLE_RELEASE",
-    }
+GATE_ORDER = (
+    "VERSION_IDENTITY",
+    "NORMATIVE_SPEC",
+    "VERSION_MATRIX",
+    "TOOLING_3X",
+    "CONFORMANCE",
+    "DIFFERENTIAL_FUZZ",
+    "SEMANTIC_INVARIANTS",
+    "REPRODUCIBLE_RELEASE",
+    "FULL_REGRESSION",
 )
+EXPECTED_GATES = frozenset(GATE_ORDER)
 GateFunction = Callable[[Path], dict[str, object]]
 
 
@@ -38,6 +38,7 @@ def _default_gate_functions(
     from .platform_conformance import run_platform_conformance
     from .platform_fuzz import run_differential_fuzz
     from .platform_invariants import validate_platform_invariants
+    from .platform_regression import run_full_regression
     from .platform_release import validate_platform_release
     from .platform_spec import validate_normative_index
     from .platform_tooling import validate_tooling_surface
@@ -46,6 +47,8 @@ def _default_gate_functions(
     return {
         "VERSION_IDENTITY": validate_current_version_identity,
         "NORMATIVE_SPEC": validate_normative_index,
+        "VERSION_MATRIX": validate_version_matrix,
+        "TOOLING_3X": validate_tooling_surface,
         "CONFORMANCE": run_platform_conformance,
         "DIFFERENTIAL_FUZZ": lambda root: run_differential_fuzz(
             root,
@@ -53,9 +56,8 @@ def _default_gate_functions(
             count=fuzz_count,
         ),
         "SEMANTIC_INVARIANTS": validate_platform_invariants,
-        "VERSION_MATRIX": validate_version_matrix,
-        "TOOLING_3X": validate_tooling_surface,
         "REPRODUCIBLE_RELEASE": validate_platform_release,
+        "FULL_REGRESSION": run_full_regression,
     }
 
 
@@ -76,7 +78,7 @@ def validate_platform_completion(
     extra = sorted(set(selected) - EXPECTED_GATES)
     if missing or extra:
         body = {
-            "schema": "TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT_V1",
+            "schema": "TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT_V2",
             "status": "FAIL",
             "platform_completion": "FAIL",
             "missing_gates": missing,
@@ -89,7 +91,7 @@ def validate_platform_completion(
         }
 
     outcomes: dict[str, dict[str, object]] = {}
-    for name in sorted(EXPECTED_GATES):
+    for name in GATE_ORDER:
         try:
             receipt = dict(selected[name](root))
         except Exception as error:
@@ -106,7 +108,7 @@ def validate_platform_completion(
     )
     status = "FAIL" if failed else ("HOLD" if held else "PASS")
     body: dict[str, object] = {
-        "schema": "TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT_V1",
+        "schema": "TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT_V2",
         "status": status,
         "platform_completion": status,
         "missing_gates": [],
@@ -119,10 +121,14 @@ def validate_platform_completion(
     if release.get("status") == "PASS":
         body["source_commit"] = release.get("source_commit")
         body["source_tree"] = release.get("source_tree")
+    regression = outcomes.get("FULL_REGRESSION", {})
+    if regression.get("status") == "PASS":
+        body["full_regression_receipt_sha256"] = regression.get("receipt_sha256")
+        body["full_regression_test_count"] = regression.get("test_count")
     return {
         **body,
         "receipt_sha256": hashlib.sha256(_canonical_json_bytes(body)).hexdigest(),
     }
 
 
-__all__ = ["EXPECTED_GATES", "validate_platform_completion"]
+__all__ = ["GATE_ORDER", "EXPECTED_GATES", "validate_platform_completion"]
