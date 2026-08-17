@@ -48,15 +48,16 @@ Platform completion requires simultaneous PASS for:
 ```text
 VERSION_IDENTITY
 NORMATIVE_SPEC
+VERSION_MATRIX
+TOOLING_3X
 CONFORMANCE
 DIFFERENTIAL_FUZZ
 SEMANTIC_INVARIANTS
-VERSION_MATRIX
-TOOLING_3X
 REPRODUCIBLE_RELEASE
+FULL_REGRESSION
 ```
 
-A FAIL blocks completion. A HOLD remains HOLD. Only eight PASS results may emit `PLATFORM_COMPLETION=PASS`. The completion gate never grants merge, tag or publication authority.
+A FAIL blocks completion. A HOLD remains HOLD. Only nine PASS results may emit `PLATFORM_COMPLETION=PASS`. `FULL_REGRESSION` requires a non-empty pytest suite with zero failures, zero errors and zero skips, stable clean HEAD/tree before and after execution, and the same source identity as `REPRODUCIBLE_RELEASE`. The completion gate never grants merge, tag or publication authority.
 
 Current generic tooling is Total-Core 3.1 aware:
 
@@ -110,7 +111,7 @@ P_COMMIT=9c79d43a082e8c609d4b85d2cadd5b462f488252
 P_TREE=a242425c98945eda90a7b45e4ef11394ef423bd4
 P_CERTIFY_FULL_V2_RECEIPT_SHA256=6c5b8e1ab243d4ccd2108c816c83542c6e3fec1b2a69efc0c09e4a85327c0e07
 P_CERTIFY_FULL_V2_RECEIPT_FILE_SHA256=c8a8b6bd307431dc32db17a10640a2890ce6316e6eaebacf0b2dcfa6420d702a
-P_PYTHON_CERTIFY_FULL_RECEIPT_SHA256=271d3fbdf6d1e9284b8fede03823fbff1c98ba3fab81c0e2dd1602420a5437c8
+P_PYTHON_CERTIFY_FULL_RECEIPT_SHA256=271d3fbdf6d1e9284b8fede03823fbff1c98ba3fab81a0e2dd1602420a5437c8
 P_PYTHON_WHEEL_SHA256=9116ea8f80cc89b26cbff0581108935f905d260f430ef0cf719e0166475b4944
 ```
 
