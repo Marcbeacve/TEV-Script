@@ -8,22 +8,17 @@
     "schema",
     "status",
     "package_version",
-    "source_commit",
-    "source_tree",
-    "wheel_sha256",
-    "sbom_sha256",
-    "normative_set_sha256",
-    "version_identity_sha256",
-    "conformance_sha256",
-    "build_environment_descriptor_sha256",
-    "provenance_sha256",
-    "runtime_dependency_count",
     "receipt_sha256"
   ],
   "properties": {
     "schema": {"const": "TEV_SCRIPT_PLATFORM_RELEASE_RECEIPT_V2"},
-    "status": {"const": "PASS"},
+    "status": {"enum": ["PASS", "HOLD", "FAIL"]},
     "package_version": {"const": "3.1.1"},
+    "error": {"type": "string", "minLength": 1},
+    "version_identity": {"type": "object"},
+    "normative_spec": {"type": "object"},
+    "conformance": {"type": "object"},
+    "artifact_reproducibility": {"type": "object"},
     "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
     "source_tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
     "wheel_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
@@ -33,7 +28,55 @@
     "conformance_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "build_environment_descriptor_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "provenance_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "runtime_dependency_count": {"const": 0},
+    "runtime_dependency_count": {"type": "integer", "minimum": 0},
     "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
-  }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "PASS"}}},
+      "then": {
+        "required": [
+          "source_commit",
+          "source_tree",
+          "wheel_sha256",
+          "sbom_sha256",
+          "normative_set_sha256",
+          "version_identity_sha256",
+          "conformance_sha256",
+          "build_environment_descriptor_sha256",
+          "provenance_sha256",
+          "runtime_dependency_count"
+        ],
+        "properties": {
+          "runtime_dependency_count": {"const": 0}
+        },
+        "not": {
+          "anyOf": [
+            {"required": ["error"]},
+            {"required": ["version_identity"]},
+            {"required": ["normative_spec"]},
+            {"required": ["conformance"]},
+            {"required": ["artifact_reproducibility"]}
+          ]
+        }
+      },
+      "else": {
+        "required": ["error"],
+        "not": {
+          "anyOf": [
+            {"required": ["source_commit"]},
+            {"required": ["source_tree"]},
+            {"required": ["wheel_sha256"]},
+            {"required": ["sbom_sha256"]},
+            {"required": ["normative_set_sha256"]},
+            {"required": ["version_identity_sha256"]},
+            {"required": ["conformance_sha256"]},
+            {"required": ["build_environment_descriptor_sha256"]},
+            {"required": ["provenance_sha256"]},
+            {"required": ["runtime_dependency_count"]}
+          ]
+        }
+      }
+    }
+  ]
 }
