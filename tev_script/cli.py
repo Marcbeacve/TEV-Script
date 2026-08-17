@@ -21,12 +21,32 @@ from .canonical import canonical_json
 from .conformance import run_conformance
 from .json_io import load_strict_json
 from .capability_catalog import load_capability_catalog
+from .platform_tooling import describe_current_platform, platform_check
+from .version import PACKAGE_VERSION
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="tev-script")
+    parser.add_argument("--version", action="version", version=PACKAGE_VERSION)
     commands = parser.add_subparsers(dest="command", required=True)
 
+    current = commands.add_parser(
+        "describe",
+        help="report the current TEVScript platform identity and boundaries",
+    )
+    current.set_defaults(handler=_describe_current)
+
+    platform = commands.add_parser(
+        "platform-check",
+        help="validate current platform identity/spec/version/tooling gates",
+    )
+    platform.add_argument("--root", type=Path, default=Path.cwd())
+    platform.set_defaults(handler=_platform_check)
+
+    # Historical unversioned commands remain compatibility surfaces for the
+    # original portable compiler. They are not silently reinterpreted as the
+    # TEVScript 3.1 Total-Core source/runtime. Current Total-Core compile/run
+    # authority remains the explicit tev-script-v31 entry point.
     descriptor = commands.add_parser("descriptor")
     descriptor.set_defaults(handler=_descriptor)
 
@@ -48,6 +68,31 @@ def build_parser() -> argparse.ArgumentParser:
     conformance.add_argument("--capability-catalog", type=Path)
     conformance.set_defaults(handler=_conformance)
     return parser
+
+
+def _describe_current(_arguments: argparse.Namespace) -> int:
+    print(
+        json.dumps(
+            describe_current_platform(),
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    )
+    return 0
+
+
+def _platform_check(arguments: argparse.Namespace) -> int:
+    receipt = platform_check(arguments.root)
+    print(
+        json.dumps(
+            receipt,
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    )
+    return 0 if receipt["status"] == "PASS" else 1
 
 
 def _descriptor(_arguments: argparse.Namespace) -> int:
