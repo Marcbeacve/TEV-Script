@@ -60,6 +60,7 @@ TECHNICAL_REQUIRED_PATHS = frozenset({
     "tev_script/describe_v31.py",
     "tev_script/descriptor_v31.py",
     "tev_script/program_ir_v5_total.py",
+    "tev_script/release_metadata_v31.py",
     "tev_script/runtime_v5_total.py",
     "tev_script/source_total_core_v31.py",
 })
@@ -74,6 +75,11 @@ POST_CERT_ALLOWED_PATHS = frozenset({
     "schemas/tev-script-v31-stable-admission-receipt.schema.json",
     "tests/test_v31_packaging.py",
     "tests/test_v31_stable_admission.py",
+    "tev_script/release_metadata_v31.py",
+})
+
+RELEASE_MUTABLE_PATHS = frozenset({
+    "tev_script/release_metadata_v31.py",
 })
 
 REQUIRED_FEATURES = frozenset({
@@ -295,8 +301,20 @@ def validate_v31_matrix(
     else:
         post_cert_report = list(post_cert)
 
-    if TECHNICAL_REQUIRED_PATHS.intersection(POST_CERT_ALLOWED_PATHS):
-        errors.append("governed_path_overlap")
+    release_mutable = _list_text(matrix.get("release_mutable_paths"))
+    if (
+        release_mutable is None
+        or frozenset(release_mutable) != RELEASE_MUTABLE_PATHS
+        or len(release_mutable) != len(set(release_mutable))
+        or tuple(sorted(release_mutable)) != release_mutable
+    ):
+        errors.append("release_mutable_paths")
+        release_mutable_report: list[str] = []
+    else:
+        release_mutable_report = list(release_mutable)
+
+    if TECHNICAL_REQUIRED_PATHS.intersection(POST_CERT_ALLOWED_PATHS) != RELEASE_MUTABLE_PATHS:
+        errors.append("release_mutable_intersection")
     if matrix.get("production_gates") != PRODUCTION_GATES:
         errors.append("production_gates")
     if (
@@ -319,6 +337,7 @@ def validate_v31_matrix(
         ),
         "technical_governed_paths": technical_report,
         "post_cert_allowed_paths": post_cert_report,
+        "release_mutable_paths": release_mutable_report,
         "publication_authorized": False,
         "merge_authorized": False,
         "language_stable": False,
@@ -492,10 +511,14 @@ def evaluate_minimality(root: Path = ROOT) -> dict[str, Any]:
     allowed = TECHNICAL_REQUIRED_PATHS | POST_CERT_ALLOWED_PATHS
     unexpected = sorted(changed - allowed)
     missing = sorted(TECHNICAL_REQUIRED_PATHS - changed)
+    technical_changed = sorted(changed.intersection(TECHNICAL_REQUIRED_PATHS))
+    post_cert_changed = sorted(changed - TECHNICAL_REQUIRED_PATHS)
     body = {
         "schema": "TEV_SCRIPT_V31_MINIMALITY_REPORT_V1",
         "base_sha": V3_STABLE_SHA,
         "changed_paths": sorted(changed),
+        "technical_changed_paths": technical_changed,
+        "post_cert_changed_paths": post_cert_changed,
         "unexpected_paths": unexpected,
         "missing_technical_paths": missing,
         "status": "PASS" if not unexpected and not missing else "FAIL",
