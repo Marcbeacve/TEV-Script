@@ -13,6 +13,7 @@ from typing import Callable
 from .version import PACKAGE_VERSION
 
 Builder = Callable[[Path, Path], Path]
+IdentityResolver = Callable[[Path], tuple[str, str]]
 
 
 def _canonical_json_bytes(value: object) -> bytes:
@@ -163,6 +164,23 @@ def _default_builder(root: Path, destination: Path) -> Path:
     return wheels[0]
 
 
+def _default_git_identity(root: Path) -> tuple[str, str]:
+    def run(*arguments: str) -> str:
+        completed = subprocess.run(
+            ("git", *arguments),
+            cwd=root,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        if completed.returncode != 0:
+            raise RuntimeError("git identity unavailable")
+        return completed.stdout.strip()
+
+    return run("rev-parse", "HEAD"), run("rev-parse", "HEAD^{tree}")
+
+
 def validate_reproducible_release(
     root: Path,
     *,
@@ -215,9 +233,71 @@ def validate_reproducible_release(
         }
 
 
+def validate_platform_release(
+    root: Path,
+    *,
+    builder: Builder | None = None,
+    identity_resolver: IdentityResolver | None = None,
+) -> dict[str, object]:
+    from .platform_spec import validate_normative_index
+    from .platform_versioning import validate_current_version_identity
+
+    root = Path(root)
+    reproduction = validate_reproducible_release(root, builder=builder)
+    if reproduction.get("status") != "PASS":
+        return {
+            "schema": "TEV_SCRIPT_PLATFORM_RELEASE_RECEIPT_V1",
+            "status": "FAIL",
+            "artifact_reproducibility": reproduction,
+        }
+    version_receipt = validate_current_version_identity(root)
+    normative_receipt = validate_normative_index(root)
+    if (
+        version_receipt.get("status") != "PASS"
+        or normative_receipt.get("status") != "PASS"
+    ):
+        return {
+            "schema": "TEV_SCRIPT_PLATFORM_RELEASE_RECEIPT_V1",
+            "status": "FAIL",
+            "artifact_reproducibility": reproduction,
+            "version_identity": version_receipt,
+            "normative_spec": normative_receipt,
+        }
+    resolver = _default_git_identity if identity_resolver is None else identity_resolver
+    source_commit, source_tree = resolver(root)
+    version_identity_sha256 = hashlib.sha256(
+        _canonical_json_bytes(version_receipt)
+    ).hexdigest()
+    provenance = build_provenance(
+        root,
+        source_commit=source_commit,
+        source_tree=source_tree,
+        normative_set_sha256=str(normative_receipt["normative_set_sha256"]),
+        version_identity_sha256=version_identity_sha256,
+    )
+    body = {
+        "schema": "TEV_SCRIPT_PLATFORM_RELEASE_RECEIPT_V1",
+        "status": "PASS",
+        "package_version": PACKAGE_VERSION,
+        "source_commit": source_commit,
+        "source_tree": source_tree,
+        "wheel_sha256": reproduction["wheel_sha256"],
+        "sbom_sha256": reproduction["sbom_sha256"],
+        "normative_set_sha256": normative_receipt["normative_set_sha256"],
+        "version_identity_sha256": version_identity_sha256,
+        "provenance_sha256": provenance["provenance_sha256"],
+        "runtime_dependency_count": reproduction["runtime_dependency_count"],
+    }
+    return {
+        **body,
+        "receipt_sha256": hashlib.sha256(_canonical_json_bytes(body)).hexdigest(),
+    }
+
+
 __all__ = [
     "build_provenance",
     "build_sbom",
     "compare_artifacts",
+    "validate_platform_release",
     "validate_reproducible_release",
 ]
