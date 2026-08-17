@@ -36,6 +36,22 @@ def test_default_witness_set_is_exact() -> None:
     assert set(DEFAULT_WITNESSES) == EXPECTED_INVARIANTS
 
 
+def test_current_semantic_invariants_are_witnessed_at_total_core() -> None:
+    for name in {
+        "DETERMINISM",
+        "CAPABILITY_NON_ESCALATION",
+        "BOUNDED_EXECUTION",
+        "CANONICAL_IDENTITY",
+        "CHECKPOINT_REPLAY_EQUIVALENCE",
+    }:
+        assert str(DEFAULT_WITNESSES[name]["target"]).startswith(
+            "tests/test_platform_invariants_v31.py::test_total_core_"
+        )
+    assert DEFAULT_WITNESSES["CROSS_RUNTIME_EQUIVALENCE"]["target"] == (
+        "tests/test_runtime_v5_total_js_parity.py"
+    )
+
+
 def test_all_constitutional_witnesses_are_explicit(tmp_path: Path) -> None:
     receipt = validate_platform_invariants(
         tmp_path,
