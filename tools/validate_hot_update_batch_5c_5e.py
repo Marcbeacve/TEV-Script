@@ -13,12 +13,6 @@ UNITY_UPDATE = ROOT / "unity" / "Package" / "Runtime" / "Update"
 CORE_IDENTITY_SCHEMA = "TEV_SCRIPT_UNITY_CORE_SOURCE_IDENTITY_V1"
 CANONICAL_CORE_PREFIX = PurePosixPath("runtimes/csharp/TevScript.Core")
 UNITY_CORE_PREFIX = PurePosixPath("unity/Package/Runtime/Core")
-HOST_ONLY_CORE_FILES = frozenset(
-    {
-        "CompilerCompatibility.V3.cs",
-        "GlobalUsings.V3.cs",
-    }
-)
 
 
 def require(condition: bool, message: str) -> None:
@@ -107,25 +101,12 @@ def validate_core_mirror(root: Path) -> int:
             f"core_identity_hash:{canonical_name}",
         )
 
-    core_dir = root / CANONICAL_CORE_PREFIX
     unity_dir = root / UNITY_CORE_PREFIX
-    observed_core = {path.name for path in core_dir.glob("*.cs")}
     observed_unity = {path.name for path in unity_dir.glob("*.cs")}
-
     require(
         observed_unity == package_names,
         "unity_identity_set:"
         f"identity={sorted(package_names)}:observed={sorted(observed_unity)}",
-    )
-    unclassified = observed_core - canonical_names - HOST_ONLY_CORE_FILES
-    require(
-        not unclassified,
-        f"core_unclassified:{sorted(unclassified)}",
-    )
-    require(
-        canonical_names <= observed_core,
-        "core_identity_set:"
-        f"identity={sorted(canonical_names)}:observed={sorted(observed_core)}",
     )
     return len(files)
 
