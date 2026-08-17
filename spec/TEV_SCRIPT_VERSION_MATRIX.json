@@ -1,0 +1,158 @@
+{
+  "schema": "TEV_SCRIPT_VERSION_MATRIX_V1",
+  "current_language": "3.1.0",
+  "domains": {
+    "language": [
+      {
+        "version": "3.1.0",
+        "status": "current",
+        "authority": "spec/TEV_SCRIPT_3_1_PLATFORM.md"
+      },
+      {
+        "version": "3.0.0",
+        "status": "compatible",
+        "authority": "spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md"
+      },
+      {
+        "version": "2.0.0",
+        "status": "compatible",
+        "authority": "spec/TEV_SCRIPT_V2_LANGUAGE.md"
+      },
+      {
+        "version": "1.0.0",
+        "status": "historical",
+        "authority": "spec/TEV_SCRIPT_V1_SEMANTIC_CONTRACT.md"
+      }
+    ],
+    "source_profile": [
+      {
+        "version": "3.1.0",
+        "profile": "total_core",
+        "status": "current",
+        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md",
+        "entrypoint": "tev_script.source_total_core_v31:compile_total_core_v31"
+      },
+      {
+        "version": "3.0.0",
+        "profile": "semantic_process",
+        "status": "compatible",
+        "authority": "spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md"
+      },
+      {
+        "version": "2.0.0",
+        "profile": "general_v2",
+        "status": "compatible",
+        "authority": "spec/TEV_SCRIPT_V2_LANGUAGE.md"
+      },
+      {
+        "version": "1.0.0",
+        "profile": "bounded_v1",
+        "status": "historical",
+        "authority": "docs/TEV_SCRIPT_V1_LANGUAGE_REFERENCE.md"
+      }
+    ],
+    "linked_program": [
+      {
+        "version": "1",
+        "profile": "v1",
+        "status": "compatible",
+        "authority": "spec/TEV_SCRIPT_V1_CANONICAL_LINKED_PROGRAM.md"
+      }
+    ],
+    "program_ir": [
+      {
+        "version": "5",
+        "profile": "total_core",
+        "status": "current",
+        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md",
+        "entrypoint": "tev_script.runtime_v5_total:run_total_core_quantum"
+      },
+      {
+        "version": "5",
+        "profile": "semantic_process",
+        "status": "compatible",
+        "authority": "spec/TEV_SCRIPT_PROGRAM_IR_V5_SEMANTIC_PROCESS.md"
+      },
+      {
+        "version": "4",
+        "profile": "pure",
+        "status": "compatible",
+        "authority": "spec/TEV_SCRIPT_PROGRAM_IR_V4.md"
+      },
+      {
+        "version": "4",
+        "profile": "recursive",
+        "status": "compatible",
+        "authority": "spec/TEV_SCRIPT_PROGRAM_IR_V4.md"
+      },
+      {
+        "version": "4",
+        "profile": "effects",
+        "status": "compatible",
+        "authority": "spec/TEV_SCRIPT_PROGRAM_IR_V4.md"
+      },
+      {
+        "version": "3",
+        "profile": "portable",
+        "status": "compatible",
+        "authority": "spec/TEV_SCRIPT_IR_V3.md"
+      },
+      {
+        "version": "2",
+        "profile": "portable_legacy",
+        "status": "historical",
+        "authority": "spec/IR_OPERATIONAL_SEMANTICS_V1.md"
+      }
+    ],
+    "runtime_abi": [
+      {
+        "version": "v5-total-v1",
+        "profile": "total_core",
+        "status": "current",
+        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md",
+        "entrypoint": "tev_script.runtime_v5_total:run_total_core_quantum"
+      },
+      {
+        "version": "ir-v3-runtime-v1",
+        "profile": "portable",
+        "status": "compatible",
+        "authority": "spec/TEV_SCRIPT_IR_V3_OPERATIONAL_SEMANTICS.md",
+        "entrypoint": "tev_script.runtime_v3:ScriptRuntimeV3"
+      }
+    ],
+    "checkpoint": [
+      {
+        "version": "v5-total-checkpoint-v1",
+        "profile": "total_core",
+        "status": "current",
+        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md",
+        "entrypoint": "tev_script.runtime_v5_total:TotalCoreCheckpointV1"
+      },
+      {
+        "version": "v2",
+        "profile": "ir_v3",
+        "status": "compatible",
+        "authority": "spec/TEV_SCRIPT_RUNTIME_CHECKPOINT_V2.md",
+        "entrypoint": "tev_script.runtime_checkpoint_v2:RuntimeCheckpointV2"
+      }
+    ],
+    "package": [
+      {
+        "version": "3.1.0",
+        "status": "current",
+        "authority": "tev_script/version.py",
+        "entrypoint": "tev_script"
+      },
+      {
+        "version": "3.0.0",
+        "status": "historical",
+        "authority": "packaging/v3/pyproject.toml"
+      },
+      {
+        "version": "1.0.0",
+        "status": "historical",
+        "authority": "CHANGELOG.md"
+      }
+    ]
+  }
+}
