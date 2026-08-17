@@ -30,6 +30,14 @@ def _canonical_json_bytes(value: object) -> bytes:
     ).encode("utf-8")
 
 
+def _is_git_sha(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 40
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
 def _default_gate_functions(
     fuzz_seed: int,
     fuzz_count: int,
@@ -59,6 +67,36 @@ def _default_gate_functions(
         "REPRODUCIBLE_RELEASE": validate_platform_release,
         "FULL_REGRESSION": run_full_regression,
     }
+
+
+def _enforce_source_identity(outcomes: dict[str, dict[str, object]]) -> None:
+    for name in ("REPRODUCIBLE_RELEASE", "FULL_REGRESSION"):
+        receipt = outcomes[name]
+        if receipt.get("status") != "PASS":
+            continue
+        if not _is_git_sha(receipt.get("source_commit")) or not _is_git_sha(
+            receipt.get("source_tree")
+        ):
+            outcomes[name] = {
+                **receipt,
+                "status": "FAIL",
+                "reason": "SOURCE_IDENTITY_MISSING",
+            }
+
+    release = outcomes["REPRODUCIBLE_RELEASE"]
+    regression = outcomes["FULL_REGRESSION"]
+    if release.get("status") != "PASS" or regression.get("status") != "PASS":
+        return
+    release_identity = (release["source_commit"], release["source_tree"])
+    regression_identity = (regression["source_commit"], regression["source_tree"])
+    if release_identity != regression_identity:
+        outcomes["FULL_REGRESSION"] = {
+            **regression,
+            "status": "FAIL",
+            "reason": "SOURCE_IDENTITY_MISMATCH_WITH_RELEASE",
+            "release_source_commit": release["source_commit"],
+            "release_source_tree": release["source_tree"],
+        }
 
 
 def validate_platform_completion(
@@ -100,6 +138,8 @@ def validate_platform_completion(
             receipt = {"status": "FAIL", "error": "INVALID_GATE_STATUS"}
         outcomes[name] = receipt
 
+    _enforce_source_identity(outcomes)
+
     failed = sorted(
         name for name, receipt in outcomes.items() if receipt["status"] == "FAIL"
     )
@@ -117,12 +157,11 @@ def validate_platform_completion(
         "hold_gates": held,
         "gates": outcomes,
     }
-    release = outcomes.get("REPRODUCIBLE_RELEASE", {})
-    if release.get("status") == "PASS":
-        body["source_commit"] = release.get("source_commit")
-        body["source_tree"] = release.get("source_tree")
-    regression = outcomes.get("FULL_REGRESSION", {})
-    if regression.get("status") == "PASS":
+    release = outcomes["REPRODUCIBLE_RELEASE"]
+    regression = outcomes["FULL_REGRESSION"]
+    if release.get("status") == "PASS" and regression.get("status") == "PASS":
+        body["source_commit"] = release["source_commit"]
+        body["source_tree"] = release["source_tree"]
         body["full_regression_receipt_sha256"] = regression.get("receipt_sha256")
         body["full_regression_test_count"] = regression.get("test_count")
     return {
