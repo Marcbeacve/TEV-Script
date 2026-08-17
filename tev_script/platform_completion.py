@@ -47,6 +47,10 @@ def _canonical_json_bytes(value: object) -> bytes:
     ).encode("utf-8")
 
 
+def _hash_object(value: object) -> str:
+    return hashlib.sha256(_canonical_json_bytes(value)).hexdigest()
+
+
 def _is_hex(value: object, length: int) -> bool:
     return (
         isinstance(value, str)
@@ -120,6 +124,62 @@ def _enforce_source_identity(outcomes: dict[str, dict[str, object]]) -> None:
         }
 
 
+def _enforce_release_evidence_binding(
+    outcomes: dict[str, dict[str, object]],
+) -> None:
+    release = outcomes["REPRODUCIBLE_RELEASE"]
+    if release.get("status") != "PASS":
+        return
+    version = outcomes["VERSION_IDENTITY"]
+    normative = outcomes["NORMATIVE_SPEC"]
+    conformance = outcomes["CONFORMANCE"]
+    if any(
+        receipt.get("status") != "PASS"
+        for receipt in (version, normative, conformance)
+    ):
+        return
+
+    expected_version = _hash_object(version)
+    expected_normative = normative.get("normative_set_sha256")
+    expected_conformance = conformance.get("receipt_sha256")
+    mismatches: list[str] = []
+    if not _is_hex(expected_normative, 64) or release.get(
+        "normative_set_sha256"
+    ) != expected_normative:
+        mismatches.append("NORMATIVE_SPEC")
+    if not _is_hex(expected_conformance, 64) or release.get(
+        "conformance_sha256"
+    ) != expected_conformance:
+        mismatches.append("CONFORMANCE")
+    if release.get("version_identity_sha256") != expected_version:
+        mismatches.append("VERSION_IDENTITY")
+    if mismatches:
+        outcomes["REPRODUCIBLE_RELEASE"] = {
+            "status": "FAIL",
+            "reason": "RELEASE_EVIDENCE_MISMATCH",
+            "mismatches": sorted(mismatches),
+            "release_receipt": release,
+        }
+
+
+def _release_evidence_matches(
+    gate_map: dict[str, Mapping[str, object]],
+) -> bool:
+    release = gate_map["REPRODUCIBLE_RELEASE"]
+    version = gate_map["VERSION_IDENTITY"]
+    normative = gate_map["NORMATIVE_SPEC"]
+    conformance = gate_map["CONFORMANCE"]
+    expected_normative = normative.get("normative_set_sha256")
+    expected_conformance = conformance.get("receipt_sha256")
+    return bool(
+        _is_hex(expected_normative, 64)
+        and _is_hex(expected_conformance, 64)
+        and release.get("version_identity_sha256") == _hash_object(version)
+        and release.get("normative_set_sha256") == expected_normative
+        and release.get("conformance_sha256") == expected_conformance
+    )
+
+
 def verify_platform_completion_receipt(value: object) -> bool:
     from .platform_regression import verify_full_regression_receipt
 
@@ -131,7 +191,7 @@ def verify_platform_completion_receipt(value: object) -> bool:
     observed_hash = receipt.pop("receipt_sha256", None)
     if not _is_hex(observed_hash, 64):
         return False
-    if hashlib.sha256(_canonical_json_bytes(receipt)).hexdigest() != observed_hash:
+    if _hash_object(receipt) != observed_hash:
         return False
     if receipt.get("schema") != "TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT_V2":
         return False
@@ -188,6 +248,8 @@ def verify_platform_completion_receipt(value: object) -> bool:
         release = gate_map["REPRODUCIBLE_RELEASE"]
         if not verify_full_regression_receipt(regression):
             return False
+        if not _release_evidence_matches(gate_map):
+            return False
         if not _is_git_sha(release.get("source_commit")) or not _is_git_sha(
             release.get("source_tree")
         ):
@@ -238,7 +300,7 @@ def validate_platform_completion(
         }
         return {
             **body,
-            "receipt_sha256": hashlib.sha256(_canonical_json_bytes(body)).hexdigest(),
+            "receipt_sha256": _hash_object(body),
         }
 
     outcomes: dict[str, dict[str, object]] = {}
@@ -252,6 +314,7 @@ def validate_platform_completion(
         outcomes[name] = receipt
 
     _enforce_source_identity(outcomes)
+    _enforce_release_evidence_binding(outcomes)
 
     failed = sorted(
         name for name, receipt in outcomes.items() if receipt["status"] == "FAIL"
@@ -279,7 +342,7 @@ def validate_platform_completion(
         body["full_regression_test_count"] = regression.get("test_count")
     return {
         **body,
-        "receipt_sha256": hashlib.sha256(_canonical_json_bytes(body)).hexdigest(),
+        "receipt_sha256": _hash_object(body),
     }
 
 
