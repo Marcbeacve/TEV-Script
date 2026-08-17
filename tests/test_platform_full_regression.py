@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 
-from tev_script.platform_regression import run_full_regression
+from tev_script.platform_regression import run_full_regression, verify_full_regression_receipt
 
 
 def _runner(
@@ -57,6 +58,17 @@ def test_full_regression_pass_requires_nonempty_zero_skip_suite(tmp_path: Path) 
     assert receipt["worktree_clean_before"] is True
     assert receipt["worktree_clean_after"] is True
     assert len(receipt["junit_sha256"]) == 64
+    assert verify_full_regression_receipt(receipt)
+
+
+def test_full_regression_receipt_tamper_is_rejected(tmp_path: Path) -> None:
+    receipt = _run(tmp_path, runner=_runner(tests=17))
+    tampered = copy.deepcopy(receipt)
+    tampered["test_count"] = 18
+    assert not verify_full_regression_receipt(tampered)
+    tampered = copy.deepcopy(receipt)
+    tampered["source_commit"] = "c" * 40
+    assert not verify_full_regression_receipt(tampered)
 
 
 def test_any_skip_blocks_full_regression(tmp_path: Path) -> None:
@@ -64,6 +76,7 @@ def test_any_skip_blocks_full_regression(tmp_path: Path) -> None:
     assert receipt["status"] == "FAIL"
     assert receipt["skipped_count"] == 1
     assert receipt["reason"] == "FULL_REGRESSION_NOT_CLEAN"
+    assert verify_full_regression_receipt(receipt)
 
 
 def test_any_failure_or_error_blocks_full_regression(tmp_path: Path) -> None:
@@ -74,12 +87,14 @@ def test_any_failure_or_error_blocks_full_regression(tmp_path: Path) -> None:
         receipt = _run(tmp_path, runner=runner)
         assert receipt["status"] == "FAIL"
         assert receipt[field] == 1
+        assert verify_full_regression_receipt(receipt)
 
 
 def test_zero_collected_tests_cannot_pass(tmp_path: Path) -> None:
     receipt = _run(tmp_path, runner=_runner(returncode=5, tests=0))
     assert receipt["status"] == "FAIL"
     assert receipt["reason"] == "FULL_REGRESSION_NOT_CLEAN"
+    assert verify_full_regression_receipt(receipt)
 
 
 def test_missing_junit_fails_closed(tmp_path: Path) -> None:
@@ -89,6 +104,7 @@ def test_missing_junit_fails_closed(tmp_path: Path) -> None:
     )
     assert receipt["status"] == "FAIL"
     assert receipt["reason"] == "JUNIT_RESULT_MISSING"
+    assert verify_full_regression_receipt(receipt)
 
 
 def test_dirty_worktree_before_or_after_blocks_regression(tmp_path: Path) -> None:
@@ -101,6 +117,7 @@ def test_dirty_worktree_before_or_after_blocks_regression(tmp_path: Path) -> Non
     assert receipt["status"] == "FAIL"
     assert receipt["reason"] == "SOURCE_IDENTITY_NOT_STABLE"
     assert receipt["worktree_clean_after"] is False
+    assert verify_full_regression_receipt(receipt)
 
 
 def test_head_or_tree_drift_blocks_regression(tmp_path: Path) -> None:
@@ -113,3 +130,4 @@ def test_head_or_tree_drift_blocks_regression(tmp_path: Path) -> None:
     assert receipt["status"] == "FAIL"
     assert receipt["reason"] == "SOURCE_IDENTITY_NOT_STABLE"
     assert receipt["identity_stable"] is False
+    assert verify_full_regression_receipt(receipt)
