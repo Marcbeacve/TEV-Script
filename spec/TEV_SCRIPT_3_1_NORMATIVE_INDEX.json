@@ -11,7 +11,7 @@
     {
       "path": "spec/TEV_SCRIPT_3_1_PLATFORM.md",
       "role": "platform_integration",
-      "git_blob_sha1": "995dc45e61c2e2965ef5f72ba2c4291e8aa1718e"
+      "git_blob_sha1": "8b8220fe769731cbf6c86a92e9d9b1027c6eb42c"
     },
     {
       "path": "spec/TEV_SCRIPT_IR_V3_OPERATIONAL_SEMANTICS.md",
@@ -66,7 +66,7 @@
     {
       "path": "spec/TEV_SCRIPT_VERSION_MATRIX.json",
       "role": "version_compatibility",
-      "git_blob_sha1": "15968c3772de44e3e621589491c9573a82dd7881"
+      "git_blob_sha1": "f209dd68be1a5365dc5dfe074b98fc507a8544b9"
     }
   ]
 }
