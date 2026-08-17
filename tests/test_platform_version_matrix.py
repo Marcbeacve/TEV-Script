@@ -9,6 +9,7 @@ from tev_script.platform_compatibility import (
     resolve_runtime_route,
     validate_version_matrix,
 )
+from tev_script.version import PACKAGE_VERSION
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -49,7 +50,7 @@ def _write_matrix(root: Path, *, duplicate: bool = False) -> None:
     _write_synthetic_entrypoints(root)
     package_rows = [
         {
-            "version": "3.1.1",
+            "version": PACKAGE_VERSION,
             "status": "current",
             "authority": "tev_script/version.py",
             "entrypoint": "tev_script",
@@ -125,7 +126,7 @@ def test_repository_version_matrix_is_explicit_and_current() -> None:
     receipt = validate_version_matrix(ROOT)
     assert receipt["status"] == "PASS"
     assert receipt["current_language"] == "3.1.0"
-    assert receipt["current_package"] == "3.1.1"
+    assert receipt["current_package"] == PACKAGE_VERSION
     assert "total_core" in receipt["current_profiles"]
     assert receipt["row_count"] >= 10
     assert receipt["authority_count"] >= 1

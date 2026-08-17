@@ -11,6 +11,7 @@ from tev_script.platform_completion import (
     validate_platform_completion,
     verify_platform_completion_receipt,
 )
+from tev_script.version import PACKAGE_VERSION
 
 
 SOURCE_COMMIT = "a" * 40
@@ -69,7 +70,7 @@ def _release_receipt(
     body = {
         "schema": "TEV_SCRIPT_PLATFORM_RELEASE_RECEIPT_V2",
         "status": "PASS",
-        "package_version": "3.1.1",
+        "package_version": PACKAGE_VERSION,
         "source_commit": source_commit,
         "source_tree": source_tree,
         "wheel_sha256": "3" * 64,

@@ -12,6 +12,7 @@ from tev_script.platform_release import (
     validate_platform_release,
 )
 from tev_script.platform_release_receipt import verify_platform_release_receipt
+from tev_script.version import PACKAGE_VERSION
 
 
 def _git_blob_sha1(data: bytes) -> str:
@@ -44,7 +45,7 @@ def _platform_fixture(root: Path) -> None:
         "[build-system]\nrequires=[]\nbuild-backend='tev_script_build_backend'\nbackend-path=['tools']\n"
         "[project]\n"
         'name = "tev-script-portable-reference"\n'
-        'version = "3.1.1"\n'
+        f'version = "{PACKAGE_VERSION}"\n'
         "dependencies = []\n",
         encoding="utf-8",
     )
@@ -56,7 +57,7 @@ def _platform_fixture(root: Path) -> None:
         encoding="utf-8",
     )
     (root / "spec" / "TEV_SCRIPT_3_1_PLATFORM.md").write_text(
-        "package_version = 3.1.1\n"
+        f"package_version = {PACKAGE_VERSION}\n"
         "language_version = 3.1.0\n"
         "current_profile = total_core\n",
         encoding="utf-8",
@@ -68,7 +69,7 @@ def _platform_fixture(root: Path) -> None:
                 "domains": {
                     "package": [
                         {
-                            "version": "3.1.1",
+                            "version": PACKAGE_VERSION,
                             "status": "current",
                             "authority": "tev_script/version.py",
                         }
@@ -80,7 +81,7 @@ def _platform_fixture(root: Path) -> None:
     )
     (root / "CHANGELOG.md").write_text(
         "# Changelog\n\n"
-        "## 3.1.1 - platform completion candidate\n"
+        f"## {PACKAGE_VERSION} - platform completion candidate\n"
         "P_PYTHON_CERTIFY_FULL_RECEIPT_SHA256="
         "271d3fbdf6d1e9284b8fede03823fbff1c98ba3fab81a0e2dd1602420a5437c8\n"
         "Technical certificate file SHA-256: "
@@ -145,7 +146,7 @@ def test_sbom_is_deterministic_and_dependency_explicit(tmp_path: Path) -> None:
     _platform_fixture(tmp_path)
     assert build_sbom(tmp_path) == build_sbom(tmp_path)
     sbom = build_sbom(tmp_path)
-    assert sbom["package_version"] == "3.1.1"
+    assert sbom["package_version"] == PACKAGE_VERSION
     assert sbom["dependencies"] == []
     assert len(sbom["sbom_sha256"]) == 64
 
@@ -171,7 +172,7 @@ def test_provenance_has_no_timestamp_identity(tmp_path: Path) -> None:
         conformance_sha256="e" * 64,
         build_environment_descriptor_sha256="f" * 64,
     )
-    assert receipt["package_version"] == "3.1.1"
+    assert receipt["package_version"] == PACKAGE_VERSION
     assert receipt["conformance_sha256"] == "e" * 64
     assert receipt["build_environment_descriptor_sha256"] == "f" * 64
     assert "timestamp" not in receipt
@@ -182,7 +183,7 @@ def test_full_release_evidence_requires_byte_reproducibility(tmp_path: Path) -> 
     _platform_fixture(tmp_path)
     receipt = _release(tmp_path)
     assert receipt["status"] == "PASS"
-    assert receipt["package_version"] == "3.1.1"
+    assert receipt["package_version"] == PACKAGE_VERSION
     assert receipt["runtime_dependency_count"] == 0
     assert receipt["source_commit"] == "a" * 40
     assert receipt["source_tree"] == "b" * 40
