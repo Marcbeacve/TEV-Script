@@ -8,7 +8,13 @@ from typing import Callable, Mapping, Sequence, Any
 
 from .diagnostics import TevScriptError
 from .ir_v4_values import TypeTableV4, build_type_table_v4
-from .source_types_v2 import ResolvedTypeV2, TypeRefV2, parse_type_ref_v2, resolve_type_ref_v2
+from .source_types_v2 import (
+    ResolvedTypeV2,
+    TypeRefV2,
+    parse_type_ref_v2,
+    resolve_type_ref_v2,
+    validate_static_type_ref_v2,
+)
 
 MAX_GENERIC_PARAMETERS_V2 = 16
 MAX_GENERIC_INSTANTIATIONS_V2 = 4096
@@ -129,7 +135,14 @@ class GenericRegistryV2:
             if _LOCAL.fullmatch(field_name) is None or field_name in seen_fields:
                 _fail("TEVS_V2_GENERIC_FIELDS", f"invalid or duplicate field {field_name!r}")
             seen_fields.add(field_name)
-            parsed_fields.append(GenericFieldTemplateV2(field_name, parse_type_ref_v2(type_text, arities)))
+            parsed_type = parse_type_ref_v2(type_text, arities)
+            validate_static_type_ref_v2(
+                parsed_type,
+                type_parameters=params,
+                nominal_resolver=self._resolve_nominal,
+                user_generic_arities=arities,
+            )
+            parsed_fields.append(GenericFieldTemplateV2(field_name, parsed_type))
         parsed_fields.sort(key=lambda item: item.name)
         parameter_positions = {parameter: index for index, parameter in enumerate(params)}
         canonical = {

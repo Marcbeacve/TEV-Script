@@ -13,6 +13,7 @@ from tev_script.platform_tooling import (
     platform_check,
     validate_tooling_surface,
 )
+from tev_script.version import PACKAGE_VERSION
 
 ROOT = Path(__file__).resolve().parents[1]
 AUTHORITY = "a" * 64
@@ -30,9 +31,9 @@ entry Start;
 UNIT = 'script Calc version "2.0.0"; fn add1(x:Int)->Int=x+1; entry main:Int=add1(4);'
 
 
-def test_current_platform_description_binds_package_311_language_310() -> None:
+def test_current_platform_description_binds_current_package_language_310() -> None:
     value = describe_current_platform()
-    assert value["package_version"] == "3.1.1"
+    assert value["package_version"] == PACKAGE_VERSION
     assert value["language_version"] == "3.1.0"
     assert value["profile"] == "total_core"
     assert value["runtime_source_compilation"] is False
@@ -73,7 +74,7 @@ def test_unknown_lsp_version_is_not_inferred() -> None:
 def test_generic_cli_describe_reports_current_platform(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["describe"]) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["package_version"] == "3.1.1"
+    assert payload["package_version"] == PACKAGE_VERSION
     assert payload["language_version"] == "3.1.0"
     assert payload["profile"] == "total_core"
 

@@ -17,11 +17,11 @@ ROOT = Path(__file__).resolve().parents[1]
 def _write_fixture(
     root: Path,
     *,
-    root_version: str = "3.1.1",
+    root_version: str = PACKAGE_VERSION,
     v31_version: str = "3.1.0",
     release_version: str = "3.1.0",
-    spec_package: str = "3.1.1",
-    matrix_package: str = "3.1.1",
+    spec_package: str = PACKAGE_VERSION,
+    matrix_package: str = PACKAGE_VERSION,
 ) -> None:
     (root / "packaging" / "v31").mkdir(parents=True)
     (root / "tev_script").mkdir(parents=True)
@@ -71,13 +71,13 @@ def _write_fixture(
         encoding="utf-8",
     )
     (root / "CHANGELOG.md").write_text(
-        "# Changelog\n\n## 3.1.1 - platform completion candidate\n",
+        f"# Changelog\n\n## {PACKAGE_VERSION} - platform completion candidate\n",
         encoding="utf-8",
     )
 
 
 def test_current_version_domains_are_explicit() -> None:
-    assert PACKAGE_VERSION == "3.1.1"
+    assert PACKAGE_VERSION == "3.1.2"
     assert __version__ == PACKAGE_VERSION
     assert CURRENT_LANGUAGE_VERSION == "3.1.0"
     assert PUBLISHED_PREDECESSOR_PACKAGE_VERSION == "3.1.0"
@@ -87,7 +87,7 @@ def test_current_version_domains_are_explicit() -> None:
 def test_repository_current_metadata_respects_domain_identity() -> None:
     receipt = validate_current_version_identity(ROOT)
     assert receipt["status"] == "PASS"
-    assert receipt["package_version"] == "3.1.1"
+    assert receipt["package_version"] == PACKAGE_VERSION
     assert receipt["language_version"] == "3.1.0"
     assert receipt["published_predecessor_package_version"] == "3.1.0"
     assert receipt["profile"] == "total_core"
