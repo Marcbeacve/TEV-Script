@@ -5,6 +5,7 @@
 ```text
 PACKAGE=tev-script-portable-reference
 PUBLISHED_VERSION=3.1.0
+PUBLISHED_LANGUAGE_VERSION=3.1.0
 PUBLISHED_PROFILE=total_core
 PUBLISHED_TAG=v3.1.0
 PUBLISHED_COMMIT=c20718ddb2223ba0bfd05ff59006ca31e2966b0b
@@ -17,9 +18,19 @@ The published `v3.1.0` Total-Core release remains immutable predecessor authorit
 
 ## Platform-completion candidate
 
-Branch: `agent/tevscript-platform-completion-v1`
+```text
+BRANCH=agent/tevscript-platform-completion-v1
+PACKAGE_VERSION=3.1.1
+LANGUAGE_VERSION=3.1.0
+PROFILE=total_core
+MERGE_AUTHORITY=FALSE
+PUBLICATION_AUTHORITY=FALSE
+TAG_AUTHORITY=FALSE
+```
 
-The candidate adds a fail-closed platform layer around the published 3.1 semantic core. The required aggregate gates are:
+Package `3.1.1` is a platform/tooling patch over unchanged language semantics `3.1.0`. The generic `tev-script` CLI and `tev-script-lsp` are current Total-Core entry points. Historical CLIs/LSP remain explicitly versioned compatibility surfaces.
+
+The aggregate completion authority is:
 
 ```text
 VERSION_IDENTITY
@@ -38,33 +49,39 @@ Only eight simultaneous PASS results may produce:
 PLATFORM_COMPLETION=PASS
 ```
 
-Implementation status:
+Current implementation state:
 
 ```text
-CANONICAL_CURRENT_VERSION_AUTHORITY=IMPLEMENTED
+CANONICAL_VERSION_DOMAINS=IMPLEMENTED
+PUBLIC___VERSION___BINDING=IMPLEMENTED
+CURRENT_GENERIC_CLI=IMPLEMENTED
+CURRENT_TOTAL_CORE_LSP=IMPLEMENTED
 NORMATIVE_3_1_PLATFORM_SPEC=IMPLEMENTED
-EXPLICIT_VERSION_MATRIX=IMPLEMENTED
-VERSION_AWARE_TOOLING=IMPLEMENTED
-FAIL_CLOSED_GENERIC_LSP=IMPLEMENTED
-EXECUTABLE_3_1_CONFORMANCE_MANIFEST=IMPLEMENTED
-DETERMINISTIC_DIFFERENTIAL_FUZZ=IMPLEMENTED
-CONSTITUTIONAL_INVARIANT_WITNESSES=IMPLEMENTED
-REPRODUCIBLE_WHEEL_SBOM_PROVENANCE=IMPLEMENTED
+CONTENT_ADDRESSED_NORMATIVE_INDEX=IMPLEMENTED
+EXPLICIT_VERSION_MATRIX=IMPLEMENTED_AND_FAIL_CLOSED
+CONFORMANCE_SEMANTIC_AREA_MATRIX=IMPLEMENTED
+DETERMINISTIC_TOTAL_CORE_DIFFERENTIAL_FUZZ=IMPLEMENTED
+TOTAL_CORE_CONSTITUTIONAL_WITNESSES=IMPLEMENTED
+CLEAN_TREE_REPRODUCIBLE_WHEEL_GATE=IMPLEMENTED
+SBOM_PROVENANCE_CONFORMANCE_ENVIRONMENT_BINDING=IMPLEMENTED
 AGGREGATE_PLATFORM_COMPLETION_GATE=IMPLEMENTED
 ```
 
-Development evidence for the isolated new platform layer:
+Certification state:
 
 ```text
-SYNTHETIC_TDD_TESTS=41_PASS
+FOCUSED_TDD=PERFORMED_DURING_IMPLEMENTATION
 FULL_REPOSITORY_REGRESSION=NOT_EXECUTED_IN_CONNECTOR_ENVIRONMENT
-PLATFORM_COMPLETION_CERTIFICATION=PENDING_FULL_REPOSITORY_EXECUTION
-MERGE_AUTHORITY=FALSE
-PUBLICATION_AUTHORITY=FALSE
-TAG_AUTHORITY=FALSE
+PLATFORM_COMPLETION_CERTIFICATION=PENDING_COMPLETE_CLEAN_CHECKOUT_EXECUTION
 ```
 
-The connector/container used to implement this candidate cannot materialize the complete GitHub checkout because outbound DNS/download access is blocked. Therefore the 41-test isolated TDD campaign is development evidence only and MUST NOT be promoted to full-repository certification. Run `python RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py` from a complete clean checkout to obtain the aggregate authority receipt.
+The implementation environment cannot materialize the complete GitHub checkout through its container network path. Synthetic/focused TDD is therefore development evidence only and is not promoted to repository-wide certification. The authoritative aggregate must be run from a complete clean checkout:
+
+```powershell
+python .\RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py
+```
+
+A HOLD remains HOLD; it is never converted into PASS. The completion receipt does not grant merge, tag or publication authority.
 
 ## Historical V0.2/V1 lineage
 
