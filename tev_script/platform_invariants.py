@@ -75,7 +75,7 @@ DEFAULT_WITNESSES: dict[str, dict[str, object]] = {
     "UPGRADE_NO_FORK": {
         "kind": "python_script",
         "target": "tools/validate_hot_update_batch_5c_5e.py",
-        "git_blob_sha1": "993ffa6aef6d134f339ac4897cf7cb7620550eab",
+        "git_blob_sha1": "3ce43b78d25805c8f0d76cb671dcc4035bacd485",
         "required_tools": ["python"],
     },
 }
