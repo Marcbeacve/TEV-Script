@@ -15,6 +15,19 @@ from tev_script.platform_tooling import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+AUTHORITY = "a" * 64
+
+PROCESS = f'''
+process GenericCli version "3.1.0";
+authority {AUTHORITY};
+quantum_steps 4;
+unit Calc profile pure;
+field actual = [];
+label Start = invoke_v4 Calc result tev.total.result End;
+label End = halt;
+entry Start;
+'''
+UNIT = 'script Calc version "2.0.0"; fn add1(x:Int)->Int=x+1; entry main:Int=add1(4);'
 
 
 def test_current_platform_description_binds_package_311_language_310() -> None:
@@ -63,6 +76,39 @@ def test_generic_cli_describe_reports_current_platform(capsys: pytest.CaptureFix
     assert payload["package_version"] == "3.1.1"
     assert payload["language_version"] == "3.1.0"
     assert payload["profile"] == "total_core"
+
+
+def test_generic_cli_check_compile_run_are_current_total_core(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    process = tmp_path / "program.tevs"
+    unit = tmp_path / "calc.tevs"
+    artifact = tmp_path / "program.json"
+    process.write_text(PROCESS, encoding="utf-8")
+    unit.write_text(UNIT, encoding="utf-8")
+
+    assert cli.main(["check", str(process), "--unit", f"Calc={unit}"]) == 0
+    checked = json.loads(capsys.readouterr().out)
+    assert checked["status"] == "PASS"
+    assert checked["language_version"] == "3.1.0"
+    assert checked["profile"] == "total_core"
+    assert not artifact.exists()
+
+    assert cli.main([
+        "compile",
+        str(process),
+        "--unit", f"Calc={unit}",
+        "--output", str(artifact),
+    ]) == 0
+    compiled = json.loads(capsys.readouterr().out)
+    assert compiled["schema"] == "TEV_SCRIPT_V31_COMPILE_TOTAL_RESULT_V1"
+    assert artifact.is_file()
+
+    assert cli.main(["run", str(artifact)]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["schema"] == "TEV_SCRIPT_V31_RUN_TOTAL_RESULT_V1"
+    assert result["status"] == "HALTED"
 
 
 def test_generic_cli_platform_check_is_fail_closed(capsys: pytest.CaptureFixture[str]) -> None:
