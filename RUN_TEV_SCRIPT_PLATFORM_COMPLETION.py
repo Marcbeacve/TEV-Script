@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from tev_script.platform_completion import EXPECTED_GATES, validate_platform_completion
+from tev_script.platform_completion import GATE_ORDER, validate_platform_completion
 
 ROOT = Path(__file__).resolve().parent
 
@@ -31,7 +31,7 @@ def main(argv: list[str] | None = None) -> int:
             + "\n",
             encoding="utf-8",
         )
-    for gate in sorted(EXPECTED_GATES):
+    for gate in GATE_ORDER:
         print(f"{gate}={receipt['gates'].get(gate, {}).get('status', 'FAIL')}")
     print(f"PLATFORM_COMPLETION={receipt['platform_completion']}")
     print(f"PLATFORM_COMPLETION_RECEIPT_SHA256={receipt['receipt_sha256']}")
@@ -39,6 +39,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"SOURCE_COMMIT={receipt['source_commit']}")
     if receipt.get("source_tree"):
         print(f"SOURCE_TREE={receipt['source_tree']}")
+    if receipt.get("full_regression_test_count") is not None:
+        print(f"FULL_REGRESSION_TEST_COUNT={receipt['full_regression_test_count']}")
     return 0 if receipt["status"] == "PASS" else 1
 
 
