@@ -62,6 +62,11 @@
       "path": "spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md",
       "role": "v3_semantic_process_source",
       "git_blob_sha1": "da8c0eb120aa52504b0b832f984bc223e21a5be9"
+    },
+    {
+      "path": "spec/TEV_SCRIPT_VERSION_MATRIX.json",
+      "role": "version_compatibility",
+      "git_blob_sha1": "15968c3772de44e3e621589491c9573a82dd7881"
     }
   ]
 }
