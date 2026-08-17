@@ -31,10 +31,10 @@ def _fixture(root: Path) -> tuple[Path, Path]:
             }
         )
 
-    # C#-host compatibility support is deliberately outside the portable
-    # Unity mirror authority.
-    (core / "CompilerCompatibility.V3.cs").write_text(
-        "// host-only compatibility shim\n",
+    # Other C# version/host surfaces may coexist in the same project without
+    # becoming part of this explicitly governed Unity mirror.
+    (core / "TevScriptV3Only.cs").write_text(
+        "// separate C# surface\n",
         encoding="utf-8",
     )
 
@@ -52,21 +52,11 @@ def _fixture(root: Path) -> tuple[Path, Path]:
     return core, unity
 
 
-def test_identity_drives_portable_mirror_and_allows_known_host_only_support(
+def test_identity_drives_portable_mirror_without_claiming_all_csharp_files(
     tmp_path: Path,
 ) -> None:
     _fixture(tmp_path)
     assert validate_core_mirror(tmp_path) == 2
-
-
-def test_unknown_csharp_core_file_cannot_escape_classification(tmp_path: Path) -> None:
-    core, _ = _fixture(tmp_path)
-    (core / "TevScriptUnclassified.cs").write_text(
-        "// semantic surface must be classified\n",
-        encoding="utf-8",
-    )
-    with pytest.raises(RuntimeError, match="core_unclassified"):
-        validate_core_mirror(tmp_path)
 
 
 def test_unity_core_cannot_add_file_outside_identity(tmp_path: Path) -> None:
