@@ -11,7 +11,7 @@
     {
       "path": "spec/TEV_SCRIPT_3_1_PLATFORM.md",
       "role": "platform_integration",
-      "git_blob_sha1": "3a7de0bee3ac8204c7dcc8a08c7d0b48d36712f3"
+      "git_blob_sha1": "9aa8a4892a2d62c09d0a65fb5fa4f9d058b64a72"
     },
     {
       "path": "spec/TEV_SCRIPT_IR_V3_OPERATIONAL_SEMANTICS.md",
