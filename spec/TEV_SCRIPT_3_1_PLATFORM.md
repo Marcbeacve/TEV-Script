@@ -86,7 +86,7 @@ Cross-runtime comparison is performed on canonical values/bytes/hashes rather th
 
 Language version, source profile, linked-program schema, Program IR version, runtime ABI, checkpoint version and package version are independent version domains. Numeric equality alone never establishes compatibility.
 
-`spec/TEV_SCRIPT_VERSION_MATRIX.json` is the machine-readable compatibility authority once present in the platform-completion candidate.
+`spec/TEV_SCRIPT_VERSION_MATRIX.json` is the machine-readable compatibility authority once present in the platform-completion candidate. Authority paths and implementation entrypoints are resolved against the exact checkout root being validated; availability from another installed checkout is not compatibility evidence.
 
 ## 12. Failure semantics
 
@@ -101,6 +101,9 @@ unsupported profile         -> HOLD/FAIL
 missing proof admission     -> PROOF_REQUIRED/HOLD
 runtime divergence          -> FAIL
 missing conformance witness -> HOLD/FAIL
+invalid child receipt       -> FAIL
+evidence-set mismatch       -> FAIL
+source-identity mismatch    -> FAIL
 full regression failure     -> FAIL
 full regression skip        -> FAIL
 ```
@@ -123,6 +126,16 @@ REPRODUCIBLE_RELEASE
 FULL_REGRESSION
 ```
 
-`FULL_REGRESSION` is the final certification guard. It MUST execute a non-empty full repository test suite and MUST report zero failures, zero errors and zero skips. A specialized gate cannot substitute for this repository-wide non-regression requirement.
+`REPRODUCIBLE_RELEASE=PASS` is valid inside the aggregate only when its sealed receipt is valid and binds exactly the same:
 
-Only the conjunction of all nine gates may emit `PLATFORM_COMPLETION=PASS`. This condition does not grant merge, publication, tagging or stable-promotion authority.
+```text
+version_identity_sha256 = SHA256(canonical VERSION_IDENTITY receipt)
+normative_set_sha256    = NORMATIVE_SPEC.normative_set_sha256
+conformance_sha256       = CONFORMANCE.receipt_sha256
+```
+
+`FULL_REGRESSION` is the final certification guard. It MUST execute a non-empty full repository test suite and MUST report zero failures, zero errors and zero skips. The worktree MUST be clean before and after execution, and HEAD/tree MUST remain unchanged. Its sealed receipt MUST validate before aggregate authority is derived from it.
+
+The source identity bound by `FULL_REGRESSION` MUST equal the source identity bound by `REPRODUCIBLE_RELEASE`. A specialized gate cannot substitute for this repository-wide non-regression requirement, and receipts from different source identities or different evidence sets cannot be composed into one completion claim.
+
+Only the conjunction of all nine gates under these bindings may emit `PLATFORM_COMPLETION=PASS`. The aggregate receipt itself is content-addressed and externally verifiable. This condition does not grant merge, publication, tagging or stable-promotion authority.
