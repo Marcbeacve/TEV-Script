@@ -3,3 +3,4 @@
 # remains empty and release evidence must continue to report runtime_dependency_count=0.
 pytest==9.0.2
 jsonschema==4.26.0
+cryptography==49.0.0
