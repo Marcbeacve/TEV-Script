@@ -20,6 +20,21 @@ def _write_authority(root: Path, relative: str) -> None:
         path.write_text("synthetic authority\n", encoding="utf-8")
 
 
+def _write_synthetic_entrypoints(root: Path) -> None:
+    package = root / "tev_script"
+    package.mkdir(parents=True, exist_ok=True)
+    (package / "__init__.py").write_text("PACKAGE = True\n", encoding="utf-8")
+    (package / "source_total_core_v31.py").write_text(
+        "def compile_total_core_v31():\n    return None\n",
+        encoding="utf-8",
+    )
+    (package / "runtime_v5_total.py").write_text(
+        "class TotalCoreCheckpointV1:\n    pass\n\n"
+        "def run_total_core_quantum():\n    return None\n",
+        encoding="utf-8",
+    )
+
+
 def _write_matrix(root: Path, *, duplicate: bool = False) -> None:
     spec = root / "spec"
     spec.mkdir(parents=True)
@@ -31,6 +46,7 @@ def _write_matrix(root: Path, *, duplicate: bool = False) -> None:
     }
     for authority in authorities:
         _write_authority(root, authority)
+    _write_synthetic_entrypoints(root)
     package_rows = [
         {
             "version": "3.1.1",
@@ -147,6 +163,23 @@ def test_unresolvable_entrypoint_fails_closed(tmp_path: Path) -> None:
     receipt = validate_version_matrix(tmp_path)
     assert receipt["status"] == "FAIL"
     assert "entrypoint unavailable" in receipt["error"]
+
+
+def test_entrypoint_cannot_resolve_from_ambient_checkout(tmp_path: Path) -> None:
+    _write_matrix(tmp_path)
+    (tmp_path / "tev_script" / "runtime_v5_total.py").unlink()
+    receipt = validate_version_matrix(tmp_path)
+    assert receipt["status"] == "FAIL"
+    assert "entrypoint module missing" in receipt["error"]
+
+
+def test_entrypoint_symbol_must_exist_in_target_root(tmp_path: Path) -> None:
+    _write_matrix(tmp_path)
+    path = tmp_path / "tev_script" / "runtime_v5_total.py"
+    path.write_text("OTHER = True\n", encoding="utf-8")
+    receipt = validate_version_matrix(tmp_path)
+    assert receipt["status"] == "FAIL"
+    assert "entrypoint symbol missing" in receipt["error"]
 
 
 def test_current_package_must_match_package_authority(tmp_path: Path) -> None:
