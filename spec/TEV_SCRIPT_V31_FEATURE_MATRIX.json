@@ -16,7 +16,8 @@
     "packaging/v31/tools/tev_script_build_backend_v31.py",
     "schemas/tev-script-v31-stable-admission-receipt.schema.json",
     "tests/test_v31_packaging.py",
-    "tests/test_v31_stable_admission.py"
+    "tests/test_v31_stable_admission.py",
+    "tev_script/release_metadata_v31.py"
   ],
   "predecessor_v3": {
     "commit_sha": "edd868cf481c358a2b435eb014af8dfee7ab7417",
@@ -40,6 +41,9 @@
   "profile": "total_core",
   "program_ir_version": 5,
   "publication_authorized": false,
+  "release_mutable_paths": [
+    "tev_script/release_metadata_v31.py"
+  ],
   "required_features": [
     {
       "id": "TOTAL_CORE_CANONICAL_IR",
@@ -114,6 +118,7 @@
     "tev_script/describe_v31.py",
     "tev_script/descriptor_v31.py",
     "tev_script/program_ir_v5_total.py",
+    "tev_script/release_metadata_v31.py",
     "tev_script/runtime_v5_total.py",
     "tev_script/source_total_core_v31.py"
   ]
