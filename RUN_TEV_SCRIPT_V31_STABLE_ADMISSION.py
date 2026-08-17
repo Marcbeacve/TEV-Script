@@ -35,6 +35,18 @@ RELEASE_DIFF_WHITELIST = tuple(
         )
     )
 )
+V31_INDEX_AUTHORITY_FILES = tuple(
+    sorted(
+        (
+            "schemas/tev-script-program-ir-v5-total-core.schema.json",
+            "schemas/tev-script-v31-certify-full-receipt.schema.json",
+            "schemas/tev-script-v31-descriptor.schema.json",
+            "schemas/tev-script-v31-stable-admission-receipt.schema.json",
+            "spec/TEV_SCRIPT_V31_FEATURE_MATRIX.json",
+            "spec/TEV_SCRIPT_V31_TOTAL_CORE.md",
+        )
+    )
+)
 _HEX = frozenset("0123456789abcdef")
 _PASSED = re.compile(r"(?P<count>[0-9]+)\s+passed\b")
 _SKIPPED = re.compile(r"(?P<count>[0-9]+)\s+skipped\b")
@@ -74,6 +86,50 @@ def _count(value: Any, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
         raise ValueError(name + " must be positive integer")
     return value
+
+
+def expected_v31_index_target() -> dict[str, Any]:
+    return {
+        "language_version": "3.1.0",
+        "status": "STABLE_ADMISSION_REQUESTED",
+        "stable": True,
+        "publication_authorized": False,
+        "merge_authorized": False,
+        "authority_files": list(V31_INDEX_AUTHORITY_FILES),
+        "introspection_surface": {
+            "schema": "schemas/tev-script-v31-descriptor.schema.json",
+            "generator": "tev_script/descriptor_v31.py",
+            "module_cli": "tev_script/describe_v31.py",
+            "installed_cli": "tev-script-v31-describe",
+            "stable_claim": True,
+        },
+        "stable_release_surface": {
+            "release_metadata": "tev_script/release_metadata_v31.py",
+            "admission_gate": "RUN_TEV_SCRIPT_V31_STABLE_ADMISSION.py",
+            "receipt_schema": "TEV_SCRIPT_V31_STABLE_ADMISSION_RECEIPT_V1",
+            "exact_parent_certificate_required": True,
+            "release_diff_whitelist_required": True,
+            "artifact_byte_identity_required": True,
+            "stable_claim": True,
+        },
+        "gates": {
+            "certify_full": "RUN_TEV_SCRIPT_V31_CERTIFY_FULL.py",
+            "stable_admission": "RUN_TEV_SCRIPT_V31_STABLE_ADMISSION.py",
+        },
+        "public_interfaces": {
+            "python_package": "tev_script",
+            "v31_cli": "tev-script-v31",
+            "v31_descriptor_cli": "tev-script-v31-describe",
+            "v31_module_cli": "python -m tev_script.cli_v31",
+        },
+    }
+
+
+def validate_v31_index_target(value: Mapping[str, Any]) -> bool:
+    try:
+        return _canonical_bytes(dict(value)) == _canonical_bytes(expected_v31_index_target())
+    except (TypeError, ValueError):
+        return False
 
 
 def verify_release_diff_paths(paths: Sequence[str]) -> bool:
@@ -299,6 +355,25 @@ def _require_release_identity(parent: str) -> tuple[str, str, tuple[str, ...]]:
     return head, tree, paths
 
 
+def _require_v31_index_target() -> None:
+    try:
+        index = json.loads((ROOT / "CANONICAL_INDEX.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise V31StableAdmissionFailure("canonical index invalid JSON") from error
+    if not isinstance(index, dict):
+        raise V31StableAdmissionFailure("canonical index root must be object")
+    targets = index.get("candidate_language_targets")
+    if not isinstance(targets, list):
+        raise V31StableAdmissionFailure("canonical index target list missing")
+    matches = [
+        item
+        for item in targets
+        if isinstance(item, Mapping) and item.get("language_version") == "3.1.0"
+    ]
+    if len(matches) != 1 or not validate_v31_index_target(matches[0]):
+        raise V31StableAdmissionFailure("canonical V31 target is missing or malformed")
+
+
 def _load_backend():
     path = ROOT / "packaging/v31/tools/tev_script_build_backend_v31.py"
     spec = importlib.util.spec_from_file_location(
@@ -416,28 +491,29 @@ def _installed_smoke(wheel: Path) -> tuple[str, str, str]:
             cwd=workspace,
             include_repo=False,
         )
-        run_result = json.loads(run.stdout)
-        if run_result.get("status") != "HALTED":
+        if json.loads(run.stdout).get("status") != "HALTED":
             raise V31StableAdmissionFailure("installed V31 Total-Core smoke did not halt")
 
-        v3 = _run(
-            (str(python), "-m", "tev_script.describe_v3"),
-            timeout=120,
-            cwd=workspace,
-            include_repo=False,
+        v3 = json.loads(
+            _run(
+                (str(python), "-m", "tev_script.describe_v3"),
+                timeout=120,
+                cwd=workspace,
+                include_repo=False,
+            ).stdout
         )
-        v3_descriptor = json.loads(v3.stdout)
-        if v3_descriptor.get("language_version") != "3.0.0" or v3_descriptor.get("stable") is not True:
+        if v3.get("language_version") != "3.0.0" or v3.get("stable") is not True:
             raise V31StableAdmissionFailure("installed V3 compatibility failed")
 
-        v2 = _run(
-            (str(python), "-m", "tev_script.describe_v2"),
-            timeout=120,
-            cwd=workspace,
-            include_repo=False,
+        v2 = json.loads(
+            _run(
+                (str(python), "-m", "tev_script.describe_v2"),
+                timeout=120,
+                cwd=workspace,
+                include_repo=False,
+            ).stdout
         )
-        v2_descriptor = json.loads(v2.stdout)
-        if v2_descriptor.get("language_version") != "2.0.0" or v2_descriptor.get("stable") is not True:
+        if v2.get("language_version") != "2.0.0" or v2.get("stable") is not True:
             raise V31StableAdmissionFailure("installed V2 compatibility failed")
 
         return "PASS", "PASS", "PASS"
@@ -489,6 +565,15 @@ def certify(
         raise V31StableAdmissionFailure("stable V31 feature matrix invalid")
 
     _validate_stable_schema()
+    _require_v31_index_target()
+    predecessor = technical.require_predecessor_byte_identity(ROOT)
+    if (
+        predecessor["v3_byte_identity"] != "PASS"
+        or predecessor["v2_byte_identity"] != "PASS"
+        or predecessor["canonical_index_predecessor_identity"] != "PASS"
+    ):
+        raise V31StableAdmissionFailure("predecessor identity failed after release shaping")
+
     full = _run(
         (
             sys.executable,
