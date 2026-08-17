@@ -58,6 +58,12 @@ def _render(statements: list[str]) -> str:
     return ";\n".join(statements) + ";\n"
 
 
+def _signed_int_expression(name: str, delta: int) -> str:
+    if delta >= 0:
+        return f"{name}+{delta}"
+    return f"{name}-{abs(delta)}"
+
+
 def generate_cases(seed: int, count: int) -> tuple[dict[str, object], ...]:
     if not isinstance(seed, int) or isinstance(seed, bool):
         raise ValueError("seed must be an integer")
@@ -123,7 +129,7 @@ def generate_cases(seed: int, count: int) -> tuple[dict[str, object], ...]:
             delta = rng.randint(-9, 9)
             unit_sources["Calc"] = (
                 'script Calc version "2.0.0"; '
-                f"fn shift(x:Int)->Int=x+{delta}; "
+                f"fn shift(x:Int)->Int={_signed_int_expression('x', delta)}; "
                 f"entry main:Int=shift({value});"
             )
             statements = _process_header(program_id, authority, quantum_steps)
