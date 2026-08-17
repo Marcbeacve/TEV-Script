@@ -10,8 +10,8 @@ from tev_script.platform_release import (
     build_sbom,
     compare_artifacts,
     validate_platform_release,
-    verify_platform_release_receipt,
 )
+from tev_script.platform_release_receipt import verify_platform_release_receipt
 
 
 def _git_blob_sha1(data: bytes) -> str:
