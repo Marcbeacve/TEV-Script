@@ -8,6 +8,7 @@ from tev_script.descriptor_v31 import v31_descriptor
 from RUN_TEV_SCRIPT_V31_CERTIFY_FULL import (
     EXPECTED_BRANCH,
     POST_CERT_ALLOWED_PATHS,
+    RELEASE_MUTABLE_PATHS,
     REPOSITORY,
     ROOT,
     TECHNICAL_REQUIRED_PATHS,
@@ -55,14 +56,25 @@ class V31AuthorityTests(unittest.TestCase):
         for relative in report["technical_governed_paths"]:
             self.assertTrue((ROOT / relative).is_file(), relative)
 
-    def test_only_explicit_task8_task9_paths_are_future_allowed(self) -> None:
+    def test_only_explicit_release_paths_are_future_allowed(self) -> None:
         report = validate_v31_matrix(load_feature_matrix(ROOT), v31_descriptor())
         self.assertEqual(report["status"], "PASS", report["errors"])
         self.assertEqual(
             frozenset(report["post_cert_allowed_paths"]),
             POST_CERT_ALLOWED_PATHS,
         )
-        self.assertTrue(TECHNICAL_REQUIRED_PATHS.isdisjoint(POST_CERT_ALLOWED_PATHS))
+        self.assertEqual(
+            TECHNICAL_REQUIRED_PATHS.intersection(POST_CERT_ALLOWED_PATHS),
+            RELEASE_MUTABLE_PATHS,
+        )
+        self.assertEqual(
+            frozenset(report["release_mutable_paths"]),
+            RELEASE_MUTABLE_PATHS,
+        )
+        self.assertEqual(
+            RELEASE_MUTABLE_PATHS,
+            frozenset({"tev_script/release_metadata_v31.py"}),
+        )
 
     def test_current_candidate_is_minimal_against_v3_stable(self) -> None:
         report = evaluate_minimality(ROOT)
