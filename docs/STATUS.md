@@ -1,8 +1,103 @@
 # Status
 
+## Current published line
+
 ```text
-VERSION=0.2.0-preview
-LANGUAGE_STABLE=NO
+PACKAGE=tev-script-portable-reference
+PUBLISHED_VERSION=3.1.0
+PUBLISHED_LANGUAGE_VERSION=3.1.0
+PUBLISHED_PROFILE=total_core
+PUBLISHED_TAG=v3.1.0
+PUBLISHED_COMMIT=c20718ddb2223ba0bfd05ff59006ca31e2966b0b
+PUBLISHED_TREE=812b140c5e6fb7232ef379773d9c37e8f3459f4c
+PUBLISHED_STABLE_ADMISSION=PASS
+PUBLISHED_PYTHON_JS_PARITY=PASS
+```
+
+The published `v3.1.0` Total-Core release remains immutable predecessor authority. This branch does not rewrite, retag or republish that release.
+
+## Platform-completion candidate
+
+```text
+BRANCH=agent/tevscript-platform-completion-v1
+PACKAGE_VERSION=3.1.1
+LANGUAGE_VERSION=3.1.0
+PROFILE=total_core
+MERGE_AUTHORITY=FALSE
+PUBLICATION_AUTHORITY=FALSE
+TAG_AUTHORITY=FALSE
+```
+
+Package `3.1.1` is a platform/tooling patch over unchanged language semantics `3.1.0`. The generic `tev-script` CLI and `tev-script-lsp` are current Total-Core entry points. Historical CLIs/LSP remain explicitly versioned compatibility surfaces.
+
+The aggregate completion authority is:
+
+```text
+VERSION_IDENTITY
+NORMATIVE_SPEC
+VERSION_MATRIX
+TOOLING_3X
+CONFORMANCE
+DIFFERENTIAL_FUZZ
+SEMANTIC_INVARIANTS
+REPRODUCIBLE_RELEASE
+FULL_REGRESSION
+```
+
+Only nine simultaneous PASS results may produce:
+
+```text
+PLATFORM_COMPLETION=PASS
+```
+
+`FULL_REGRESSION` is the final repository-wide non-regression guard. It requires a non-empty pytest suite, zero failures, zero errors and zero skips, and the same clean HEAD/tree before and after execution. Its source identity must equal the source identity bound by `REPRODUCIBLE_RELEASE`.
+
+Current implementation state:
+
+```text
+CANONICAL_VERSION_DOMAINS=IMPLEMENTED
+PUBLIC___VERSION___BINDING=IMPLEMENTED
+CURRENT_GENERIC_CLI=IMPLEMENTED
+CURRENT_TOTAL_CORE_LSP=IMPLEMENTED
+NORMATIVE_3_1_PLATFORM_SPEC=IMPLEMENTED
+CONTENT_ADDRESSED_NORMATIVE_INDEX=IMPLEMENTED
+EXPLICIT_VERSION_MATRIX=IMPLEMENTED_AND_FAIL_CLOSED
+CONFORMANCE_SEMANTIC_AREA_MATRIX=IMPLEMENTED
+DETERMINISTIC_TOTAL_CORE_DIFFERENTIAL_FUZZ=IMPLEMENTED
+TOTAL_CORE_CONSTITUTIONAL_WITNESSES=IMPLEMENTED
+CLEAN_TREE_REPRODUCIBLE_WHEEL_GATE=IMPLEMENTED
+SBOM_PROVENANCE_CONFORMANCE_ENVIRONMENT_BINDING=IMPLEMENTED
+FULL_ZERO_SKIP_REGRESSION_GATE=IMPLEMENTED
+SOURCE_IDENTITY_CROSS_GATE_BINDING=IMPLEMENTED
+SEALED_RECEIPT_VERIFIERS=IMPLEMENTED
+PLATFORM_COMPLETION_RECEIPT_V2_SCHEMA=IMPLEMENTED
+AGGREGATE_PLATFORM_COMPLETION_GATE=IMPLEMENTED
+```
+
+Certification state:
+
+```text
+FOCUSED_TDD=PERFORMED_DURING_IMPLEMENTATION
+FULL_REPOSITORY_REGRESSION=NOT_EXECUTED_IN_CONNECTOR_ENVIRONMENT
+PLATFORM_COMPLETION_CERTIFICATION=PENDING_COMPLETE_CLEAN_CHECKOUT_EXECUTION
+```
+
+The implementation environment cannot materialize the complete GitHub checkout through its container network path. Synthetic/focused TDD is therefore development evidence only and is not promoted to repository-wide certification. The authoritative aggregate must be run from a complete clean checkout:
+
+```powershell
+python .\RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py `
+  --receipt .\TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT.json
+```
+
+A HOLD remains HOLD; it is never converted into PASS. A FAIL in any specialized gate or in the full regression blocks completion. The completion receipt does not grant merge, tag or publication authority.
+
+## Historical V0.2/V1 lineage
+
+The following section is retained as historical evidence and is not the current version declaration:
+
+```text
+HISTORICAL_VERSION=0.2.0-preview
+HISTORICAL_LANGUAGE_STABLE=NO
 
 SIGNED_UPDATE_GATE5C=PASS_CERTIFIED
 ANTI_REPLAY_GATE5D=PASS_CERTIFIED_WITH_DURABLE_STATE_BOUNDARY
@@ -17,23 +112,6 @@ CROSS_HOST_LOCKSTEP_GATE7B=PASS_OBSERVED_LOCAL_PRECOMMIT
 FIRST_DIVERGENCE_GATE7C=PASS_OBSERVED_LOCAL_PRECOMMIT
 CANONICAL_CHECKPOINT_GATE7D=PASS_OBSERVED_LOCAL_PRECOMMIT
 SIGNED_UPDATE_LOCKSTEP_GATE7E=PASS_OBSERVED_LOCAL_PRECOMMIT
-GATE7_CHECKPOINT_SCHEMA=TEV_SCRIPT_RUNTIME_CHECKPOINT_V1
-GATE7_CORE_PRODUCT_CHANGES=2_PHYSICAL_1_LOGICAL
-
-PRODUCTION_KEY_PROVISIONING=PENDING
-HOSTILE_ROLLBACK_RESISTANT_STORE=PENDING
-PUBLIC_WAN_TLS_DNS_CDN=PENDING
-STABLE_RELEASE=NO
 ```
 
-Gate-7 demonstrates byte-identical deterministic replay and lockstep across Python, JavaScript, native C#, real browser-wasm AOT and WASI/Wasmtime. It also adds an exact canonical runtime checkpoint whose continuation is reproduced after real browser and Wasmtime process restarts. The same signed update produces the same lockstep receipt on native C#, Browser-WASM and WASI.
-
-Precommit campaign evidence SHA-256:
-
-`00a890f61a29c046c6c0dfb84ffbadd7c5a337621b83fddae9fbeeeb44b6dc25`
-
-Production signing-key lifecycle, hostile rollback-resistant durable storage, public WAN/TLS/DNS/CDN and stable release remain separate boundaries. Exact Gate-7 commit authority is bound without a duplicate dynamic rerun: the external receipt proves byte-identical identity of the 20 dynamically tested functional files through the clean commit, while the five added closure files are metadata not consumed by the runner.
-
-## TEV_SCRIPT_LANGUAGE_COMPLETENESS_V1
-
-`TEV_SCRIPT_LANGUAGE_COMPLETE=PASS_PRECOMMIT` on the language-completeness candidate. Functional identity `e7af8fbe431507d52981600bef9721960a44dcccba7d97dd6ce6a79bcd413eef`. This closes V0.2 language semantics; it does not promote stable release, production key management, hostile-store rollback resistance, public WAN transport, self-assembly, or decentralized consensus.
+Historical Gate-7 evidence and the V1 language-completeness records remain preserved in their original specifications, receipts and release tooling. They are compatibility/predecessor evidence, not the current 3.1 platform status.

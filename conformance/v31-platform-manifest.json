@@ -1,0 +1,115 @@
+{
+  "schema": "TEV_SCRIPT_PLATFORM_CONFORMANCE_MANIFEST_V2",
+  "language_version": "3.1.0",
+  "profile": "total_core",
+  "cases": [
+    {
+      "case_id": "total-core-ir",
+      "semantic_area": "total_core_ir",
+      "expected_status": "PASS",
+      "kind": "pytest",
+      "target": "tests/test_program_ir_v5_total.py",
+      "required_tools": ["python"],
+      "git_blob_sha1": "916a548a3ff287503cc04c8fb1aabc60d392996e"
+    },
+    {
+      "case_id": "total-core-runtime",
+      "semantic_area": "total_core_runtime",
+      "expected_status": "PASS",
+      "kind": "pytest",
+      "target": "tests/test_runtime_v5_total.py",
+      "required_tools": ["python"],
+      "git_blob_sha1": "a87358dd30400fa300ae00bee5cde6f9d687d7d0"
+    },
+    {
+      "case_id": "total-core-source",
+      "semantic_area": "total_core_source",
+      "expected_status": "PASS",
+      "kind": "pytest",
+      "target": "tests/test_source_total_core_v31.py",
+      "required_tools": ["python"],
+      "git_blob_sha1": "098f5b2956a6f4328358e912a87202379addf3c6"
+    },
+    {
+      "case_id": "collections-v4",
+      "semantic_area": "collections_generics_protocols",
+      "expected_status": "PASS",
+      "kind": "pytest",
+      "target": "tests/test_ir_v4_collections.py",
+      "required_tools": ["python"],
+      "git_blob_sha1": "8d23d0bca606fda7ec86e353cc563396c066ff68"
+    },
+    {
+      "case_id": "generic-protocols-v2",
+      "semantic_area": "collections_generics_protocols",
+      "expected_status": "PASS",
+      "kind": "pytest",
+      "target": "tests/test_source_constrained_generic_protocol_impls_v2.py",
+      "required_tools": ["python"],
+      "git_blob_sha1": "f036151cab057ab6d3eb4bd674904274413fa9a9"
+    },
+    {
+      "case_id": "task-dag-v4",
+      "semantic_area": "tasks_continuations",
+      "expected_status": "PASS",
+      "kind": "pytest",
+      "target": "tests/test_ir_v4_tasks.py",
+      "required_tools": ["python"],
+      "git_blob_sha1": "8ecbbea0a0ba5fab424f105c56f7df52ecdc2fe8"
+    },
+    {
+      "case_id": "effect-command-boundary-v4",
+      "semantic_area": "effects_capabilities",
+      "expected_status": "PASS",
+      "kind": "pytest",
+      "target": "tests/test_ir_v4_effect_commands.py",
+      "required_tools": ["python"],
+      "git_blob_sha1": "83715252884d2f1c14d48773fed276f600a06b27"
+    },
+    {
+      "case_id": "bounded-total-core-quantum",
+      "semantic_area": "budget_exhaustion",
+      "expected_status": "PASS",
+      "kind": "pytest",
+      "target": "tests/test_platform_invariants_v31.py::test_total_core_bounded_execution_suspends_exactly_at_quantum_limit",
+      "required_tools": ["python"],
+      "git_blob_sha1": "d12e6940e1507c5394e1a21695048a0fb78cac34"
+    },
+    {
+      "case_id": "malformed-total-core-ir",
+      "semantic_area": "malformed_ir_rejection",
+      "expected_status": "PASS",
+      "kind": "pytest",
+      "target": "tests/test_program_ir_v5_total.py",
+      "required_tools": ["python"],
+      "git_blob_sha1": "916a548a3ff287503cc04c8fb1aabc60d392996e"
+    },
+    {
+      "case_id": "proof-admission-boundary",
+      "semantic_area": "proof_admission_boundary",
+      "expected_status": "PASS",
+      "kind": "pytest",
+      "target": "tests/test_runtime_v5_total_js_parity.py::JavaScriptRuntimeV5TotalCoreParityTests::test_tampered_proof_admission_fails_before_execution",
+      "required_tools": ["python", "node"],
+      "git_blob_sha1": "fe6bbac0efa7460031845d2fa5bd2431bff04ecf"
+    },
+    {
+      "case_id": "checkpoint-replay-total-core",
+      "semantic_area": "checkpoint_replay",
+      "expected_status": "PASS",
+      "kind": "pytest",
+      "target": "tests/test_platform_invariants_v31.py::test_total_core_checkpoint_replay_is_canonically_equivalent",
+      "required_tools": ["python"],
+      "git_blob_sha1": "d12e6940e1507c5394e1a21695048a0fb78cac34"
+    },
+    {
+      "case_id": "python-js-total-core-parity",
+      "semantic_area": "cross_runtime_parity",
+      "expected_status": "PASS",
+      "kind": "pytest",
+      "target": "tests/test_runtime_v5_total_js_parity.py",
+      "required_tools": ["python", "node"],
+      "git_blob_sha1": "fe6bbac0efa7460031845d2fa5bd2431bff04ecf"
+    }
+  ]
+}

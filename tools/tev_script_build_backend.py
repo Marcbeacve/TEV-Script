@@ -101,7 +101,35 @@ def _package_entries(root: Path) -> list[tuple[str, bytes]]:
     return entries
 
 
-def _metadata_bytes(project: dict[str, object]) -> bytes:
+def _readme_metadata(
+    project: dict[str, object],
+    root: Path,
+) -> tuple[str, str] | None:
+    readme = project.get("readme")
+    if readme is None:
+        return None
+    if not isinstance(readme, dict):
+        raise RuntimeError("project.readme must be a table")
+    if set(readme) != {"file", "content-type"}:
+        raise RuntimeError("project.readme must contain file and content-type")
+    file_name = _single_line(readme["file"], "project.readme.file")
+    content_type = _single_line(
+        readme["content-type"],
+        "project.readme.content-type",
+    )
+    relative = Path(file_name)
+    if relative.is_absolute() or ".." in relative.parts or "." in relative.parts:
+        raise RuntimeError("unsafe project.readme.file")
+    path = root / relative
+    if not path.is_file() or path.is_symlink():
+        raise RuntimeError("project.readme.file must be a regular file")
+    text = path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+    if not text.endswith("\n"):
+        text += "\n"
+    return content_type, text
+
+
+def _metadata_bytes(project: dict[str, object], root: Path) -> bytes:
     name = _single_line(project["name"], "project.name")
     version = _version_component(_single_line(project["version"], "project.version"))
     lines = [
@@ -118,7 +146,12 @@ def _metadata_bytes(project: dict[str, object]) -> bytes:
     dependencies = project.get("dependencies", [])
     if dependencies != []:
         raise RuntimeError("TEV Script reference wheel requires zero runtime dependencies")
-    return ("\n".join(lines) + "\n").encode("utf-8")
+    readme = _readme_metadata(project, root)
+    if readme is None:
+        return ("\n".join(lines) + "\n").encode("utf-8")
+    content_type, body = readme
+    lines.append("Description-Content-Type: " + content_type)
+    return ("\n".join(lines) + "\n\n" + body).encode("utf-8")
 
 
 def _wheel_bytes() -> bytes:
@@ -177,7 +210,7 @@ def build_wheel(
     entries = _package_entries(root)
     entries.extend(
         (
-            (f"{dist_info}/METADATA", _metadata_bytes(project)),
+            (f"{dist_info}/METADATA", _metadata_bytes(project, root)),
             (f"{dist_info}/WHEEL", _wheel_bytes()),
         )
     )

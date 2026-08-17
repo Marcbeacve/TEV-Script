@@ -1,3 +1,88 @@
+# TEV Script — current platform
+
+TEVScript is a bounded, statically typed, deterministic language/platform with exact values, explicit capability boundaries and replaceable conforming runtimes.
+
+## Current published release
+
+```text
+PUBLISHED_PACKAGE_VERSION=3.1.0
+PUBLISHED_LANGUAGE_VERSION=3.1.0
+PUBLISHED_PROFILE=total_core
+TAG=v3.1.0
+RELEASE_COMMIT=c20718ddb2223ba0bfd05ff59006ca31e2966b0b
+RELEASE_TREE=812b140c5e6fb7232ef379773d9c37e8f3459f4c
+STABLE_ADMISSION=PASS
+INDEPENDENT_JAVASCRIPT_PARITY=PASS
+```
+
+The published `v3.1.0` release is immutable predecessor authority and is not rebuilt, retagged or republished by the platform-completion work.
+
+## Current platform-completion candidate
+
+```text
+PACKAGE_VERSION=3.1.1
+LANGUAGE_VERSION=3.1.0
+PROFILE=total_core
+BRANCH=agent/tevscript-platform-completion-v1
+MERGE_AUTHORITY=FALSE
+PUBLICATION_AUTHORITY=FALSE
+TAG_AUTHORITY=FALSE
+```
+
+Package `3.1.1` is a platform/tooling patch over unchanged Total-Core language semantics `3.1.0`. Package and language versions are intentionally separate domains.
+
+Current normative/platform entry points:
+
+```text
+spec/TEV_SCRIPT_3_1_PLATFORM.md
+spec/TEV_SCRIPT_3_1_NORMATIVE_INDEX.json
+spec/TEV_SCRIPT_VERSIONING.md
+spec/TEV_SCRIPT_VERSION_MATRIX.json
+docs/TEV_SCRIPT_3_1_PLATFORM_COMPLETION.md
+docs/STATUS.md
+RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py
+```
+
+Platform completion requires simultaneous PASS for:
+
+```text
+VERSION_IDENTITY
+NORMATIVE_SPEC
+VERSION_MATRIX
+TOOLING_3X
+CONFORMANCE
+DIFFERENTIAL_FUZZ
+SEMANTIC_INVARIANTS
+REPRODUCIBLE_RELEASE
+FULL_REGRESSION
+```
+
+A FAIL blocks completion. A HOLD remains HOLD. Only nine PASS results may emit `PLATFORM_COMPLETION=PASS`. `FULL_REGRESSION` requires a non-empty pytest suite with zero failures, zero errors and zero skips, stable clean HEAD/tree before and after execution, and the same source identity as `REPRODUCIBLE_RELEASE`. The completion gate never grants merge, tag or publication authority.
+
+Current generic tooling is Total-Core 3.1 aware:
+
+```text
+tev-script --version
+tev-script describe
+tev-script descriptor
+tev-script check
+tev-script compile
+tev-script run
+tev-script conformance
+tev-script platform-check
+tev-script-lsp
+```
+
+`tev-script check/compile/run` delegate to the same 3.1 Total-Core implementation exposed explicitly by `tev-script-v31`; no second compiler/runtime semantics are introduced. `tev-script-lsp` dispatches language `3.1.0` to the Total-Core LSP, which validates through `compile_total_core_v31`. Historical V1/V2/V3 commands and the V1 LSP remain available only through explicit versioned entry points. Unknown language versions fail closed.
+
+Full-repository certification has not been executed in the connector implementation environment because its container cannot materialize the complete Git checkout through the local network path. The authoritative completion result must therefore be obtained from a complete clean checkout with Python and Node by running `RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py`.
+
+The sections below are preserved historical release-line documentation. Where a historical status statement conflicts with the current block above, the current 3.1 platform specification/status is authoritative.
+
+---
+
+# Historical release-line documentation — preserved
+
 # TEV Script
 
 TEV Script is a bounded, statically typed, deterministic reactive language with explicit host-capability boundaries.

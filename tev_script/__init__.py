@@ -1,3 +1,4 @@
+from .version import PACKAGE_VERSION as __version__
 from .compiler import (
     IR_SCHEMA,
     LANGUAGE_VERSION,
@@ -12,9 +13,8 @@ from .conformance import run_conformance
 from .values import decode_typed_value, encode_typed_value
 from .capability_catalog import load_capability_catalog, parse_capability_catalog
 
-# V1 is intentionally exported through versioned names. The historical V0.2
-# public names above remain unchanged until a separately certified stable
-# admission decides whether any unversioned aliases should move.
+# V1 is intentionally exported through versioned names. Historical APIs remain
+# available here for compatibility; the generic CLI is the current 3.1 surface.
 from .pipeline_v1 import (
     V1AnalysisBundle,
     V1AutoCompilationBundle,
@@ -73,7 +73,6 @@ from .python_host_v1 import (
     build_python_program_v1_paths,
 )
 
-
 # Additive TEVScript MAX 3.1 Total-Core surface.
 from .program_ir_v5_total import (
     TotalCoreInstructionV1,
@@ -96,6 +95,7 @@ from .source_total_core_v31 import compile_total_core_v31
 from .descriptor_v31 import v31_descriptor, verify_v31_descriptor
 
 __all__ = [
+    "__version__",
     # Certified V0.2 surface.
     "CompilationBundle",
     "Diagnostic",

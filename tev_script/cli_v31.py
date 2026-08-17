@@ -15,7 +15,6 @@ from .omega_kernel_v1 import omega_wire, validate_continuation_receipt
 from .omega_semantic_basis_v1 import validate_semantic_field
 from .program_ir_v5_total import (
     canonical_total_core_program_bytes,
-    total_core_program_to_mapping,
     validate_total_core_program,
     validate_verified_proof_admission,
 )
@@ -157,6 +156,26 @@ def _load_checkpoint(program: Any, path: Path) -> TotalCoreCheckpointV1:
     return validate_total_core_checkpoint(program, candidate)
 
 
+def _add_project_arguments(parser: argparse.ArgumentParser, *, output: bool) -> None:
+    parser.add_argument("source", type=Path)
+    parser.add_argument("--unit", action="append", default=[], metavar="NAME=PATH")
+    parser.add_argument(
+        "--effect-input",
+        action="append",
+        default=[],
+        metavar="NAME=JSON",
+    )
+    parser.add_argument(
+        "--proof-admission",
+        action="append",
+        default=[],
+        type=Path,
+        metavar="JSON",
+    )
+    if output:
+        parser.add_argument("--output", "-o", type=Path, required=True)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="tev-script-v31",
@@ -170,26 +189,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     descriptor.set_defaults(handler=_descriptor)
 
+    check = commands.add_parser(
+        "check-total",
+        help="check one TEVScript 3.1 Total-Core project without writing an artifact",
+    )
+    _add_project_arguments(check, output=False)
+    check.set_defaults(handler=_check_total)
+
     compile_cmd = commands.add_parser(
         "compile-total",
         help="compile one TEVScript 3.1 Total-Core project",
     )
-    compile_cmd.add_argument("source", type=Path)
-    compile_cmd.add_argument("--unit", action="append", default=[], metavar="NAME=PATH")
-    compile_cmd.add_argument(
-        "--effect-input",
-        action="append",
-        default=[],
-        metavar="NAME=JSON",
-    )
-    compile_cmd.add_argument(
-        "--proof-admission",
-        action="append",
-        default=[],
-        type=Path,
-        metavar="JSON",
-    )
-    compile_cmd.add_argument("--output", "-o", type=Path, required=True)
+    _add_project_arguments(compile_cmd, output=True)
     compile_cmd.set_defaults(handler=_compile_total)
 
     validate = commands.add_parser(
@@ -226,7 +237,7 @@ def _descriptor(_arguments: argparse.Namespace) -> int:
     return 0
 
 
-def _compile_total(arguments: argparse.Namespace) -> int:
+def _compile_program_from_arguments(arguments: argparse.Namespace):
     unit_paths = _named_paths(
         list(arguments.unit),
         code="TEVS_V31_CLI_UNIT_BINDING",
@@ -235,10 +246,7 @@ def _compile_total(arguments: argparse.Namespace) -> int:
         list(arguments.effect_input),
         code="TEVS_V31_CLI_EFFECT_BINDING",
     )
-    unit_sources = {
-        name: _read_source(path)
-        for name, path in unit_paths.items()
-    }
+    unit_sources = {name: _read_source(path) for name, path in unit_paths.items()}
     effect_inputs: dict[str, dict[str, Any]] = {}
     for name, path in effect_paths.items():
         raw = load_strict_json(path)
@@ -259,13 +267,34 @@ def _compile_total(arguments: argparse.Namespace) -> int:
             )
         proofs.append(validate_verified_proof_admission(raw))
 
-    program = compile_total_core_v31(
+    return compile_total_core_v31(
         _read_source(arguments.source),
         unit_sources=unit_sources,
         effect_inputs=effect_inputs or None,
         proof_admissions=tuple(proofs),
     )
-    payload = total_core_program_to_mapping(program)
+
+
+def _check_total(arguments: argparse.Namespace) -> int:
+    program = _compile_program_from_arguments(arguments)
+    print(
+        _canonical_json(
+            {
+                "schema": "TEV_SCRIPT_V31_CHECK_TOTAL_RESULT_V1",
+                "status": "PASS",
+                "language_version": "3.1.0",
+                "profile": "total_core",
+                "program_ir_schema": program.schema,
+                "program_ir_hash": program.program_hash,
+                "source_semantic_hash": program.source_semantic_hash,
+            }
+        )
+    )
+    return 0
+
+
+def _compile_total(arguments: argparse.Namespace) -> int:
+    program = _compile_program_from_arguments(arguments)
     _atomic_write(
         arguments.output,
         canonical_total_core_program_bytes(program) + b"\n",

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev-script.local/schemas/tev-script-platform-completion-receipt-v2.schema.json",
+  "$defs": {
+    "gate": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {"enum": ["PASS", "HOLD", "FAIL"]}
+      },
+      "additionalProperties": true
+    }
+  },
+  "title": "TEVScript Platform Completion Receipt V2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "platform_completion",
+    "missing_gates",
+    "extra_gates",
+    "failed_gates",
+    "hold_gates",
+    "gates",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_PLATFORM_COMPLETION_RECEIPT_V2"},
+    "status": {"enum": ["PASS", "HOLD", "FAIL"]},
+    "platform_completion": {"enum": ["PASS", "HOLD", "FAIL"]},
+    "missing_gates": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "extra_gates": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "failed_gates": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "hold_gates": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "VERSION_IDENTITY": {"$ref": "#/$defs/gate"},
+        "NORMATIVE_SPEC": {"$ref": "#/$defs/gate"},
+        "VERSION_MATRIX": {"$ref": "#/$defs/gate"},
+        "TOOLING_3X": {"$ref": "#/$defs/gate"},
+        "CONFORMANCE": {"$ref": "#/$defs/gate"},
+        "DIFFERENTIAL_FUZZ": {"$ref": "#/$defs/gate"},
+        "SEMANTIC_INVARIANTS": {"$ref": "#/$defs/gate"},
+        "REPRODUCIBLE_RELEASE": {"$ref": "#/$defs/gate"},
+        "FULL_REGRESSION": {"$ref": "#/$defs/gate"}
+      }
+    },
+    "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "source_tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "full_regression_receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "full_regression_test_count": {"type": "integer", "minimum": 1},
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "PASS"}}},
+      "then": {
+        "required": [
+          "source_commit",
+          "source_tree",
+          "full_regression_receipt_sha256",
+          "full_regression_test_count"
+        ],
+        "properties": {
+          "platform_completion": {"const": "PASS"},
+          "missing_gates": {"maxItems": 0},
+          "extra_gates": {"maxItems": 0},
+          "failed_gates": {"maxItems": 0},
+          "hold_gates": {"maxItems": 0},
+          "gates": {
+            "required": [
+              "VERSION_IDENTITY",
+              "NORMATIVE_SPEC",
+              "VERSION_MATRIX",
+              "TOOLING_3X",
+              "CONFORMANCE",
+              "DIFFERENTIAL_FUZZ",
+              "SEMANTIC_INVARIANTS",
+              "REPRODUCIBLE_RELEASE",
+              "FULL_REGRESSION"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

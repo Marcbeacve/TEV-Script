@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
 CORE = ROOT / "runtimes" / "csharp" / "TevScript.Core"
@@ -9,31 +10,109 @@ UNITY_CORE = ROOT / "unity" / "Package" / "Runtime" / "Core"
 UPDATE = ROOT / "runtimes" / "csharp" / "TevScript.Update"
 UNITY_UPDATE = ROOT / "unity" / "Package" / "Runtime" / "Update"
 
+CORE_IDENTITY_SCHEMA = "TEV_SCRIPT_UNITY_CORE_SOURCE_IDENTITY_V1"
+CANONICAL_CORE_PREFIX = PurePosixPath("runtimes/csharp/TevScript.Core")
+UNITY_CORE_PREFIX = PurePosixPath("unity/Package/Runtime/Core")
+
 
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise RuntimeError(message)
 
 
-def main() -> int:
-    core_names = sorted(p.name for p in CORE.glob("*.cs"))
-    unity_names = sorted(p.name for p in UNITY_CORE.glob("*.cs"))
-    require(core_names == unity_names, "core_name_set")
-    require(len(core_names) == 11, f"core_count:{len(core_names)}")
+def _sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
-    for name in core_names:
-        require(
-            (CORE / name).read_bytes() ==
-            (UNITY_CORE / name).read_bytes(),
-            f"core_mirror:{name}",
-        )
 
-    identity = json.loads(
-        (ROOT / "unity/CORE_SOURCE_IDENTITY.json").read_text(
-            encoding="utf-8"
-        )
+def _identity_path(
+    root: Path,
+    raw: object,
+    *,
+    prefix: PurePosixPath,
+    label: str,
+) -> tuple[Path, str]:
+    require(isinstance(raw, str) and bool(raw), f"{label}_path")
+    path = PurePosixPath(raw)
+    require(
+        not path.is_absolute()
+        and ".." not in path.parts
+        and "." not in path.parts,
+        f"{label}_path",
     )
-    require(len(identity["files"]) == 11, "identity_count")
+    require(path.parent == prefix, f"{label}_path")
+    require(path.suffix == ".cs", f"{label}_extension")
+    return root.joinpath(*path.parts), path.name
+
+
+def validate_core_mirror(root: Path) -> int:
+    root = Path(root)
+    identity_path = root / "unity" / "CORE_SOURCE_IDENTITY.json"
+    require(identity_path.is_file(), "identity_missing")
+    try:
+        identity = json.loads(identity_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"identity_invalid:{type(error).__name__}") from error
+
+    require(isinstance(identity, dict), "identity_object")
+    require(identity.get("schema") == CORE_IDENTITY_SCHEMA, "identity_schema")
+    files = identity.get("files")
+    require(isinstance(files, list) and bool(files), "identity_files")
+
+    canonical_names: set[str] = set()
+    package_names: set[str] = set()
+    for index, row in enumerate(files):
+        require(
+            isinstance(row, dict)
+            and set(row) == {"canonical", "package", "sha256"},
+            f"identity_row:{index}",
+        )
+        canonical, canonical_name = _identity_path(
+            root,
+            row["canonical"],
+            prefix=CANONICAL_CORE_PREFIX,
+            label="canonical",
+        )
+        package, package_name = _identity_path(
+            root,
+            row["package"],
+            prefix=UNITY_CORE_PREFIX,
+            label="package",
+        )
+        require(canonical_name == package_name, f"identity_name:{index}")
+        require(canonical_name not in canonical_names, f"canonical_duplicate:{canonical_name}")
+        require(package_name not in package_names, f"package_duplicate:{package_name}")
+        canonical_names.add(canonical_name)
+        package_names.add(package_name)
+
+        expected_sha = row["sha256"]
+        require(
+            isinstance(expected_sha, str)
+            and len(expected_sha) == 64
+            and all(character in "0123456789abcdef" for character in expected_sha),
+            f"identity_sha256:{canonical_name}",
+        )
+        require(canonical.is_file(), f"canonical_missing:{canonical_name}")
+        require(package.is_file(), f"package_missing:{package_name}")
+        canonical_bytes = canonical.read_bytes()
+        package_bytes = package.read_bytes()
+        require(canonical_bytes == package_bytes, f"core_mirror:{canonical_name}")
+        require(
+            _sha256(canonical_bytes) == expected_sha,
+            f"core_identity_hash:{canonical_name}",
+        )
+
+    unity_dir = root / UNITY_CORE_PREFIX
+    observed_unity = {path.name for path in unity_dir.glob("*.cs")}
+    require(
+        observed_unity == package_names,
+        "unity_identity_set:"
+        f"identity={sorted(package_names)}:observed={sorted(observed_unity)}",
+    )
+    return len(files)
+
+
+def main() -> int:
+    mirror_count = validate_core_mirror(ROOT)
 
     security = UPDATE / "TevScriptUpdateSecurity.cs"
     unity_security = UNITY_UPDATE / "TevScriptUpdateSecurity.cs"
@@ -161,7 +240,7 @@ def main() -> int:
         "gate5e_unitywebrequest_module_missing",
     )
 
-    print("HOT_UPDATE_CORE_MIRROR=11_BYTE_IDENTICAL_PASS")
+    print(f"HOT_UPDATE_CORE_MIRROR={mirror_count}_BYTE_IDENTICAL_PASS")
     print("HOT_UPDATE_SECURITY_MIRROR=BYTE_IDENTICAL_PASS")
     print("GATE5C_ES256_P1363_STATIC=PASS")
     print("GATE5D_DURABLE_STORE_STATIC=PASS")

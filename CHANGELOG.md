@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.1.1 - platform completion candidate
+
+TEVScript package `3.1.1` is the platform/tooling completion candidate over the unchanged Total-Core language semantics `3.1.0` and the immutable published package/tag `3.1.0`.
+
+This candidate closes canonical version identity, the normative 3.1 platform integration, explicit Language/IR/Runtime/ABI compatibility, current generic CLI/LSP routing, content-addressed conformance, deterministic differential fuzzing, constitutional invariant witnesses, and reproducible-release/provenance evidence.
+
+It does **not** authorize merge, tag, publication or stable promotion. Those operations remain separate operator-authorized gates.
+
 ## 3.0.0 - stable admission requested
 
 TEVScript MAX 3.0.0 has completed technical certification and this release-only

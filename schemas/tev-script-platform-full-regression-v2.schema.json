@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev-script.local/schemas/tev-script-platform-full-regression-v2.schema.json",
+  "title": "TEVScript Platform Full Regression Receipt V2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "reason",
+    "source_commit",
+    "source_tree",
+    "identity_stable",
+    "worktree_clean_before",
+    "worktree_clean_after",
+    "returncode",
+    "test_count",
+    "failure_count",
+    "error_count",
+    "skipped_count",
+    "junit_sha256",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_PLATFORM_FULL_REGRESSION_V2"},
+    "status": {"enum": ["PASS", "FAIL"]},
+    "reason": {"type": "string"},
+    "error": {"type": "string"},
+    "source_commit": {
+      "anyOf": [
+        {"const": ""},
+        {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+      ]
+    },
+    "source_tree": {
+      "anyOf": [
+        {"const": ""},
+        {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+      ]
+    },
+    "identity_stable": {"type": "boolean"},
+    "worktree_clean_before": {"type": "boolean"},
+    "worktree_clean_after": {"type": "boolean"},
+    "returncode": {"type": "integer"},
+    "test_count": {"type": "integer", "minimum": 0},
+    "failure_count": {"type": "integer", "minimum": 0},
+    "error_count": {"type": "integer", "minimum": 0},
+    "skipped_count": {"type": "integer", "minimum": 0},
+    "junit_sha256": {
+      "anyOf": [
+        {"const": ""},
+        {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      ]
+    },
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "PASS"}}},
+      "then": {
+        "properties": {
+          "reason": {"const": ""},
+          "source_commit": {"pattern": "^[0-9a-f]{40}$"},
+          "source_tree": {"pattern": "^[0-9a-f]{40}$"},
+          "identity_stable": {"const": true},
+          "worktree_clean_before": {"const": true},
+          "worktree_clean_after": {"const": true},
+          "returncode": {"const": 0},
+          "test_count": {"minimum": 1},
+          "failure_count": {"const": 0},
+          "error_count": {"const": 0},
+          "skipped_count": {"const": 0},
+          "junit_sha256": {"pattern": "^[0-9a-f]{64}$"}
+        },
+        "not": {"required": ["error"]}
+      }
+    }
+  ]
+}

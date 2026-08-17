@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tev-script.local/schemas/tev-script-platform-release-receipt-v1.schema.json",
+  "title": "TEVScript Platform Release Receipt V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "package_version",
+    "source_commit",
+    "source_tree",
+    "wheel_sha256",
+    "sbom_sha256",
+    "normative_set_sha256",
+    "version_identity_sha256",
+    "provenance_sha256",
+    "runtime_dependency_count",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema": {"const": "TEV_SCRIPT_PLATFORM_RELEASE_RECEIPT_V1"},
+    "status": {"const": "PASS"},
+    "package_version": {"const": "3.1.1"},
+    "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "source_tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "wheel_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "sbom_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "normative_set_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "version_identity_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "provenance_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "runtime_dependency_count": {"const": 0},
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
