@@ -3,24 +3,25 @@
 ## Estado canónico actual
 
 ```text
-PUBLISHED_PACKAGE_VERSION=3.1.0
+PUBLISHED_PACKAGE_VERSION=3.1.1
 PUBLISHED_LANGUAGE_VERSION=3.1.0
 PUBLISHED_PROFILE=total_core
-PUBLISHED_TAG=v3.1.0
-PUBLISHED_COMMIT=c20718ddb2223ba0bfd05ff59006ca31e2966b0b
-PUBLISHED_TREE=812b140c5e6fb7232ef379773d9c37e8f3459f4c
-PUBLISHED_STABLE_ADMISSION=PASS
+PUBLISHED_TAG=v3.1.1
+PUBLISHED_COMMIT=3704e00ef8fca85c5d99f0d5d27fef23106ba0ff
+PUBLISHED_TREE=77457813f5e9245e6dd21da55aa0cff89e2c96fd
+PUBLISHED_PLATFORM_COMPLETION=PASS
+PUBLISHED_WHEEL_SHA256=7315566d8e467e9472321959329be0c7d7f4126146d8873b0c65d1b8f613b7ba
 
-PLATFORM_CANDIDATE_PACKAGE_VERSION=3.1.1
+PLATFORM_CANDIDATE_PACKAGE_VERSION=3.1.2
 PLATFORM_CANDIDATE_LANGUAGE_VERSION=3.1.0
 PLATFORM_CANDIDATE_PROFILE=total_core
-PLATFORM_CANDIDATE_BRANCH=agent/tevscript-platform-completion-v1
+PLATFORM_CANDIDATE_BRANCH=agent/tevscript-dogfood-static-closure-v8
 MERGE_AUTHORITY=FALSE
 PUBLICATION_AUTHORITY=FALSE
 TAG_AUTHORITY=FALSE
 ```
 
-`3.1.1` is a platform/tooling completion patch over unchanged Total-Core language semantics `3.1.0`. The published `v3.1.0` package/tag remains immutable predecessor authority.
+`3.1.2` is a post-publication dogfood/static-closure patch over unchanged Total-Core language semantics `3.1.0`. Published `v3.1.1` is the immutable immediate package predecessor; archived `v3.1.0` remains immutable V31 predecessor authority.
 
 ## Progreso del cierre de plataforma
 
@@ -45,8 +46,9 @@ Completion/full-regression receipt V2 schemas:          IMPLEMENTED
 PyPI Markdown long-description metadata:                IMPLEMENTED
 Nine-gate aggregate completion authority:               IMPLEMENTED
 
-FULL_REPOSITORY_REGRESSION_IN_CONNECTOR_ENVIRONMENT:     NOT EXECUTED
-PLATFORM_COMPLETION_CERTIFICATION:                       PENDING CLEAN CHECKOUT
+FULL_REPOSITORY_REGRESSION_3_1_1:                     PASS 2027 TESTS / 0 SKIPS
+DOGFOOD_STATIC_CLOSURE_V15:                               PASS 2033 TESTS / 0 SKIPS
+PLATFORM_COMPLETION_CERTIFICATION_3_1_2:                   PENDING EXACT-HEAD RECERTIFICATION
 ```
 
 The connector/container used for implementation cannot materialize the complete GitHub checkout because its local network path cannot resolve GitHub. Focused and synthetic TDD was used to build and falsify individual platform organs; those checks are development evidence only and are not promoted to full-repository certification.

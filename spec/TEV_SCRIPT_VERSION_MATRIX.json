@@ -138,10 +138,16 @@
     ],
     "package": [
       {
-        "version": "3.1.1",
+        "version": "3.1.2",
         "status": "current",
         "authority": "tev_script/version.py",
         "entrypoint": "tev_script"
+      },
+      {
+        "version": "3.1.1",
+        "status": "compatible",
+        "authority": "CHANGELOG.md",
+        "note": "published immutable immediate predecessor v3.1.1"
       },
       {
         "version": "3.1.0",

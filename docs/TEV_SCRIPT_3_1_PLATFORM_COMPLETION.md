@@ -4,22 +4,21 @@ Status: implementation candidate. Full-repository certification is required befo
 
 ## Purpose
 
-TEVScript MAX 3.1.0 already closes the Total-Core semantic basis. Package `3.1.1` is the platform/tooling completion candidate over the unchanged language semantics `3.1.0`. It closes engineering authority around that basis without making the runtime more permissive and without reinterpreting historical V1/V2/V3 semantics.
+TEVScript MAX 3.1.0 closes the Total-Core semantic basis and package `3.1.1` is the published platform-completion release. Package `3.1.2` is the post-publication dogfood/static-closure correction candidate over unchanged language semantics `3.1.0`. It tightens compile-time closure and certification reproducibility without making runtime execution more permissive or reinterpreting historical V1/V2/V3 semantics.
 
 The completion relation is:
 
 ```text
-published 3.1.0 Total-Core semantic core
+published 3.1.1 platform completion
++ non-mutating dormant static-type closure
++ complete isolated certification dependencies
++ unchanged Total-Core language 3.1.0
 + canonical current version identity
 + normative platform specification
 + explicit version-domain compatibility
-+ current generic CLI/LSP
-+ executable semantic-area conformance
-+ deterministic Total-Core differential fuzzing
-+ Total-Core constitutional invariant witnesses
 + clean-source reproducible artifact/SBOM/provenance evidence
 + full repository zero-skip non-regression
-= platform completion candidate 3.1.1
+= correction candidate 3.1.2
 ```
 
 ## Current-version authority
@@ -27,7 +26,7 @@ published 3.1.0 Total-Core semantic core
 `tev_script/version.py` is the single current source-code identity:
 
 ```text
-PACKAGE_VERSION=3.1.1
+PACKAGE_VERSION=3.1.2
 CURRENT_LANGUAGE_VERSION=3.1.0
 CURRENT_PROFILE=total_core
 PUBLISHED_PREDECESSOR_PACKAGE_VERSION=3.1.0

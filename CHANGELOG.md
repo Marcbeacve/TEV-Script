@@ -1,12 +1,18 @@
 # Changelog
 
-## 3.1.1 - platform completion candidate
+## 3.1.2 - platform completion candidate
 
-TEVScript package `3.1.1` is the platform/tooling completion candidate over the unchanged Total-Core language semantics `3.1.0` and the immutable published package/tag `3.1.0`.
+TEVScript package `3.1.2` is a post-publication dogfood/static-closure patch over the unchanged Total-Core language semantics `3.1.0`.
 
-This candidate closes canonical version identity, the normative 3.1 platform integration, explicit Language/IR/Runtime/ABI compatibility, current generic CLI/LSP routing, content-addressed conformance, deterministic differential fuzzing, constitutional invariant witnesses, and reproducible-release/provenance evidence.
+It closes two defects found by external-user dogfooding: dormant source signatures now validate every statically knowable type constraint without materializing dead valid types, and the isolated certification requirements now include the Ed25519 backend required by the signed remote-module regression suite.
 
-It does **not** authorize merge, tag, publication or stable promotion. Those operations remain separate operator-authorized gates.
+The already-published package/tag `3.1.1` remains immutable and MUST NOT be rebuilt or republished with different bytes. This candidate does **not** authorize merge, tag, publication or stable promotion.
+
+## 3.1.1 - published platform completion
+
+Package `3.1.1` was published from exact commit `3704e00ef8fca85c5d99f0d5d27fef23106ba0ff`, tree `77457813f5e9245e6dd21da55aa0cff89e2c96fd`, with wheel SHA-256 `7315566d8e467e9472321959329be0c7d7f4126146d8873b0c65d1b8f613b7ba`.
+
+It is the immutable immediate package predecessor for `3.1.2`; language semantics remain `3.1.0`.
 
 ## 3.0.0 - stable admission requested
 

@@ -5,31 +5,31 @@ TEVScript is a bounded, statically typed, deterministic language/platform with e
 ## Current published release
 
 ```text
-PUBLISHED_PACKAGE_VERSION=3.1.0
+PUBLISHED_PACKAGE_VERSION=3.1.1
 PUBLISHED_LANGUAGE_VERSION=3.1.0
 PUBLISHED_PROFILE=total_core
-TAG=v3.1.0
-RELEASE_COMMIT=c20718ddb2223ba0bfd05ff59006ca31e2966b0b
-RELEASE_TREE=812b140c5e6fb7232ef379773d9c37e8f3459f4c
-STABLE_ADMISSION=PASS
-INDEPENDENT_JAVASCRIPT_PARITY=PASS
+TAG=v3.1.1
+RELEASE_COMMIT=3704e00ef8fca85c5d99f0d5d27fef23106ba0ff
+RELEASE_TREE=77457813f5e9245e6dd21da55aa0cff89e2c96fd
+PLATFORM_COMPLETION=PASS
+PUBLISHED_WHEEL_SHA256=7315566d8e467e9472321959329be0c7d7f4126146d8873b0c65d1b8f613b7ba
 ```
 
-The published `v3.1.0` release is immutable predecessor authority and is not rebuilt, retagged or republished by the platform-completion work.
+The published `v3.1.1` release is immutable immediate package predecessor authority and is not rebuilt, retagged or republished by the `3.1.2` correction work. The archived `v3.1.0` V31 authority remains immutable historical evidence.
 
 ## Current platform-completion candidate
 
 ```text
-PACKAGE_VERSION=3.1.1
+PACKAGE_VERSION=3.1.2
 LANGUAGE_VERSION=3.1.0
 PROFILE=total_core
-BRANCH=agent/tevscript-platform-completion-v1
+BRANCH=agent/tevscript-dogfood-static-closure-v8
 MERGE_AUTHORITY=FALSE
 PUBLICATION_AUTHORITY=FALSE
 TAG_AUTHORITY=FALSE
 ```
 
-Package `3.1.1` is a platform/tooling patch over unchanged Total-Core language semantics `3.1.0`. Package and language versions are intentionally separate domains.
+Package `3.1.2` is a post-publication dogfood/static-closure patch over unchanged Total-Core language semantics `3.1.0`. Package and language versions are intentionally separate domains.
 
 Current normative/platform entry points:
 

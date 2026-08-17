@@ -4,23 +4,23 @@
 
 ```text
 PACKAGE=tev-script-portable-reference
-PUBLISHED_VERSION=3.1.0
+PUBLISHED_VERSION=3.1.1
 PUBLISHED_LANGUAGE_VERSION=3.1.0
 PUBLISHED_PROFILE=total_core
-PUBLISHED_TAG=v3.1.0
-PUBLISHED_COMMIT=c20718ddb2223ba0bfd05ff59006ca31e2966b0b
-PUBLISHED_TREE=812b140c5e6fb7232ef379773d9c37e8f3459f4c
-PUBLISHED_STABLE_ADMISSION=PASS
-PUBLISHED_PYTHON_JS_PARITY=PASS
+PUBLISHED_TAG=v3.1.1
+PUBLISHED_COMMIT=3704e00ef8fca85c5d99f0d5d27fef23106ba0ff
+PUBLISHED_TREE=77457813f5e9245e6dd21da55aa0cff89e2c96fd
+PUBLISHED_PLATFORM_COMPLETION=PASS
+PUBLISHED_WHEEL_SHA256=7315566d8e467e9472321959329be0c7d7f4126146d8873b0c65d1b8f613b7ba
 ```
 
-The published `v3.1.0` Total-Core release remains immutable predecessor authority. This branch does not rewrite, retag or republish that release.
+The published `v3.1.1` Total-Core platform release remains immutable immediate package predecessor authority. This branch does not rewrite, retag or republish it; archived `v3.1.0` remains immutable V31 predecessor evidence.
 
 ## Platform-completion candidate
 
 ```text
-BRANCH=agent/tevscript-platform-completion-v1
-PACKAGE_VERSION=3.1.1
+BRANCH=agent/tevscript-dogfood-static-closure-v8
+PACKAGE_VERSION=3.1.2
 LANGUAGE_VERSION=3.1.0
 PROFILE=total_core
 MERGE_AUTHORITY=FALSE
@@ -28,7 +28,7 @@ PUBLICATION_AUTHORITY=FALSE
 TAG_AUTHORITY=FALSE
 ```
 
-Package `3.1.1` is a platform/tooling patch over unchanged language semantics `3.1.0`. The generic `tev-script` CLI and `tev-script-lsp` are current Total-Core entry points. Historical CLIs/LSP remain explicitly versioned compatibility surfaces.
+Package `3.1.2` is a post-publication dogfood/static-closure patch over unchanged language semantics `3.1.0`. The generic `tev-script` CLI and `tev-script-lsp` remain current Total-Core entry points. Historical CLIs/LSP remain explicitly versioned compatibility surfaces.
 
 The aggregate completion authority is:
 
@@ -77,9 +77,9 @@ AGGREGATE_PLATFORM_COMPLETION_GATE=IMPLEMENTED
 Certification state:
 
 ```text
-FOCUSED_TDD=PERFORMED_DURING_IMPLEMENTATION
-FULL_REPOSITORY_REGRESSION=NOT_EXECUTED_IN_CONNECTOR_ENVIRONMENT
-PLATFORM_COMPLETION_CERTIFICATION=PENDING_COMPLETE_CLEAN_CHECKOUT_EXECUTION
+FOCUSED_TDD=PASS
+DOGFOOD_STATIC_CLOSURE_V15=PASS_2033_TESTS_ZERO_SKIP
+PLATFORM_COMPLETION_CERTIFICATION_3_1_2=PENDING_EXACT_HEAD_RECERTIFICATION
 ```
 
 The implementation environment cannot materialize the complete GitHub checkout through its container network path. Synthetic/focused TDD is therefore development evidence only and is not promoted to repository-wide certification. The authoritative aggregate must be run from a complete clean checkout:
