@@ -56,6 +56,7 @@ class V31StableAdmissionTests(unittest.TestCase):
                         "CANONICAL_INDEX.json",
                         "CHANGELOG.md",
                         "README.md",
+                        "spec/TEV_SCRIPT_V31_FEATURE_MATRIX.json",
                         "tev_script/release_metadata_v31.py",
                     )
                 )
