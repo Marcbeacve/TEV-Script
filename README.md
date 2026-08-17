@@ -5,9 +5,9 @@ TEVScript is a bounded, statically typed, deterministic language/platform with e
 ## Current published release
 
 ```text
-PACKAGE_VERSION=3.1.0
-LANGUAGE_VERSION=3.1.0
-PROFILE=total_core
+PUBLISHED_PACKAGE_VERSION=3.1.0
+PUBLISHED_LANGUAGE_VERSION=3.1.0
+PUBLISHED_PROFILE=total_core
 TAG=v3.1.0
 RELEASE_COMMIT=c20718ddb2223ba0bfd05ff59006ca31e2966b0b
 RELEASE_TREE=812b140c5e6fb7232ef379773d9c37e8f3459f4c
@@ -15,7 +15,21 @@ STABLE_ADMISSION=PASS
 INDEPENDENT_JAVASCRIPT_PARITY=PASS
 ```
 
-The published `v3.1.0` release is immutable predecessor authority. The current development branch `agent/tevscript-platform-completion-v1` adds platform-completion machinery around that semantic core; it does not rewrite the published release.
+The published `v3.1.0` release is immutable predecessor authority and is not rebuilt, retagged or republished by the platform-completion work.
+
+## Current platform-completion candidate
+
+```text
+PACKAGE_VERSION=3.1.1
+LANGUAGE_VERSION=3.1.0
+PROFILE=total_core
+BRANCH=agent/tevscript-platform-completion-v1
+MERGE_AUTHORITY=FALSE
+PUBLICATION_AUTHORITY=FALSE
+TAG_AUTHORITY=FALSE
+```
+
+Package `3.1.1` is a platform/tooling patch over unchanged Total-Core language semantics `3.1.0`. Package and language versions are intentionally separate domains.
 
 Current normative/platform entry points:
 
@@ -44,7 +58,23 @@ REPRODUCIBLE_RELEASE
 
 A FAIL blocks completion. A HOLD remains HOLD. Only eight PASS results may emit `PLATFORM_COMPLETION=PASS`. The completion gate never grants merge, tag or publication authority.
 
-Current tooling deliberately preserves predecessor semantics. `tev-script-v31` remains the explicit Total-Core compile/run entry point. The generic `tev-script-lsp` fails closed for 3.1 until a genuine 3.1 LSP exists; the V1 LSP is used only when version `1.0.0` is explicitly requested.
+Current generic tooling is Total-Core 3.1 aware:
+
+```text
+tev-script --version
+tev-script describe
+tev-script descriptor
+tev-script check
+tev-script compile
+tev-script run
+tev-script conformance
+tev-script platform-check
+tev-script-lsp
+```
+
+`tev-script check/compile/run` delegate to the same 3.1 Total-Core implementation exposed explicitly by `tev-script-v31`; no second compiler/runtime semantics are introduced. `tev-script-lsp` dispatches language `3.1.0` to the Total-Core LSP, which validates through `compile_total_core_v31`. Historical V1/V2/V3 commands and the V1 LSP remain available only through explicit versioned entry points. Unknown language versions fail closed.
+
+Full-repository certification has not been executed in the connector implementation environment because its container cannot materialize the complete Git checkout through the local network path. The authoritative completion result must therefore be obtained from a complete clean checkout with Python and Node by running `RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py`.
 
 The sections below are preserved historical release-line documentation. Where a historical status statement conflicts with the current block above, the current 3.1 platform specification/status is authoritative.
 
@@ -80,7 +110,7 @@ P_COMMIT=9c79d43a082e8c609d4b85d2cadd5b462f488252
 P_TREE=a242425c98945eda90a7b45e4ef11394ef423bd4
 P_CERTIFY_FULL_V2_RECEIPT_SHA256=6c5b8e1ab243d4ccd2108c816c83542c6e3fec1b2a69efc0c09e4a85327c0e07
 P_CERTIFY_FULL_V2_RECEIPT_FILE_SHA256=c8a8b6bd307431dc32db17a10640a2890ce6316e6eaebacf0b2dcfa6420d702a
-P_PYTHON_CERTIFY_FULL_RECEIPT_SHA256=271d3fbdf6d1e9284b8fede03823fbff1c98ba3fab81a0e2dd1602420a5437c8
+P_PYTHON_CERTIFY_FULL_RECEIPT_SHA256=271d3fbdf6d1e9284b8fede03823fbff1c98ba3fab81c0e2dd1602420a5437c8
 P_PYTHON_WHEEL_SHA256=9116ea8f80cc89b26cbff0581108935f905d260f430ef0cf719e0166475b4944
 ```
 
