@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tev_script.platform_completion import EXPECTED_GATES, validate_platform_completion
+from tev_script.platform_completion import GATE_ORDER, EXPECTED_GATES, validate_platform_completion
 
 
 def _gates(status: str = "PASS"):
@@ -12,11 +12,13 @@ def _gates(status: str = "PASS"):
     }
 
 
-def test_all_eight_gates_are_required_for_completion(tmp_path: Path) -> None:
+def test_all_nine_gates_are_required_for_completion(tmp_path: Path) -> None:
     receipt = validate_platform_completion(tmp_path, gate_functions=_gates())
     assert receipt["status"] == "PASS"
     assert receipt["platform_completion"] == "PASS"
     assert set(receipt["gates"]) == EXPECTED_GATES
+    assert len(EXPECTED_GATES) == 9
+    assert GATE_ORDER[-1] == "FULL_REGRESSION"
 
 
 def test_one_failure_blocks_completion(tmp_path: Path) -> None:
@@ -26,6 +28,14 @@ def test_one_failure_blocks_completion(tmp_path: Path) -> None:
     assert receipt["status"] == "FAIL"
     assert receipt["platform_completion"] == "FAIL"
     assert receipt["failed_gates"] == ["NORMATIVE_SPEC"]
+
+
+def test_full_regression_failure_blocks_completion(tmp_path: Path) -> None:
+    gates = _gates()
+    gates["FULL_REGRESSION"] = lambda root: {"status": "FAIL"}
+    receipt = validate_platform_completion(tmp_path, gate_functions=gates)
+    assert receipt["status"] == "FAIL"
+    assert receipt["failed_gates"] == ["FULL_REGRESSION"]
 
 
 def test_hold_never_promotes_to_pass(tmp_path: Path) -> None:
@@ -39,7 +49,7 @@ def test_hold_never_promotes_to_pass(tmp_path: Path) -> None:
 
 def test_missing_gate_fails_closed(tmp_path: Path) -> None:
     gates = _gates()
-    gates.pop("REPRODUCIBLE_RELEASE")
+    gates.pop("FULL_REGRESSION")
     receipt = validate_platform_completion(tmp_path, gate_functions=gates)
     assert receipt["status"] == "FAIL"
-    assert receipt["missing_gates"] == ["REPRODUCIBLE_RELEASE"]
+    assert receipt["missing_gates"] == ["FULL_REGRESSION"]
