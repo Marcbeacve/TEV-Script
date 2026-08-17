@@ -19,8 +19,10 @@ from RUN_TEV_SCRIPT_V31_CERTIFY_FULL import (
     V3_STABLE_TAG,
     V3_STABLE_TREE,
     _canonical_index_predecessor_view,
+    _git_bytes,
+    _git_show_json,
+    _matrix_paths,
     load_feature_matrix,
-    require_predecessor_byte_identity,
     validate_v31_matrix,
 )
 
@@ -125,14 +127,51 @@ class V31AuthorityTests(unittest.TestCase):
         expected = TECHNICAL_REQUIRED_PATHS | POST_CERT_ALLOWED_PATHS
         self.assertEqual(changed, expected)
 
-    def test_v3_and_inherited_v2_governed_bytes_are_unchanged(self) -> None:
-        report = require_predecessor_byte_identity(ROOT)
-        self.assertEqual(report["status"], "PASS", report)
-        self.assertEqual(report["v3_byte_identity"], "PASS")
-        self.assertEqual(report["v2_byte_identity"], "PASS")
-        self.assertEqual(report["canonical_index_predecessor_identity"], "PASS")
-        self.assertGreater(report["v3_governed_path_count"], 0)
-        self.assertGreater(report["v2_governed_path_count"], 0)
+    def test_published_v31_preserves_v3_and_inherited_v2_governed_bytes(self) -> None:
+        v3_matrix = _git_show_json(
+            ROOT,
+            V3_STABLE_SHA,
+            "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json",
+        )
+        v3_paths = set(_matrix_paths(v3_matrix))
+        v3_paths.add("spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json")
+
+        v2_matrix = _git_show_json(
+            ROOT,
+            V3_STABLE_SHA,
+            "spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json",
+        )
+        v2_paths = set(_matrix_paths(v2_matrix))
+        v2_paths.add("spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json")
+
+        for label, paths in (
+            ("V3", v3_paths),
+            ("inherited V2", v2_paths),
+        ):
+            self.assertGreater(len(paths), 0)
+            for relative in sorted(paths):
+                expected = _git_bytes(
+                    ROOT,
+                    "show",
+                    f"{V3_STABLE_SHA}:{relative}",
+                )
+                published = _git_bytes(
+                    ROOT,
+                    "show",
+                    f"{V31_PUBLISHED_SHA}:{relative}",
+                )
+                self.assertEqual(
+                    published,
+                    expected,
+                    f"{label} byte identity changed: {relative}",
+                )
+
+        stable_index = _git_show_json(ROOT, V3_STABLE_SHA, "CANONICAL_INDEX.json")
+        published_index = _git_show_json(ROOT, V31_PUBLISHED_SHA, "CANONICAL_INDEX.json")
+        self.assertEqual(
+            _canonical_index_predecessor_view(published_index),
+            _canonical_index_predecessor_view(stable_index),
+        )
 
     def test_canonical_index_view_allows_only_v31_target_addition(self) -> None:
         base = json.loads((ROOT / "CANONICAL_INDEX.json").read_text(encoding="utf-8"))
