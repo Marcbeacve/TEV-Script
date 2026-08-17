@@ -16,9 +16,9 @@ from tev_script.platform_tooling import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_current_platform_description_binds_310_total_core() -> None:
+def test_current_platform_description_binds_package_311_language_310() -> None:
     value = describe_current_platform()
-    assert value["package_version"] == "3.1.0"
+    assert value["package_version"] == "3.1.1"
     assert value["language_version"] == "3.1.0"
     assert value["profile"] == "total_core"
     assert value["runtime_source_compilation"] is False
@@ -59,6 +59,7 @@ def test_unknown_lsp_version_is_not_inferred() -> None:
 def test_generic_cli_describe_reports_current_platform(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["describe"]) == 0
     payload = json.loads(capsys.readouterr().out)
+    assert payload["package_version"] == "3.1.1"
     assert payload["language_version"] == "3.1.0"
     assert payload["profile"] == "total_core"
 
