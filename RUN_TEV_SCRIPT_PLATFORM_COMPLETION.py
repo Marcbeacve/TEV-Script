@@ -4,7 +4,11 @@ import argparse
 import json
 from pathlib import Path
 
-from tev_script.platform_completion import GATE_ORDER, validate_platform_completion
+from tev_script.platform_completion import (
+    GATE_ORDER,
+    validate_platform_completion,
+    verify_platform_completion_receipt,
+)
 
 ROOT = Path(__file__).resolve().parent
 
@@ -24,16 +28,15 @@ def main(argv: list[str] | None = None) -> int:
         fuzz_seed=arguments.fuzz_seed,
         fuzz_count=arguments.fuzz_count,
     )
-    if arguments.receipt is not None:
-        arguments.receipt.parent.mkdir(parents=True, exist_ok=True)
-        arguments.receipt.write_text(
-            json.dumps(receipt, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
-            + "\n",
-            encoding="utf-8",
-        )
+    verified = verify_platform_completion_receipt(receipt)
+
     for gate in GATE_ORDER:
         print(f"{gate}={receipt['gates'].get(gate, {}).get('status', 'FAIL')}")
     print(f"PLATFORM_COMPLETION={receipt['platform_completion']}")
+    print(
+        "PLATFORM_COMPLETION_RECEIPT_VERIFY="
+        + ("PASS" if verified else "FAIL")
+    )
     print(f"PLATFORM_COMPLETION_RECEIPT_SHA256={receipt['receipt_sha256']}")
     if receipt.get("source_commit"):
         print(f"SOURCE_COMMIT={receipt['source_commit']}")
@@ -41,6 +44,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"SOURCE_TREE={receipt['source_tree']}")
     if receipt.get("full_regression_test_count") is not None:
         print(f"FULL_REGRESSION_TEST_COUNT={receipt['full_regression_test_count']}")
+
+    if not verified:
+        return 1
+    if arguments.receipt is not None:
+        arguments.receipt.parent.mkdir(parents=True, exist_ok=True)
+        arguments.receipt.write_text(
+            json.dumps(receipt, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+            + "\n",
+            encoding="utf-8",
+        )
     return 0 if receipt["status"] == "PASS" else 1
 
 
