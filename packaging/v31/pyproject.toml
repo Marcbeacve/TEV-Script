@@ -1,0 +1,24 @@
+[build-system]
+requires = []
+build-backend = "tev_script_build_backend_v31"
+backend-path = ["tools"]
+
+[project]
+name = "tev-script-portable-reference"
+version = "3.1.0"
+description = "TEVScript MAX 3.1 Total-Core portable compiler and bounded runtime"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+tev-script = "tev_script.cli:main"
+tev-script-v1 = "tev_script.cli_v1:main"
+tev-script-v1-describe = "tev_script.describe_v1:main"
+tev-script-v1-ir = "tev_script.runtime_cli_v3:main"
+tev-script-v1-lsp = "tev_script.lsp_v1:main"
+tev-script-v2 = "tev_script.cli_v2:main"
+tev-script-v2-describe = "tev_script.describe_v2:main"
+tev-script-v3 = "tev_script.cli_v3:main"
+tev-script-v3-describe = "tev_script.describe_v3:main"
+tev-script-v31 = "tev_script.cli_v31:main"
+tev-script-v31-describe = "tev_script.describe_v31:main"
