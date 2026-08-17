@@ -92,9 +92,8 @@ def _platform_fixture(root: Path) -> None:
             {
                 "schema": "TEV_SCRIPT_3_1_NORMATIVE_INDEX_V1",
                 "language_version": "3.1.0",
-                "package_version": "3.1.1",
-                "profile": "total_core",
-                "authorities": [
+                "hash_algorithm": "SHA-256",
+                "entries": [
                     {
                         "path": "spec/X.md",
                         "role": "synthetic",
