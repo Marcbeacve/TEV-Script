@@ -17,7 +17,13 @@ from .ir_v4_pure import (
     validate_pure_v4,
 )
 from .ir_v4_values import TypeDescriptorV4, TypeTableV4
-from .source_types_v2 import ResolvedTypeV2, TypeRefV2, parse_type_ref_v2, resolve_type_ref_v2
+from .source_types_v2 import (
+    ResolvedTypeV2,
+    TypeRefV2,
+    parse_type_ref_v2,
+    resolve_type_ref_v2,
+    validate_static_type_ref_v2,
+)
 
 _NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _OWNER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$")
@@ -143,12 +149,20 @@ class GenericPureFunctionRegistryV2:
                 _fail("TEVS_V2_GENERIC_FUNCTION_PARAMETERS", f"invalid or duplicate parameter {parameter_name!r}")
             seen_names.add(parameter_name)
             parsed_type = parse_type_ref_v2(type_text, generic_arities)
-            if not type_params:
-                self.types.materialize_source_type(type_text)
+            validate_static_type_ref_v2(
+                parsed_type,
+                type_parameters=type_params,
+                nominal_resolver=lambda item: self.types.resolve_source_type(item).type_id,
+                user_generic_arities=generic_arities,
+            )
             parsed_parameters.append(GenericFunctionParameterTemplateV2(parameter_name, parsed_type))
         parsed_return = parse_type_ref_v2(return_type, generic_arities)
-        if not type_params:
-            self.types.materialize_source_type(return_type)
+        validate_static_type_ref_v2(
+            parsed_return,
+            type_parameters=type_params,
+            nominal_resolver=lambda item: self.types.resolve_source_type(item).type_id,
+            user_generic_arities=generic_arities,
+        )
         canonical_body = canonical_expression_v4(body)
         for const_type in _const_type_refs(canonical_body, generic_arities):
             if _mentions_parameters(const_type, set(type_params)):

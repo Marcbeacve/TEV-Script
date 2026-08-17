@@ -192,6 +192,55 @@ def resolve_type_ref_v2(
     return ResolvedTypeV2(type_ref.kind,type_id,args,(bound,))
 
 
+
+def validate_static_type_ref_v2(
+    type_ref: TypeRefV2,
+    *,
+    type_parameters: Sequence[str] = (),
+    nominal_resolver: Callable[[str], str] | None = None,
+    user_generic_arities: Mapping[str, int] | None = None,
+) -> ResolvedTypeV2:
+    if not isinstance(type_ref, TypeRefV2):
+        _fail("TEVS_V2_TYPE_REFERENCE_KIND", "static validation requires TypeRefV2")
+    parameters = frozenset(type_parameters)
+    arities = dict(user_generic_arities or {})
+
+    def nominal(name: str) -> str:
+        if name in parameters:
+            return "Int"
+        if nominal_resolver is None:
+            _fail("TEVS_V2_TYPE_UNKNOWN", f"nominal type {name!r} requires name resolution")
+        resolved = nominal_resolver(name)
+        if not isinstance(resolved, str) or not resolved:
+            _fail("TEVS_V2_TYPE_UNKNOWN", f"nominal type {name!r} did not resolve")
+        return resolved
+
+    def user_generic(name: str, arguments: tuple[ResolvedTypeV2, ...]) -> str:
+        expected = arities.get(name)
+        if expected is None:
+            _fail(
+                "TEVS_V2_USER_GENERIC_NOT_DECLARED",
+                f"generic application {name}<...> requires a declared user generic",
+            )
+        if len(arguments) != expected:
+            _fail(
+                "TEVS_V2_USER_GENERIC_ARITY",
+                f"generic application {name}<...> expects {expected} arguments, got {len(arguments)}",
+            )
+        encoded = ",".join(argument.type_id for argument in arguments)
+        return f"__tev_static_generic__.{name}<{encoded}>"
+
+    def associated(root: str, member: str) -> ResolvedTypeV2:
+        if root not in parameters:
+            _fail(
+                "TEVS_V2_ASSOCIATED_TYPE_UNRESOLVED",
+                f"associated type projection {root}::{member} requires a type parameter",
+            )
+        return ResolvedTypeV2("primitive", "Int")
+
+    return resolve_type_ref_v2(type_ref, nominal, user_generic, associated)
+
+
 def associated_type_parts_v2(type_ref: TypeRefV2) -> tuple[str, str]:
     if type_ref.kind != "associated" or "::" not in type_ref.name:
         _fail("TEVS_V2_ASSOCIATED_TYPE_SYNTAX","type reference is not an associated type projection")
