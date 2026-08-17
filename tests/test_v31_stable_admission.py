@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import inspect
 import json
 from pathlib import Path
 import tempfile
@@ -14,6 +15,7 @@ from RUN_TEV_SCRIPT_V31_STABLE_ADMISSION import (
     SCHEMA,
     build_receipt_body,
     expected_v31_index_target,
+    finalize_candidate,
     seal_receipt,
     validate_artifact_dir,
     validate_v31_index_target,
@@ -92,6 +94,13 @@ class V31StableAdmissionTests(unittest.TestCase):
         tampered = copy.deepcopy(target)
         tampered["stable"] = False
         self.assertFalse(validate_v31_index_target(tampered))
+
+    def test_finalizer_reloads_release_state_by_fresh_process_boundaries(self) -> None:
+        source = inspect.getsource(finalize_candidate)
+        self.assertIn("_run_release_focal_fresh()", source)
+        self.assertIn("_run_stable_certify_fresh(", source)
+        self.assertNotIn("\n    _release_focal()\n", source)
+        self.assertNotIn("\n    stable_receipt = certify(\n", source)
 
     def test_stable_receipt_grants_stability_but_not_operator_actions(self) -> None:
         body = _body()
