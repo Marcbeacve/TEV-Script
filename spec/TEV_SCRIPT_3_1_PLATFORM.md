@@ -93,14 +93,16 @@ Language version, source profile, linked-program schema, Program IR version, run
 At every platform boundary, absence of required authority or evidence is fail-closed. In particular:
 
 ```text
-missing capability        -> HOLD/FAIL
-exhausted budget          -> explicit bounded failure
-malformed IR/schema       -> FAIL
-hash mismatch             -> FAIL
-unsupported profile       -> HOLD/FAIL
-missing proof admission   -> PROOF_REQUIRED/HOLD
-runtime divergence        -> FAIL
+missing capability          -> HOLD/FAIL
+exhausted budget            -> explicit bounded failure
+malformed IR/schema         -> FAIL
+hash mismatch               -> FAIL
+unsupported profile         -> HOLD/FAIL
+missing proof admission     -> PROOF_REQUIRED/HOLD
+runtime divergence          -> FAIL
 missing conformance witness -> HOLD/FAIL
+full regression failure     -> FAIL
+full regression skip        -> FAIL
 ```
 
 No `HOLD` state may be promoted to `PASS` by the aggregate platform-completion gate.
@@ -112,12 +114,15 @@ The platform-completion candidate is admitted only when the following independen
 ```text
 VERSION_IDENTITY
 NORMATIVE_SPEC
+VERSION_MATRIX
+TOOLING_3X
 CONFORMANCE
 DIFFERENTIAL_FUZZ
 SEMANTIC_INVARIANTS
-VERSION_MATRIX
-TOOLING_3X
 REPRODUCIBLE_RELEASE
+FULL_REGRESSION
 ```
 
-Only their conjunction may emit `PLATFORM_COMPLETION=PASS`. This condition does not grant merge, publication, tagging or stable-promotion authority.
+`FULL_REGRESSION` is the final certification guard. It MUST execute a non-empty full repository test suite and MUST report zero failures, zero errors and zero skips. A specialized gate cannot substitute for this repository-wide non-regression requirement.
+
+Only the conjunction of all nine gates may emit `PLATFORM_COMPLETION=PASS`. This condition does not grant merge, publication, tagging or stable-promotion authority.
