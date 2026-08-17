@@ -12,6 +12,7 @@ dependencies = []
 
 [project.scripts]
 tev-script = "tev_script.cli:main"
+tev-script-lsp = "tev_script.lsp:main"
 tev-script-v1 = "tev_script.cli_v1:main"
 tev-script-v1-describe = "tev_script.describe_v1:main"
 tev-script-v1-ir = "tev_script.runtime_cli_v3:main"
