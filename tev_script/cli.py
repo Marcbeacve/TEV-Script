@@ -5,8 +5,13 @@ import json
 from pathlib import Path
 import sys
 
+from .capability_catalog import load_capability_catalog
+from .canonical import canonical_json
 from .cli_v31 import main as v31_main
+from .compiler import compile_path
+from .conformance import run_conformance
 from .descriptor_v31 import v31_descriptor
+from .json_io import load_strict_json
 from .platform_conformance import run_platform_conformance
 from .platform_tooling import describe_current_platform, platform_check
 from .version import PACKAGE_VERSION
@@ -155,6 +160,58 @@ def _platform_check(arguments: argparse.Namespace) -> int:
     receipt = platform_check(arguments.root)
     _canonical_print(receipt)
     return 0 if receipt["status"] == "PASS" else 1
+
+
+# Internal compatibility helpers retained for historical portable tests and
+# embedders that imported these private functions before the generic `tev-script`
+# command was rebound to the current 3.1 Total-Core platform. They are
+# deliberately NOT registered in build_parser(); the public generic CLI remains
+# exclusively the current platform surface above.
+def _legacy_catalog(arguments: argparse.Namespace):
+    selected = getattr(arguments, "capability_catalog", None)
+    return None if selected is None else load_capability_catalog(selected)
+
+
+def _compile(arguments: argparse.Namespace) -> int:
+    bundle = compile_path(
+        arguments.source,
+        capability_catalog=_legacy_catalog(arguments),
+    )
+    arguments.output.parent.mkdir(parents=True, exist_ok=True)
+    arguments.output.write_bytes((bundle.canonical_json + "\n").encode("utf-8"))
+    _canonical_print(
+        {
+            "schema": "TEV_SCRIPT_COMPILE_RESULT_V1",
+            "status": "PASS",
+            "output": arguments.output.as_posix(),
+            "semantic_hash": bundle.ir["semantic_hash"],
+        }
+    )
+    return 0
+
+
+def _conformance(arguments: argparse.Namespace) -> int:
+    bundle = compile_path(
+        arguments.source,
+        capability_catalog=_legacy_catalog(arguments),
+    )
+    scenario = load_strict_json(arguments.scenario)
+    receipt = run_conformance(bundle.ir, scenario)
+    output = canonical_json(receipt) + "\n"
+    if arguments.output is None:
+        print(output, end="")
+    else:
+        arguments.output.parent.mkdir(parents=True, exist_ok=True)
+        arguments.output.write_bytes(output.encode("utf-8"))
+        _canonical_print(
+            {
+                "schema": "TEV_SCRIPT_CONFORMANCE_RESULT_V1",
+                "status": "PASS",
+                "output": arguments.output.as_posix(),
+                "receipt_hash": receipt["receipt_hash"],
+            }
+        )
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
