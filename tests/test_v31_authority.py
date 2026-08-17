@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import unittest
 
 from tev_script.descriptor_v31 import v31_descriptor
@@ -16,6 +17,7 @@ from RUN_TEV_SCRIPT_V31_CERTIFY_FULL import (
     V3_STABLE_SHA,
     V3_STABLE_TAG,
     V3_STABLE_TREE,
+    _canonical_index_predecessor_view,
     evaluate_minimality,
     load_feature_matrix,
     require_predecessor_byte_identity,
@@ -104,8 +106,32 @@ class V31AuthorityTests(unittest.TestCase):
         self.assertEqual(report["status"], "PASS", report)
         self.assertEqual(report["v3_byte_identity"], "PASS")
         self.assertEqual(report["v2_byte_identity"], "PASS")
+        self.assertEqual(report["canonical_index_predecessor_identity"], "PASS")
         self.assertGreater(report["v3_governed_path_count"], 0)
         self.assertGreater(report["v2_governed_path_count"], 0)
+
+    def test_canonical_index_view_allows_only_v31_target_addition(self) -> None:
+        base = json.loads((ROOT / "CANONICAL_INDEX.json").read_text(encoding="utf-8"))
+        baseline = _canonical_index_predecessor_view(base)
+
+        with_v31 = copy.deepcopy(base)
+        with_v31.setdefault("candidate_language_targets", []).append(
+            {
+                "language_version": "3.1.0",
+                "status": "STABLE_ADMISSION_REQUESTED",
+                "stable": True,
+            }
+        )
+        self.assertEqual(_canonical_index_predecessor_view(with_v31), baseline)
+
+        mutated = copy.deepcopy(base)
+        predecessor = next(
+            item
+            for item in mutated["candidate_language_targets"]
+            if item.get("language_version") == "2.0.0"
+        )
+        predecessor["stable"] = not predecessor["stable"]
+        self.assertNotEqual(_canonical_index_predecessor_view(mutated), baseline)
 
     def test_publication_or_merge_authority_tamper_is_rejected(self) -> None:
         matrix = copy.deepcopy(load_feature_matrix(ROOT))
