@@ -14,6 +14,7 @@ from typing import Any, Mapping, Sequence
 
 from tev_script.descriptor_v2 import v2_descriptor
 from tev_script.descriptor_v31 import v31_descriptor, verify_v31_descriptor
+from tev_script import release_metadata_v31 as release
 
 
 ROOT = Path(__file__).resolve().parent
@@ -33,17 +34,21 @@ CERTIFICATION_SCHEMA_PATH = "schemas/tev-script-v31-certify-full-receipt.schema.
 
 TECHNICAL_REQUIRED_PATHS = frozenset({
     "RUN_TEV_SCRIPT_V31_CERTIFY_FULL.py",
+    "RUN_TEV_SCRIPT_V31_STABLE_ADMISSION.py",
     "conformance/v31-total-core-parity.json",
     "docs/superpowers/plans/2026-08-16-tevscript-max-3-1-total-core.md",
     "docs/superpowers/specs/2026-08-16-tevscript-max-3-1-total-core-design.md",
     "docs/superpowers/specs/2026-08-16-tevscript-max-3-1-total-core-effect-input-amendment.md",
     "docs/superpowers/specs/2026-08-16-tevscript-max-3-1-total-core-js-parity-amendment.md",
+    "packaging/v31/pyproject.toml",
+    "packaging/v31/tools/tev_script_build_backend_v31.py",
     "runtime_js_v31/core.mjs",
     "runtime_js_v31/runtime_v5_total.mjs",
     "runtime_js_v31/v4_governed.mjs",
     "schemas/tev-script-program-ir-v5-total-core.schema.json",
     "schemas/tev-script-v31-certify-full-receipt.schema.json",
     "schemas/tev-script-v31-descriptor.schema.json",
+    "schemas/tev-script-v31-stable-admission-receipt.schema.json",
     "spec/TEV_SCRIPT_V31_FEATURE_MATRIX.json",
     "spec/TEV_SCRIPT_V31_TOTAL_CORE.md",
     "tests/test_cli_v31.py",
@@ -55,6 +60,8 @@ TECHNICAL_REQUIRED_PATHS = frozenset({
     "tests/test_v31_authority.py",
     "tests/test_v31_certify_full.py",
     "tests/test_v31_descriptor.py",
+    "tests/test_v31_packaging.py",
+    "tests/test_v31_stable_admission.py",
     "tev_script/__init__.py",
     "tev_script/cli_v31.py",
     "tev_script/describe_v31.py",
@@ -69,16 +76,12 @@ POST_CERT_ALLOWED_PATHS = frozenset({
     "CANONICAL_INDEX.json",
     "CHANGELOG.md",
     "README.md",
-    "RUN_TEV_SCRIPT_V31_STABLE_ADMISSION.py",
-    "packaging/v31/pyproject.toml",
-    "packaging/v31/tools/tev_script_build_backend_v31.py",
-    "schemas/tev-script-v31-stable-admission-receipt.schema.json",
-    "tests/test_v31_packaging.py",
-    "tests/test_v31_stable_admission.py",
+    "spec/TEV_SCRIPT_V31_FEATURE_MATRIX.json",
     "tev_script/release_metadata_v31.py",
 })
 
 RELEASE_MUTABLE_PATHS = frozenset({
+    "spec/TEV_SCRIPT_V31_FEATURE_MATRIX.json",
     "tev_script/release_metadata_v31.py",
 })
 
@@ -118,11 +121,11 @@ V31_CORE_TESTS = (
     "tests/test_v31_descriptor.py",
     "tests/test_v31_authority.py",
     "tests/test_v31_certify_full.py",
+    "tests/test_v31_packaging.py",
+    "tests/test_v31_stable_admission.py",
 )
 
-JS_PARITY_TESTS = (
-    "tests/test_runtime_v5_total_js_parity.py",
-)
+JS_PARITY_TESTS = ("tests/test_runtime_v5_total_js_parity.py",)
 
 PREDECESSOR_TESTS = (
     "tests/test_program_ir_v4.py",
@@ -139,6 +142,7 @@ PREDECESSOR_TESTS = (
     "tests/test_source_semantic_process_v3.py",
     "tests/test_cli_v3.py",
     "tests/test_v3_descriptor_runtime_targets.py",
+    "tests/test_v3_packaging.py",
 )
 
 _PASSED = re.compile(r"(?P<count>[0-9]+)\s+passed\b")
@@ -220,11 +224,23 @@ def load_feature_matrix(root: Path = ROOT) -> dict[str, Any]:
     return _load_json(root / FEATURE_MATRIX_PATH)
 
 
+def _release_state(metadata: Mapping[str, Any]) -> tuple[str, bool, bool]:
+    profile = metadata.get("release_profile")
+    if profile == "candidate":
+        return "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED", False, False
+    if profile == "stable_request":
+        return "STABLE_ADMISSION_REQUESTED", True, True
+    raise V31CertificationFailure("unsupported V31 release profile")
+
+
 def validate_v31_matrix(
     matrix: Mapping[str, Any],
     descriptor: Mapping[str, Any],
 ) -> dict[str, Any]:
     errors: list[str] = []
+    metadata = release.validate_release_metadata_v31()
+    expected_status, expected_stable, expected_language_stable = _release_state(metadata)
+
     if (
         matrix.get("schema") != "TEV_SCRIPT_V31_FEATURE_MATRIX_V1"
         or matrix.get("language_version") != LANGUAGE_VERSION
@@ -233,13 +249,15 @@ def validate_v31_matrix(
     ):
         errors.append("matrix_identity")
     if (
-        matrix.get("status") != "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED"
-        or matrix.get("stable") is not False
+        matrix.get("status") != expected_status
+        or matrix.get("stable") is not expected_stable
+        or matrix.get("language_stable") is not expected_language_stable
         or matrix.get("publication_authorized") is not False
         or matrix.get("merge_authorized") is not False
-        or matrix.get("language_stable") is not False
+        or metadata.get("publication_authority") is not False
+        or metadata.get("merge_authority") is not False
     ):
-        errors.append("candidate_authority")
+        errors.append("release_state_binding")
     if matrix.get("predecessor_v3") != {
         "tag": V3_STABLE_TAG,
         "commit_sha": V3_STABLE_SHA,
@@ -278,6 +296,7 @@ def validate_v31_matrix(
             errors.append("required_features_not_closed")
 
     technical = _list_text(matrix.get("technical_governed_paths"))
+    technical_report = [] if technical is None else list(technical)
     if (
         technical is None
         or frozenset(technical) != TECHNICAL_REQUIRED_PATHS
@@ -285,11 +304,10 @@ def validate_v31_matrix(
         or tuple(sorted(technical)) != technical
     ):
         errors.append("technical_governed_paths")
-        technical_report: list[str] = []
-    else:
-        technical_report = list(technical)
+        technical_report = []
 
     post_cert = _list_text(matrix.get("post_cert_allowed_paths"))
+    post_cert_report = [] if post_cert is None else list(post_cert)
     if (
         post_cert is None
         or frozenset(post_cert) != POST_CERT_ALLOWED_PATHS
@@ -297,11 +315,10 @@ def validate_v31_matrix(
         or tuple(sorted(post_cert)) != post_cert
     ):
         errors.append("post_cert_allowed_paths")
-        post_cert_report: list[str] = []
-    else:
-        post_cert_report = list(post_cert)
+        post_cert_report = []
 
     release_mutable = _list_text(matrix.get("release_mutable_paths"))
+    release_mutable_report = [] if release_mutable is None else list(release_mutable)
     if (
         release_mutable is None
         or frozenset(release_mutable) != RELEASE_MUTABLE_PATHS
@@ -309,9 +326,7 @@ def validate_v31_matrix(
         or tuple(sorted(release_mutable)) != release_mutable
     ):
         errors.append("release_mutable_paths")
-        release_mutable_report: list[str] = []
-    else:
-        release_mutable_report = list(release_mutable)
+        release_mutable_report = []
 
     if TECHNICAL_REQUIRED_PATHS.intersection(POST_CERT_ALLOWED_PATHS) != RELEASE_MUTABLE_PATHS:
         errors.append("release_mutable_intersection")
@@ -321,7 +336,7 @@ def validate_v31_matrix(
         descriptor.get("language_version") != LANGUAGE_VERSION
         or descriptor.get("program_ir_version") != 5
         or descriptor.get("profiles") != ["total_core"]
-        or descriptor.get("stable") is not False
+        or descriptor.get("stable") is not expected_stable
         or descriptor.get("promotion_authority") is not False
         or descriptor.get("proof_admission_external_only") is not True
         or descriptor.get("physical_effect_commit_inside_runtime") is not False
@@ -332,6 +347,7 @@ def validate_v31_matrix(
     return {
         "status": "PASS" if not errors else "FAIL",
         "errors": errors,
+        "release_profile": metadata["release_profile"],
         "all_required_features_closed": not any(
             error.startswith("required_features") for error in errors
         ),
@@ -340,7 +356,7 @@ def validate_v31_matrix(
         "release_mutable_paths": release_mutable_report,
         "publication_authorized": False,
         "merge_authorized": False,
-        "language_stable": False,
+        "language_stable": expected_language_stable,
     }
 
 
@@ -424,10 +440,8 @@ def _git_show_json(root: Path, ref: str, relative: str) -> dict[str, Any]:
     return value
 
 
-def _matrix_paths(matrix: Mapping[str, Any], *, include_index: bool) -> tuple[str, ...]:
+def _matrix_paths(matrix: Mapping[str, Any]) -> tuple[str, ...]:
     paths: set[str] = set()
-    if include_index:
-        paths.add("CANONICAL_INDEX.json")
     for key in ("authority_files", "stable_tooling_authority"):
         values = matrix.get(key)
         if values is None:
@@ -463,11 +477,32 @@ def _require_snapshot_bytes(
             raise V31CertificationFailure(label + " byte identity changed: " + relative)
 
 
+def _canonical_index_predecessor_view(index: Mapping[str, Any]) -> dict[str, Any]:
+    if not isinstance(index, Mapping):
+        raise V31CertificationFailure("canonical index must be object")
+    try:
+        view = json.loads(_canonical_bytes(dict(index)).decode("utf-8"))
+    except (TypeError, ValueError, json.JSONDecodeError) as error:
+        raise V31CertificationFailure("canonical index is not canonical JSON data") from error
+    targets = view.get("candidate_language_targets")
+    if not isinstance(targets, list):
+        raise V31CertificationFailure("canonical index candidate_language_targets missing")
+    view["candidate_language_targets"] = [
+        item
+        for item in targets
+        if not (
+            isinstance(item, Mapping)
+            and item.get("language_version") == LANGUAGE_VERSION
+        )
+    ]
+    return view
+
+
 def require_predecessor_byte_identity(root: Path = ROOT) -> dict[str, Any]:
     v3_matrix = _git_show_json(
         root, V3_STABLE_SHA, "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json"
     )
-    v3_paths = set(_matrix_paths(v3_matrix, include_index=False))
+    v3_paths = set(_matrix_paths(v3_matrix))
     v3_paths.add("spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json")
     _require_snapshot_bytes(
         root,
@@ -479,7 +514,7 @@ def require_predecessor_byte_identity(root: Path = ROOT) -> dict[str, Any]:
     v2_matrix = _git_show_json(
         root, V3_STABLE_SHA, "spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json"
     )
-    v2_paths = set(_matrix_paths(v2_matrix, include_index=True))
+    v2_paths = set(_matrix_paths(v2_matrix))
     v2_paths.add("spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json")
     _require_snapshot_bytes(
         root,
@@ -488,6 +523,13 @@ def require_predecessor_byte_identity(root: Path = ROOT) -> dict[str, Any]:
         label="inherited V2",
     )
 
+    stable_index = _git_show_json(root, V3_STABLE_SHA, "CANONICAL_INDEX.json")
+    current_index = _load_json(root / "CANONICAL_INDEX.json")
+    if _canonical_bytes(_canonical_index_predecessor_view(current_index)) != _canonical_bytes(
+        _canonical_index_predecessor_view(stable_index)
+    ):
+        raise V31CertificationFailure("canonical index predecessor view changed")
+
     body = {
         "schema": "TEV_SCRIPT_V31_PREDECESSOR_BYTE_IDENTITY_V1",
         "status": "PASS",
@@ -495,6 +537,7 @@ def require_predecessor_byte_identity(root: Path = ROOT) -> dict[str, Any]:
         "v3_governed_path_count": len(v3_paths),
         "v2_inherited_snapshot_sha": V3_STABLE_SHA,
         "v2_governed_path_count": len(v2_paths),
+        "canonical_index_predecessor_identity": "PASS",
         "v3_byte_identity": "PASS",
         "v2_byte_identity": "PASS",
     }
@@ -636,12 +679,8 @@ def _gate_hash(
             "name": name,
             "command": list(command),
             "returncode": completed.returncode,
-            "stdout_sha256": hashlib.sha256(
-                completed.stdout.encode("utf-8")
-            ).hexdigest(),
-            "stderr_sha256": hashlib.sha256(
-                completed.stderr.encode("utf-8")
-            ).hexdigest(),
+            "stdout_sha256": hashlib.sha256(completed.stdout.encode("utf-8")).hexdigest(),
+            "stderr_sha256": hashlib.sha256(completed.stderr.encode("utf-8")).hexdigest(),
         }
     )
 
@@ -750,10 +789,8 @@ def build_receipt_body(
     js_parity: str,
     governed_path_manifest_hash: str | None = None,
 ) -> dict[str, Any]:
-    if repository != REPOSITORY:
-        raise ValueError("repository identity mismatch")
-    if branch != EXPECTED_BRANCH:
-        raise ValueError("branch identity mismatch")
+    if repository != REPOSITORY or branch != EXPECTED_BRANCH:
+        raise ValueError("repository/branch identity mismatch")
     if v3_stable_sha != V3_STABLE_SHA or v3_stable_tree != V3_STABLE_TREE:
         raise ValueError("V3 stable predecessor identity mismatch")
     _zero_skip(v31_core_skipped_tests, "v31_core_skipped_tests")
@@ -910,40 +947,39 @@ def validate_external_receipt_path(path: str | Path) -> Path:
 
 def certify(*, receipt_out: str | Path) -> dict[str, Any]:
     output = validate_external_receipt_path(receipt_out)
+    metadata = release.validate_release_metadata_v31()
+    if (
+        metadata["release_profile"] != "candidate"
+        or metadata["release_status"] != "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED"
+        or metadata["stable"] is not False
+        or metadata["publication_authority"] is not False
+        or metadata["merge_authority"] is not False
+    ):
+        raise V31CertificationFailure("technical certification requires candidate release metadata")
+
     branch, head, tree = _require_git_identity(ROOT)
     _validate_certification_schema(ROOT)
 
     descriptor = v31_descriptor()
     matrix_report = validate_v31_matrix(load_feature_matrix(ROOT), descriptor)
-    if matrix_report["status"] != "PASS":
+    if matrix_report["status"] != "PASS" or matrix_report["language_stable"] is not False:
         raise V31CertificationFailure(
-            "V31 feature matrix invalid: " + ",".join(matrix_report["errors"])
+            "V31 candidate feature matrix invalid: " + ",".join(matrix_report["errors"])
         )
 
     minimality_report = evaluate_minimality(ROOT)
     if minimality_report["status"] != "PASS":
         raise V31CertificationFailure(
-            "minimality gate failed: "
-            + json.dumps(minimality_report, sort_keys=True)
+            "minimality gate failed: " + json.dumps(minimality_report, sort_keys=True)
         )
 
     predecessor_identity = require_predecessor_byte_identity(ROOT)
-    if (
-        predecessor_identity["v3_byte_identity"] != "PASS"
-        or predecessor_identity["v2_byte_identity"] != "PASS"
-    ):
-        raise V31CertificationFailure("predecessor byte identity failed")
-
     manifest, manifest_hash = _governed_manifest(ROOT)
     if len(manifest) != len(TECHNICAL_REQUIRED_PATHS):
         raise V31CertificationFailure("governed manifest path count mismatch")
 
-    core_count, core_skips, core_hash = _run_pytest_gate(
-        "v31_core", V31_CORE_TESTS
-    )
-    js_count, js_skips, js_hash = _run_pytest_gate(
-        "v31_js_parity", JS_PARITY_TESTS
-    )
+    core_count, core_skips, core_hash = _run_pytest_gate("v31_core", V31_CORE_TESTS)
+    js_count, js_skips, js_hash = _run_pytest_gate("v31_js_parity", JS_PARITY_TESTS)
     predecessor_count, predecessor_skips, predecessor_hash = _run_pytest_gate(
         "predecessor", PREDECESSOR_TESTS
     )
