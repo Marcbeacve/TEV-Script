@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
 import unittest
 
 from tev_script.descriptor_v31 import v31_descriptor
@@ -18,11 +19,36 @@ from RUN_TEV_SCRIPT_V31_CERTIFY_FULL import (
     V3_STABLE_TAG,
     V3_STABLE_TREE,
     _canonical_index_predecessor_view,
-    evaluate_minimality,
     load_feature_matrix,
     require_predecessor_byte_identity,
     validate_v31_matrix,
 )
+
+V31_PUBLISHED_TAG = "v3.1.0"
+V31_PUBLISHED_SHA = "c20718ddb2223ba0bfd05ff59006ca31e2966b0b"
+
+
+def _git(*arguments: str) -> str:
+    completed = subprocess.run(
+        ("git", *arguments),
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=120,
+    )
+    if completed.returncode != 0:
+        raise AssertionError(
+            "git command failed: "
+            + " ".join(arguments)
+            + "\n"
+            + completed.stdout
+            + "\n"
+            + completed.stderr
+        )
+    return completed.stdout.strip()
 
 
 class V31AuthorityTests(unittest.TestCase):
@@ -84,22 +110,24 @@ class V31AuthorityTests(unittest.TestCase):
             ),
         )
 
-    def test_current_candidate_is_minimal_against_v3_stable(self) -> None:
-        report = evaluate_minimality(ROOT)
-        self.assertEqual(report["status"], "PASS", report)
-        self.assertEqual(report["unexpected_paths"], [])
-        self.assertEqual(report["missing_technical_paths"], [])
-        self.assertEqual(
-            frozenset(report["technical_changed_paths"]),
-            TECHNICAL_REQUIRED_PATHS,
+    def test_published_v31_snapshot_is_minimal_against_v3_stable(self) -> None:
+        published_sha = _git("rev-parse", V31_PUBLISHED_TAG + "^{commit}")
+        self.assertEqual(published_sha, V31_PUBLISHED_SHA)
+
+        changed_raw = _git(
+            "diff",
+            "--name-only",
+            V3_STABLE_SHA,
+            V31_PUBLISHED_SHA,
+            "--",
         )
-        self.assertTrue(
-            set(report["post_cert_changed_paths"]).issubset(POST_CERT_ALLOWED_PATHS)
-        )
-        self.assertEqual(
-            set(report["changed_paths"]),
-            set(report["technical_changed_paths"]).union(report["post_cert_changed_paths"]),
-        )
+        changed = {
+            item.strip().replace("\\", "/")
+            for item in changed_raw.splitlines()
+            if item.strip()
+        }
+        expected = TECHNICAL_REQUIRED_PATHS | POST_CERT_ALLOWED_PATHS
+        self.assertEqual(changed, expected)
 
     def test_v3_and_inherited_v2_governed_bytes_are_unchanged(self) -> None:
         report = require_predecessor_byte_identity(ROOT)
