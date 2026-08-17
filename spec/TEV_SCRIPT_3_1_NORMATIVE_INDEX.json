@@ -1,0 +1,67 @@
+{
+  "schema": "TEV_SCRIPT_3_1_NORMATIVE_INDEX_V1",
+  "language_version": "3.1.0",
+  "hash_algorithm": "SHA-256",
+  "entries": [
+    {
+      "path": "spec/CANONICAL_JSON_PROFILE_V1.md",
+      "role": "canonical_json",
+      "git_blob_sha1": "6357931ac902f9507320c694cf95dd37f4d51219"
+    },
+    {
+      "path": "spec/TEV_SCRIPT_3_1_PLATFORM.md",
+      "role": "platform_integration",
+      "git_blob_sha1": "995dc45e61c2e2965ef5f72ba2c4291e8aa1718e"
+    },
+    {
+      "path": "spec/TEV_SCRIPT_IR_V3_OPERATIONAL_SEMANTICS.md",
+      "role": "portable_operational_semantics",
+      "git_blob_sha1": "9f19dc7ca18d6ff4fa53a97def6d8010d2c2f923"
+    },
+    {
+      "path": "spec/TEV_SCRIPT_IR_V3_VALUE_MODEL.md",
+      "role": "portable_value_model",
+      "git_blob_sha1": "a16276ca4ef619346b949e9aca1ffc825566a276"
+    },
+    {
+      "path": "spec/TEV_SCRIPT_PROGRAM_IR_V4.md",
+      "role": "program_ir_v4",
+      "git_blob_sha1": "0fd9b9e670de0c679049d1e2d33030209df0882a"
+    },
+    {
+      "path": "spec/TEV_SCRIPT_PROGRAM_IR_V5_SEMANTIC_PROCESS.md",
+      "role": "program_ir_v5_semantic_process",
+      "git_blob_sha1": "ee1bc6dcc123bc23da5608a18e134e31bde95c0b"
+    },
+    {
+      "path": "spec/TEV_SCRIPT_RUNTIME_CHECKPOINT_V2.md",
+      "role": "checkpoint_replay",
+      "git_blob_sha1": "8f4736b6424eee62a50f5a7371bd1cbe74a000ff"
+    },
+    {
+      "path": "spec/TEV_SCRIPT_SIGNED_UPDATE_V2.md",
+      "role": "signed_update",
+      "git_blob_sha1": "a98dd9b63c0f7c1ac24a1883143587c7fd82a004"
+    },
+    {
+      "path": "spec/TEV_SCRIPT_V2_FILESYSTEM_CAPABILITIES.md",
+      "role": "filesystem_capabilities",
+      "git_blob_sha1": "e89ba5d2fd6f06b07f0695a3c15a83bbea85ec02"
+    },
+    {
+      "path": "spec/TEV_SCRIPT_V2_LANGUAGE.md",
+      "role": "v2_source_static_semantics",
+      "git_blob_sha1": "f68153bc1bd3e2dd6f009a90bb3a36d54340428f"
+    },
+    {
+      "path": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md",
+      "role": "v31_total_core",
+      "git_blob_sha1": "c8c7c64bcbd38648129d969510de79bfdedd98b8"
+    },
+    {
+      "path": "spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md",
+      "role": "v3_semantic_process_source",
+      "git_blob_sha1": "da8c0eb120aa52504b0b832f984bc223e21a5be9"
+    }
+  ]
+}
