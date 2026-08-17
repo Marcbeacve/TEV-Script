@@ -25,7 +25,7 @@ def describe_current_platform() -> dict[str, object]:
         "profile": CURRENT_PROFILE,
         "runtime_source_compilation": False,
         "implicit_physical_effects": False,
-        "generic_lsp_current_semantics": "FAIL_CLOSED_UNTIL_IMPLEMENTED",
+        "generic_lsp_current_semantics": "SUPPORTED",
     }
 
 
@@ -49,23 +49,38 @@ def validate_tooling_surface(root: Path) -> dict[str, object]:
             for name, target in sorted(REQUIRED_CURRENT_SCRIPTS.items())
             if scripts.get(name) != target
         ]
-        if not (root / "tev_script" / "lsp.py").is_file():
+        for relative in ("tev_script/lsp.py", "tev_script/lsp_v31.py"):
+            if not (root / relative).is_file():
+                mismatches.append(
+                    {
+                        "script": "tev-script-lsp",
+                        "expected": relative,
+                        "observed": None,
+                    }
+                )
+
+        from .lsp import select_lsp_main
+        from .lsp_v31 import main as lsp_v31_main
+
+        if select_lsp_main(CURRENT_LANGUAGE_VERSION) is not lsp_v31_main:
             mismatches.append(
                 {
                     "script": "tev-script-lsp",
-                    "expected": "tev_script/lsp.py",
-                    "observed": None,
+                    "expected": "TEVScript 3.1 Total-Core semantic dispatcher",
+                    "observed": "non-current semantic dispatcher",
                 }
             )
         return {
-            "schema": "TEV_SCRIPT_PLATFORM_TOOLING_VALIDATION_V1",
+            "schema": "TEV_SCRIPT_PLATFORM_TOOLING_VALIDATION_V2",
             "status": "PASS" if not mismatches else "FAIL",
+            "current_lsp_semantics": "SUPPORTED" if not mismatches else "INVALID",
             "mismatches": mismatches,
         }
-    except (OSError, ValueError, tomllib.TOMLDecodeError) as error:
+    except (OSError, ValueError, RuntimeError, tomllib.TOMLDecodeError) as error:
         return {
-            "schema": "TEV_SCRIPT_PLATFORM_TOOLING_VALIDATION_V1",
+            "schema": "TEV_SCRIPT_PLATFORM_TOOLING_VALIDATION_V2",
             "status": "FAIL",
+            "current_lsp_semantics": "INVALID",
             "mismatches": [],
             "error": str(error),
         }
