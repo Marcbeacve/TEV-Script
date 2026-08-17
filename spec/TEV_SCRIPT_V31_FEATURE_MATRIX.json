@@ -11,12 +11,7 @@
     "CANONICAL_INDEX.json",
     "CHANGELOG.md",
     "README.md",
-    "RUN_TEV_SCRIPT_V31_STABLE_ADMISSION.py",
-    "packaging/v31/pyproject.toml",
-    "packaging/v31/tools/tev_script_build_backend_v31.py",
-    "schemas/tev-script-v31-stable-admission-receipt.schema.json",
-    "tests/test_v31_packaging.py",
-    "tests/test_v31_stable_admission.py",
+    "spec/TEV_SCRIPT_V31_FEATURE_MATRIX.json",
     "tev_script/release_metadata_v31.py"
   ],
   "predecessor_v3": {
@@ -42,66 +37,41 @@
   "program_ir_version": 5,
   "publication_authorized": false,
   "release_mutable_paths": [
+    "spec/TEV_SCRIPT_V31_FEATURE_MATRIX.json",
     "tev_script/release_metadata_v31.py"
   ],
   "required_features": [
-    {
-      "id": "TOTAL_CORE_CANONICAL_IR",
-      "status": "CLOSED"
-    },
-    {
-      "id": "EXACT_V4_CHILD_IDENTITY",
-      "status": "CLOSED"
-    },
-    {
-      "id": "CANONICAL_V4_RESULT_BRIDGE",
-      "status": "CLOSED"
-    },
-    {
-      "id": "EXTERNAL_PROOF_ADMISSION",
-      "status": "CLOSED"
-    },
-    {
-      "id": "BOUNDED_QUANTA_OMEGA_CONTINUATION",
-      "status": "CLOSED"
-    },
-    {
-      "id": "UNIFIED_V31_SOURCE",
-      "status": "CLOSED"
-    },
-    {
-      "id": "V31_CLI_DESCRIPTOR",
-      "status": "CLOSED"
-    },
-    {
-      "id": "INDEPENDENT_JAVASCRIPT_TOTAL_CORE",
-      "status": "CLOSED"
-    },
-    {
-      "id": "EFFECT_EVIDENCE_SEPARATION",
-      "status": "CLOSED"
-    },
-    {
-      "id": "PHYSICAL_COMMIT_EXTERNAL",
-      "status": "CLOSED"
-    }
+    {"id": "TOTAL_CORE_CANONICAL_IR", "status": "CLOSED"},
+    {"id": "EXACT_V4_CHILD_IDENTITY", "status": "CLOSED"},
+    {"id": "CANONICAL_V4_RESULT_BRIDGE", "status": "CLOSED"},
+    {"id": "EXTERNAL_PROOF_ADMISSION", "status": "CLOSED"},
+    {"id": "BOUNDED_QUANTA_OMEGA_CONTINUATION", "status": "CLOSED"},
+    {"id": "UNIFIED_V31_SOURCE", "status": "CLOSED"},
+    {"id": "V31_CLI_DESCRIPTOR", "status": "CLOSED"},
+    {"id": "INDEPENDENT_JAVASCRIPT_TOTAL_CORE", "status": "CLOSED"},
+    {"id": "EFFECT_EVIDENCE_SEPARATION", "status": "CLOSED"},
+    {"id": "PHYSICAL_COMMIT_EXTERNAL", "status": "CLOSED"}
   ],
   "schema": "TEV_SCRIPT_V31_FEATURE_MATRIX_V1",
   "stable": false,
   "status": "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED",
   "technical_governed_paths": [
     "RUN_TEV_SCRIPT_V31_CERTIFY_FULL.py",
+    "RUN_TEV_SCRIPT_V31_STABLE_ADMISSION.py",
     "conformance/v31-total-core-parity.json",
     "docs/superpowers/plans/2026-08-16-tevscript-max-3-1-total-core.md",
     "docs/superpowers/specs/2026-08-16-tevscript-max-3-1-total-core-design.md",
     "docs/superpowers/specs/2026-08-16-tevscript-max-3-1-total-core-effect-input-amendment.md",
     "docs/superpowers/specs/2026-08-16-tevscript-max-3-1-total-core-js-parity-amendment.md",
+    "packaging/v31/pyproject.toml",
+    "packaging/v31/tools/tev_script_build_backend_v31.py",
     "runtime_js_v31/core.mjs",
     "runtime_js_v31/runtime_v5_total.mjs",
     "runtime_js_v31/v4_governed.mjs",
     "schemas/tev-script-program-ir-v5-total-core.schema.json",
     "schemas/tev-script-v31-certify-full-receipt.schema.json",
     "schemas/tev-script-v31-descriptor.schema.json",
+    "schemas/tev-script-v31-stable-admission-receipt.schema.json",
     "spec/TEV_SCRIPT_V31_FEATURE_MATRIX.json",
     "spec/TEV_SCRIPT_V31_TOTAL_CORE.md",
     "tests/test_cli_v31.py",
@@ -113,6 +83,8 @@
     "tests/test_v31_authority.py",
     "tests/test_v31_certify_full.py",
     "tests/test_v31_descriptor.py",
+    "tests/test_v31_packaging.py",
+    "tests/test_v31_stable_admission.py",
     "tev_script/__init__.py",
     "tev_script/cli_v31.py",
     "tev_script/describe_v31.py",
