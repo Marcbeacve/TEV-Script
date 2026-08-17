@@ -51,6 +51,25 @@ class CLIV31Tests(unittest.TestCase):
         self.assertEqual(payload["language_version"], "3.1.0")
         self.assertEqual(payload["profiles"], ["total_core"])
 
+    def test_check_total_compiles_current_source_without_artifact_write(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            process = root / "program.tevs"
+            unit = root / "calc.tevs"
+            process.write_text(PURE_PROCESS, encoding="utf-8")
+            unit.write_text(PURE_UNIT, encoding="utf-8")
+
+            code, checked, err = self.run_cli([
+                "check-total",
+                str(process),
+                "--unit", f"Calc={unit}",
+            ])
+            self.assertEqual(code, 0, err)
+            self.assertEqual(checked["status"], "PASS")
+            self.assertEqual(checked["language_version"], "3.1.0")
+            self.assertEqual(checked["profile"], "total_core")
+            self.assertEqual(list(root.glob("*.json")), [])
+
     def test_compile_validate_and_run_total_use_shared_semantics(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
