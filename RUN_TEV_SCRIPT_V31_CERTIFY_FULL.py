@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import hmac
 import json
+import os
 import platform
 from pathlib import Path
 import re
@@ -218,7 +219,6 @@ def validate_v31_matrix(
     descriptor: Mapping[str, Any],
 ) -> dict[str, Any]:
     errors: list[str] = []
-
     if (
         matrix.get("schema") != "TEV_SCRIPT_V31_FEATURE_MATRIX_V1"
         or matrix.get("language_version") != LANGUAGE_VERSION
@@ -226,7 +226,6 @@ def validate_v31_matrix(
         or matrix.get("profile") != PROFILE
     ):
         errors.append("matrix_identity")
-
     if (
         matrix.get("status") != "IMPLEMENTATION_CANDIDATE_CERTIFICATION_REQUIRED"
         or matrix.get("stable") is not False
@@ -235,16 +234,13 @@ def validate_v31_matrix(
         or matrix.get("language_stable") is not False
     ):
         errors.append("candidate_authority")
-
-    predecessor = matrix.get("predecessor_v3")
-    if predecessor != {
+    if matrix.get("predecessor_v3") != {
         "tag": V3_STABLE_TAG,
         "commit_sha": V3_STABLE_SHA,
         "tree_sha": V3_STABLE_TREE,
         "language_version": "3.0.0",
     }:
         errors.append("predecessor_v3")
-
     if matrix.get("compatibility") != {
         "v3_semantics_reinterpreted": False,
         "v2_semantics_reinterpreted": False,
@@ -252,8 +248,8 @@ def validate_v31_matrix(
     }:
         errors.append("compatibility")
 
-    features = matrix.get("required_features")
     feature_map: dict[str, str] = {}
+    features = matrix.get("required_features")
     if not isinstance(features, list):
         errors.append("required_features_shape")
     else:
@@ -301,10 +297,8 @@ def validate_v31_matrix(
 
     if TECHNICAL_REQUIRED_PATHS.intersection(POST_CERT_ALLOWED_PATHS):
         errors.append("governed_path_overlap")
-
     if matrix.get("production_gates") != PRODUCTION_GATES:
         errors.append("production_gates")
-
     if (
         descriptor.get("language_version") != LANGUAGE_VERSION
         or descriptor.get("program_ir_version") != 5
@@ -331,6 +325,14 @@ def validate_v31_matrix(
     }
 
 
+def _subprocess_environment(root: Path) -> dict[str, str]:
+    env = os.environ.copy()
+    existing = env.get("PYTHONPATH", "")
+    root_text = str(root.resolve())
+    env["PYTHONPATH"] = root_text if not existing else root_text + os.pathsep + existing
+    return env
+
+
 def _run(
     arguments: Sequence[str],
     *,
@@ -341,6 +343,7 @@ def _run(
         completed = subprocess.run(
             tuple(arguments),
             cwd=root,
+            env=_subprocess_environment(root),
             check=False,
             capture_output=True,
             text=True,
@@ -372,6 +375,7 @@ def _git_bytes(root: Path, *arguments: str) -> bytes:
         completed = subprocess.run(
             ("git", *arguments),
             cwd=root,
+            env=_subprocess_environment(root),
             check=False,
             capture_output=True,
             timeout=120,
@@ -380,7 +384,10 @@ def _git_bytes(root: Path, *arguments: str) -> bytes:
         raise V31CertificationFailure("git command timed out") from error
     if completed.returncode != 0:
         raise V31CertificationFailure(
-            "git failed: " + " ".join(arguments) + ": " + completed.stderr.decode("utf-8", "replace")[-4096:]
+            "git failed: "
+            + " ".join(arguments)
+            + ": "
+            + completed.stderr.decode("utf-8", "replace")[-4096:]
         )
     return completed.stdout
 
@@ -433,13 +440,14 @@ def _require_snapshot_bytes(
         if not path.is_file():
             raise V31CertificationFailure(label + " path missing: " + relative)
         expected = _git_bytes(root, "show", f"{snapshot_ref}:{relative}")
-        observed = path.read_bytes()
-        if observed != expected:
+        if path.read_bytes() != expected:
             raise V31CertificationFailure(label + " byte identity changed: " + relative)
 
 
 def require_predecessor_byte_identity(root: Path = ROOT) -> dict[str, Any]:
-    v3_matrix = _git_show_json(root, V3_STABLE_SHA, "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json")
+    v3_matrix = _git_show_json(
+        root, V3_STABLE_SHA, "spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json"
+    )
     v3_paths = set(_matrix_paths(v3_matrix, include_index=False))
     v3_paths.add("spec/TEV_SCRIPT_V3_FEATURE_MATRIX.json")
     _require_snapshot_bytes(
@@ -449,7 +457,9 @@ def require_predecessor_byte_identity(root: Path = ROOT) -> dict[str, Any]:
         label="V3",
     )
 
-    v2_matrix = _git_show_json(root, V3_STABLE_SHA, "spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json")
+    v2_matrix = _git_show_json(
+        root, V3_STABLE_SHA, "spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json"
+    )
     v2_paths = set(_matrix_paths(v2_matrix, include_index=True))
     v2_paths.add("spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json")
     _require_snapshot_bytes(
@@ -513,7 +523,9 @@ def _validate_certification_schema(root: Path = ROOT) -> None:
     if not isinstance(properties, Mapping) or not isinstance(required, list):
         raise V31CertificationFailure("V31 certification receipt schema shape is invalid")
     if set(required) != set(properties):
-        raise V31CertificationFailure("V31 certification receipt schema required/property set mismatch")
+        raise V31CertificationFailure(
+            "V31 certification receipt schema required/property set mismatch"
+        )
     for field, expected in (
         ("publication_authorized", False),
         ("merge_authorized", False),
@@ -522,7 +534,9 @@ def _validate_certification_schema(root: Path = ROOT) -> None:
     ):
         node = properties.get(field)
         if not isinstance(node, Mapping) or node.get("const") is not expected:
-            raise V31CertificationFailure("V31 certification schema authority field mismatch: " + field)
+            raise V31CertificationFailure(
+                "V31 certification schema authority field mismatch: " + field
+            )
 
 
 def _governed_manifest(root: Path) -> tuple[dict[str, str], str]:
@@ -530,12 +544,11 @@ def _governed_manifest(root: Path) -> tuple[dict[str, str], str]:
         relative: _sha256_file(root, relative)
         for relative in sorted(TECHNICAL_REQUIRED_PATHS)
     }
-    return manifest, _hash_body(
-        {
-            "schema": "TEV_SCRIPT_V31_GOVERNED_PATH_MANIFEST_V1",
-            "paths": manifest,
-        }
-    )
+    body = {
+        "schema": "TEV_SCRIPT_V31_GOVERNED_PATH_MANIFEST_V1",
+        "paths": manifest,
+    }
+    return manifest, _hash_body(body)
 
 
 def _require_git_identity(root: Path) -> tuple[str, str, str]:
@@ -547,10 +560,10 @@ def _require_git_identity(root: Path) -> tuple[str, str, str]:
 
     head = _git(root, "rev-parse", "HEAD")
     tree = _git(root, "rev-parse", "HEAD^{tree}")
-
     if subprocess.run(
         ("git", "merge-base", "--is-ancestor", V3_STABLE_SHA, head),
         cwd=root,
+        env=_subprocess_environment(root),
         check=False,
         capture_output=True,
         timeout=120,
@@ -558,32 +571,25 @@ def _require_git_identity(root: Path) -> tuple[str, str, str]:
         raise V31CertificationFailure("V3 stable release is not an ancestor")
 
     remote_main = _git(root, "ls-remote", "origin", "refs/heads/main")
-    rows = [
-        line.split()
-        for line in remote_main.splitlines()
-        if line.strip()
-    ]
+    rows = [line.split() for line in remote_main.splitlines() if line.strip()]
     if len(rows) != 1 or len(rows[0]) != 2 or rows[0][1] != "refs/heads/main":
         raise V31CertificationFailure(
             "cannot resolve exact origin/main through remote authority"
         )
-    origin_main = rows[0][0]
-    if origin_main != V3_STABLE_SHA:
+    if rows[0][0] != V3_STABLE_SHA:
         raise V31CertificationFailure(
             "origin/main moved; expected V3 stable "
             + V3_STABLE_SHA
             + " observed "
-            + origin_main
+            + rows[0][0]
         )
 
     tag_commit = _git(root, "rev-parse", V3_STABLE_TAG + "^{commit}")
     if tag_commit != V3_STABLE_SHA:
         raise V31CertificationFailure("V3 stable tag does not resolve to pinned commit")
-
     stable_tree = _git(root, "rev-parse", V3_STABLE_SHA + "^{tree}")
     if stable_tree != V3_STABLE_TREE:
         raise V31CertificationFailure("V3 stable tree mismatch")
-
     return branch, head, tree
 
 
@@ -596,15 +602,23 @@ def _parse_pytest_counts(completed: subprocess.CompletedProcess[str]) -> tuple[i
     return passed[-1], (skipped[-1] if skipped else 0)
 
 
-def _gate_hash(name: str, command: Sequence[str], completed: subprocess.CompletedProcess[str]) -> str:
+def _gate_hash(
+    name: str,
+    command: Sequence[str],
+    completed: subprocess.CompletedProcess[str],
+) -> str:
     return _hash_body(
         {
             "schema": "TEV_SCRIPT_V31_GATE_TRANSCRIPT_V1",
             "name": name,
             "command": list(command),
             "returncode": completed.returncode,
-            "stdout_sha256": hashlib.sha256(completed.stdout.encode("utf-8")).hexdigest(),
-            "stderr_sha256": hashlib.sha256(completed.stderr.encode("utf-8")).hexdigest(),
+            "stdout_sha256": hashlib.sha256(
+                completed.stdout.encode("utf-8")
+            ).hexdigest(),
+            "stderr_sha256": hashlib.sha256(
+                completed.stderr.encode("utf-8")
+            ).hexdigest(),
         }
     )
 
@@ -665,12 +679,16 @@ def _evaluate_v2_authority(root: Path = ROOT) -> dict[str, Any]:
         "status": "PASS" if not errors else "FAIL",
         "errors": errors,
         "descriptor_hash": str(descriptor.get("descriptor_hash")),
-        "feature_matrix_sha256": _sha256_file(root, "spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json"),
+        "feature_matrix_sha256": _sha256_file(
+            root, "spec/TEV_SCRIPT_V2_FEATURE_MATRIX.json"
+        ),
         "v2_byte_identity": identity["v2_byte_identity"],
     }
     report = {**body, "report_hash": _hash_body(body)}
     if report["status"] != "PASS":
-        raise V31CertificationFailure("V2 authority regression failed: " + ",".join(errors))
+        raise V31CertificationFailure(
+            "V2 authority regression failed: " + ",".join(errors)
+        )
     return report
 
 
@@ -715,12 +733,9 @@ def build_receipt_body(
         raise ValueError("branch identity mismatch")
     if v3_stable_sha != V3_STABLE_SHA or v3_stable_tree != V3_STABLE_TREE:
         raise ValueError("V3 stable predecessor identity mismatch")
-    if (
-        _zero_skip(v31_core_skipped_tests, "v31_core_skipped_tests") != 0
-        or _zero_skip(js_parity_skipped_tests, "js_parity_skipped_tests") != 0
-        or _zero_skip(predecessor_skipped_tests, "predecessor_skipped_tests") != 0
-    ):
-        raise AssertionError("unreachable")
+    _zero_skip(v31_core_skipped_tests, "v31_core_skipped_tests")
+    _zero_skip(js_parity_skipped_tests, "js_parity_skipped_tests")
+    _zero_skip(predecessor_skipped_tests, "predecessor_skipped_tests")
     _pass(v3_byte_identity, "v3_byte_identity")
     _pass(v2_byte_identity, "v2_byte_identity")
     _pass(minimality, "minimality")
@@ -732,7 +747,6 @@ def build_receipt_body(
     changed_count = _positive_count(changed_path_count, "changed_path_count")
     if changed_count < governed_count:
         raise ValueError("changed_path_count cannot be below governed path count")
-
     manifest_hash = (
         _sha64(governed_path_manifest_hash, "governed_path_manifest_hash")
         if governed_path_manifest_hash is not None
@@ -749,7 +763,9 @@ def build_receipt_body(
         "tree_sha": _sha40(tree_sha, "tree_sha"),
         "v3_stable_sha": V3_STABLE_SHA,
         "v3_stable_tree": V3_STABLE_TREE,
-        "feature_matrix_sha256": _sha64(feature_matrix_sha256, "feature_matrix_sha256"),
+        "feature_matrix_sha256": _sha64(
+            feature_matrix_sha256, "feature_matrix_sha256"
+        ),
         "descriptor_hash": _sha64(descriptor_hash, "descriptor_hash"),
         "conformance_matrix_sha256": _sha64(
             conformance_matrix_sha256, "conformance_matrix_sha256"
@@ -814,7 +830,9 @@ def verify_receipt(value: Mapping[str, Any]) -> bool:
     try:
         observed = dict(value)
         digest = observed.pop("receipt_hash")
-        if not isinstance(digest, str) or not hmac.compare_digest(digest, _hash_body(observed)):
+        if not isinstance(digest, str) or not hmac.compare_digest(
+            digest, _hash_body(observed)
+        ):
             return False
         expected = build_receipt_body(
             repository=observed["repository"],
@@ -870,12 +888,10 @@ def validate_external_receipt_path(path: str | Path) -> Path:
 def certify(*, receipt_out: str | Path) -> dict[str, Any]:
     output = validate_external_receipt_path(receipt_out)
     branch, head, tree = _require_git_identity(ROOT)
-
     _validate_certification_schema(ROOT)
 
     descriptor = v31_descriptor()
-    matrix = load_feature_matrix(ROOT)
-    matrix_report = validate_v31_matrix(matrix, descriptor)
+    matrix_report = validate_v31_matrix(load_feature_matrix(ROOT), descriptor)
     if matrix_report["status"] != "PASS":
         raise V31CertificationFailure(
             "V31 feature matrix invalid: " + ",".join(matrix_report["errors"])
@@ -884,7 +900,8 @@ def certify(*, receipt_out: str | Path) -> dict[str, Any]:
     minimality_report = evaluate_minimality(ROOT)
     if minimality_report["status"] != "PASS":
         raise V31CertificationFailure(
-            "minimality gate failed: " + json.dumps(minimality_report, sort_keys=True)
+            "minimality gate failed: "
+            + json.dumps(minimality_report, sort_keys=True)
         )
 
     predecessor_identity = require_predecessor_byte_identity(ROOT)
@@ -899,23 +916,18 @@ def certify(*, receipt_out: str | Path) -> dict[str, Any]:
         raise V31CertificationFailure("governed manifest path count mismatch")
 
     core_count, core_skips, core_hash = _run_pytest_gate(
-        "v31_core",
-        V31_CORE_TESTS,
+        "v31_core", V31_CORE_TESTS
     )
     js_count, js_skips, js_hash = _run_pytest_gate(
-        "v31_js_parity",
-        JS_PARITY_TESTS,
+        "v31_js_parity", JS_PARITY_TESTS
     )
     predecessor_count, predecessor_skips, predecessor_hash = _run_pytest_gate(
-        "predecessor",
-        PREDECESSOR_TESTS,
+        "predecessor", PREDECESSOR_TESTS
     )
-
     v3_authority_hash = _run_v3_authority_gate()
     v2_authority = _evaluate_v2_authority(ROOT)
 
-    node_completed = _run(("node", "--version"), timeout=120)
-    node_version = node_completed.stdout.strip()
+    node_version = _run(("node", "--version"), timeout=120).stdout.strip()
     if not node_version:
         raise V31CertificationFailure("cannot determine Node.js version")
 
@@ -953,7 +965,6 @@ def certify(*, receipt_out: str | Path) -> dict[str, Any]:
         minimality=minimality_report["status"],
         js_parity="PASS",
     )
-
     receipt = seal_receipt(body)
     if not verify_receipt(receipt):
         raise V31CertificationFailure("generated receipt failed self-verification")
@@ -976,10 +987,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--receipt-out")
     arguments = parser.parse_args(argv)
-
-    default_output = ROOT.parent / "TEV_SCRIPT_V31_CERTIFY_FULL_RECEIPT.json"
-    output = Path(arguments.receipt_out) if arguments.receipt_out else default_output
-
+    output = (
+        Path(arguments.receipt_out)
+        if arguments.receipt_out
+        else ROOT.parent / "TEV_SCRIPT_V31_CERTIFY_FULL_RECEIPT.json"
+    )
     try:
         receipt = certify(receipt_out=output)
     except Exception as error:  # noqa: BLE001
