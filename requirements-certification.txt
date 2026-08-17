@@ -1,0 +1,5 @@
+# Certification/test-only dependencies. These are intentionally not runtime
+# dependencies of tev-script-portable-reference; pyproject.toml project.dependencies
+# remains empty and release evidence must continue to report runtime_dependency_count=0.
+pytest==9.0.2
+jsonschema==4.26.0
