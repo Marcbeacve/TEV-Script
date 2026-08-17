@@ -71,7 +71,8 @@
           "error_count": {"const": 0},
           "skipped_count": {"const": 0},
           "junit_sha256": {"pattern": "^[0-9a-f]{64}$"}
-        }
+        },
+        "not": {"required": ["error"]}
       }
     }
   ]
