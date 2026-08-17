@@ -5,7 +5,12 @@ from pathlib import Path
 import tomllib
 from typing import Any
 
-from .version import CURRENT_LANGUAGE_VERSION, CURRENT_PROFILE, PACKAGE_VERSION
+from .version import (
+    CURRENT_LANGUAGE_VERSION,
+    CURRENT_PROFILE,
+    PACKAGE_VERSION,
+    PUBLISHED_PREDECESSOR_PACKAGE_VERSION,
+)
 
 
 def _toml_project(path: Path) -> dict[str, Any]:
@@ -41,25 +46,36 @@ def collect_current_version_facts(root: Path) -> dict[str, str]:
     return {
         "source.package": PACKAGE_VERSION,
         "source.language": CURRENT_LANGUAGE_VERSION,
-        "root.pyproject": str(root_project.get("version", "")),
-        "packaging.v31.pyproject": str(v31_project.get("version", "")),
-        "release_metadata_v31": release_version,
+        "root.pyproject.package": str(root_project.get("version", "")),
+        "published_v31.pyproject.package": str(v31_project.get("version", "")),
+        "release_metadata_v31.language": release_version,
     }
 
 
 def validate_current_version_identity(root: Path) -> dict[str, object]:
-    expected = PACKAGE_VERSION
     facts = collect_current_version_facts(Path(root))
+    expectations = {
+        "source.package": PACKAGE_VERSION,
+        "source.language": CURRENT_LANGUAGE_VERSION,
+        "root.pyproject.package": PACKAGE_VERSION,
+        "published_v31.pyproject.package": PUBLISHED_PREDECESSOR_PACKAGE_VERSION,
+        "release_metadata_v31.language": CURRENT_LANGUAGE_VERSION,
+    }
     mismatches = [
-        {"source": source, "expected": expected, "observed": observed}
-        for source, observed in sorted(facts.items())
-        if observed != expected
+        {
+            "source": source,
+            "expected": expectations[source],
+            "observed": facts[source],
+        }
+        for source in sorted(expectations)
+        if facts[source] != expectations[source]
     ]
     return {
-        "schema": "TEV_SCRIPT_PLATFORM_VERSION_IDENTITY_V1",
+        "schema": "TEV_SCRIPT_PLATFORM_VERSION_IDENTITY_V2",
         "status": "PASS" if not mismatches else "FAIL",
-        "version": expected,
+        "package_version": PACKAGE_VERSION,
         "language_version": CURRENT_LANGUAGE_VERSION,
+        "published_predecessor_package_version": PUBLISHED_PREDECESSOR_PACKAGE_VERSION,
         "profile": CURRENT_PROFILE,
         "facts": facts,
         "mismatches": mismatches,
