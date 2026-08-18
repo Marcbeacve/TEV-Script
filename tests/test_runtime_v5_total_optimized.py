@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import replace
 import unittest
+from unittest.mock import patch
 
+import tev_script.runtime_v5_total_optimized as optimized_runtime
 from tev_script.diagnostics import TevScriptError
 from tev_script.omega_semantic_basis_v1 import (
     field_fact,
@@ -165,6 +167,29 @@ class RuntimeV5TotalOptimizedPlanTests(unittest.TestCase):
         self.assertEqual(len(plan.instructions), 1)
         self.assertEqual(plan.instructions[0].opcode, _OP_HALT)
 
+    def test_prepare_calls_canonical_program_validator_once(self) -> None:
+        program = _proof_apply_program()
+        validator = optimized_runtime.validate_total_core_program
+        with patch.object(
+            optimized_runtime,
+            "validate_total_core_program",
+            wraps=validator,
+        ) as observed:
+            plan = optimized_runtime.prepare_total_core_execution_plan(program)
+        self.assertIs(plan.program, program)
+        self.assertEqual(observed.call_count, 1)
+
+    def test_execution_plan_tables_are_read_only(self) -> None:
+        plan = prepare_total_core_execution_plan(_plain_apply_program())
+        with self.assertRaises(TypeError):
+            plan.transformations_by_hash["f" * 64] = plan.program.transformations[0]  # type: ignore[index]
+        with self.assertRaises(TypeError):
+            plan.units_by_hash["f" * 64] = None  # type: ignore[index,assignment]
+        with self.assertRaises(TypeError):
+            plan.proof_admissions_by_requirement["f" * 64] = None  # type: ignore[index,assignment]
+        with self.assertRaises(TypeError):
+            plan.prepared_proof_applies["f" * 64] = None  # type: ignore[index,assignment]
+
     def test_execution_plan_cannot_be_rewritten_with_dataclasses_replace(self) -> None:
         plan = prepare_total_core_execution_plan(_halt_program())
         forged_instruction = replace(
@@ -174,6 +199,18 @@ class RuntimeV5TotalOptimizedPlanTests(unittest.TestCase):
         )
         with self.assertRaises(TypeError):
             replace(plan, instructions=(forged_instruction,))
+
+    def test_proof_preparation_is_not_repeated_per_quantum(self) -> None:
+        program = _proof_apply_program()
+        plan = prepare_total_core_execution_plan(program)
+        checkpoint = initial_total_core_checkpoint(program)
+        with patch.object(
+            optimized_runtime,
+            "_prepare_proof_apply",
+            side_effect=AssertionError("proof preparation repeated in quantum"),
+        ):
+            prepared = run_prepared_total_core_quantum(plan, checkpoint)
+        self.assertEqual(prepared, run_total_core_quantum(program, checkpoint))
 
     def assert_reference_equivalent(self, program: TotalCoreProgramV1):
         checkpoint = initial_total_core_checkpoint(program)
@@ -255,7 +292,7 @@ class RuntimeV5TotalOptimizedPlanTests(unittest.TestCase):
         unit = RuntimeV5TotalCoreTests().effects_unit()
         self.assert_reference_equivalent(_base_program(unit))
 
-    def test_checkpoint_from_other_program_is_rejected(self) -> None:
+    def test_checkpoint_from_other_program_is_rejected_with_exact_code(self) -> None:
         left = _halt_program()
         right = TotalCoreProgramV1.build(
             program_id="OtherOptimized",
@@ -269,11 +306,15 @@ class RuntimeV5TotalOptimizedPlanTests(unittest.TestCase):
             quantum_step_limit=1,
             authority_hash=AUTHORITY,
         )
-        with self.assertRaises(TevScriptError):
+        with self.assertRaises(TevScriptError) as captured:
             run_prepared_total_core_quantum(
                 prepare_total_core_execution_plan(right),
                 initial_total_core_checkpoint(left),
             )
+        self.assertEqual(
+            captured.exception.diagnostic.code,
+            "TEVS_V31_RUNTIME_CHECKPOINT_PROGRAM",
+        )
 
     def test_halted_checkpoint_cannot_be_resumed(self) -> None:
         program = _halt_program()
