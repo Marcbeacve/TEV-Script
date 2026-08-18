@@ -99,9 +99,43 @@ def _write_manifest(root: Path, codes: list[str]) -> None:
     )
 
 
+def _write_shard(root: Path) -> None:
+    (root / "docs" / "manual" / "DIAGNOSTIC_COVERAGE_V31.json").write_text(
+        json.dumps(
+            {
+                "schema": "TEV_SCRIPT_DIAGNOSTIC_COVERAGE_V31",
+                "language_version": "3.1.0",
+                "families": [
+                    {
+                        "prefix": "TEVS_V31_",
+                        "codes": ["ONE", "TWO"],
+                        "page": "docs/manual/diagnostics.md",
+                        "authority": "tev_script/current.py",
+                    }
+                ],
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_all_v31_diagnostic_literals_are_covered(tmp_path: Path) -> None:
     _write_foundation(tmp_path)
     _write_manifest(tmp_path, ["TEVS_V31_ONE", "TEVS_V31_TWO"])
+    check = validate_documentation(tmp_path)["checks"]["DIAGNOSTIC_COVERAGE"]
+    assert check == {
+        "status": "PASS",
+        "diagnostic_count": 2,
+        "missing_diagnostics": [],
+        "extra_diagnostics": [],
+    }
+
+
+def test_sharded_diagnostic_inventory_expands_when_root_domain_is_empty(tmp_path: Path) -> None:
+    _write_foundation(tmp_path)
+    _write_manifest(tmp_path, [])
+    _write_shard(tmp_path)
     check = validate_documentation(tmp_path)["checks"]["DIAGNOSTIC_COVERAGE"]
     assert check == {
         "status": "PASS",
