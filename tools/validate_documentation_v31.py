@@ -51,6 +51,9 @@ _EXPECTED_COVERAGE_IDENTITIES = {
     "language_version": "3.1.0",
     "profile": "total_core",
 }
+_TEVDOC_SOURCE_RE = re.compile(r"^<!-- tevdoc-source: ([^\s]+) -->$")
+_TEVDOC_EXPECT_RE = re.compile(r"^<!-- tevdoc-expect-diagnostic: ([A-Z0-9_]+) -->$")
+_FENCE_OPEN_RE = re.compile(r"^```([^`]*)$")
 
 
 def _string_assignments(path: Path) -> dict[str, str]:
@@ -234,6 +237,101 @@ def _coverage_manifest_check(root: Path) -> dict[str, object]:
         }
 
 
+def _normalized_bound_text(value: str) -> str:
+    normalized = value.replace("\r\n", "\n").replace("\r", "\n")
+    return normalized[:-1] if normalized.endswith("\n") else normalized
+
+
+def _bound_source_path(root: Path, raw: str) -> Path:
+    if "\\" in raw:
+        raise ValueError(f"unsafe bound source path: {raw}")
+    path = PurePosixPath(raw)
+    canonical = path.as_posix()
+    if (
+        path.is_absolute()
+        or canonical != raw
+        or ".." in path.parts
+        or not path.parts
+        or ":" in path.parts[0]
+    ):
+        raise ValueError(f"unsafe bound source path: {raw}")
+    if not canonical.startswith("examples/docs/v31/") or path.suffix != ".tevs":
+        raise ValueError(f"bound source outside canonical v31 examples: {raw}")
+    resolved = root / Path(canonical)
+    if not resolved.is_file():
+        raise ValueError(f"bound source missing: {raw}")
+    return resolved
+
+
+def _skip_fence(lines: list[str], opening_index: int) -> int:
+    for index in range(opening_index + 1, len(lines)):
+        if lines[index].strip() == "```":
+            return index + 1
+    raise ValueError("unterminated markdown fence")
+
+
+def _validate_source_bindings_page(root: Path, page: Path) -> int:
+    text = page.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+    lines = text.split("\n")
+    count = 0
+    index = 0
+    relative_page = page.relative_to(root).as_posix()
+    while index < len(lines):
+        line = lines[index]
+        source_match = _TEVDOC_SOURCE_RE.fullmatch(line)
+        if source_match is not None:
+            raw_source = source_match.group(1)
+            next_index = index + 1
+            if next_index < len(lines) and _TEVDOC_SOURCE_RE.fullmatch(lines[next_index]):
+                raise ValueError(f"multiple source directives before one fence: {relative_page}")
+            if next_index < len(lines) and _TEVDOC_EXPECT_RE.fullmatch(lines[next_index]):
+                next_index += 1
+            if next_index >= len(lines):
+                raise ValueError(f"source directive without tevs fence: {relative_page}")
+            fence_match = _FENCE_OPEN_RE.fullmatch(lines[next_index])
+            if fence_match is None or fence_match.group(1).strip() not in {"tevs", "tevscript"}:
+                raise ValueError(f"source directive not immediately followed by tevs fence: {relative_page}")
+            end_index = _skip_fence(lines, next_index)
+            fence_text = "\n".join(lines[next_index + 1 : end_index - 1])
+            source_path = _bound_source_path(root, raw_source)
+            source_text = source_path.read_text(encoding="utf-8")
+            if _normalized_bound_text(fence_text) != _normalized_bound_text(source_text):
+                raise ValueError(f"source fence drift: {relative_page}:{raw_source}")
+            count += 1
+            index = end_index
+            continue
+
+        if _TEVDOC_EXPECT_RE.fullmatch(line) is not None:
+            raise ValueError(f"orphan diagnostic expectation: {relative_page}")
+
+        fence_match = _FENCE_OPEN_RE.fullmatch(line)
+        if fence_match is not None:
+            language = fence_match.group(1).strip()
+            if language in {"tevs", "tevscript"}:
+                raise ValueError(f"unbound tevs fence: {relative_page}")
+            index = _skip_fence(lines, index)
+            continue
+        index += 1
+    return count
+
+
+def _source_bindings_check(root: Path) -> dict[str, object]:
+    manual_root = root / "docs" / "manual"
+    if not manual_root.is_dir():
+        return {"status": "FAIL", "reason": "MISSING_MANUAL_ROOT"}
+    try:
+        binding_count = 0
+        for page in sorted(manual_root.rglob("*.md"), key=lambda value: value.as_posix()):
+            binding_count += _validate_source_bindings_page(root, page)
+        return {"status": "PASS", "binding_count": binding_count}
+    except (OSError, UnicodeError, ValueError) as error:
+        return {
+            "status": "FAIL",
+            "reason": "INVALID_SOURCE_BINDINGS",
+            "error": str(error),
+        }
+
+
 def _closed_later(reason: str) -> dict[str, object]:
     return {"status": "FAIL", "reason": reason}
 
@@ -245,7 +343,7 @@ def validate_documentation(root: Path) -> dict[str, object]:
         "MANUAL_ROOT": _manual_root_check(root),
         "COVERAGE_MANIFEST": _coverage_manifest_check(root),
         "INTERNAL_PATHS": _closed_later("INTERNAL_PATH_VALIDATION_NOT_CLOSED"),
-        "SOURCE_BINDINGS": _closed_later("SOURCE_BINDING_VALIDATION_NOT_CLOSED"),
+        "SOURCE_BINDINGS": _source_bindings_check(root),
         "EXAMPLE_CASES": _closed_later("EXAMPLE_CASE_VALIDATION_NOT_CLOSED"),
         "DIAGNOSTIC_COVERAGE": _closed_later("DIAGNOSTIC_COVERAGE_NOT_CLOSED"),
         "PUBLIC_SURFACE_COVERAGE": _closed_later("PUBLIC_SURFACE_COVERAGE_NOT_CLOSED"),
