@@ -32,7 +32,9 @@ TotalCoreProgramV1 (canonical semantic authority)
            byte/hash-identical canonical results
 ```
 
-The optimization is therefore **validate once -> derive a private execution plan -> execute many**, following the already-proven architecture used by the optimized IR V3 runtime, but applied to IR V5 Total-Core.
+The optimization pattern is **validate canonical program -> derive a private execution plan once -> reuse that plan across quanta**. Phase A removes repeated static lookup, dispatch, membership and proof-preparation work from the hot instruction loop. Existing canonical checkpoint/result boundary validators remain authoritative in Phase A even if they internally revalidate canonical structures. Eliminating that remaining boundary cost requires the measured Phase B trigger in section 12.
+
+This follows the already-proven architecture used by the optimized IR V3 runtime, but applies it to IR V5 Total-Core without making the private execution plan semantic authority.
 
 The existing `tev_script/runtime_v5_total.py` remains the semantic execution oracle throughout development. Promotion is forbidden unless the optimized path reproduces its canonical outputs exactly.
 
@@ -59,39 +61,40 @@ If a performance improvement requires any item above, it requires a separate des
 
 `TotalCoreProgramV1.build()` already closes static structural validity before execution. It validates and canonicalizes transformations, V4 units, proof admissions and instructions; rejects duplicate identities; proves PC targets are in range; proves `apply` references a known transformation; proves proof-open transformations have exact admissions; proves all proof admissions bind the program authority; and proves `invoke_v4` references a known unit.
 
-Therefore the optimized runtime must not duplicate these checks inside every instruction. It may rely on them only after one exact `validate_total_core_program()` call at the preparation boundary.
+Therefore the optimized runtime must not duplicate those static checks inside every instruction. It may derive resolved runtime structures only after one exact `validate_total_core_program()` call at plan preparation.
 
-The current reference runtime performs useful but repeated work in each quantum:
+The current reference runtime performs useful but repeated work around and inside each quantum:
 
 ```text
-validate_total_core_program(program)
-validate_total_core_checkpoint(program, checkpoint)
-rebuild transformation_hash -> transformation dict
-rebuild unit_hash -> unit dict
-string-dispatch every instruction
-linear scan of field.facts for branch_fact
-rebuild proof requirement -> admission dict for each proof-open apply
-rebuild proof-admitted execution-local transformation for each use
-construct canonical result/checkpoint evidence
-revalidate portions of that evidence during result construction
+validate_total_core_program(program)                        # boundary
+validate_total_core_checkpoint(program, checkpoint)        # boundary
+rebuild transformation_hash -> transformation dict         # hot-path setup
+rebuild unit_hash -> unit dict                              # hot-path setup
+string-dispatch every instruction                          # hot loop
+linear scan of field.facts for branch_fact                 # hot loop
+rebuild proof requirement -> admission dict per proof Apply # hot loop
+rebuild proof-admitted execution-local transform per use    # hot loop
+construct canonical result/checkpoint evidence             # boundary
+revalidate canonical evidence during result construction   # boundary
 ```
 
-Only the first six items are Phase A optimization targets. Evidence/validation construction is intentionally left unchanged until profiling proves it remains material after Phase A.
+Phase A targets the six hot-path items from table/index reconstruction through proof-open Apply preparation. Canonical entry/exit validation and evidence construction remain unchanged until profiling proves they are still material after Phase A.
 
 ## 4. Hard invariants
 
 1. `TotalCoreProgramV1` remains the sole semantic authority for the program.
 2. `TotalCoreExecutionPlanV1` is derived runtime data and has no schema, canonical hash, signature, release identity or wire representation.
 3. A plan is valid for exactly one `program_hash` and one `authority_hash`.
-4. Plan preparation performs full canonical program validation exactly once.
-5. Every external checkpoint entering optimized execution is validated against the canonical program before any instruction executes.
-6. Every optimized quantum must produce a `TotalCoreQuantumResultV1` that compares equal to the reference oracle for the same canonical program, checkpoint and task strategy.
-7. Equality includes field identity, PC, status, steps, V4 evaluation steps, apply receipt hashes, child receipt hashes, result hash, continuation, next checkpoint and quantum hash.
-8. Optimization may never infer physical-effect authority from a V4 command plan or receipt.
-9. Proof-open Apply remains usable only through exact VERIFIED admissions bound to the program authority.
-10. A corrupted, stale or mismatched plan fails closed before execution.
-11. No optimization may depend on Python object identity for semantic correctness.
-12. JavaScript parity remains a release gate for canonical outputs even though JavaScript need not implement the same private execution-plan architecture.
+4. Plan preparation performs full canonical program validation exactly once per plan construction.
+5. Phase A may still invoke existing canonical validators at quantum entry/exit; no static program-table validation or reconstruction may occur inside the hot instruction loop.
+6. Every external checkpoint entering optimized execution is validated against the canonical program before any instruction executes.
+7. Every optimized quantum must produce a `TotalCoreQuantumResultV1` that compares equal to the reference oracle for the same canonical program, checkpoint and task strategy.
+8. Equality includes field identity, PC, status, steps, V4 evaluation steps, apply receipt hashes, child receipt hashes, result hash, continuation, next checkpoint and quantum hash.
+9. Optimization may never infer physical-effect authority from a V4 command plan or receipt.
+10. Proof-open Apply remains usable only through exact VERIFIED admissions bound to the program authority.
+11. A corrupted, stale or mismatched plan fails closed before execution.
+12. No optimization may depend on Python object identity for semantic correctness.
+13. JavaScript parity remains a release gate for canonical outputs even though JavaScript need not implement the same private execution-plan architecture.
 
 ## 5. New additive module
 
@@ -245,29 +248,29 @@ Bridge-fact construction remains canonical and must produce the exact same bridg
 
 ## 11. Evidence boundary — Phase A
 
-Phase A intentionally preserves the existing canonical constructors for:
+Phase A intentionally preserves the existing canonical boundary semantics for:
 
 ```text
-ContinuationReceiptV1
 TotalCoreCheckpointV1
+ContinuationReceiptV1
 TotalCoreQuantumResultV1
 ```
 
 The optimized executor may collect hot-path data more efficiently, but it must feed the same ordered observation/effect/resource identities into the existing evidence semantics.
 
-This limits the trust change to instruction preparation and runtime lookup/membership work.
+Existing public validators may therefore still perform canonical program/field/receipt reconstruction at quantum boundaries during Phase A. This cost is explicitly outside the Phase A hot-loop optimization contract.
 
-Phase A is considered successful even if evidence construction remains a noticeable fraction of total runtime, provided the promotion thresholds are met.
+Phase A is considered successful even if boundary evidence construction remains a noticeable fraction of total runtime, provided the promotion thresholds are met.
 
-## 12. Conditional Phase B — trusted evidence constructors
+## 12. Conditional Phase B — trusted boundary/evidence constructors
 
 Phase B is not automatically authorized by this design.
 
-It may be proposed only if Phase A profiling shows that repeated validation or canonical evidence reconstruction consumes at least **20% of optimized end-to-end quantum time** on the mixed benchmark workload.
+It may be proposed only if Phase A profiling shows that repeated boundary validation or canonical evidence reconstruction consumes at least **20% of optimized end-to-end quantum time** on the mixed benchmark workload.
 
-If that threshold is met, a separate amendment must specify private trusted constructors that:
+If that threshold is met, a separate amendment must specify private trusted boundary/evidence constructors that:
 
-- are reachable only after canonical program/checkpoint validation;
+- are reachable only after canonical program/checkpoint validation conditions are explicitly established;
 - preserve public validators unchanged;
 - preserve exact canonical bytes/hashes;
 - cannot be called with externally unvalidated artifacts through public API;
@@ -348,7 +351,7 @@ invoke_v4_pure.p95_ratio          <= 1.05
 invoke_v4_recursive.p95_ratio     <= 1.05
 invoke_v4_effects.p95_ratio       <= 1.05
 
-GEOMEAN_WARM_SPEEDUP               >= 1.25
+GEOMEAN_WARM_SPEEDUP              >= 1.25
 ```
 
 `GEOMEAN_WARM_SPEEDUP` excludes cold plan construction and is computed over the listed warm workloads using positive median speedups.
@@ -369,8 +372,11 @@ PROOF_ADMISSION_INDEX_BUILD_COUNT_PER_PLAN = 1
 PER_QUANTUM_TRANSFORMATION_INDEX_REBUILD = 0
 PER_QUANTUM_UNIT_INDEX_REBUILD = 0
 PER_APPLY_PROOF_INDEX_REBUILD = 0
+PER_INSTRUCTION_STATIC_PROGRAM_VALIDATION = 0
 BRANCH_FACT_MEMBERSHIP_ALGORITHM = O(1) average hash membership
 ```
+
+Canonical boundary validators are excluded from `PER_INSTRUCTION_STATIC_PROGRAM_VALIDATION`; their measured cost is tracked separately for the Phase B trigger.
 
 Tests may expose counters through a benchmark-only wrapper or monkeypatch instrumentation. Production semantics must not depend on counters.
 
