@@ -3,9 +3,15 @@ from __future__ import annotations
 import argparse
 import json
 import math
+from pathlib import Path
 from statistics import median
+import sys
 import time
 from typing import Callable
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from tev_script.canonical import canonical_hash
 from tev_script.omega_semantic_basis_v1 import field_fact, field_transformation, semantic_field
