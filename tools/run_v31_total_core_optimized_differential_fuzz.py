@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import argparse
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import replace
+import os
 from pathlib import Path
 import random
 import sys
@@ -42,6 +45,40 @@ EXPECTED_V4_PROFILES = frozenset({"pure", "recursive", "effects"})
 
 def _hash(kind: str, seed: int, index: int) -> str:
     return canonical_hash({"kind": kind, "seed": seed, "index": index})
+
+
+def _default_workers() -> int:
+    return max(1, min(8, os.cpu_count() or 1))
+
+
+def _partition_seed_ranges(
+    *,
+    seed_count: int,
+    shard_count: int,
+) -> tuple[tuple[int, int], ...]:
+    if (
+        isinstance(seed_count, bool)
+        or not isinstance(seed_count, int)
+        or seed_count <= 0
+    ):
+        raise ValueError("seed_count must be an integer > 0")
+    if (
+        isinstance(shard_count, bool)
+        or not isinstance(shard_count, int)
+        or shard_count <= 0
+    ):
+        raise ValueError("shard_count must be an integer > 0")
+
+    actual_shards = min(seed_count, shard_count)
+    base, extra = divmod(seed_count, actual_shards)
+    ranges: list[tuple[int, int]] = []
+    start = 0
+    for index in range(actual_shards):
+        size = base + (1 if index < extra else 0)
+        stop = start + size
+        ranges.append((start, stop))
+        start = stop
+    return tuple(ranges)
 
 
 def build_fuzz_program(seed: int) -> TotalCoreProgramV1:
@@ -158,7 +195,10 @@ def assert_program_differential_identity(program: TotalCoreProgramV1) -> int:
         reference_checkpoint = reference.next_checkpoint
         prepared_checkpoint = prepared.next_checkpoint
     else:
-        raise AssertionError("generated forward-only program did not halt", program.program_hash)
+        raise AssertionError(
+            "generated forward-only program did not halt",
+            program.program_hash,
+        )
 
     # A derived plan is sealed after preparation. Rewriting any dataclass field
     # must fail before a forged plan can reach the executor.
@@ -170,6 +210,129 @@ def assert_program_differential_identity(program: TotalCoreProgramV1) -> int:
         raise AssertionError("sealed execution plan could be rewritten")
 
     return quantum_count
+
+
+def _run_seed_shard(seed_range: tuple[int, int]) -> dict[str, object]:
+    start, stop = seed_range
+    total_quanta = 0
+    maximum_instruction_count = 0
+    maximum_fact_count = 0
+    minimum_instruction_count = 129
+    minimum_fact_count = 513
+    proof_programs = 0
+    instruction_kinds: set[str] = set()
+
+    for seed in range(start, stop):
+        program = build_fuzz_program(seed)
+        instruction_count = len(program.instructions)
+        fact_count = len(program.initial_field.facts)
+        minimum_instruction_count = min(minimum_instruction_count, instruction_count)
+        maximum_instruction_count = max(maximum_instruction_count, instruction_count)
+        minimum_fact_count = min(minimum_fact_count, fact_count)
+        maximum_fact_count = max(maximum_fact_count, fact_count)
+        instruction_kinds.update(
+            instruction.kind for instruction in program.instructions
+        )
+        if program.proof_admissions:
+            proof_programs += 1
+        total_quanta += assert_program_differential_identity(program)
+
+    return {
+        "start": start,
+        "stop": stop,
+        "seed_count": stop - start,
+        "total_quanta": total_quanta,
+        "minimum_instruction_count": minimum_instruction_count,
+        "maximum_instruction_count": maximum_instruction_count,
+        "minimum_fact_count": minimum_fact_count,
+        "maximum_fact_count": maximum_fact_count,
+        "proof_programs": proof_programs,
+        "instruction_kinds": tuple(sorted(instruction_kinds)),
+    }
+
+
+def _run_parallel_seed_campaign(
+    *,
+    seed_count: int,
+    workers: int,
+    shard_count: int,
+    progress_every: int,
+) -> dict[str, object]:
+    if isinstance(workers, bool) or not isinstance(workers, int) or workers <= 0:
+        raise ValueError("workers must be an integer > 0")
+    if (
+        isinstance(progress_every, bool)
+        or not isinstance(progress_every, int)
+        or progress_every <= 0
+    ):
+        raise ValueError("progress_every must be an integer > 0")
+
+    ranges = _partition_seed_ranges(
+        seed_count=seed_count,
+        shard_count=shard_count,
+    )
+    actual_workers = min(workers, len(ranges))
+    completed_seeds = 0
+    next_progress = progress_every
+    results: list[dict[str, object]] = []
+
+    print(
+        f"[FUZZ] starting {seed_count} seeds across "
+        f"{actual_workers} workers / {len(ranges)} shards",
+        file=sys.stderr,
+        flush=True,
+    )
+
+    with ProcessPoolExecutor(max_workers=actual_workers) as executor:
+        future_to_range = {
+            executor.submit(_run_seed_shard, seed_range): seed_range
+            for seed_range in ranges
+        }
+        for future in as_completed(future_to_range):
+            shard = future.result()
+            results.append(shard)
+            completed_seeds += int(shard["seed_count"])
+            if completed_seeds >= next_progress or completed_seeds == seed_count:
+                print(
+                    f"[FUZZ] {completed_seeds}/{seed_count} seeds complete",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                while next_progress <= completed_seeds:
+                    next_progress += progress_every
+
+    ordered = sorted(results, key=lambda item: int(item["start"]))
+    covered = [
+        seed
+        for shard in ordered
+        for seed in range(int(shard["start"]), int(shard["stop"]))
+    ]
+    if covered != list(range(seed_count)):
+        raise AssertionError("parallel fuzz shard coverage is incomplete or overlapping")
+
+    instruction_kinds: set[str] = set()
+    for shard in ordered:
+        instruction_kinds.update(str(value) for value in shard["instruction_kinds"])
+
+    return {
+        "workers": actual_workers,
+        "shards": len(ranges),
+        "total_quanta": sum(int(item["total_quanta"]) for item in ordered),
+        "minimum_instruction_count": min(
+            int(item["minimum_instruction_count"]) for item in ordered
+        ),
+        "maximum_instruction_count": max(
+            int(item["maximum_instruction_count"]) for item in ordered
+        ),
+        "minimum_fact_count": min(
+            int(item["minimum_fact_count"]) for item in ordered
+        ),
+        "maximum_fact_count": max(
+            int(item["maximum_fact_count"]) for item in ordered
+        ),
+        "proof_programs": sum(int(item["proof_programs"]) for item in ordered),
+        "instruction_kinds": instruction_kinds,
+    }
 
 
 def assert_checkpoint_mismatch_negative() -> None:
@@ -199,33 +362,33 @@ def assert_v4_profile_identity() -> tuple[int, set[str], set[str]]:
         program = _base_program(unit)
         total += assert_program_differential_identity(program)
         profiles.add(unit.profile)
-        instruction_kinds.update(instruction.kind for instruction in program.instructions)
+        instruction_kinds.update(
+            instruction.kind for instruction in program.instructions
+        )
     return total, profiles, instruction_kinds
 
 
 def main() -> int:
-    total_quanta = 0
-    maximum_instruction_count = 0
-    maximum_fact_count = 0
-    minimum_instruction_count = 129
-    minimum_fact_count = 513
-    proof_programs = 0
-    instruction_kinds: set[str] = set()
+    parser = argparse.ArgumentParser(
+        prog="run_v31_total_core_optimized_differential_fuzz.py"
+    )
+    parser.add_argument("--seeds", type=int, default=SEED_COUNT)
+    parser.add_argument("--workers", type=int, default=_default_workers())
+    parser.add_argument("--shards", type=int, default=0)
+    parser.add_argument("--progress-every", type=int, default=100)
+    args = parser.parse_args()
 
-    for seed in range(SEED_COUNT):
-        program = build_fuzz_program(seed)
-        instruction_count = len(program.instructions)
-        fact_count = len(program.initial_field.facts)
-        minimum_instruction_count = min(minimum_instruction_count, instruction_count)
-        maximum_instruction_count = max(maximum_instruction_count, instruction_count)
-        minimum_fact_count = min(minimum_fact_count, fact_count)
-        maximum_fact_count = max(maximum_fact_count, fact_count)
-        instruction_kinds.update(
-            instruction.kind for instruction in program.instructions
-        )
-        if program.proof_admissions:
-            proof_programs += 1
-        total_quanta += assert_program_differential_identity(program)
+    shard_count = args.shards if args.shards > 0 else args.workers * 4
+    campaign = _run_parallel_seed_campaign(
+        seed_count=args.seeds,
+        workers=args.workers,
+        shard_count=shard_count,
+        progress_every=args.progress_every,
+    )
+
+    total_quanta = int(campaign["total_quanta"])
+    instruction_kinds = set(campaign["instruction_kinds"])
+    proof_programs = int(campaign["proof_programs"])
 
     v4_quanta, v4_profiles, v4_instruction_kinds = assert_v4_profile_identity()
     total_quanta += v4_quanta
@@ -247,19 +410,28 @@ def main() -> int:
             missing_v4_profiles,
         )
     if proof_programs == 0:
-        raise AssertionError("differential fuzz produced no proof-admitted program")
+        raise AssertionError(
+            "differential fuzz produced no proof-admitted program"
+        )
+    if args.seeds != SEED_COUNT:
+        raise AssertionError(
+            f"certification requires exactly {SEED_COUNT} seeds; got {args.seeds}"
+        )
 
     print("TEVScript 3.1 IR5 prepared-runtime differential fuzz")
-    print(f"SEEDS={SEED_COUNT}")
+    print(f"SEEDS={args.seeds}")
+    print(f"WORKERS={campaign['workers']}")
+    print(f"SHARDS={campaign['shards']}")
     print(f"TOTAL_QUANTA={total_quanta}")
-    print(f"MIN_INSTRUCTIONS={minimum_instruction_count}")
-    print(f"MAX_INSTRUCTIONS={maximum_instruction_count}")
-    print(f"MIN_INITIAL_FACTS={minimum_fact_count}")
-    print(f"MAX_INITIAL_FACTS={maximum_fact_count}")
+    print(f"MIN_INSTRUCTIONS={campaign['minimum_instruction_count']}")
+    print(f"MAX_INSTRUCTIONS={campaign['maximum_instruction_count']}")
+    print(f"MIN_INITIAL_FACTS={campaign['minimum_fact_count']}")
+    print(f"MAX_INITIAL_FACTS={campaign['maximum_fact_count']}")
     print(f"PROOF_PROGRAMS={proof_programs}")
     print("INSTRUCTION_KINDS=" + ",".join(sorted(instruction_kinds)))
     print("V4_PROFILES=" + ",".join(sorted(v4_profiles)))
     print("REFERENCE_PREPARED_EXACT_IDENTITY=PASS")
+    print("PARALLEL_SEED_COVERAGE=PASS")
     print("INSTRUCTION_COVERAGE=PASS")
     print("V4_PROFILE_COVERAGE=PASS")
     print("PROOF_APPLY_COVERAGE=PASS")
