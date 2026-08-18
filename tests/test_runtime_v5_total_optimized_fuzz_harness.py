@@ -4,6 +4,7 @@ import unittest
 
 from tools.run_v31_total_core_optimized_differential_fuzz import (
     _partition_seed_ranges,
+    _run_parallel_seed_campaign,
 )
 
 
@@ -37,6 +38,20 @@ class RuntimeV5TotalOptimizedFuzzHarnessTests(unittest.TestCase):
             _partition_seed_ranges(seed_count=0, shard_count=1)
         with self.assertRaises(ValueError):
             _partition_seed_ranges(seed_count=1, shard_count=0)
+
+    def test_parallel_seed_campaign_smoke_preserves_exact_coverage(self) -> None:
+        campaign = _run_parallel_seed_campaign(
+            seed_count=4,
+            workers=2,
+            shard_count=4,
+            progress_every=2,
+        )
+
+        self.assertEqual(campaign["workers"], 2)
+        self.assertEqual(campaign["shards"], 4)
+        self.assertGreater(int(campaign["total_quanta"]), 0)
+        self.assertGreaterEqual(int(campaign["proof_programs"]), 0)
+        self.assertIn("halt", campaign["instruction_kinds"])
 
 
 if __name__ == "__main__":
