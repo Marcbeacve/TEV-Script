@@ -36,7 +36,7 @@ def _hash(kind: str, seed: int, index: int) -> str:
 
 def build_fuzz_program(seed: int) -> TotalCoreProgramV1:
     rng = random.Random(seed)
-    instruction_count = rng.randint(2, 128)
+    instruction_count = rng.randint(1, 128)
     fact_count = rng.randint(0, 512)
 
     initial_facts = tuple(
@@ -150,16 +150,29 @@ def assert_program_differential_identity(program: TotalCoreProgramV1) -> int:
     else:
         raise AssertionError("generated forward-only program did not halt", program.program_hash)
 
-    stale = replace(plan, program_hash="f" * 64)
+    # A derived plan is sealed after preparation. Rewriting any dataclass field
+    # must fail before a forged plan can reach the executor.
     try:
-        run_prepared_total_core_quantum(stale, initial_total_core_checkpoint(program))
-    except TevScriptError as exc:
-        if exc.diagnostic.code != "TEVS_V31_OPT_PLAN_IDENTITY":
-            raise AssertionError("wrong stale-plan diagnostic", exc.diagnostic.code) from exc
+        replace(plan, program_hash="f" * 64)
+    except TypeError:
+        pass
     else:
-        raise AssertionError("stale execution plan was accepted")
+        raise AssertionError("sealed execution plan could be rewritten")
 
     return quantum_count
+
+
+def assert_checkpoint_mismatch_negative() -> None:
+    left = build_fuzz_program(17)
+    right = build_fuzz_program(23)
+    right_plan = prepare_total_core_execution_plan(right)
+    left_checkpoint = initial_total_core_checkpoint(left)
+
+    try:
+        run_prepared_total_core_quantum(right_plan, left_checkpoint)
+    except TevScriptError:
+        return
+    raise AssertionError("checkpoint from another program was accepted")
 
 
 def assert_v4_profile_identity() -> int:
@@ -179,27 +192,33 @@ def main() -> int:
     total_quanta = 0
     maximum_instruction_count = 0
     maximum_fact_count = 0
+    minimum_instruction_count = 129
     proof_programs = 0
 
     for seed in range(SEED_COUNT):
         program = build_fuzz_program(seed)
-        maximum_instruction_count = max(maximum_instruction_count, len(program.instructions))
+        instruction_count = len(program.instructions)
+        minimum_instruction_count = min(minimum_instruction_count, instruction_count)
+        maximum_instruction_count = max(maximum_instruction_count, instruction_count)
         maximum_fact_count = max(maximum_fact_count, len(program.initial_field.facts))
         if program.proof_admissions:
             proof_programs += 1
         total_quanta += assert_program_differential_identity(program)
 
     total_quanta += assert_v4_profile_identity()
+    assert_checkpoint_mismatch_negative()
 
     print("TEVScript 3.1 IR5 prepared-runtime differential fuzz")
     print(f"SEEDS={SEED_COUNT}")
     print(f"TOTAL_QUANTA={total_quanta}")
+    print(f"MIN_INSTRUCTIONS={minimum_instruction_count}")
     print(f"MAX_INSTRUCTIONS={maximum_instruction_count}")
     print(f"MAX_INITIAL_FACTS={maximum_fact_count}")
     print(f"PROOF_PROGRAMS={proof_programs}")
     print("V4_PROFILES=pure,recursive,effects")
     print("REFERENCE_PREPARED_EXACT_IDENTITY=PASS")
-    print("STALE_PLAN_NEGATIVE=PASS")
+    print("SEALED_PLAN_NEGATIVE=PASS")
+    print("CHECKPOINT_PROGRAM_MISMATCH_NEGATIVE=PASS")
     print("DIFFERENTIAL_FUZZ_1000=PASS")
     return 0
 
