@@ -12,6 +12,7 @@ from typing import Sequence
 ROOT = Path(__file__).resolve().parent
 BASE_COMMIT = "a0c3951a03403f871ff4a192f75f2c29437f5fdb"
 EXPECTED_BRANCH = "agent/tevscript-v31-ir5-execution-plan-v1"
+REMOTE_BRANCH = f"origin/{EXPECTED_BRANCH}"
 
 
 def _canonical_json(value: object) -> str:
@@ -55,6 +56,8 @@ def _source_identity_gate() -> dict[str, object]:
     tree = _git("rev-parse", "HEAD^{tree}")
     branch = _git("branch", "--show-current")
     local_main = _git("rev-parse", "main")
+    remote_main = _git("rev-parse", "origin/main")
+    remote_candidate = _git("rev-parse", REMOTE_BRANCH)
     merge_base = _git("merge-base", "HEAD", "main")
     status_porcelain = _git(
         "status",
@@ -67,7 +70,9 @@ def _source_identity_gate() -> dict[str, object]:
         "tree_is_git_sha": _is_git_sha(tree),
         "expected_branch": branch == EXPECTED_BRANCH,
         "local_main_is_certified_base": local_main == BASE_COMMIT,
+        "origin_main_is_certified_base": remote_main == BASE_COMMIT,
         "merge_base_is_certified_base": merge_base == BASE_COMMIT,
+        "remote_candidate_matches_head": remote_candidate == head,
         "worktree_clean": status_porcelain == "",
     }
     return {
@@ -78,6 +83,8 @@ def _source_identity_gate() -> dict[str, object]:
         "source_tree": tree,
         "branch": branch,
         "local_main": local_main,
+        "remote_main": remote_main,
+        "remote_candidate": remote_candidate,
         "merge_base": merge_base,
         "expected_base": BASE_COMMIT,
         "worktree_clean": status_porcelain == "",
@@ -254,7 +261,8 @@ def certify() -> dict[str, object]:
         (sys.executable, "RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py"),
     )
 
-    # Source identity must remain stable and clean after every gate too.
+    # Source and fetched remote identities must remain stable and clean after
+    # every gate too. The certifier never performs a fetch itself.
     source_after = _source_identity_gate()
     gates["SOURCE_IDENTITY_AFTER"] = source_after
 
