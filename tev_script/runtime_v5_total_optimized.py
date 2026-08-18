@@ -6,12 +6,23 @@ from typing import Any, Mapping
 
 from .canonical import canonical_hash
 from .diagnostics import TevScriptError
+from .ir_v4_pure import TaskScopeExecutionStrategyV4
+from .omega_kernel_v1 import continuation_receipt, epoch_identity
 from .omega_semantic_basis_v1 import FieldTransformationV1, field_transformation
 from .program_ir_v5_total import (
     TotalCoreProgramV1,
     TotalCoreUnitV1,
     VerifiedProofAdmissionV1,
     validate_total_core_program,
+)
+from .runtime_v5_total import (
+    TotalCoreCheckpointV1,
+    TotalCoreQuantumResultV1,
+    _build_quantum_result,
+    _result_semantic_hash,
+    total_core_checkpoint,
+    total_core_state_hash,
+    validate_total_core_checkpoint,
 )
 
 # Private execution-plan opcodes. Program IR V5 Total-Core remains the
@@ -223,9 +234,137 @@ def prepare_total_core_execution_plan(
     )
 
 
+def _validate_plan_identity(plan: object) -> TotalCoreExecutionPlanV1:
+    if not isinstance(plan, TotalCoreExecutionPlanV1):
+        _fail(
+            "TEVS_V31_OPT_PLAN",
+            "prepared execution requires TotalCoreExecutionPlanV1",
+        )
+    program = plan.program
+    if (
+        plan.program_hash != program.program_hash
+        or plan.authority_hash != program.authority_hash
+        or plan.entry_pc != program.entry_pc
+        or plan.quantum_step_limit != program.quantum_step_limit
+        or len(plan.instructions) != len(program.instructions)
+    ):
+        _fail(
+            "TEVS_V31_OPT_PLAN_IDENTITY",
+            "execution plan identity does not match its canonical program",
+        )
+    return plan
+
+
+def run_prepared_total_core_quantum(
+    plan: TotalCoreExecutionPlanV1,
+    checkpoint: TotalCoreCheckpointV1,
+    *,
+    task_strategy: TaskScopeExecutionStrategyV4 | None = None,
+) -> TotalCoreQuantumResultV1:
+    """Execute one quantum from a prepared plan.
+
+    Phase A currently handles prepared control flow. Canonical checkpoint and
+    result/evidence validation remain delegated to the reference runtime
+    boundary constructors.
+    """
+
+    del task_strategy  # Used when prepared invoke_v4 support is enabled.
+    plan = _validate_plan_identity(plan)
+    program = plan.program
+    checkpoint = validate_total_core_checkpoint(program, checkpoint)
+    if checkpoint.halted:
+        _fail(
+            "TEVS_V31_RUNTIME_HALTED",
+            "halted checkpoint cannot be resumed",
+        )
+
+    input_state_hash = total_core_state_hash(
+        program.program_hash,
+        checkpoint.field.field_hash,
+        checkpoint.pc,
+    )
+    previous_hash = (
+        None
+        if checkpoint.previous_continuation is None
+        else checkpoint.previous_continuation.continuation_hash
+    )
+    epoch = epoch_identity(
+        epoch_index=checkpoint.next_epoch_index,
+        computation_hash=program.program_hash,
+        input_state_hash=input_state_hash,
+        authority_hash=program.authority_hash,
+        previous_continuation_hash=previous_hash,
+    )
+
+    field = checkpoint.field
+    pc = checkpoint.pc
+    steps_used = 0
+    status = "SUSPENDED"
+
+    while steps_used < plan.quantum_step_limit:
+        instruction = plan.instructions[pc]
+        steps_used += 1
+
+        if instruction.opcode == _OP_JUMP:
+            if instruction.target_pc is None:
+                _fail(
+                    "TEVS_V31_OPT_PLAN_JUMP",
+                    "prepared jump has no target",
+                )
+            pc = instruction.target_pc
+            continue
+
+        if instruction.opcode == _OP_HALT:
+            status = "HALTED"
+            break
+
+        _fail(
+            "TEVS_V31_OPT_RUNTIME_OPCODE",
+            f"prepared opcode {instruction.opcode} is not enabled in this phase",
+        )
+
+    result_hash = _result_semantic_hash(status, field.field_hash, pc)
+    state_hash = total_core_state_hash(program.program_hash, field.field_hash, pc)
+    continuation = continuation_receipt(
+        epoch=epoch,
+        result_hash=result_hash,
+        state_hash=state_hash,
+        observations_hash=canonical_hash([]),
+        effects_hash=canonical_hash([]),
+        resources_hash=canonical_hash(
+            {
+                "v5_steps": steps_used,
+                "v4_evaluation_steps": 0,
+            }
+        ),
+    )
+    next_checkpoint = total_core_checkpoint(
+        program,
+        field=field,
+        pc=pc,
+        next_epoch_index=checkpoint.next_epoch_index + 1,
+        previous_continuation=continuation,
+        halted=status == "HALTED",
+    )
+    return _build_quantum_result(
+        program,
+        epoch=epoch,
+        status=status,
+        steps_used=steps_used,
+        v4_evaluation_steps=0,
+        field=field,
+        pc=pc,
+        apply_receipt_hashes=(),
+        child_receipt_hashes=(),
+        continuation=continuation,
+        next_checkpoint=next_checkpoint,
+    )
+
+
 __all__ = [
     "PreparedProofApplyV1",
     "PreparedTotalCoreInstructionV1",
     "TotalCoreExecutionPlanV1",
     "prepare_total_core_execution_plan",
+    "run_prepared_total_core_quantum",
 ]
