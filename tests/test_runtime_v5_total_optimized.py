@@ -22,6 +22,7 @@ from tev_script.runtime_v5_total_optimized import (
     prepare_total_core_execution_plan,
     run_prepared_total_core_quantum,
 )
+from tests.test_runtime_v5_total import RuntimeV5TotalCoreTests, _base_program
 
 
 AUTHORITY = "a" * 64
@@ -207,6 +208,18 @@ class RuntimeV5TotalOptimizedPlanTests(unittest.TestCase):
         self.assertEqual(prepared, reference)
         self.assertTrue(any(fact.relation == "tev.optimized.proof" for fact in prepared.field.facts))
         self.assertEqual(_fact_hash_index(prepared.field), {fact.fact_hash for fact in prepared.field.facts})
+
+    def test_invoke_v4_pure_is_exactly_reference_equivalent(self) -> None:
+        unit = RuntimeV5TotalCoreTests().pure_unit()
+        self.assert_reference_equivalent(_base_program(unit))
+
+    def test_invoke_v4_recursive_is_exactly_reference_equivalent(self) -> None:
+        unit = RuntimeV5TotalCoreTests().recursive_unit()
+        self.assert_reference_equivalent(_base_program(unit))
+
+    def test_invoke_v4_effects_is_exactly_reference_equivalent(self) -> None:
+        unit = RuntimeV5TotalCoreTests().effects_unit()
+        self.assert_reference_equivalent(_base_program(unit))
 
 
 if __name__ == "__main__":
