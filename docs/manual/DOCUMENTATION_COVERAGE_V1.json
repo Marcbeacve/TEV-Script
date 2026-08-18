@@ -3,7 +3,7 @@
   "package_version": "3.1.2",
   "language_version": "3.1.0",
   "profile": "total_core",
-  "phase": "B_GETTING_STARTED_IN_PROGRESS",
+  "phase": "B_CLI_CURRENT_SURFACE_DOCUMENTED",
   "domains": {
     "language_constructs": [
       {
@@ -59,49 +59,97 @@
       {
         "id": "option:--version",
         "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/installation.md",
+        "page": "docs/manual/cli-reference/version.md",
         "authority": "tev_script/cli.py"
       },
       {
         "id": "command:describe",
         "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/installation.md",
+        "page": "docs/manual/cli-reference/describe.md",
         "authority": "tev_script/cli.py"
       },
       {
         "id": "command:descriptor",
         "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/cli-workflow.md",
+        "page": "docs/manual/cli-reference/descriptor.md",
         "authority": "tev_script/cli.py"
       },
       {
         "id": "command:check",
         "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/cli-workflow.md",
+        "page": "docs/manual/cli-reference/check.md",
         "authority": "tev_script/cli.py"
       },
       {
         "id": "command:compile",
         "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/cli-workflow.md",
+        "page": "docs/manual/cli-reference/compile.md",
         "authority": "tev_script/cli.py"
       },
       {
         "id": "command:run",
         "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/cli-workflow.md",
+        "page": "docs/manual/cli-reference/run.md",
         "authority": "tev_script/cli.py"
       },
       {
         "id": "command:conformance",
         "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/cli-workflow.md",
+        "page": "docs/manual/cli-reference/conformance.md",
         "authority": "tev_script/cli.py"
       },
       {
         "id": "command:platform-check",
         "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/cli-workflow.md",
+        "page": "docs/manual/cli-reference/platform-check.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "option:--unit",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/cli-reference/check.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "option:--effect-input",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/cli-reference/check.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "option:--proof-admission",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/cli-reference/check.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "option:--output",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/cli-reference/compile.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "option:-o",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/cli-reference/compile.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "option:--checkpoint-output",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/cli-reference/run.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "option:--epochs",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/cli-reference/run.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "option:--root",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/cli-reference/conformance.md",
         "authority": "tev_script/cli.py"
       }
     ],
