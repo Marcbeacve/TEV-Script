@@ -3,10 +3,108 @@
   "package_version": "3.1.2",
   "language_version": "3.1.0",
   "profile": "total_core",
-  "phase": "A_FOUNDATION",
+  "phase": "B_GETTING_STARTED_IN_PROGRESS",
   "domains": {
-    "language_constructs": [],
-    "cli_surface": [],
+    "language_constructs": [
+      {
+        "id": "process",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/first-program.md",
+        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
+      },
+      {
+        "id": "authority",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/first-program.md",
+        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
+      },
+      {
+        "id": "quantum_steps",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/first-program.md",
+        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
+      },
+      {
+        "id": "field",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/first-program.md",
+        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
+      },
+      {
+        "id": "label",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/first-program.md",
+        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
+      },
+      {
+        "id": "entry",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/first-program.md",
+        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
+      },
+      {
+        "id": "halt",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/first-program.md",
+        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
+      },
+      {
+        "id": "unit",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/project-layout.md",
+        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
+      }
+    ],
+    "cli_surface": [
+      {
+        "id": "option:--version",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/installation.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "command:describe",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/installation.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "command:descriptor",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/cli-workflow.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "command:check",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/cli-workflow.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "command:compile",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/cli-workflow.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "command:run",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/cli-workflow.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "command:conformance",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/cli-workflow.md",
+        "authority": "tev_script/cli.py"
+      },
+      {
+        "id": "command:platform-check",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/getting-started/cli-workflow.md",
+        "authority": "tev_script/cli.py"
+      }
+    ],
     "python_api": [],
     "source_profiles": [
       {
