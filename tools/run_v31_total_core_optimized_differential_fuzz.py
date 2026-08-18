@@ -34,6 +34,10 @@ from tests.test_runtime_v5_total import RuntimeV5TotalCoreTests, _base_program
 
 SEED_COUNT = 1_000
 AUTHORITY = canonical_hash({"authority": "tev.v31.optimized.fuzz"})
+EXPECTED_INSTRUCTION_KINDS = frozenset(
+    {"apply", "branch_fact", "jump", "halt", "invoke_v4"}
+)
+EXPECTED_V4_PROFILES = frozenset({"pure", "recursive", "effects"})
 
 
 def _hash(kind: str, seed: int, index: int) -> str:
@@ -181,7 +185,7 @@ def assert_checkpoint_mismatch_negative() -> None:
     raise AssertionError("checkpoint from another program was accepted")
 
 
-def assert_v4_profile_identity() -> int:
+def assert_v4_profile_identity() -> tuple[int, set[str], set[str]]:
     fixtures = RuntimeV5TotalCoreTests()
     units = (
         fixtures.pure_unit(),
@@ -189,9 +193,14 @@ def assert_v4_profile_identity() -> int:
         fixtures.effects_unit(),
     )
     total = 0
+    profiles: set[str] = set()
+    instruction_kinds: set[str] = set()
     for unit in units:
-        total += assert_program_differential_identity(_base_program(unit))
-    return total
+        program = _base_program(unit)
+        total += assert_program_differential_identity(program)
+        profiles.add(unit.profile)
+        instruction_kinds.update(instruction.kind for instruction in program.instructions)
+    return total, profiles, instruction_kinds
 
 
 def main() -> int:
@@ -199,30 +208,61 @@ def main() -> int:
     maximum_instruction_count = 0
     maximum_fact_count = 0
     minimum_instruction_count = 129
+    minimum_fact_count = 513
     proof_programs = 0
+    instruction_kinds: set[str] = set()
 
     for seed in range(SEED_COUNT):
         program = build_fuzz_program(seed)
         instruction_count = len(program.instructions)
+        fact_count = len(program.initial_field.facts)
         minimum_instruction_count = min(minimum_instruction_count, instruction_count)
         maximum_instruction_count = max(maximum_instruction_count, instruction_count)
-        maximum_fact_count = max(maximum_fact_count, len(program.initial_field.facts))
+        minimum_fact_count = min(minimum_fact_count, fact_count)
+        maximum_fact_count = max(maximum_fact_count, fact_count)
+        instruction_kinds.update(
+            instruction.kind for instruction in program.instructions
+        )
         if program.proof_admissions:
             proof_programs += 1
         total_quanta += assert_program_differential_identity(program)
 
-    total_quanta += assert_v4_profile_identity()
+    v4_quanta, v4_profiles, v4_instruction_kinds = assert_v4_profile_identity()
+    total_quanta += v4_quanta
+    instruction_kinds.update(v4_instruction_kinds)
     assert_checkpoint_mismatch_negative()
+
+    missing_instruction_kinds = sorted(
+        EXPECTED_INSTRUCTION_KINDS - instruction_kinds
+    )
+    missing_v4_profiles = sorted(EXPECTED_V4_PROFILES - v4_profiles)
+    if missing_instruction_kinds:
+        raise AssertionError(
+            "differential fuzz missed required instruction kinds",
+            missing_instruction_kinds,
+        )
+    if missing_v4_profiles:
+        raise AssertionError(
+            "differential fuzz missed required V4 profiles",
+            missing_v4_profiles,
+        )
+    if proof_programs == 0:
+        raise AssertionError("differential fuzz produced no proof-admitted program")
 
     print("TEVScript 3.1 IR5 prepared-runtime differential fuzz")
     print(f"SEEDS={SEED_COUNT}")
     print(f"TOTAL_QUANTA={total_quanta}")
     print(f"MIN_INSTRUCTIONS={minimum_instruction_count}")
     print(f"MAX_INSTRUCTIONS={maximum_instruction_count}")
+    print(f"MIN_INITIAL_FACTS={minimum_fact_count}")
     print(f"MAX_INITIAL_FACTS={maximum_fact_count}")
     print(f"PROOF_PROGRAMS={proof_programs}")
-    print("V4_PROFILES=pure,recursive,effects")
+    print("INSTRUCTION_KINDS=" + ",".join(sorted(instruction_kinds)))
+    print("V4_PROFILES=" + ",".join(sorted(v4_profiles)))
     print("REFERENCE_PREPARED_EXACT_IDENTITY=PASS")
+    print("INSTRUCTION_COVERAGE=PASS")
+    print("V4_PROFILE_COVERAGE=PASS")
+    print("PROOF_APPLY_COVERAGE=PASS")
     print("SEALED_PLAN_NEGATIVE=PASS")
     print("CHECKPOINT_PROGRAM_MISMATCH_NEGATIVE=PASS")
     print("DIFFERENTIAL_FUZZ_1000=PASS")
