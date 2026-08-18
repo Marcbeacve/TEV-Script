@@ -5,6 +5,7 @@ from pathlib import Path
 from tev_script import __version__
 from tev_script.platform_versioning import validate_current_version_identity
 from tev_script.version import (
+    ARCHIVED_V31_PACKAGE_VERSION,
     CURRENT_LANGUAGE_VERSION,
     CURRENT_PROFILE,
     PACKAGE_VERSION,
@@ -18,9 +19,10 @@ def _write_fixture(
     root: Path,
     *,
     root_version: str = PACKAGE_VERSION,
-    v31_version: str = "3.1.0",
+    v31_version: str = ARCHIVED_V31_PACKAGE_VERSION,
     release_version: str = "3.1.0",
     spec_package: str = PACKAGE_VERSION,
+    spec_predecessor: str = PUBLISHED_PREDECESSOR_PACKAGE_VERSION,
     matrix_package: str = PACKAGE_VERSION,
 ) -> None:
     (root / "packaging" / "v31").mkdir(parents=True)
@@ -58,7 +60,8 @@ def _write_fixture(
     (root / "spec" / "TEV_SCRIPT_3_1_PLATFORM.md").write_text(
         f"package_version = {spec_package}\n"
         "language_version = 3.1.0\n"
-        "current_profile = total_core\n",
+        "current_profile = total_core\n"
+        f"published_predecessor_package = {spec_predecessor}\n",
         encoding="utf-8",
     )
     (root / "spec" / "TEV_SCRIPT_VERSION_MATRIX.json").write_text(
@@ -80,7 +83,8 @@ def test_current_version_domains_are_explicit() -> None:
     assert PACKAGE_VERSION == "3.1.2"
     assert __version__ == PACKAGE_VERSION
     assert CURRENT_LANGUAGE_VERSION == "3.1.0"
-    assert PUBLISHED_PREDECESSOR_PACKAGE_VERSION == "3.1.0"
+    assert PUBLISHED_PREDECESSOR_PACKAGE_VERSION == "3.1.1"
+    assert ARCHIVED_V31_PACKAGE_VERSION == "3.1.0"
     assert CURRENT_PROFILE == "total_core"
 
 
@@ -89,7 +93,8 @@ def test_repository_current_metadata_respects_domain_identity() -> None:
     assert receipt["status"] == "PASS"
     assert receipt["package_version"] == PACKAGE_VERSION
     assert receipt["language_version"] == "3.1.0"
-    assert receipt["published_predecessor_package_version"] == "3.1.0"
+    assert receipt["published_predecessor_package_version"] == "3.1.1"
+    assert receipt["archived_v31_package_version"] == "3.1.0"
     assert receipt["profile"] == "total_core"
     assert receipt["mismatches"] == []
     assert receipt["binding_errors"] == []
@@ -102,7 +107,7 @@ def test_stale_current_package_version_fails_closed(tmp_path: Path) -> None:
     assert any(row["source"] == "root.pyproject.package" for row in receipt["mismatches"])
 
 
-def test_published_predecessor_rewrite_fails_closed(tmp_path: Path) -> None:
+def test_archived_v31_package_rewrite_fails_closed(tmp_path: Path) -> None:
     _write_fixture(tmp_path, v31_version="3.1.1")
     receipt = validate_current_version_identity(tmp_path)
     assert receipt["status"] == "FAIL"
@@ -127,6 +132,16 @@ def test_platform_spec_package_drift_fails_closed(tmp_path: Path) -> None:
     receipt = validate_current_version_identity(tmp_path)
     assert receipt["status"] == "FAIL"
     assert any(row["source"] == "platform_spec.package" for row in receipt["mismatches"])
+
+
+def test_platform_spec_predecessor_drift_fails_closed(tmp_path: Path) -> None:
+    _write_fixture(tmp_path, spec_predecessor="3.1.0")
+    receipt = validate_current_version_identity(tmp_path)
+    assert receipt["status"] == "FAIL"
+    assert any(
+        row["source"] == "platform_spec.published_predecessor_package"
+        for row in receipt["mismatches"]
+    )
 
 
 def test_version_matrix_package_drift_fails_closed(tmp_path: Path) -> None:
