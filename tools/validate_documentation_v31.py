@@ -259,14 +259,8 @@ def _coverage_manifest_check(root: Path) -> dict[str, object]:
                 seen.add(identifier)
                 if not isinstance(status, str) or not status:
                     raise ValueError(f"coverage entry status missing: {domain}:{identifier}")
-                try:
-                    _safe_repo_file(root, row.get("page"), role="coverage page")
-                except ValueError as error:
-                    raise ValueError(str(error).replace("unsafe coverage page", "unsafe coverage page")) from error
-                try:
-                    _safe_repo_file(root, row.get("authority"), role="coverage authority")
-                except ValueError as error:
-                    raise ValueError(str(error).replace("unsafe coverage authority", "unsafe coverage authority")) from error
+                _safe_repo_file(root, row.get("page"), role="coverage page")
+                _safe_repo_file(root, row.get("authority"), role="coverage authority")
                 entry_count += 1
         return {"status": "PASS", "entry_count": entry_count}
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as error:
@@ -491,9 +485,7 @@ def _execute_case(case_dir: Path, case: dict[str, Any]) -> None:
     if isinstance(diagnostic, dict):
         observed_diagnostic = diagnostic.get("code")
     if observed_diagnostic != expected_diagnostic:
-        raise ValueError(
-            f"diagnostic mismatch expected={expected_diagnostic} observed={observed_diagnostic}"
-        )
+        raise ValueError(f"diagnostic mismatch expected={expected_diagnostic} observed={observed_diagnostic}")
 
 
 def _example_cases_check(root: Path) -> dict[str, object]:
@@ -537,6 +529,48 @@ def _coverage_ids(root: Path, domain: str) -> set[str]:
     return result
 
 
+def _current_v31_diagnostics(root: Path) -> set[str]:
+    package_root = root / "tev_script"
+    if not package_root.is_dir():
+        raise ValueError("tev_script package root missing")
+    result: set[str] = set()
+    for path in sorted(package_root.rglob("*.py"), key=lambda value: value.as_posix()):
+        if "__pycache__" in path.parts or not path.is_file():
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=path.as_posix())
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and node.value.startswith("TEVS_V31_")
+            ):
+                result.add(node.value)
+    return result
+
+
+def _diagnostic_coverage_check(root: Path) -> dict[str, object]:
+    try:
+        required = _current_v31_diagnostics(root)
+        documented = _coverage_ids(root, "diagnostics")
+        missing = sorted(required - documented)
+        extra = sorted(documented - required)
+        return {
+            "status": "PASS" if not missing and not extra else "FAIL",
+            "diagnostic_count": len(required),
+            "missing_diagnostics": missing,
+            "extra_diagnostics": extra,
+        }
+    except (OSError, UnicodeError, SyntaxError, ValueError, json.JSONDecodeError) as error:
+        return {
+            "status": "FAIL",
+            "reason": "DIAGNOSTIC_INVENTORY_ERROR",
+            "error": str(error),
+            "diagnostic_count": 0,
+            "missing_diagnostics": [],
+            "extra_diagnostics": [],
+        }
+
+
 def _current_cli_surface(root: Path) -> set[str]:
     path = root / "tev_script" / "cli.py"
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=path.as_posix())
@@ -550,11 +584,7 @@ def _current_cli_surface(root: Path) -> set[str]:
                 result.add(f"command:{value.value}")
         elif node.func.attr == "add_argument":
             for argument in node.args:
-                if (
-                    isinstance(argument, ast.Constant)
-                    and isinstance(argument.value, str)
-                    and argument.value.startswith("-")
-                ):
+                if isinstance(argument, ast.Constant) and isinstance(argument.value, str) and argument.value.startswith("-"):
                     result.add(f"option:{argument.value}")
     return result
 
@@ -613,7 +643,7 @@ def validate_documentation(root: Path) -> dict[str, object]:
         "INTERNAL_PATHS": _closed_later("INTERNAL_PATH_VALIDATION_NOT_CLOSED"),
         "SOURCE_BINDINGS": _source_bindings_check(root),
         "EXAMPLE_CASES": _example_cases_check(root),
-        "DIAGNOSTIC_COVERAGE": _closed_later("DIAGNOSTIC_COVERAGE_NOT_CLOSED"),
+        "DIAGNOSTIC_COVERAGE": _diagnostic_coverage_check(root),
         "PUBLIC_SURFACE_COVERAGE": _public_surface_coverage_check(root),
         "HISTORICAL_CLASSIFICATION": _closed_later("HISTORICAL_CLASSIFICATION_NOT_CLOSED"),
     }
