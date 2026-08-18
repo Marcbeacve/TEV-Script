@@ -12,6 +12,7 @@ from .omega_semantic_basis_v1 import (
     FieldTransformationV1,
     SemanticFieldV1,
     apply_field_transformation,
+    field_fact,
     field_transformation,
 )
 from .program_ir_v5_total import (
@@ -23,8 +24,10 @@ from .program_ir_v5_total import (
 from .runtime_v5_total import (
     TotalCoreCheckpointV1,
     TotalCoreQuantumResultV1,
+    _append_bridge_fact,
     _build_quantum_result,
     _result_semantic_hash,
+    _run_v4_unit,
     total_core_checkpoint,
     total_core_state_hash,
     validate_total_core_checkpoint,
@@ -286,7 +289,6 @@ def run_prepared_total_core_quantum(
     instruction path uses predecoded opcodes and runtime-only indexes.
     """
 
-    del task_strategy  # Used when prepared invoke_v4 support is enabled.
     plan = _validate_plan_identity(plan)
     program = plan.program
     checkpoint = validate_total_core_checkpoint(program, checkpoint)
@@ -318,7 +320,10 @@ def run_prepared_total_core_quantum(
     fact_hashes = _fact_hash_index(field)
     pc = checkpoint.pc
     steps_used = 0
+    v4_evaluation_steps = 0
     apply_receipt_hashes: list[str] = []
+    child_receipt_hashes: list[str] = []
+    observation_hashes: list[str] = []
     effect_hashes: list[str] = []
     status = "SUSPENDED"
 
@@ -397,6 +402,47 @@ def run_prepared_total_core_quantum(
             pc = instruction.target_pc
             continue
 
+        if instruction.opcode == _OP_INVOKE_V4:
+            unit = instruction.unit
+            if (
+                unit is None
+                or instruction.result_relation is None
+                or instruction.next_pc is None
+            ):
+                _fail(
+                    "TEVS_V31_OPT_PLAN_UNIT",
+                    "prepared invoke_v4 has incomplete operands",
+                )
+            (
+                child_receipt,
+                payload,
+                child_steps,
+                observation_hash,
+                child_effect_hash,
+            ) = _run_v4_unit(unit, task_strategy=task_strategy)
+            bridge_fact_hash = field_fact(
+                instruction.result_relation,
+                (payload,),
+            ).fact_hash
+            field, bridge_apply_hash = _append_bridge_fact(
+                field,
+                unit=unit,
+                relation=instruction.result_relation,
+                payload=payload,
+                run_receipt_hash=child_receipt.receipt_hash,
+                evaluation_steps=child_steps,
+            )
+            fact_hashes.add(bridge_fact_hash)
+            apply_receipt_hashes.append(bridge_apply_hash)
+            child_receipt_hashes.append(child_receipt.receipt_hash)
+            v4_evaluation_steps += child_steps
+            if observation_hash is not None:
+                observation_hashes.append(observation_hash)
+            if child_effect_hash is not None:
+                effect_hashes.append(child_effect_hash)
+            pc = instruction.next_pc
+            continue
+
         if instruction.opcode == _OP_HALT:
             status = "HALTED"
             break
@@ -412,12 +458,12 @@ def run_prepared_total_core_quantum(
         epoch=epoch,
         result_hash=result_hash,
         state_hash=state_hash,
-        observations_hash=canonical_hash([]),
+        observations_hash=canonical_hash(observation_hashes),
         effects_hash=canonical_hash(effect_hashes),
         resources_hash=canonical_hash(
             {
                 "v5_steps": steps_used,
-                "v4_evaluation_steps": 0,
+                "v4_evaluation_steps": v4_evaluation_steps,
             }
         ),
     )
@@ -434,11 +480,11 @@ def run_prepared_total_core_quantum(
         epoch=epoch,
         status=status,
         steps_used=steps_used,
-        v4_evaluation_steps=0,
+        v4_evaluation_steps=v4_evaluation_steps,
         field=field,
         pc=pc,
         apply_receipt_hashes=tuple(apply_receipt_hashes),
-        child_receipt_hashes=(),
+        child_receipt_hashes=tuple(child_receipt_hashes),
         continuation=continuation,
         next_checkpoint=next_checkpoint,
     )
