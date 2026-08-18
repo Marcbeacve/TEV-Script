@@ -87,6 +87,7 @@ class TotalCoreExecutionPlanV1:
     units_by_hash: Mapping[str, TotalCoreUnitV1]
     proof_admissions_by_requirement: Mapping[str, VerifiedProofAdmissionV1]
     prepared_proof_applies: Mapping[str, PreparedProofApplyV1]
+    initial_fact_hashes: frozenset[str]
 
     def __init__(
         self,
@@ -102,6 +103,7 @@ class TotalCoreExecutionPlanV1:
         units_by_hash: Mapping[str, TotalCoreUnitV1],
         proof_admissions_by_requirement: Mapping[str, VerifiedProofAdmissionV1],
         prepared_proof_applies: Mapping[str, PreparedProofApplyV1],
+        initial_fact_hashes: frozenset[str],
     ) -> None:
         if _token is not _PLAN_CONSTRUCTION_TOKEN:
             raise TypeError(
@@ -122,6 +124,7 @@ class TotalCoreExecutionPlanV1:
             proof_admissions_by_requirement,
         )
         object.__setattr__(self, "prepared_proof_applies", prepared_proof_applies)
+        object.__setattr__(self, "initial_fact_hashes", initial_fact_hashes)
 
 
 def _fail(code: str, message: str) -> None:
@@ -287,6 +290,9 @@ def prepare_total_core_execution_plan(
         units_by_hash=MappingProxyType(units),
         proof_admissions_by_requirement=MappingProxyType(admissions),
         prepared_proof_applies=MappingProxyType(prepared_proof_applies),
+        initial_fact_hashes=frozenset(
+            fact.fact_hash for fact in program.initial_field.facts
+        ),
     )
 
 
@@ -359,7 +365,10 @@ def run_prepared_total_core_quantum(
     )
 
     field = checkpoint.field
-    fact_hashes = _fact_hash_index(field)
+    if field.field_hash == program.initial_field.field_hash:
+        fact_hashes: set[str] | frozenset[str] = plan.initial_fact_hashes
+    else:
+        fact_hashes = _fact_hash_index(field)
     pc = checkpoint.pc
     steps_used = 0
     v4_evaluation_steps = 0
@@ -414,6 +423,8 @@ def run_prepared_total_core_quantum(
             if proof_use_hash is not None:
                 effect_hashes.append(proof_use_hash)
             effect_hashes.append(receipt.effect_set_hash)
+            if not isinstance(fact_hashes, set):
+                fact_hashes = set(fact_hashes)
             _update_fact_index_after_apply(fact_hashes, execution_transformation)
             pc = instruction.next_pc
             continue
@@ -474,6 +485,8 @@ def run_prepared_total_core_quantum(
                 run_receipt_hash=child_receipt.receipt_hash,
                 evaluation_steps=child_steps,
             )
+            if not isinstance(fact_hashes, set):
+                fact_hashes = set(fact_hashes)
             fact_hashes.add(bridge_fact_hash)
             apply_receipt_hashes.append(bridge_apply_hash)
             child_receipt_hashes.append(child_receipt.receipt_hash)
