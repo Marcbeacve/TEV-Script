@@ -11,6 +11,7 @@ from .omega_kernel_v1 import continuation_receipt, epoch_identity
 from .omega_semantic_basis_v1 import (
     FieldTransformationV1,
     SemanticFieldV1,
+    apply_field_transformation,
     field_transformation,
 )
 from .program_ir_v5_total import (
@@ -265,6 +266,14 @@ def _validate_plan_identity(plan: object) -> TotalCoreExecutionPlanV1:
     return plan
 
 
+def _update_fact_index_after_apply(
+    fact_hashes: set[str],
+    transformation: FieldTransformationV1,
+) -> None:
+    fact_hashes.difference_update(transformation.remove_fact_hashes)
+    fact_hashes.update(fact.fact_hash for fact in transformation.add_facts)
+
+
 def run_prepared_total_core_quantum(
     plan: TotalCoreExecutionPlanV1,
     checkpoint: TotalCoreCheckpointV1,
@@ -309,11 +318,58 @@ def run_prepared_total_core_quantum(
     fact_hashes = _fact_hash_index(field)
     pc = checkpoint.pc
     steps_used = 0
+    apply_receipt_hashes: list[str] = []
+    effect_hashes: list[str] = []
     status = "SUSPENDED"
 
     while steps_used < plan.quantum_step_limit:
         instruction = plan.instructions[pc]
         steps_used += 1
+
+        if instruction.opcode == _OP_APPLY:
+            transformation = instruction.transformation
+            if transformation is None or instruction.next_pc is None:
+                _fail(
+                    "TEVS_V31_OPT_PLAN_APPLY",
+                    "prepared Apply has incomplete operands",
+                )
+
+            proof_use_hash: str | None = None
+            execution_transformation = transformation
+            if transformation.proof_requirement_hashes:
+                prepared_proof = plan.prepared_proof_applies.get(
+                    transformation.transformation_hash
+                )
+                if prepared_proof is None:
+                    _fail(
+                        "TEVS_V31_OPT_PLAN_PROOF_REQUIRED",
+                        "prepared proof-open Apply has no bound proof data",
+                    )
+                proof_use_hash = prepared_proof.proof_use_hash
+                execution_transformation = prepared_proof.execution_local_transformation
+
+            field, receipt = apply_field_transformation(
+                field,
+                execution_transformation,
+            )
+            if receipt.status != "PASS":
+                if proof_use_hash is not None:
+                    _fail(
+                        "TEVS_V31_RUNTIME_PROOF_APPLY",
+                        "proof-admitted execution-local Apply did not close as PASS",
+                    )
+                _fail(
+                    "TEVS_V31_RUNTIME_APPLY_OPEN",
+                    "runtime Apply did not close as PASS",
+                )
+
+            apply_receipt_hashes.append(receipt.receipt_hash)
+            if proof_use_hash is not None:
+                effect_hashes.append(proof_use_hash)
+            effect_hashes.append(receipt.effect_set_hash)
+            _update_fact_index_after_apply(fact_hashes, execution_transformation)
+            pc = instruction.next_pc
+            continue
 
         if instruction.opcode == _OP_BRANCH_FACT:
             if (
@@ -357,7 +413,7 @@ def run_prepared_total_core_quantum(
         result_hash=result_hash,
         state_hash=state_hash,
         observations_hash=canonical_hash([]),
-        effects_hash=canonical_hash([]),
+        effects_hash=canonical_hash(effect_hashes),
         resources_hash=canonical_hash(
             {
                 "v5_steps": steps_used,
@@ -381,7 +437,7 @@ def run_prepared_total_core_quantum(
         v4_evaluation_steps=0,
         field=field,
         pc=pc,
-        apply_receipt_hashes=(),
+        apply_receipt_hashes=tuple(apply_receipt_hashes),
         child_receipt_hashes=(),
         continuation=continuation,
         next_checkpoint=next_checkpoint,
