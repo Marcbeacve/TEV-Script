@@ -23,6 +23,7 @@ CHECK_ORDER = (
     "PUBLIC_SURFACE_COVERAGE",
     "HISTORICAL_CLASSIFICATION",
 )
+
 _EXPECTED_VERSION_ASSIGNMENTS = {
     "PACKAGE_VERSION": "3.1.2",
     "CURRENT_LANGUAGE_VERSION": "3.1.0",
@@ -75,6 +76,17 @@ _CASE_FIELDS = frozenset(
 _CASE_OPERATIONS = frozenset({"check", "compile", "run"})
 _CASE_BINDING_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
 _MAX_DOCUMENTATION_EPOCHS = 64
+
+
+def _literal_assignment(path: Path, name: str) -> object:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=path.as_posix())
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        target = node.targets[0]
+        if isinstance(target, ast.Name) and target.id == name:
+            return ast.literal_eval(node.value)
+    raise ValueError(f"missing literal assignment: {name}:{path.as_posix()}")
 
 
 def _string_assignments(path: Path) -> dict[str, str]:
@@ -166,10 +178,7 @@ def _version_identity_check(root: Path) -> dict[str, object]:
         }
 
     unique = sorted(set(mismatches))
-    return {
-        "status": "PASS" if not unique else "FAIL",
-        "mismatches": unique,
-    }
+    return {"status": "PASS" if not unique else "FAIL", "mismatches": unique}
 
 
 def _manual_root_check(root: Path) -> dict[str, object]:
@@ -179,11 +188,9 @@ def _manual_root_check(root: Path) -> dict[str, object]:
     return {"status": "PASS", "path": "docs/manual/README.md"}
 
 
-def _coverage_path(root: Path, raw: object, *, role: str) -> str:
-    if not isinstance(raw, str) or not raw:
-        raise ValueError(f"coverage {role} must be a non-empty repository path")
-    if "\\" in raw:
-        raise ValueError(f"unsafe coverage {role}: {raw}")
+def _safe_repo_file(root: Path, raw: object, *, role: str) -> Path:
+    if not isinstance(raw, str) or not raw or "\\" in raw:
+        raise ValueError(f"unsafe {role}: {raw}")
     path = PurePosixPath(raw)
     canonical = path.as_posix()
     if (
@@ -193,11 +200,19 @@ def _coverage_path(root: Path, raw: object, *, role: str) -> str:
         or not path.parts
         or ":" in path.parts[0]
     ):
-        raise ValueError(f"unsafe coverage {role}: {raw}")
+        raise ValueError(f"unsafe {role}: {raw}")
     resolved = root / Path(canonical)
     if not resolved.is_file():
-        raise ValueError(f"coverage {role} missing: {raw}")
-    return canonical
+        raise ValueError(f"{role} missing: {raw}")
+    return resolved
+
+
+def _load_coverage_manifest(root: Path) -> dict[str, Any]:
+    path = root / "docs" / "manual" / "DOCUMENTATION_COVERAGE_V1.json"
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError("coverage manifest must be a JSON object")
+    return value
 
 
 def _coverage_manifest_check(root: Path) -> dict[str, object]:
@@ -205,9 +220,7 @@ def _coverage_manifest_check(root: Path) -> dict[str, object]:
     if not path.is_file():
         return {"status": "FAIL", "reason": "MISSING_COVERAGE_MANIFEST"}
     try:
-        manifest = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(manifest, dict):
-            raise ValueError("coverage manifest must be a JSON object")
+        manifest = _load_coverage_manifest(root)
         if manifest.get("schema") != _COVERAGE_SCHEMA:
             raise ValueError("coverage manifest schema mismatch")
         for name, expected in sorted(_EXPECTED_COVERAGE_IDENTITIES.items()):
@@ -246,8 +259,14 @@ def _coverage_manifest_check(root: Path) -> dict[str, object]:
                 seen.add(identifier)
                 if not isinstance(status, str) or not status:
                     raise ValueError(f"coverage entry status missing: {domain}:{identifier}")
-                _coverage_path(root, row.get("page"), role="page")
-                _coverage_path(root, row.get("authority"), role="authority")
+                try:
+                    _safe_repo_file(root, row.get("page"), role="coverage page")
+                except ValueError as error:
+                    raise ValueError(str(error).replace("unsafe coverage page", "unsafe coverage page")) from error
+                try:
+                    _safe_repo_file(root, row.get("authority"), role="coverage authority")
+                except ValueError as error:
+                    raise ValueError(str(error).replace("unsafe coverage authority", "unsafe coverage authority")) from error
                 entry_count += 1
         return {"status": "PASS", "entry_count": entry_count}
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as error:
@@ -264,23 +283,16 @@ def _normalized_bound_text(value: str) -> str:
 
 
 def _bound_source_path(root: Path, raw: str) -> Path:
-    if "\\" in raw:
-        raise ValueError(f"unsafe bound source path: {raw}")
+    try:
+        resolved = _safe_repo_file(root, raw, role="bound source")
+    except ValueError as error:
+        message = str(error)
+        if message.startswith("unsafe bound source"):
+            raise ValueError(message.replace("unsafe bound source", "unsafe bound source path", 1)) from error
+        raise
     path = PurePosixPath(raw)
-    canonical = path.as_posix()
-    if (
-        path.is_absolute()
-        or canonical != raw
-        or ".." in path.parts
-        or not path.parts
-        or ":" in path.parts[0]
-    ):
-        raise ValueError(f"unsafe bound source path: {raw}")
-    if not canonical.startswith("examples/docs/v31/") or path.suffix != ".tevs":
+    if not path.as_posix().startswith("examples/docs/v31/") or path.suffix != ".tevs":
         raise ValueError(f"bound source outside canonical v31 examples: {raw}")
-    resolved = root / Path(canonical)
-    if not resolved.is_file():
-        raise ValueError(f"bound source missing: {raw}")
     return resolved
 
 
@@ -321,10 +333,8 @@ def _validate_source_bindings_page(root: Path, page: Path) -> int:
             count += 1
             index = end_index
             continue
-
         if _TEVDOC_EXPECT_RE.fullmatch(line) is not None:
             raise ValueError(f"orphan diagnostic expectation: {relative_page}")
-
         fence_match = _FENCE_OPEN_RE.fullmatch(line)
         if fence_match is not None:
             language = fence_match.group(1).strip()
@@ -341,16 +351,13 @@ def _source_bindings_check(root: Path) -> dict[str, object]:
     if not manual_root.is_dir():
         return {"status": "FAIL", "reason": "MISSING_MANUAL_ROOT"}
     try:
-        binding_count = 0
-        for page in sorted(manual_root.rglob("*.md"), key=lambda value: value.as_posix()):
-            binding_count += _validate_source_bindings_page(root, page)
-        return {"status": "PASS", "binding_count": binding_count}
+        count = sum(
+            _validate_source_bindings_page(root, page)
+            for page in sorted(manual_root.rglob("*.md"), key=lambda value: value.as_posix())
+        )
+        return {"status": "PASS", "binding_count": count}
     except (OSError, UnicodeError, ValueError) as error:
-        return {
-            "status": "FAIL",
-            "reason": "INVALID_SOURCE_BINDINGS",
-            "error": str(error),
-        }
+        return {"status": "FAIL", "reason": "INVALID_SOURCE_BINDINGS", "error": str(error)}
 
 
 def _case_path(case_dir: Path, raw: object, *, role: str) -> Path:
@@ -358,13 +365,7 @@ def _case_path(case_dir: Path, raw: object, *, role: str) -> Path:
         raise ValueError(f"unsafe case path for {role}: {raw}")
     path = PurePosixPath(raw)
     canonical = path.as_posix()
-    if (
-        path.is_absolute()
-        or canonical != raw
-        or ".." in path.parts
-        or not path.parts
-        or ":" in path.parts[0]
-    ):
+    if path.is_absolute() or canonical != raw or ".." in path.parts or ":" in path.parts[0]:
         raise ValueError(f"unsafe case path for {role}: {raw}")
     resolved = case_dir / Path(canonical)
     if not resolved.is_file():
@@ -386,10 +387,7 @@ def _case_bindings(case_dir: Path, raw: object, *, role: str) -> dict[str, Path]
 def _case_proofs(case_dir: Path, raw: object) -> list[Path]:
     if not isinstance(raw, list) or any(not isinstance(item, str) for item in raw):
         raise ValueError("case proof_admissions must be a list of paths")
-    return [
-        _case_path(case_dir, item, role="proof_admission")
-        for item in raw
-    ]
+    return [_case_path(case_dir, item, role="proof_admission") for item in raw]
 
 
 def _invoke_current_cli(argv: list[str]) -> tuple[int, str, str]:
@@ -426,8 +424,9 @@ def _execute_case(case_dir: Path, case: dict[str, Any]) -> None:
     if operation not in _CASE_OPERATIONS:
         raise ValueError(f"unsupported case operation: {operation}")
     if case.get("source") != "main.tevs":
-        if isinstance(case.get("source"), str) and ".." in PurePosixPath(str(case["source"])).parts:
-            raise ValueError(f"unsafe case path for source: {case['source']}")
+        raw_source = case.get("source")
+        if isinstance(raw_source, str) and ".." in PurePosixPath(raw_source).parts:
+            raise ValueError(f"unsafe case path for source: {raw_source}")
         raise ValueError("case source must be main.tevs")
 
     source = _case_path(case_dir, case["source"], role="source")
@@ -482,23 +481,18 @@ def _execute_case(case_dir: Path, case: dict[str, Any]) -> None:
             )
 
     if returncode != expected_returncode:
-        raise ValueError(
-            f"case returncode mismatch expected={expected_returncode} observed={returncode}"
-        )
-    selected_stream = stderr if returncode != 0 else stdout
-    payload = _json_output(selected_stream, stream="stderr" if returncode != 0 else "stdout")
+        raise ValueError(f"case returncode mismatch expected={expected_returncode} observed={returncode}")
+    selected = stderr if returncode != 0 else stdout
+    payload = _json_output(selected, stream="stderr" if returncode != 0 else "stdout")
     if payload.get("status") != expected_status:
-        raise ValueError(
-            f"case status mismatch expected={expected_status} observed={payload.get('status')}"
-        )
+        raise ValueError(f"case status mismatch expected={expected_status} observed={payload.get('status')}")
     observed_diagnostic = None
     diagnostic = payload.get("diagnostic")
     if isinstance(diagnostic, dict):
         observed_diagnostic = diagnostic.get("code")
     if observed_diagnostic != expected_diagnostic:
         raise ValueError(
-            "diagnostic mismatch "
-            f"expected={expected_diagnostic} observed={observed_diagnostic}"
+            f"diagnostic mismatch expected={expected_diagnostic} observed={observed_diagnostic}"
         )
 
 
@@ -512,28 +506,97 @@ def _example_cases_check(root: Path) -> dict[str, object]:
         main_dirs = {path.parent for path in examples_root.rglob("main.tevs") if path.is_file()}
         case_dirs = {path.parent for path in examples_root.rglob("case.json") if path.is_file()}
         for case_dir in sorted(main_dirs - case_dirs, key=lambda value: value.as_posix()):
-            raise ValueError(
-                "case.json missing: " + case_dir.relative_to(root).as_posix()
-            )
+            raise ValueError("case.json missing: " + case_dir.relative_to(root).as_posix())
         directories = sorted(main_dirs | case_dirs, key=lambda value: value.as_posix())
         for case_dir in directories:
             case_path = case_dir / "case.json"
             if not case_path.is_file():
-                raise ValueError(
-                    "case.json missing: " + case_dir.relative_to(root).as_posix()
-                )
+                raise ValueError("case.json missing: " + case_dir.relative_to(root).as_posix())
             value = json.loads(case_path.read_text(encoding="utf-8"))
             if not isinstance(value, dict):
-                raise ValueError(
-                    "case.json must be an object: " + case_path.relative_to(root).as_posix()
-                )
+                raise ValueError("case.json must be an object: " + case_path.relative_to(root).as_posix())
             _execute_case(case_dir, value)
         return {"status": "PASS", "case_count": len(directories)}
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as error:
+        return {"status": "FAIL", "reason": "INVALID_EXAMPLE_CASES", "error": str(error)}
+
+
+def _coverage_ids(root: Path, domain: str) -> set[str]:
+    manifest = _load_coverage_manifest(root)
+    domains = manifest.get("domains")
+    if not isinstance(domains, dict):
+        raise ValueError("coverage manifest domains missing")
+    rows = domains.get(domain)
+    if not isinstance(rows, list):
+        raise ValueError(f"coverage domain missing: {domain}")
+    result: set[str] = set()
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("id"), str):
+            raise ValueError(f"invalid coverage row: {domain}")
+        result.add(str(row["id"]))
+    return result
+
+
+def _current_cli_surface(root: Path) -> set[str]:
+    path = root / "tev_script" / "cli.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=path.as_posix())
+    result: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        if node.func.attr == "add_parser" and node.args:
+            value = node.args[0]
+            if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                result.add(f"command:{value.value}")
+        elif node.func.attr == "add_argument":
+            for argument in node.args:
+                if (
+                    isinstance(argument, ast.Constant)
+                    and isinstance(argument.value, str)
+                    and argument.value.startswith("-")
+                ):
+                    result.add(f"option:{argument.value}")
+    return result
+
+
+def _current_python_api(root: Path) -> set[str]:
+    raw = _literal_assignment(root / "tev_script" / "__init__.py", "__all__")
+    if not isinstance(raw, (list, tuple)) or any(not isinstance(item, str) for item in raw):
+        raise ValueError("tev_script.__all__ must be a literal string sequence")
+    if len(set(raw)) != len(raw):
+        raise ValueError("tev_script.__all__ contains duplicate public symbols")
+    return {f"symbol:{item}" for item in raw}
+
+
+def _public_surface_coverage_check(root: Path) -> dict[str, object]:
+    try:
+        required_cli = _current_cli_surface(root)
+        required_python = _current_python_api(root)
+        documented_cli = _coverage_ids(root, "cli_surface")
+        documented_python = _coverage_ids(root, "python_api")
+        missing_cli = sorted(required_cli - documented_cli)
+        extra_cli = sorted(documented_cli - required_cli)
+        missing_python = sorted(required_python - documented_python)
+        extra_python = sorted(documented_python - required_python)
+        status = "PASS" if not (missing_cli or extra_cli or missing_python or extra_python) else "FAIL"
+        return {
+            "status": status,
+            "cli_surface_count": len(required_cli),
+            "python_api_count": len(required_python),
+            "missing_cli_surface": missing_cli,
+            "extra_cli_surface": extra_cli,
+            "missing_python_api": missing_python,
+            "extra_python_api": extra_python,
+        }
+    except (OSError, UnicodeError, SyntaxError, ValueError, json.JSONDecodeError) as error:
         return {
             "status": "FAIL",
-            "reason": "INVALID_EXAMPLE_CASES",
+            "reason": "PUBLIC_SURFACE_INVENTORY_ERROR",
             "error": str(error),
+            "missing_cli_surface": [],
+            "extra_cli_surface": [],
+            "missing_python_api": [],
+            "extra_python_api": [],
         }
 
 
@@ -551,7 +614,7 @@ def validate_documentation(root: Path) -> dict[str, object]:
         "SOURCE_BINDINGS": _source_bindings_check(root),
         "EXAMPLE_CASES": _example_cases_check(root),
         "DIAGNOSTIC_COVERAGE": _closed_later("DIAGNOSTIC_COVERAGE_NOT_CLOSED"),
-        "PUBLIC_SURFACE_COVERAGE": _closed_later("PUBLIC_SURFACE_COVERAGE_NOT_CLOSED"),
+        "PUBLIC_SURFACE_COVERAGE": _public_surface_coverage_check(root),
         "HISTORICAL_CLASSIFICATION": _closed_later("HISTORICAL_CLASSIFICATION_NOT_CLOSED"),
     }
     ordered = {name: checks[name] for name in CHECK_ORDER}
@@ -576,15 +639,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     arguments = build_parser().parse_args(argv)
     receipt = validate_documentation(arguments.root)
-    print(
-        json.dumps(
-            receipt,
-            sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=True,
-            allow_nan=False,
-        )
-    )
+    print(json.dumps(receipt, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False))
     return 0 if receipt["status"] == "PASS" else 1
 
 
