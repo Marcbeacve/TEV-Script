@@ -75,6 +75,7 @@ docs/manual/
     glossary.md
     faq.md
     documentation-policy.md
+    DOCUMENTATION_COVERAGE_V1.json
 ```
 
 Paths use stable English technical names. The primary page content is Spanish.
@@ -382,22 +383,47 @@ examples/docs/v31/
     integrations/
 ```
 
-Complex examples may include child units, JSON effect inputs, proof admission fixtures, scenarios and expected receipts.
-
-### 4.2 No silent example drift
-
-A code block presented as executable must be tied to one canonical example asset.
-
-The implementation plan may choose one of these mechanisms after a small prototype:
-
-1. extract fenced examples and validate them directly;
-2. compare fenced blocks against canonical example files using stable documentation directives.
-
-The acceptance requirement is independent of mechanism:
+Each executable case may contain:
 
 ```text
-DOCUMENTED_EXECUTABLE_EXAMPLE != UNTESTED_TEXT
+main.tevs                 primary source shown by the manual
+<unit>.tevs               optional V4 child sources
+effect-input.json         optional effect input
+proof-admission.json      optional proof admission
+case.json                 execution/validation contract
 ```
+
+`case.json` is the machine-readable documentation-test contract for that example. It records the appropriate operation (`check`, `compile`, `run`, or expected failure), any unit mappings, external inputs, expected status, expected diagnostic code, and bounded runtime parameters.
+
+### 4.2 Exact source binding
+
+Executable code shown in Markdown must be bound to a canonical example file with an immediately preceding directive:
+
+```text
+<!-- tevdoc-source: examples/docs/v31/tutorial/01_exact/main.tevs -->
+```
+
+The next fenced source block must be byte-equivalent to the referenced UTF-8 file after only LF/CRLF normalization and optional removal of one terminal newline. No other normalization is allowed.
+
+For a documented negative example, the source binding is followed by:
+
+```text
+<!-- tevdoc-expect-diagnostic: TEVS_EXACT_CODE -->
+```
+
+The documentation validator must reject:
+
+```text
+missing referenced source
+source/fence drift
+multiple source directives for one fence
+negative example without matching case.json expectation
+unexpected diagnostic
+example that succeeds when failure was documented
+example that fails when success was documented
+```
+
+This makes the source file the single executable copy while keeping the complete code visible in the documentation.
 
 ### 4.3 Positive examples
 
@@ -411,7 +437,7 @@ A negative test passing unexpectedly is a documentation failure.
 
 ## 5. Documentation coverage manifest
 
-Introduce a machine-readable coverage artifact, provisionally:
+The exact machine-readable coverage artifact is:
 
 ```text
 docs/manual/DOCUMENTATION_COVERAGE_V1.json
@@ -438,7 +464,7 @@ The documentation validation gate must fail if a required current surface has no
 
 ## 6. Documentation validator
 
-Add a dedicated local validator, provisionally:
+The exact local validator entry point is:
 
 ```text
 tools/validate_documentation_v31.py
@@ -451,14 +477,16 @@ Responsibilities:
 1. validate internal documentation links and referenced repository paths;
 2. validate version identity statements against current version sources/matrix;
 3. validate coverage-manifest closure;
-4. compile/check executable examples;
-5. execute runnable examples where deterministic and bounded;
-6. assert expected negative diagnostics;
-7. reject current pages that refer to obsolete current-version identities;
-8. ensure historical pages are marked as historical/compatibility material;
-9. report machine-readable PASS/FAIL details.
+4. validate every `tevdoc-source` binding;
+5. load and validate each example `case.json`;
+6. compile/check executable examples;
+7. execute runnable examples where deterministic and bounded;
+8. assert expected negative diagnostics;
+9. reject current pages that refer to obsolete current-version identities;
+10. ensure historical pages are marked as historical/compatibility material;
+11. report machine-readable PASS/FAIL details.
 
-A top-level convenience runner may later expose this through existing platform/documentation validation infrastructure. It must not create a second certification authority.
+The validator is a documentation-quality gate only. A top-level convenience runner may expose it through existing platform validation, but it must not become a second language or certification authority.
 
 ## 7. Error-correction protocol discovered during documentation
 
@@ -526,7 +554,7 @@ immediate published predecessor = 3.1.1
 archived V31 predecessor        = 3.1.0
 ```
 
-This must be implemented only after a focused failing version-identity test is added. The exact files changed will be determined by the implementation plan and current-main evidence at execution time.
+This must be implemented only after a focused failing version-identity test is added. The exact files changed will be determined by current-main evidence during implementation, but every current source of the predecessor identity must converge on the distinction above.
 
 This correction must not alter TEVScript language semantics.
 
@@ -635,7 +663,7 @@ current-main inventory
 version/predecessor defect regression + correction
 documentation root/navigation
 documentation coverage schema/manifest
-validator skeleton
+documentation validator foundation
 current-version page
 glossary foundation
 ```
