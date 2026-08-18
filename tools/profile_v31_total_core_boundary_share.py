@@ -2,8 +2,14 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
+import sys
 import time
 from unittest.mock import patch
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import tev_script.runtime_v5_total_optimized as optimized_runtime
 from tev_script.runtime_v5_total import initial_total_core_checkpoint
