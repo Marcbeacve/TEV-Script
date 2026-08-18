@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 import random
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from tev_script.canonical import canonical_hash
 from tev_script.diagnostics import TevScriptError
