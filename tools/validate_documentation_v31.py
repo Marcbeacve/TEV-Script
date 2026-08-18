@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import argparse
 import ast
+from contextlib import redirect_stderr, redirect_stdout
+import io
 import json
 from pathlib import Path, PurePosixPath
 import re
+import tempfile
 from typing import Any
 
 
@@ -54,6 +57,24 @@ _EXPECTED_COVERAGE_IDENTITIES = {
 _TEVDOC_SOURCE_RE = re.compile(r"^<!-- tevdoc-source: ([^\s]+) -->$")
 _TEVDOC_EXPECT_RE = re.compile(r"^<!-- tevdoc-expect-diagnostic: ([A-Z0-9_]+) -->$")
 _FENCE_OPEN_RE = re.compile(r"^```([^`]*)$")
+_CASE_SCHEMA = "TEV_SCRIPT_DOCUMENTATION_CASE_V1"
+_CASE_FIELDS = frozenset(
+    {
+        "schema",
+        "operation",
+        "source",
+        "units",
+        "effect_inputs",
+        "proof_admissions",
+        "epochs",
+        "expected_returncode",
+        "expected_status",
+        "expected_diagnostic_code",
+    }
+)
+_CASE_OPERATIONS = frozenset({"check", "compile", "run"})
+_CASE_BINDING_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.:/-]*$")
+_MAX_DOCUMENTATION_EPOCHS = 64
 
 
 def _string_assignments(path: Path) -> dict[str, str]:
@@ -332,6 +353,190 @@ def _source_bindings_check(root: Path) -> dict[str, object]:
         }
 
 
+def _case_path(case_dir: Path, raw: object, *, role: str) -> Path:
+    if not isinstance(raw, str) or not raw or "\\" in raw:
+        raise ValueError(f"unsafe case path for {role}: {raw}")
+    path = PurePosixPath(raw)
+    canonical = path.as_posix()
+    if (
+        path.is_absolute()
+        or canonical != raw
+        or ".." in path.parts
+        or not path.parts
+        or ":" in path.parts[0]
+    ):
+        raise ValueError(f"unsafe case path for {role}: {raw}")
+    resolved = case_dir / Path(canonical)
+    if not resolved.is_file():
+        raise ValueError(f"case path missing for {role}: {raw}")
+    return resolved
+
+
+def _case_bindings(case_dir: Path, raw: object, *, role: str) -> dict[str, Path]:
+    if not isinstance(raw, dict):
+        raise ValueError(f"case {role} must be an object")
+    result: dict[str, Path] = {}
+    for name in sorted(raw):
+        if not isinstance(name, str) or _CASE_BINDING_NAME_RE.fullmatch(name) is None:
+            raise ValueError(f"invalid case binding name for {role}: {name}")
+        result[name] = _case_path(case_dir, raw[name], role=f"{role}:{name}")
+    return result
+
+
+def _case_proofs(case_dir: Path, raw: object) -> list[Path]:
+    if not isinstance(raw, list) or any(not isinstance(item, str) for item in raw):
+        raise ValueError("case proof_admissions must be a list of paths")
+    return [
+        _case_path(case_dir, item, role="proof_admission")
+        for item in raw
+    ]
+
+
+def _invoke_current_cli(argv: list[str]) -> tuple[int, str, str]:
+    from tev_script import cli as current_cli
+
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    with redirect_stdout(stdout), redirect_stderr(stderr):
+        try:
+            returncode = current_cli.main(argv)
+        except SystemExit as error:
+            returncode = int(error.code)
+    return int(returncode), stdout.getvalue(), stderr.getvalue()
+
+
+def _json_output(raw: str, *, stream: str) -> dict[str, Any]:
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"case {stream} is not one JSON value") from error
+    if not isinstance(value, dict):
+        raise ValueError(f"case {stream} JSON must be an object")
+    return value
+
+
+def _execute_case(case_dir: Path, case: dict[str, Any]) -> None:
+    if set(case) != _CASE_FIELDS:
+        missing = sorted(_CASE_FIELDS - set(case))
+        extra = sorted(set(case) - _CASE_FIELDS)
+        raise ValueError(f"case field set mismatch missing={missing} extra={extra}")
+    if case.get("schema") != _CASE_SCHEMA:
+        raise ValueError("case schema mismatch")
+    operation = case.get("operation")
+    if operation not in _CASE_OPERATIONS:
+        raise ValueError(f"unsupported case operation: {operation}")
+    if case.get("source") != "main.tevs":
+        if isinstance(case.get("source"), str) and ".." in PurePosixPath(str(case["source"])).parts:
+            raise ValueError(f"unsafe case path for source: {case['source']}")
+        raise ValueError("case source must be main.tevs")
+
+    source = _case_path(case_dir, case["source"], role="source")
+    units = _case_bindings(case_dir, case["units"], role="units")
+    effects = _case_bindings(case_dir, case["effect_inputs"], role="effect_inputs")
+    proofs = _case_proofs(case_dir, case["proof_admissions"])
+
+    epochs = case.get("epochs")
+    if isinstance(epochs, bool) or not isinstance(epochs, int) or not 1 <= epochs <= _MAX_DOCUMENTATION_EPOCHS:
+        raise ValueError(f"case epochs must be in 1..{_MAX_DOCUMENTATION_EPOCHS}")
+    expected_returncode = case.get("expected_returncode")
+    if isinstance(expected_returncode, bool) or not isinstance(expected_returncode, int):
+        raise ValueError("case expected_returncode must be an integer")
+    expected_status = case.get("expected_status")
+    if not isinstance(expected_status, str) or not expected_status:
+        raise ValueError("case expected_status must be non-empty text")
+    expected_diagnostic = case.get("expected_diagnostic_code")
+    if expected_diagnostic is not None and (
+        not isinstance(expected_diagnostic, str)
+        or re.fullmatch(r"[A-Z0-9_]+", expected_diagnostic) is None
+    ):
+        raise ValueError("case expected_diagnostic_code must be null or a diagnostic code")
+
+    def project_argv(command: str) -> list[str]:
+        argv = [command, str(source)]
+        for name, path in units.items():
+            argv.extend(("--unit", f"{name}={path}"))
+        for name, path in effects.items():
+            argv.extend(("--effect-input", f"{name}={path}"))
+        for path in proofs:
+            argv.extend(("--proof-admission", str(path)))
+        return argv
+
+    with tempfile.TemporaryDirectory(prefix="tevdoc-v31-") as temporary:
+        temp_root = Path(temporary)
+        if operation == "check":
+            returncode, stdout, stderr = _invoke_current_cli(project_argv("check"))
+        elif operation == "compile":
+            artifact = temp_root / "program.json"
+            returncode, stdout, stderr = _invoke_current_cli(
+                project_argv("compile") + ["--output", str(artifact)]
+            )
+        else:
+            artifact = temp_root / "program.json"
+            compile_code, _compile_stdout, compile_stderr = _invoke_current_cli(
+                project_argv("compile") + ["--output", str(artifact)]
+            )
+            if compile_code != 0:
+                raise ValueError(f"run case precompile failed: {compile_stderr.strip()}")
+            returncode, stdout, stderr = _invoke_current_cli(
+                ["run", str(artifact), "--epochs", str(epochs)]
+            )
+
+    if returncode != expected_returncode:
+        raise ValueError(
+            f"case returncode mismatch expected={expected_returncode} observed={returncode}"
+        )
+    selected_stream = stderr if returncode != 0 else stdout
+    payload = _json_output(selected_stream, stream="stderr" if returncode != 0 else "stdout")
+    if payload.get("status") != expected_status:
+        raise ValueError(
+            f"case status mismatch expected={expected_status} observed={payload.get('status')}"
+        )
+    observed_diagnostic = None
+    diagnostic = payload.get("diagnostic")
+    if isinstance(diagnostic, dict):
+        observed_diagnostic = diagnostic.get("code")
+    if observed_diagnostic != expected_diagnostic:
+        raise ValueError(
+            "diagnostic mismatch "
+            f"expected={expected_diagnostic} observed={observed_diagnostic}"
+        )
+
+
+def _example_cases_check(root: Path) -> dict[str, object]:
+    examples_root = root / "examples" / "docs" / "v31"
+    if not examples_root.exists():
+        return {"status": "PASS", "case_count": 0}
+    if not examples_root.is_dir():
+        return {"status": "FAIL", "reason": "INVALID_EXAMPLE_CASES", "error": "examples/docs/v31 is not a directory"}
+    try:
+        main_dirs = {path.parent for path in examples_root.rglob("main.tevs") if path.is_file()}
+        case_dirs = {path.parent for path in examples_root.rglob("case.json") if path.is_file()}
+        for case_dir in sorted(main_dirs - case_dirs, key=lambda value: value.as_posix()):
+            raise ValueError(
+                "case.json missing: " + case_dir.relative_to(root).as_posix()
+            )
+        directories = sorted(main_dirs | case_dirs, key=lambda value: value.as_posix())
+        for case_dir in directories:
+            case_path = case_dir / "case.json"
+            if not case_path.is_file():
+                raise ValueError(
+                    "case.json missing: " + case_dir.relative_to(root).as_posix()
+                )
+            value = json.loads(case_path.read_text(encoding="utf-8"))
+            if not isinstance(value, dict):
+                raise ValueError(
+                    "case.json must be an object: " + case_path.relative_to(root).as_posix()
+                )
+            _execute_case(case_dir, value)
+        return {"status": "PASS", "case_count": len(directories)}
+    except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as error:
+        return {
+            "status": "FAIL",
+            "reason": "INVALID_EXAMPLE_CASES",
+            "error": str(error),
+        }
+
+
 def _closed_later(reason: str) -> dict[str, object]:
     return {"status": "FAIL", "reason": reason}
 
@@ -344,7 +549,7 @@ def validate_documentation(root: Path) -> dict[str, object]:
         "COVERAGE_MANIFEST": _coverage_manifest_check(root),
         "INTERNAL_PATHS": _closed_later("INTERNAL_PATH_VALIDATION_NOT_CLOSED"),
         "SOURCE_BINDINGS": _source_bindings_check(root),
-        "EXAMPLE_CASES": _closed_later("EXAMPLE_CASE_VALIDATION_NOT_CLOSED"),
+        "EXAMPLE_CASES": _example_cases_check(root),
         "DIAGNOSTIC_COVERAGE": _closed_later("DIAGNOSTIC_COVERAGE_NOT_CLOSED"),
         "PUBLIC_SURFACE_COVERAGE": _closed_later("PUBLIC_SURFACE_COVERAGE_NOT_CLOSED"),
         "HISTORICAL_CLASSIFICATION": _closed_later("HISTORICAL_CLASSIFICATION_NOT_CLOSED"),
