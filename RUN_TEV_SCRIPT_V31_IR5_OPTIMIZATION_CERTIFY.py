@@ -10,6 +10,8 @@ from typing import Sequence
 
 
 ROOT = Path(__file__).resolve().parent
+BASE_COMMIT = "a0c3951a03403f871ff4a192f75f2c29437f5fdb"
+EXPECTED_BRANCH = "agent/tevscript-v31-ir5-execution-plan-v1"
 
 
 def _canonical_json(value: object) -> str:
@@ -38,6 +40,48 @@ def _git(*arguments: str) -> str | None:
     if completed.returncode != 0:
         return None
     return completed.stdout.strip()
+
+
+def _is_git_sha(value: object) -> bool:
+    return bool(
+        isinstance(value, str)
+        and len(value) == 40
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
+def _source_identity_gate() -> dict[str, object]:
+    head = _git("rev-parse", "HEAD")
+    tree = _git("rev-parse", "HEAD^{tree}")
+    branch = _git("branch", "--show-current")
+    local_main = _git("rev-parse", "main")
+    merge_base = _git("merge-base", "HEAD", "main")
+    status_porcelain = _git(
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=all",
+    )
+
+    checks = {
+        "head_is_git_sha": _is_git_sha(head),
+        "tree_is_git_sha": _is_git_sha(tree),
+        "expected_branch": branch == EXPECTED_BRANCH,
+        "local_main_is_certified_base": local_main == BASE_COMMIT,
+        "merge_base_is_certified_base": merge_base == BASE_COMMIT,
+        "worktree_clean": status_porcelain == "",
+    }
+    return {
+        "name": "SOURCE_IDENTITY",
+        "status": "PASS" if all(checks.values()) else "FAIL",
+        "checks": checks,
+        "source_commit": head,
+        "source_tree": tree,
+        "branch": branch,
+        "local_main": local_main,
+        "merge_base": merge_base,
+        "expected_base": BASE_COMMIT,
+        "worktree_clean": status_porcelain == "",
+    }
 
 
 def _run(name: str, command: Sequence[str]) -> dict[str, object]:
@@ -117,6 +161,23 @@ def _run_performance() -> dict[str, object]:
 
 
 def certify() -> dict[str, object]:
+    source_gate = _source_identity_gate()
+    if source_gate["status"] != "PASS":
+        gates = {"SOURCE_IDENTITY": source_gate}
+        body = {
+            "schema": "TEV_SCRIPT_V31_IR5_OPTIMIZATION_CERTIFY_RECEIPT_V1",
+            "status": "FAIL",
+            "final_10_10": "FAIL",
+            "failed_gates": ["SOURCE_IDENTITY"],
+            "hold_gates": [],
+            "phase_b_required": False,
+            "gates": gates,
+            "source_commit": source_gate.get("source_commit"),
+            "source_tree": source_gate.get("source_tree"),
+            "worktree_clean": source_gate.get("worktree_clean") is True,
+        }
+        return _receipt(body)
+
     commands = (
         (
             "STATIC_COMPILE",
@@ -185,12 +246,17 @@ def certify() -> dict[str, object]:
         ),
     )
 
-    gates = {name: _run(name, command) for name, command in commands}
+    gates = {"SOURCE_IDENTITY": source_gate}
+    gates.update({name: _run(name, command) for name, command in commands})
     gates["PERFORMANCE"] = _run_performance()
     gates["PLATFORM_COMPLETION"] = _run(
         "PLATFORM_COMPLETION",
         (sys.executable, "RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py"),
     )
+
+    # Source identity must remain stable and clean after every gate too.
+    source_after = _source_identity_gate()
+    gates["SOURCE_IDENTITY_AFTER"] = source_after
 
     failures = sorted(
         name for name, gate in gates.items() if gate.get("status") == "FAIL"
@@ -209,9 +275,9 @@ def certify() -> dict[str, object]:
         "hold_gates": holds,
         "phase_b_required": bool(performance.get("phase_b_required")),
         "gates": gates,
-        "source_commit": _git("rev-parse", "HEAD"),
-        "source_tree": _git("rev-parse", "HEAD^{tree}"),
-        "worktree_clean": _git("status", "--porcelain=v1", "--untracked-files=all") == "",
+        "source_commit": source_after.get("source_commit"),
+        "source_tree": source_after.get("source_tree"),
+        "worktree_clean": source_after.get("worktree_clean") is True,
     }
     return _receipt(body)
 
