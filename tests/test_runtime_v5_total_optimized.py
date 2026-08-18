@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import unittest
 
+from tev_script.diagnostics import TevScriptError
 from tev_script.omega_semantic_basis_v1 import (
     field_fact,
     field_transformation,
@@ -181,6 +183,23 @@ class RuntimeV5TotalOptimizedPlanTests(unittest.TestCase):
         self.assertEqual(prepared.steps_used, 3)
         self.assertEqual(prepared.pc, 0)
 
+    def test_jump_resume_chain_is_exactly_reference_equivalent(self) -> None:
+        program = _jump_program()
+        plan = prepare_total_core_execution_plan(program)
+        checkpoint = initial_total_core_checkpoint(program)
+
+        reference_first = run_total_core_quantum(program, checkpoint)
+        prepared_first = run_prepared_total_core_quantum(plan, checkpoint)
+        self.assertEqual(prepared_first, reference_first)
+
+        reference_second = run_total_core_quantum(program, reference_first.next_checkpoint)
+        prepared_second = run_prepared_total_core_quantum(plan, prepared_first.next_checkpoint)
+        self.assertEqual(prepared_second, reference_second)
+        self.assertEqual(
+            prepared_second.continuation.previous_continuation_hash,
+            prepared_first.continuation.continuation_hash,
+        )
+
     def test_branch_present_is_exactly_reference_equivalent_at_100_facts(self) -> None:
         prepared = self.assert_reference_equivalent(_branch_program(fact_count=100, present=True))
         self.assertEqual(_fact_hash_index(prepared.field), {fact.fact_hash for fact in prepared.field.facts})
@@ -220,6 +239,36 @@ class RuntimeV5TotalOptimizedPlanTests(unittest.TestCase):
     def test_invoke_v4_effects_is_exactly_reference_equivalent(self) -> None:
         unit = RuntimeV5TotalCoreTests().effects_unit()
         self.assert_reference_equivalent(_base_program(unit))
+
+    def test_stale_plan_hash_is_rejected_before_execution(self) -> None:
+        program = _halt_program()
+        plan = replace(
+            prepare_total_core_execution_plan(program),
+            program_hash="f" * 64,
+        )
+        with self.assertRaises(TevScriptError) as captured:
+            run_prepared_total_core_quantum(
+                plan,
+                initial_total_core_checkpoint(program),
+            )
+        self.assertEqual(
+            captured.exception.diagnostic.code,
+            "TEVS_V31_OPT_PLAN_IDENTITY",
+        )
+
+    def test_halted_checkpoint_cannot_be_resumed(self) -> None:
+        program = _halt_program()
+        plan = prepare_total_core_execution_plan(program)
+        first = run_prepared_total_core_quantum(
+            plan,
+            initial_total_core_checkpoint(program),
+        )
+        with self.assertRaises(TevScriptError) as captured:
+            run_prepared_total_core_quantum(plan, first.next_checkpoint)
+        self.assertEqual(
+            captured.exception.diagnostic.code,
+            "TEVS_V31_RUNTIME_HALTED",
+        )
 
 
 if __name__ == "__main__":
