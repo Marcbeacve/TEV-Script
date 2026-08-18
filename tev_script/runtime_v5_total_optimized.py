@@ -40,6 +40,7 @@ _OP_BRANCH_FACT = 2
 _OP_JUMP = 3
 _OP_HALT = 4
 _OP_INVOKE_V4 = 5
+_PLAN_CONSTRUCTION_TOKEN = object()
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,7 +62,7 @@ class PreparedProofApplyV1:
     execution_local_transformation: FieldTransformationV1
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, init=False)
 class TotalCoreExecutionPlanV1:
     """Derived, disposable execution data for one canonical Total-Core program.
 
@@ -69,6 +70,11 @@ class TotalCoreExecutionPlanV1:
     from that already-validated object and exists only to remove repeated
     lookup/decoding work from execution. The plan has intentionally no schema,
     canonical hash, signature, or wire representation.
+
+    Construction is deliberately sealed behind
+    :func:`prepare_total_core_execution_plan`. This prevents normal dataclass
+    rewriting from replacing prepared instructions or lookup tables after the
+    canonical program has been validated.
     """
 
     program: TotalCoreProgramV1
@@ -81,6 +87,41 @@ class TotalCoreExecutionPlanV1:
     units_by_hash: Mapping[str, TotalCoreUnitV1]
     proof_admissions_by_requirement: Mapping[str, VerifiedProofAdmissionV1]
     prepared_proof_applies: Mapping[str, PreparedProofApplyV1]
+
+    def __init__(
+        self,
+        *,
+        _token: object,
+        program: TotalCoreProgramV1,
+        program_hash: str,
+        authority_hash: str,
+        entry_pc: int,
+        quantum_step_limit: int,
+        instructions: tuple[PreparedTotalCoreInstructionV1, ...],
+        transformations_by_hash: Mapping[str, FieldTransformationV1],
+        units_by_hash: Mapping[str, TotalCoreUnitV1],
+        proof_admissions_by_requirement: Mapping[str, VerifiedProofAdmissionV1],
+        prepared_proof_applies: Mapping[str, PreparedProofApplyV1],
+    ) -> None:
+        if _token is not _PLAN_CONSTRUCTION_TOKEN:
+            raise TypeError(
+                "TotalCoreExecutionPlanV1 must be created by "
+                "prepare_total_core_execution_plan()"
+            )
+        object.__setattr__(self, "program", program)
+        object.__setattr__(self, "program_hash", program_hash)
+        object.__setattr__(self, "authority_hash", authority_hash)
+        object.__setattr__(self, "entry_pc", entry_pc)
+        object.__setattr__(self, "quantum_step_limit", quantum_step_limit)
+        object.__setattr__(self, "instructions", instructions)
+        object.__setattr__(self, "transformations_by_hash", transformations_by_hash)
+        object.__setattr__(self, "units_by_hash", units_by_hash)
+        object.__setattr__(
+            self,
+            "proof_admissions_by_requirement",
+            proof_admissions_by_requirement,
+        )
+        object.__setattr__(self, "prepared_proof_applies", prepared_proof_applies)
 
 
 def _fail(code: str, message: str) -> None:
@@ -235,6 +276,7 @@ def prepare_total_core_execution_plan(
     )
 
     return TotalCoreExecutionPlanV1(
+        _token=_PLAN_CONSTRUCTION_TOKEN,
         program=program,
         program_hash=program.program_hash,
         authority_hash=program.authority_hash,
