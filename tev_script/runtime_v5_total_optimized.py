@@ -8,7 +8,11 @@ from .canonical import canonical_hash
 from .diagnostics import TevScriptError
 from .ir_v4_pure import TaskScopeExecutionStrategyV4
 from .omega_kernel_v1 import continuation_receipt, epoch_identity
-from .omega_semantic_basis_v1 import FieldTransformationV1, field_transformation
+from .omega_semantic_basis_v1 import (
+    FieldTransformationV1,
+    SemanticFieldV1,
+    field_transformation,
+)
 from .program_ir_v5_total import (
     TotalCoreProgramV1,
     TotalCoreUnitV1,
@@ -77,6 +81,12 @@ class TotalCoreExecutionPlanV1:
 
 def _fail(code: str, message: str) -> None:
     raise TevScriptError(code, message)
+
+
+def _fact_hash_index(field: SemanticFieldV1) -> set[str]:
+    """Return runtime-only membership data; never a canonical field view."""
+
+    return {fact.fact_hash for fact in field.facts}
 
 
 def _prepare_proof_apply(
@@ -263,9 +273,8 @@ def run_prepared_total_core_quantum(
 ) -> TotalCoreQuantumResultV1:
     """Execute one quantum from a prepared plan.
 
-    Phase A currently handles prepared control flow. Canonical checkpoint and
-    result/evidence validation remain delegated to the reference runtime
-    boundary constructors.
+    Phase A keeps canonical checkpoint/result evidence constructors while the
+    instruction path uses predecoded opcodes and runtime-only indexes.
     """
 
     del task_strategy  # Used when prepared invoke_v4 support is enabled.
@@ -297,6 +306,7 @@ def run_prepared_total_core_quantum(
     )
 
     field = checkpoint.field
+    fact_hashes = _fact_hash_index(field)
     pc = checkpoint.pc
     steps_used = 0
     status = "SUSPENDED"
@@ -304,6 +314,23 @@ def run_prepared_total_core_quantum(
     while steps_used < plan.quantum_step_limit:
         instruction = plan.instructions[pc]
         steps_used += 1
+
+        if instruction.opcode == _OP_BRANCH_FACT:
+            if (
+                instruction.fact_hash is None
+                or instruction.present_pc is None
+                or instruction.absent_pc is None
+            ):
+                _fail(
+                    "TEVS_V31_OPT_PLAN_BRANCH",
+                    "prepared branch_fact has incomplete operands",
+                )
+            pc = (
+                instruction.present_pc
+                if instruction.fact_hash in fact_hashes
+                else instruction.absent_pc
+            )
+            continue
 
         if instruction.opcode == _OP_JUMP:
             if instruction.target_pc is None:
