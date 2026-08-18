@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 from typing import Any
 
@@ -32,6 +32,24 @@ _EXPECTED_SPEC_IDENTITIES = {
     "language_version": "3.1.0",
     "current_profile": "total_core",
     "published_predecessor_package": "3.1.1",
+}
+_COVERAGE_SCHEMA = "TEV_SCRIPT_DOCUMENTATION_COVERAGE_V1"
+_REQUIRED_COVERAGE_DOMAINS = frozenset(
+    {
+        "language_constructs",
+        "cli_surface",
+        "python_api",
+        "source_profiles",
+        "ir_runtime_profiles",
+        "diagnostics",
+        "integrations",
+        "version_domains",
+    }
+)
+_EXPECTED_COVERAGE_IDENTITIES = {
+    "package_version": "3.1.2",
+    "language_version": "3.1.0",
+    "profile": "total_core",
 }
 
 
@@ -137,11 +155,83 @@ def _manual_root_check(root: Path) -> dict[str, object]:
     return {"status": "PASS", "path": "docs/manual/README.md"}
 
 
+def _coverage_path(root: Path, raw: object, *, role: str) -> str:
+    if not isinstance(raw, str) or not raw:
+        raise ValueError(f"coverage {role} must be a non-empty repository path")
+    if "\\" in raw:
+        raise ValueError(f"unsafe coverage {role}: {raw}")
+    path = PurePosixPath(raw)
+    canonical = path.as_posix()
+    if (
+        path.is_absolute()
+        or canonical != raw
+        or ".." in path.parts
+        or not path.parts
+        or ":" in path.parts[0]
+    ):
+        raise ValueError(f"unsafe coverage {role}: {raw}")
+    resolved = root / Path(canonical)
+    if not resolved.is_file():
+        raise ValueError(f"coverage {role} missing: {raw}")
+    return canonical
+
+
 def _coverage_manifest_check(root: Path) -> dict[str, object]:
     path = root / "docs" / "manual" / "DOCUMENTATION_COVERAGE_V1.json"
     if not path.is_file():
         return {"status": "FAIL", "reason": "MISSING_COVERAGE_MANIFEST"}
-    return {"status": "FAIL", "reason": "COVERAGE_VALIDATION_NOT_CLOSED"}
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(manifest, dict):
+            raise ValueError("coverage manifest must be a JSON object")
+        if manifest.get("schema") != _COVERAGE_SCHEMA:
+            raise ValueError("coverage manifest schema mismatch")
+        for name, expected in sorted(_EXPECTED_COVERAGE_IDENTITIES.items()):
+            if manifest.get(name) != expected:
+                raise ValueError(f"coverage identity mismatch: {name}")
+        phase = manifest.get("phase")
+        if not isinstance(phase, str) or not phase:
+            raise ValueError("coverage manifest phase must be non-empty text")
+
+        domains = manifest.get("domains")
+        if not isinstance(domains, dict):
+            raise ValueError("coverage manifest domains missing")
+        observed_domains = set(domains)
+        missing = sorted(_REQUIRED_COVERAGE_DOMAINS - observed_domains)
+        if missing:
+            raise ValueError("missing coverage domains: " + ",".join(missing))
+        extra = sorted(observed_domains - _REQUIRED_COVERAGE_DOMAINS)
+        if extra:
+            raise ValueError("unexpected coverage domains: " + ",".join(extra))
+
+        entry_count = 0
+        for domain in sorted(_REQUIRED_COVERAGE_DOMAINS):
+            rows = domains[domain]
+            if not isinstance(rows, list):
+                raise ValueError(f"coverage domain must be a list: {domain}")
+            seen: set[str] = set()
+            for row in rows:
+                if not isinstance(row, dict):
+                    raise ValueError(f"coverage entry must be an object: {domain}")
+                identifier = row.get("id")
+                status = row.get("status")
+                if not isinstance(identifier, str) or not identifier:
+                    raise ValueError(f"coverage entry id missing: {domain}")
+                if identifier in seen:
+                    raise ValueError(f"duplicate coverage id: {domain}:{identifier}")
+                seen.add(identifier)
+                if not isinstance(status, str) or not status:
+                    raise ValueError(f"coverage entry status missing: {domain}:{identifier}")
+                _coverage_path(root, row.get("page"), role="page")
+                _coverage_path(root, row.get("authority"), role="authority")
+                entry_count += 1
+        return {"status": "PASS", "entry_count": entry_count}
+    except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as error:
+        return {
+            "status": "FAIL",
+            "reason": "INVALID_COVERAGE_MANIFEST",
+            "error": str(error),
+        }
 
 
 def _closed_later(reason: str) -> dict[str, object]:
