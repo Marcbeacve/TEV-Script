@@ -3,224 +3,132 @@
   "package_version": "3.1.2",
   "language_version": "3.1.0",
   "profile": "total_core",
-  "phase": "B_CLI_CURRENT_SURFACE_DOCUMENTED",
+  "phase": "E_PUBLIC_PYTHON_API_DOCUMENTED",
   "domains": {
     "language_constructs": [
-      {
-        "id": "process",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/first-program.md",
-        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
-      },
-      {
-        "id": "authority",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/first-program.md",
-        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
-      },
-      {
-        "id": "quantum_steps",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/first-program.md",
-        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
-      },
-      {
-        "id": "field",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/first-program.md",
-        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
-      },
-      {
-        "id": "label",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/first-program.md",
-        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
-      },
-      {
-        "id": "entry",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/first-program.md",
-        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
-      },
-      {
-        "id": "halt",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/first-program.md",
-        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
-      },
-      {
-        "id": "unit",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/getting-started/project-layout.md",
-        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
-      }
+      {"id":"process","status":"DOCUMENTED","page":"docs/manual/getting-started/first-program.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"authority","status":"DOCUMENTED","page":"docs/manual/getting-started/first-program.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"quantum_steps","status":"DOCUMENTED","page":"docs/manual/getting-started/first-program.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"field","status":"DOCUMENTED","page":"docs/manual/getting-started/first-program.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"label","status":"DOCUMENTED","page":"docs/manual/getting-started/first-program.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"entry","status":"DOCUMENTED","page":"docs/manual/getting-started/first-program.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"halt","status":"DOCUMENTED","page":"docs/manual/getting-started/first-program.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"unit","status":"DOCUMENTED","page":"docs/manual/getting-started/project-layout.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"}
     ],
     "cli_surface": [
-      {
-        "id": "option:--version",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/version.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "command:describe",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/describe.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "command:descriptor",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/descriptor.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "command:check",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/check.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "command:compile",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/compile.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "command:run",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/run.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "command:conformance",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/conformance.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "command:platform-check",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/platform-check.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "option:--unit",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/check.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "option:--effect-input",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/check.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "option:--proof-admission",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/check.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "option:--output",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/compile.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "option:-o",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/compile.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "option:--checkpoint-output",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/run.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "option:--epochs",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/run.md",
-        "authority": "tev_script/cli.py"
-      },
-      {
-        "id": "option:--root",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/cli-reference/conformance.md",
-        "authority": "tev_script/cli.py"
-      }
+      {"id":"option:--version","status":"DOCUMENTED","page":"docs/manual/cli-reference/version.md","authority":"tev_script/cli.py"},
+      {"id":"command:describe","status":"DOCUMENTED","page":"docs/manual/cli-reference/describe.md","authority":"tev_script/cli.py"},
+      {"id":"command:descriptor","status":"DOCUMENTED","page":"docs/manual/cli-reference/descriptor.md","authority":"tev_script/cli.py"},
+      {"id":"command:check","status":"DOCUMENTED","page":"docs/manual/cli-reference/check.md","authority":"tev_script/cli.py"},
+      {"id":"command:compile","status":"DOCUMENTED","page":"docs/manual/cli-reference/compile.md","authority":"tev_script/cli.py"},
+      {"id":"command:run","status":"DOCUMENTED","page":"docs/manual/cli-reference/run.md","authority":"tev_script/cli.py"},
+      {"id":"command:conformance","status":"DOCUMENTED","page":"docs/manual/cli-reference/conformance.md","authority":"tev_script/cli.py"},
+      {"id":"command:platform-check","status":"DOCUMENTED","page":"docs/manual/cli-reference/platform-check.md","authority":"tev_script/cli.py"},
+      {"id":"option:--unit","status":"DOCUMENTED","page":"docs/manual/cli-reference/check.md","authority":"tev_script/cli.py"},
+      {"id":"option:--effect-input","status":"DOCUMENTED","page":"docs/manual/cli-reference/check.md","authority":"tev_script/cli.py"},
+      {"id":"option:--proof-admission","status":"DOCUMENTED","page":"docs/manual/cli-reference/check.md","authority":"tev_script/cli.py"},
+      {"id":"option:--output","status":"DOCUMENTED","page":"docs/manual/cli-reference/compile.md","authority":"tev_script/cli.py"},
+      {"id":"option:-o","status":"DOCUMENTED","page":"docs/manual/cli-reference/compile.md","authority":"tev_script/cli.py"},
+      {"id":"option:--checkpoint-output","status":"DOCUMENTED","page":"docs/manual/cli-reference/run.md","authority":"tev_script/cli.py"},
+      {"id":"option:--epochs","status":"DOCUMENTED","page":"docs/manual/cli-reference/run.md","authority":"tev_script/cli.py"},
+      {"id":"option:--root","status":"DOCUMENTED","page":"docs/manual/cli-reference/conformance.md","authority":"tev_script/cli.py"}
     ],
-    "python_api": [],
+    "python_api": [
+      {"id":"symbol:__version__","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/package-metadata.md","authority":"tev_script/__init__.py"},
+      {"id":"symbol:CompilationBundle","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/compiler.py"},
+      {"id":"symbol:compile_bytes","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/compiler.py"},
+      {"id":"symbol:compile_declaration","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/compiler.py"},
+      {"id":"symbol:compile_path","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/compiler.py"},
+      {"id":"symbol:Diagnostic","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/diagnostics.py"},
+      {"id":"symbol:SourceSpan","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/diagnostics.py"},
+      {"id":"symbol:TevScriptError","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/diagnostics.py"},
+      {"id":"symbol:EmittedEvent","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/runtime.py"},
+      {"id":"symbol:ScriptRuntime","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/runtime.py"},
+      {"id":"symbol:IR_SCHEMA","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/contracts.py"},
+      {"id":"symbol:LANGUAGE_VERSION","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/contracts.py"},
+      {"id":"symbol:run_conformance","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/conformance.py"},
+      {"id":"symbol:decode_typed_value","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/values.py"},
+      {"id":"symbol:encode_typed_value","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/values.py"},
+      {"id":"symbol:load_capability_catalog","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/capability_catalog.py"},
+      {"id":"symbol:parse_capability_catalog","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v02-compatibility.md","authority":"tev_script/capability_catalog.py"},
+      {"id":"symbol:V1AnalysisBundle","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:V1AutoCompilationBundle","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:V1IrV2CompilationBundle","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:V1IrV3CompilationBundle","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:analyze_v1_mapping","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:analyze_v1_paths","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:analyze_v1_sources","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:compile_v1_mapping_auto","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:compile_v1_mapping_to_ir_v2","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:compile_v1_mapping_to_ir_v3","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:compile_v1_paths_auto","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:compile_v1_paths_to_ir_v2","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:compile_v1_paths_to_ir_v3","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:compile_v1_sources_auto","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:compile_v1_sources_to_ir_v2","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:compile_v1_sources_to_ir_v3","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-compiler.md","authority":"tev_script/pipeline_v1.py"},
+      {"id":"symbol:ProjectManifestV1","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-project.md","authority":"tev_script/project_v1.py"},
+      {"id":"symbol:ProjectSourceV1","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-project.md","authority":"tev_script/project_v1.py"},
+      {"id":"symbol:load_v1_project","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-project.md","authority":"tev_script/project_v1.py"},
+      {"id":"symbol:verify_v1_project_inputs","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/v1-project.md","authority":"tev_script/project_v1.py"},
+      {"id":"symbol:LoweringReceiptBundleV1","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/lowering-receipts.md","authority":"tev_script/lowering_receipt_v1.py"},
+      {"id":"symbol:build_ir_v2_lowering_receipt","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/lowering-receipts.md","authority":"tev_script/lowering_receipt_v1.py"},
+      {"id":"symbol:verify_ir_v2_lowering_receipt","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/lowering-receipts.md","authority":"tev_script/lowering_receipt_v1.py"},
+      {"id":"symbol:LoweringReceiptBundleV2","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/lowering-receipts.md","authority":"tev_script/lowering_receipt_v2.py"},
+      {"id":"symbol:build_ir_v3_lowering_receipt","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/lowering-receipts.md","authority":"tev_script/lowering_receipt_v2.py"},
+      {"id":"symbol:verify_ir_v3_lowering_receipt","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/lowering-receipts.md","authority":"tev_script/lowering_receipt_v2.py"},
+      {"id":"symbol:RecordValueV3","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/ir-v3.md","authority":"tev_script/ir_v3_values.py"},
+      {"id":"symbol:TypeDescriptorV3","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/ir-v3.md","authority":"tev_script/ir_v3_values.py"},
+      {"id":"symbol:TypeTableV3","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/ir-v3.md","authority":"tev_script/ir_v3_values.py"},
+      {"id":"symbol:VariantValueV3","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/ir-v3.md","authority":"tev_script/ir_v3_values.py"},
+      {"id":"symbol:build_type_table_v3","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/ir-v3.md","authority":"tev_script/ir_v3_values.py"},
+      {"id":"symbol:decode_v3_value","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/ir-v3.md","authority":"tev_script/ir_v3_values.py"},
+      {"id":"symbol:encode_v3_value","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/ir-v3.md","authority":"tev_script/ir_v3_values.py"},
+      {"id":"symbol:validate_program_ir_v3","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/ir-v3.md","authority":"tev_script/ir_v3_validation.py"},
+      {"id":"symbol:IrV3ConformanceReceiptBundle","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/ir-v3.md","authority":"tev_script/ir_v3_conformance.py"},
+      {"id":"symbol:run_ir_v3_conformance","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/ir-v3.md","authority":"tev_script/ir_v3_conformance.py"},
+      {"id":"symbol:EmittedEventV3","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/ir-v3.md","authority":"tev_script/runtime_v3.py"},
+      {"id":"symbol:ScriptRuntimeV3","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/ir-v3.md","authority":"tev_script/runtime_v3.py"},
+      {"id":"symbol:RuntimeCheckpointV2","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/ir-v3.md","authority":"tev_script/runtime_checkpoint_v2.py"},
+      {"id":"symbol:TotalCoreInstructionV1","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/program_ir_v5_total.py"},
+      {"id":"symbol:TotalCoreProgramV1","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/program_ir_v5_total.py"},
+      {"id":"symbol:TotalCoreUnitV1","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/program_ir_v5_total.py"},
+      {"id":"symbol:VerifiedProofAdmissionV1","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/program_ir_v5_total.py"},
+      {"id":"symbol:canonical_total_core_program_bytes","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/program_ir_v5_total.py"},
+      {"id":"symbol:total_core_program_to_mapping","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/program_ir_v5_total.py"},
+      {"id":"symbol:validate_total_core_program","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/program_ir_v5_total.py"},
+      {"id":"symbol:TotalCoreCheckpointV1","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/runtime_v5_total.py"},
+      {"id":"symbol:TotalCoreQuantumResultV1","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/runtime_v5_total.py"},
+      {"id":"symbol:initial_total_core_checkpoint","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/runtime_v5_total.py"},
+      {"id":"symbol:run_total_core_quantum","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/runtime_v5_total.py"},
+      {"id":"symbol:validate_total_core_checkpoint","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/runtime_v5_total.py"},
+      {"id":"symbol:validate_total_core_quantum_result","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/runtime_v5_total.py"},
+      {"id":"symbol:compile_total_core_v31","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/source_total_core_v31.py"},
+      {"id":"symbol:v31_descriptor","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/descriptor_v31.py"},
+      {"id":"symbol:verify_v31_descriptor","status":"PUBLIC_SUPPORTED","page":"docs/manual/library-reference/current-total-core.md","authority":"tev_script/descriptor_v31.py"},
+      {"id":"symbol:PythonCapabilityContractV1","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/python-host-v1.md","authority":"tev_script/python_host_v1.py"},
+      {"id":"symbol:PythonProgramArtifactV1","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/python-host-v1.md","authority":"tev_script/python_host_v1.py"},
+      {"id":"symbol:PythonRuntimeHostV1","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/python-host-v1.md","authority":"tev_script/python_host_v1.py"},
+      {"id":"symbol:build_python_program_v1","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/python-host-v1.md","authority":"tev_script/python_host_v1.py"},
+      {"id":"symbol:build_python_program_v1_paths","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/python-host-v1.md","authority":"tev_script/python_host_v1.py"}
+    ],
     "source_profiles": [
-      {
-        "id": "3.1.0:total_core",
-        "status": "CURRENT_FOUNDATION_DOCUMENTED",
-        "page": "docs/manual/versions/current.md",
-        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
-      }
+      {"id":"3.1.0:total_core","status":"CURRENT_FOUNDATION_DOCUMENTED","page":"docs/manual/versions/current.md","authority":"spec/TEV_SCRIPT_VERSION_MATRIX.json"}
     ],
     "ir_runtime_profiles": [
-      {
-        "id": "program_ir:5:total_core",
-        "status": "CURRENT_FOUNDATION_DOCUMENTED",
-        "page": "docs/manual/versions/current.md",
-        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
-      },
-      {
-        "id": "runtime_abi:v5-total-v1:total_core",
-        "status": "CURRENT_FOUNDATION_DOCUMENTED",
-        "page": "docs/manual/versions/current.md",
-        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
-      }
+      {"id":"program_ir:5:total_core","status":"CURRENT_FOUNDATION_DOCUMENTED","page":"docs/manual/versions/current.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"runtime_abi:v5-total-v1:total_core","status":"CURRENT_FOUNDATION_DOCUMENTED","page":"docs/manual/versions/current.md","authority":"spec/TEV_SCRIPT_VERSION_MATRIX.json"}
     ],
     "diagnostics": [],
     "integrations": [],
     "version_domains": [
-      {
-        "id": "language",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/versions/version-domains.md",
-        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
-      },
-      {
-        "id": "source_profile",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/versions/version-domains.md",
-        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
-      },
-      {
-        "id": "linked_program",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/versions/version-domains.md",
-        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
-      },
-      {
-        "id": "program_ir",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/versions/version-domains.md",
-        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
-      },
-      {
-        "id": "runtime_abi",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/versions/version-domains.md",
-        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
-      },
-      {
-        "id": "checkpoint",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/versions/version-domains.md",
-        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
-      },
-      {
-        "id": "package",
-        "status": "DOCUMENTED",
-        "page": "docs/manual/versions/version-domains.md",
-        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
-      }
+      {"id":"language","status":"DOCUMENTED","page":"docs/manual/versions/version-domains.md","authority":"spec/TEV_SCRIPT_VERSION_MATRIX.json"},
+      {"id":"source_profile","status":"DOCUMENTED","page":"docs/manual/versions/version-domains.md","authority":"spec/TEV_SCRIPT_VERSION_MATRIX.json"},
+      {"id":"linked_program","status":"DOCUMENTED","page":"docs/manual/versions/version-domains.md","authority":"spec/TEV_SCRIPT_VERSION_MATRIX.json"},
+      {"id":"program_ir","status":"DOCUMENTED","page":"docs/manual/versions/version-domains.md","authority":"spec/TEV_SCRIPT_VERSION_MATRIX.json"},
+      {"id":"runtime_abi","status":"DOCUMENTED","page":"docs/manual/versions/version-domains.md","authority":"spec/TEV_SCRIPT_VERSION_MATRIX.json"},
+      {"id":"checkpoint","status":"DOCUMENTED","page":"docs/manual/versions/version-domains.md","authority":"spec/TEV_SCRIPT_VERSION_MATRIX.json"},
+      {"id":"package","status":"DOCUMENTED","page":"docs/manual/versions/version-domains.md","authority":"spec/TEV_SCRIPT_VERSION_MATRIX.json"}
     ]
   }
 }
