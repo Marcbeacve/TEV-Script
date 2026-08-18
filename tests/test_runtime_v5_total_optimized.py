@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from tev_script.omega_semantic_basis_v1 import semantic_field
+from tev_script.omega_semantic_basis_v1 import field_fact, semantic_field
 from tev_script.program_ir_v5_total import TotalCoreInstructionV1, TotalCoreProgramV1
 from tev_script.runtime_v5_total import (
     initial_total_core_checkpoint,
@@ -10,6 +10,7 @@ from tev_script.runtime_v5_total import (
 )
 from tev_script.runtime_v5_total_optimized import (
     _OP_HALT,
+    _fact_hash_index,
     prepare_total_core_execution_plan,
     run_prepared_total_core_quantum,
 )
@@ -43,6 +44,34 @@ def _jump_program() -> TotalCoreProgramV1:
         v4_units=(),
         proof_admissions=(),
         instructions=(TotalCoreInstructionV1.jump(0),),
+        entry_pc=0,
+        quantum_step_limit=3,
+        authority_hash=AUTHORITY,
+    )
+
+
+def _branch_program(*, fact_count: int, present: bool) -> TotalCoreProgramV1:
+    facts = tuple(
+        field_fact("tev.optimized.fact", ({"index": index},))
+        for index in range(fact_count)
+    )
+    needle = facts[-1] if present else field_fact("tev.optimized.missing", ({"index": -1},))
+    return TotalCoreProgramV1.build(
+        program_id=f"OptimizedBranch{fact_count}{'Present' if present else 'Absent'}",
+        source_semantic_hash=SOURCE,
+        initial_field=semantic_field(facts, profile="actual"),
+        transformations=(),
+        v4_units=(),
+        proof_admissions=(),
+        instructions=(
+            TotalCoreInstructionV1.branch_fact(
+                needle.fact_hash,
+                present_pc=1,
+                absent_pc=2,
+            ),
+            TotalCoreInstructionV1.halt(),
+            TotalCoreInstructionV1.halt(),
+        ),
         entry_pc=0,
         quantum_step_limit=3,
         authority_hash=AUTHORITY,
@@ -89,6 +118,32 @@ class RuntimeV5TotalOptimizedPlanTests(unittest.TestCase):
         self.assertEqual(prepared.status, "SUSPENDED")
         self.assertEqual(prepared.steps_used, 3)
         self.assertEqual(prepared.pc, 0)
+
+    def test_branch_present_is_exactly_reference_equivalent_at_100_facts(self) -> None:
+        program = _branch_program(fact_count=100, present=True)
+        checkpoint = initial_total_core_checkpoint(program)
+        reference = run_total_core_quantum(program, checkpoint)
+
+        prepared = run_prepared_total_core_quantum(
+            prepare_total_core_execution_plan(program),
+            checkpoint,
+        )
+
+        self.assertEqual(prepared, reference)
+        self.assertEqual(_fact_hash_index(prepared.field), {fact.fact_hash for fact in prepared.field.facts})
+
+    def test_branch_absent_is_exactly_reference_equivalent_at_100_facts(self) -> None:
+        program = _branch_program(fact_count=100, present=False)
+        checkpoint = initial_total_core_checkpoint(program)
+        reference = run_total_core_quantum(program, checkpoint)
+
+        prepared = run_prepared_total_core_quantum(
+            prepare_total_core_execution_plan(program),
+            checkpoint,
+        )
+
+        self.assertEqual(prepared, reference)
+        self.assertEqual(_fact_hash_index(prepared.field), {fact.fact_hash for fact in prepared.field.facts})
 
 
 if __name__ == "__main__":
