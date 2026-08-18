@@ -1,0 +1,80 @@
+{
+  "schema": "TEV_SCRIPT_DOCUMENTATION_COVERAGE_V1",
+  "package_version": "3.1.2",
+  "language_version": "3.1.0",
+  "profile": "total_core",
+  "phase": "A_FOUNDATION",
+  "domains": {
+    "language_constructs": [],
+    "cli_surface": [],
+    "python_api": [],
+    "source_profiles": [
+      {
+        "id": "3.1.0:total_core",
+        "status": "CURRENT_FOUNDATION_DOCUMENTED",
+        "page": "docs/manual/versions/current.md",
+        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
+      }
+    ],
+    "ir_runtime_profiles": [
+      {
+        "id": "program_ir:5:total_core",
+        "status": "CURRENT_FOUNDATION_DOCUMENTED",
+        "page": "docs/manual/versions/current.md",
+        "authority": "spec/TEV_SCRIPT_V31_TOTAL_CORE.md"
+      },
+      {
+        "id": "runtime_abi:v5-total-v1:total_core",
+        "status": "CURRENT_FOUNDATION_DOCUMENTED",
+        "page": "docs/manual/versions/current.md",
+        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
+      }
+    ],
+    "diagnostics": [],
+    "integrations": [],
+    "version_domains": [
+      {
+        "id": "language",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/versions/version-domains.md",
+        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
+      },
+      {
+        "id": "source_profile",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/versions/version-domains.md",
+        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
+      },
+      {
+        "id": "linked_program",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/versions/version-domains.md",
+        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
+      },
+      {
+        "id": "program_ir",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/versions/version-domains.md",
+        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
+      },
+      {
+        "id": "runtime_abi",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/versions/version-domains.md",
+        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
+      },
+      {
+        "id": "checkpoint",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/versions/version-domains.md",
+        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
+      },
+      {
+        "id": "package",
+        "status": "DOCUMENTED",
+        "page": "docs/manual/versions/version-domains.md",
+        "authority": "spec/TEV_SCRIPT_VERSION_MATRIX.json"
+      }
+    ]
+  }
+}
