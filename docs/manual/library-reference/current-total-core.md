@@ -318,6 +318,8 @@ Valida programa y checkpoint y ejecuta como máximo `program.quantum_step_limit`
 
 Una unidad V4 produce un receipt hijo y su resultado entra al `Field` V5 mediante una transformación puente derivada. Las métricas V4 se mantienen separadas de los pasos V5.
 
+`task_strategy` es un hook avanzado de realización de tareas V4. Para el uso normal debe quedar en `None`, que usa la evaluación secuencial de referencia. El protocolo `TaskScopeExecutionStrategyV4` vive en `tev_script.ir_v4_pure` y no se exporta desde la API root estable `tev_script.__all__`; consulta [`advanced-embedding.md`](advanced-embedding.md) antes de proporcionar una estrategia custom.
+
 Si el checkpoint de entrada ya está `halted`, lanza `TEVS_V31_RUNTIME_HALTED`; un proceso terminado no se «reanuda» como si fuese suspensión.
 
 El resultado siempre contiene `next_checkpoint` ligado a la continuación del quantum.
@@ -372,4 +374,4 @@ Recalcula el descriptor esperado y compara tanto contenido como `descriptor_hash
 
 Estas 16 APIs son la superficie Python directa de Total-Core exportada por el paquete actual. No convierten Python en autoridad semántica: un runtime alternativo conformante debe respetar los mismos contratos de Program IR, Field, checkpoints, receipts y quanta.
 
-Para un programa de usuario normal, la CLI [`../cli-reference/README.md`](../cli-reference/README.md) ofrece una frontera más estrecha. Usa estas APIs cuando necesites embedding, construcción/validación de artefactos o control explícito de quanta desde Python.
+Para un programa de usuario normal, la CLI [`../cli-reference/README.md`](../cli-reference/README.md) ofrece una frontera más estrecha. Usa estas APIs cuando necesites embedding, construcción/validación de artefactos o control explícito de quanta desde Python. Para hooks de realización/scheduling que no amplían la API root, continúa con [`advanced-embedding.md`](advanced-embedding.md).
