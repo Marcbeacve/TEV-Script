@@ -1,8 +1,12 @@
 process Tutorial09 version "3.1.0";
 authority aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
 quantum_steps 8;
-unit Calc profile pure;
-field actual = [];
-label Start = invoke_v4 Calc result tev.tutorial.field End;
-label End = halt;
-entry Start;
+fact Idle = machine.idle ["M1"];
+fact Active = machine.active ["M1"];
+field actual = [Idle];
+transform Activate effects bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb resources cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc remove [Idle] add [Active];
+label Apply = apply Activate Check;
+label Check = branch_fact Active Done Missing;
+label Done = halt;
+label Missing = halt;
+entry Apply;
