@@ -80,6 +80,36 @@ def test_proof_admission_docs_match_root_api_boundary() -> None:
     assert "La API pública expone la clase y el validador" not in page
 
 
+def test_visible_library_reference_counts_match_root_exports() -> None:
+    root_exports = set(tev_script.__all__)
+    total_core = {
+        "TotalCoreInstructionV1",
+        "TotalCoreProgramV1",
+        "TotalCoreUnitV1",
+        "VerifiedProofAdmissionV1",
+        "canonical_total_core_program_bytes",
+        "total_core_program_to_mapping",
+        "validate_total_core_program",
+        "TotalCoreCheckpointV1",
+        "TotalCoreQuantumResultV1",
+        "initial_total_core_checkpoint",
+        "run_total_core_quantum",
+        "validate_total_core_checkpoint",
+        "validate_total_core_quantum_result",
+        "compile_total_core_v31",
+        "v31_descriptor",
+        "verify_v31_descriptor",
+    }
+    assert len(root_exports) == 77
+    assert len(total_core) == 16
+    assert total_core <= root_exports
+
+    index = (_MANUAL / "library-reference" / "README.md").read_text(encoding="utf-8")
+    current = (_MANUAL / "library-reference" / "current-total-core.md").read_text(encoding="utf-8")
+    assert "**77 símbolos**" in index
+    assert "**16 símbolos públicos actuales**" in current
+
+
 def test_validation_recipe_contains_every_repository_channel_command() -> None:
     policy = json.loads((ROOT / "REPOSITORY_CHANNEL.json").read_text(encoding="utf-8"))
     validation_text = (ROOT / "docs" / "VALIDATION.md").read_text(encoding="utf-8")
