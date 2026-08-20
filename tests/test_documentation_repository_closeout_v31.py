@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import re
 
+import tev_script
 from tev_script.descriptor_v31 import v31_descriptor
 from tev_script.runtime_v5_total import initial_total_core_checkpoint, run_total_core_quantum
 from tev_script.source_total_core_v31 import compile_total_core_v31
@@ -33,6 +34,7 @@ def test_final_navigation_and_diagnostic_pages_exist() -> None:
         "docs/manual/documentation-policy.md",
         "docs/manual/cli-reference/README.md",
         "docs/manual/library-reference/README.md",
+        "docs/manual/library-reference/advanced-embedding.md",
         "docs/manual/diagnostics/README.md",
         "docs/manual/diagnostics/current-inventory.md",
         "docs/manual/diagnostics/source.md",
@@ -51,6 +53,22 @@ def test_final_navigation_and_diagnostic_pages_exist() -> None:
     )
     missing = [rel for rel in required if not (ROOT / rel).is_file()]
     assert missing == []
+
+
+def test_advanced_embedding_documents_task_strategy_boundary() -> None:
+    page = (_MANUAL / "library-reference" / "advanced-embedding.md").read_text(encoding="utf-8")
+    assert "task_strategy" in page
+    assert "TaskScopeExecutionStrategyV4" in page
+    assert "run(tasks, evaluate_child)" in page
+    assert "run_select" in page
+    assert "run_select_cooperative" in page
+    assert "no se exporta desde `tev_script.__all__`" in page
+    assert "TaskScopeExecutionStrategyV4" not in tev_script.__all__
+
+    current = (_MANUAL / "library-reference" / "current-total-core.md").read_text(encoding="utf-8")
+    index = (_MANUAL / "library-reference" / "README.md").read_text(encoding="utf-8")
+    assert "advanced-embedding.md" in current
+    assert "advanced-embedding.md" in index
 
 
 def test_validation_recipe_contains_every_repository_channel_command() -> None:
