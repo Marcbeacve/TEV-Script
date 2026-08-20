@@ -15,7 +15,7 @@ authority aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
 quantum_steps 8;
 unit Calc profile pure;
 field actual = [];
-label Start = invoke_v4 Calc result tev.tutorial.exact End;
+label Start = invoke_v4 Calc result tev.tutorial.value End;
 label End = halt;
 entry Start;
 ```
