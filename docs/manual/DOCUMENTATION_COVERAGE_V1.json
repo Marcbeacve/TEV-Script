@@ -3,17 +3,42 @@
   "package_version": "3.1.2",
   "language_version": "3.1.0",
   "profile": "total_core",
-  "phase": "E_PUBLIC_PYTHON_API_DOCUMENTED",
+  "phase": "H_COMPLETE",
   "domains": {
     "language_constructs": [
-      {"id":"process","status":"DOCUMENTED","page":"docs/manual/getting-started/first-program.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
-      {"id":"authority","status":"DOCUMENTED","page":"docs/manual/getting-started/first-program.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
-      {"id":"quantum_steps","status":"DOCUMENTED","page":"docs/manual/getting-started/first-program.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
-      {"id":"field","status":"DOCUMENTED","page":"docs/manual/getting-started/first-program.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
-      {"id":"label","status":"DOCUMENTED","page":"docs/manual/getting-started/first-program.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
-      {"id":"entry","status":"DOCUMENTED","page":"docs/manual/getting-started/first-program.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
-      {"id":"halt","status":"DOCUMENTED","page":"docs/manual/getting-started/first-program.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
-      {"id":"unit","status":"DOCUMENTED","page":"docs/manual/getting-started/project-layout.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"}
+      {"id":"apply","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/field-transformation-apply.md","authority":"spec/TEV_SCRIPT_SEMANTIC_APPLY_CALCULUS_V0.md"},
+      {"id":"authority","status":"CURRENT","page":"docs/manual/language-reference/semantic-process.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"branch_fact","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/control-and-bounds.md","authority":"spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md"},
+      {"id":"capabilities","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/state-events-effects.md","authority":"spec/TEV_SCRIPT_V2_LANGUAGE.md"},
+      {"id":"comments","status":"CURRENT","page":"docs/manual/language-reference/lexical.md","authority":"tev_script/source_total_core_v31.py"},
+      {"id":"composition","status":"CURRENT","page":"docs/manual/language-reference/modules.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"continuations","status":"CURRENT","page":"docs/manual/language-reference/control-and-bounds.md","authority":"tev_script/runtime_v5_total.py"},
+      {"id":"declarations","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/declarations-and-functions.md","authority":"spec/TEV_SCRIPT_V2_LANGUAGE.md"},
+      {"id":"effects","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/state-events-effects.md","authority":"spec/TEV_SCRIPT_V2_LANGUAGE.md"},
+      {"id":"entry","status":"CURRENT","page":"docs/manual/language-reference/declarations-and-functions.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"events","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/state-events-effects.md","authority":"spec/TEV_SCRIPT_V2_LANGUAGE.md"},
+      {"id":"exact_values","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/values-and-types.md","authority":"spec/TEV_SCRIPT_V2_LANGUAGE.md"},
+      {"id":"expressions","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/expressions.md","authority":"spec/TEV_SCRIPT_V2_LANGUAGE.md"},
+      {"id":"field","status":"CURRENT","page":"docs/manual/language-reference/field-transformation-apply.md","authority":"spec/TEV_SCRIPT_SEMANTIC_APPLY_CALCULUS_V0.md"},
+      {"id":"functions","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/declarations-and-functions.md","authority":"spec/TEV_SCRIPT_V2_LANGUAGE.md"},
+      {"id":"halt","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/control-and-bounds.md","authority":"spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md"},
+      {"id":"identifiers","status":"CURRENT","page":"docs/manual/language-reference/lexical.md","authority":"tev_script/source_total_core_v31.py"},
+      {"id":"invoke_v4","status":"CURRENT","page":"docs/manual/language-reference/total-core.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"jump","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/control-and-bounds.md","authority":"spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md"},
+      {"id":"label","status":"CURRENT","page":"docs/manual/language-reference/semantic-process.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"literals","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/values-and-types.md","authority":"spec/TEV_SCRIPT_V2_LANGUAGE.md"},
+      {"id":"modules","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/modules.md","authority":"spec/TEV_SCRIPT_V1_LINK_MODEL.md"},
+      {"id":"operators","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/expressions.md","authority":"spec/TEV_SCRIPT_V2_LANGUAGE.md"},
+      {"id":"process","status":"CURRENT","page":"docs/manual/language-reference/total-core.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"proof_admission","status":"CURRENT","page":"docs/manual/language-reference/proof-admissions.md","authority":"tev_script/program_ir_v5_total.py"},
+      {"id":"quantum_steps","status":"CURRENT","page":"docs/manual/language-reference/control-and-bounds.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"recursion_bounds","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/control-and-bounds.md","authority":"spec/TEV_SCRIPT_V2_LANGUAGE.md"},
+      {"id":"semantic_process","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/semantic-process.md","authority":"spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md"},
+      {"id":"source_to_ir","status":"CURRENT","page":"docs/manual/language-reference/source-to-ir.md","authority":"tev_script/source_total_core_v31.py"},
+      {"id":"state","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/state-events-effects.md","authority":"spec/TEV_SCRIPT_V2_LANGUAGE.md"},
+      {"id":"transformation","status":"CURRENT","page":"docs/manual/language-reference/field-transformation-apply.md","authority":"spec/TEV_SCRIPT_SEMANTIC_APPLY_CALCULUS_V0.md"},
+      {"id":"types","status":"INHERITED_COMPATIBILITY","page":"docs/manual/language-reference/values-and-types.md","authority":"spec/TEV_SCRIPT_V2_LANGUAGE.md"},
+      {"id":"unit","status":"CURRENT","page":"docs/manual/language-reference/total-core.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"}
     ],
     "cli_surface": [
       {"id":"option:--version","status":"DOCUMENTED","page":"docs/manual/cli-reference/version.md","authority":"tev_script/cli.py"},
@@ -113,14 +138,30 @@
       {"id":"symbol:build_python_program_v1_paths","status":"PUBLIC_COMPATIBILITY","page":"docs/manual/library-reference/python-host-v1.md","authority":"tev_script/python_host_v1.py"}
     ],
     "source_profiles": [
-      {"id":"3.1.0:total_core","status":"CURRENT_FOUNDATION_DOCUMENTED","page":"docs/manual/versions/current.md","authority":"spec/TEV_SCRIPT_VERSION_MATRIX.json"}
+      {"id":"2.0.0:v2-compatible","status":"INHERITED_COMPATIBILITY","page":"docs/manual/versions/v2.md","authority":"spec/TEV_SCRIPT_V2_LANGUAGE.md"},
+      {"id":"3.0.0:semantic_process","status":"INHERITED_COMPATIBILITY","page":"docs/manual/versions/v3.md","authority":"spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md"},
+      {"id":"3.1.0:total_core","status":"CURRENT","page":"docs/manual/versions/v31.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"}
     ],
     "ir_runtime_profiles": [
-      {"id":"program_ir:5:total_core","status":"CURRENT_FOUNDATION_DOCUMENTED","page":"docs/manual/versions/current.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
-      {"id":"runtime_abi:v5-total-v1:total_core","status":"CURRENT_FOUNDATION_DOCUMENTED","page":"docs/manual/versions/current.md","authority":"spec/TEV_SCRIPT_VERSION_MATRIX.json"}
+      {"id":"program_ir:2:linked","status":"INHERITED_COMPATIBILITY","page":"docs/manual/internals/ir-strata.md","authority":"schemas/tev_script_program_ir_v2.schema.json"},
+      {"id":"program_ir:3:portable","status":"INHERITED_COMPATIBILITY","page":"docs/manual/internals/ir-strata.md","authority":"schemas/tev_script_program_ir_v3.schema.json"},
+      {"id":"program_ir:4:effects","status":"INHERITED_COMPATIBILITY","page":"docs/manual/internals/ir-strata.md","authority":"spec/TEV_SCRIPT_PROGRAM_IR_V4.md"},
+      {"id":"program_ir:4:pure","status":"INHERITED_COMPATIBILITY","page":"docs/manual/internals/ir-strata.md","authority":"spec/TEV_SCRIPT_PROGRAM_IR_V4.md"},
+      {"id":"program_ir:4:recursive","status":"INHERITED_COMPATIBILITY","page":"docs/manual/internals/ir-strata.md","authority":"spec/TEV_SCRIPT_PROGRAM_IR_V4.md"},
+      {"id":"program_ir:5:semantic_process","status":"INHERITED_COMPATIBILITY","page":"docs/manual/internals/ir-strata.md","authority":"spec/TEV_SCRIPT_PROGRAM_IR_V5_SEMANTIC_PROCESS.md"},
+      {"id":"program_ir:5:total_core","status":"CURRENT","page":"docs/manual/internals/ir-strata.md","authority":"spec/TEV_SCRIPT_V31_TOTAL_CORE.md"},
+      {"id":"runtime_abi:v5-total-v1:total_core","status":"CURRENT","page":"docs/manual/internals/runtime-boundaries.md","authority":"tev_script/runtime_v5_total.py"}
     ],
     "diagnostics": [],
-    "integrations": [],
+    "integrations": [
+      {"id":"browser-wasm","status":"DOCUMENTED","page":"docs/manual/integrations/browser-wasm.md","authority":"runtimes/csharp/TevScript.BrowserWasmGate/Program.cs"},
+      {"id":"csharp","status":"DOCUMENTED","page":"docs/manual/integrations/csharp.md","authority":"runtimes/csharp/TevScript.Core/README.md"},
+      {"id":"filesystem","status":"DOCUMENTED","page":"docs/manual/integrations/filesystem.md","authority":"spec/TEV_SCRIPT_V2_FILESYSTEM_CAPABILITIES.md"},
+      {"id":"javascript","status":"DOCUMENTED","page":"docs/manual/integrations/javascript.md","authority":"runtime_js_v31/core.mjs"},
+      {"id":"python","status":"DOCUMENTED","page":"docs/manual/integrations/python.md","authority":"tev_script/python_host_v1.py"},
+      {"id":"unity","status":"DOCUMENTED","page":"docs/manual/integrations/unity.md","authority":"adapters/unity/UNITY_ADAPTER_CONTRACT_V2.md"},
+      {"id":"wasi","status":"DOCUMENTED","page":"docs/manual/integrations/wasi.md","authority":"runtimes/csharp/TevScript.V3WasiGate/Program.cs"}
+    ],
     "version_domains": [
       {"id":"language","status":"DOCUMENTED","page":"docs/manual/versions/version-domains.md","authority":"spec/TEV_SCRIPT_VERSION_MATRIX.json"},
       {"id":"source_profile","status":"DOCUMENTED","page":"docs/manual/versions/version-domains.md","authority":"spec/TEV_SCRIPT_VERSION_MATRIX.json"},
