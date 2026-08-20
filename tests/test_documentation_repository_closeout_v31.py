@@ -10,6 +10,7 @@ from tools.validate_documentation_v31 import validate_documentation
 
 ROOT = Path(__file__).resolve().parents[1]
 _MANUAL = ROOT / "docs" / "manual"
+_EXAMPLES = ROOT / "examples" / "docs" / "v31"
 _NEGATIVE_BINDING = re.compile(
     r"<!--\s*tevdoc-source:\s*([^>]+?)\s*-->\s*"
     r"<!--\s*tevdoc-expect-diagnostic:\s*(TEVS_[A-Z0-9_]+)\s*-->",
@@ -71,6 +72,27 @@ def test_internal_markdown_links_resolve_inside_repository() -> None:
                 broken.append(f"{page.relative_to(ROOT).as_posix()} -> {target}")
     assert escaped == []
     assert broken == []
+
+
+def test_every_positive_documentation_case_executes_runtime() -> None:
+    positives: list[str] = []
+    negatives: list[str] = []
+    for case_path in sorted(_EXAMPLES.rglob("case.json")):
+        case = json.loads(case_path.read_text(encoding="utf-8"))
+        rel = case_path.relative_to(ROOT).as_posix()
+        if case["expected_status"] == "FAIL":
+            negatives.append(rel)
+            assert case["operation"] == "check"
+            assert case["expected_returncode"] == 2
+            assert isinstance(case["expected_diagnostic_code"], str)
+            continue
+        positives.append(rel)
+        assert case["operation"] == "run", rel
+        assert case["expected_returncode"] == 0, rel
+        assert case["expected_status"] in {"HALTED", "SUSPENDED"}, rel
+        assert case["expected_diagnostic_code"] is None, rel
+    assert positives, "documentation must contain positive executable cases"
+    assert negatives, "documentation must retain negative executable controls"
 
 
 def test_displayed_negative_examples_match_their_canonical_case() -> None:
