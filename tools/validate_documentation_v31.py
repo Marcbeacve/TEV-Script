@@ -42,6 +42,73 @@ _FENCE_RE = re.compile(r"```tevs\n(.*?)```", re.DOTALL)
 _COVERAGE_PATH = Path("docs/manual/DOCUMENTATION_COVERAGE_V1.json")
 _DIAGNOSTIC_SHARD = Path("docs/manual/DIAGNOSTIC_COVERAGE_V31.json")
 
+FINAL_LANGUAGE_CONSTRUCTS = frozenset({
+    "apply", "authority", "branch_fact", "capabilities", "comments", "composition",
+    "continuations", "declarations", "effects", "entry", "events", "exact_values",
+    "expressions", "field", "functions", "halt", "identifiers", "invoke_v4", "jump",
+    "label", "literals", "modules", "operators", "process", "proof_admission",
+    "quantum_steps", "recursion_bounds", "semantic_process", "source_to_ir", "state",
+    "transformation", "types", "unit",
+})
+FINAL_SOURCE_PROFILES = frozenset({
+    "2.0.0:v2-compatible",
+    "3.0.0:semantic_process",
+    "3.1.0:total_core",
+})
+FINAL_IR_RUNTIME_PROFILES = frozenset({
+    "program_ir:2:linked",
+    "program_ir:3:portable",
+    "program_ir:4:effects",
+    "program_ir:4:pure",
+    "program_ir:4:recursive",
+    "program_ir:5:semantic_process",
+    "program_ir:5:total_core",
+    "runtime_abi:v5-total-v1:total_core",
+})
+FINAL_INTEGRATIONS = frozenset({
+    "browser-wasm", "csharp", "filesystem", "javascript", "python", "unity", "wasi",
+})
+FINAL_VERSION_DOMAINS = frozenset({
+    "language", "source_profile", "linked_program", "program_ir", "runtime_abi",
+    "checkpoint", "package",
+})
+
+
+def _final_required_paths() -> tuple[str, ...]:
+    tutorial = ["README.md"] + [
+        "01-values-exactness.md", "02-names-bindings-expressions.md", "03-control-bounds.md",
+        "04-functions-types.md", "05-data-models.md", "06-state-events.md",
+        "07-capabilities-effects.md", "08-modules-composition.md", "09-field-transformation-apply.md",
+        "10-processes-continuations.md", "11-v4-units.md", "12-total-core.md",
+        "13-proof-admissions.md", "14-checkpoints-replay.md", "15-complete-application.md",
+    ]
+    language = [
+        "README.md", "lexical.md", "values-and-types.md", "expressions.md",
+        "declarations-and-functions.md", "control-and-bounds.md", "state-events-effects.md",
+        "modules.md", "semantic-process.md", "field-transformation-apply.md", "total-core.md",
+        "proof-admissions.md", "source-to-ir.md",
+    ]
+    howto = [
+        "README.md", "build-and-run.md", "multi-unit.md", "effects-capabilities.md",
+        "diagnostics.md", "proof-admissions.md", "checkpoints-replay.md",
+    ]
+    integrations = [
+        "README.md", "python.md", "javascript.md", "csharp.md", "unity.md",
+        "browser-wasm.md", "wasi.md", "filesystem.md",
+    ]
+    internals = [
+        "README.md", "pipeline.md", "semantic-identity.md", "ir-strata.md",
+        "runtime-boundaries.md", "proof-capability-boundaries.md", "validation-architecture.md",
+    ]
+    result = ["docs/manual/README.md", "docs/manual/faq.md"]
+    result += [f"docs/manual/tutorial/{name}" for name in tutorial]
+    result += [f"docs/manual/language-reference/{name}" for name in language]
+    result += [f"docs/manual/howto/{name}" for name in howto]
+    result += [f"docs/manual/integrations/{name}" for name in integrations]
+    result += [f"docs/manual/internals/{name}" for name in internals]
+    result += [f"docs/manual/versions/{name}" for name in ("v1.md", "v2.md", "v3.md", "v31.md", "deprecations.md")]
+    return tuple(result)
+
 
 def _pass(**values: Any) -> dict[str, Any]:
     return {"status": "PASS", **values}
@@ -137,11 +204,7 @@ def _load_manifest(root: Path) -> dict[str, Any]:
         raise ValueError("coverage manifest field set mismatch")
     if value["schema"] != "TEV_SCRIPT_DOCUMENTATION_COVERAGE_V1":
         raise ValueError("invalid coverage schema")
-    for key, expected in (
-        ("package_version", "3.1.2"),
-        ("language_version", "3.1.0"),
-        ("profile", "total_core"),
-    ):
+    for key, expected in (("package_version", "3.1.2"), ("language_version", "3.1.0"), ("profile", "total_core")):
         if value[key] != expected:
             raise ValueError(f"coverage {key} mismatch")
     domains = value.get("domains")
@@ -198,74 +261,32 @@ def _coverage_ids(root: Path, domain: str) -> set[str]:
     return {row["id"] for row in manifest["domains"].get(domain, [])}
 
 
-def _load_diagnostic_shard(root: Path) -> set[str]:
-    path = root / _DIAGNOSTIC_SHARD
-    if not path.is_file():
-        return set()
-    value = _read_json(path)
-    if not isinstance(value, dict) or set(value) != {"schema", "language_version", "families"}:
-        raise ValueError("diagnostic shard field set mismatch")
-    if value["schema"] != "TEV_SCRIPT_DIAGNOSTIC_COVERAGE_V31" or value["language_version"] != "3.1.0":
-        raise ValueError("diagnostic shard identity mismatch")
-    families = value["families"]
-    if not isinstance(families, list):
-        raise ValueError("diagnostic families must be a list")
-    expanded: set[str] = set()
-    previous_prefix = ""
-    for family in families:
-        if not isinstance(family, dict) or set(family) != {"prefix", "codes", "page", "authority"}:
-            raise ValueError("diagnostic family field set mismatch")
-        prefix = family["prefix"]
-        codes = family["codes"]
-        page = family["page"]
-        authority = family["authority"]
-        if not isinstance(prefix, str) or not prefix.startswith("TEVS_V31_") or not prefix.endswith("_"):
-            raise ValueError("invalid diagnostic prefix")
-        if prefix < previous_prefix:
-            raise ValueError("diagnostic families must be sorted by prefix")
-        previous_prefix = prefix
-        if not isinstance(codes, list) or not codes or codes != sorted(set(codes)):
-            raise ValueError(f"diagnostic codes must be nonempty sorted unique: {prefix}")
-        if not _safe_rel(page) or not (root / page).is_file():
-            raise ValueError(f"diagnostic page missing: {page}")
-        if not _safe_rel(authority) or not (root / authority).is_file():
-            raise ValueError(f"diagnostic authority missing: {authority}")
-        for suffix in codes:
-            if not isinstance(suffix, str) or re.fullmatch(r"[A-Z0-9_]+", suffix) is None:
-                raise ValueError(f"invalid diagnostic suffix: {suffix!r}")
-            identifier = prefix + suffix
-            if identifier in expanded:
-                raise ValueError(f"duplicate diagnostic id: {identifier}")
-            expanded.add(identifier)
-    return expanded
-
-
-def _diagnostic_coverage_ids(root: Path) -> set[str]:
-    return _coverage_ids(root, "diagnostics") | _load_diagnostic_shard(root)
-
-
-def _diag_inventory_check(root: Path) -> dict[str, Any]:
-    actual: set[str] = set()
-    for base in (root / "tev_script", root / "tools"):
-        if not base.is_dir():
-            continue
-        for path in sorted(base.rglob("*.py")):
-            try:
-                actual.update(_DIAG_RE.findall(path.read_text(encoding="utf-8")))
-            except UnicodeDecodeError:
-                continue
+def _coverage_rows(root: Path, domain: str) -> list[dict[str, str]]:
     try:
-        covered = _diagnostic_coverage_ids(root)
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
-        return _fail("INVALID_DIAGNOSTIC_COVERAGE", error=str(exc), diagnostic_count=len(actual), missing_diagnostics=sorted(actual), extra_diagnostics=[])
-    missing = sorted(actual - covered)
-    extra = sorted(covered - actual)
-    payload = {
-        "diagnostic_count": len(actual),
-        "missing_diagnostics": missing,
-        "extra_diagnostics": extra,
-    }
-    return _pass(**payload) if not missing and not extra else _fail("DIAGNOSTIC_COVERAGE_MISMATCH", **payload)
+        manifest = _load_manifest(root)
+    except (OSError, ValueError, json.JSONDecodeError):
+        return []
+    return list(manifest["domains"].get(domain, []))
+
+
+def _phase(root: Path) -> str:
+    try:
+        return str(_load_manifest(root).get("phase", ""))
+    except Exception:
+        return ""
+
+
+def _placeholder_document(path: Path) -> bool:
+    text = path.read_text(encoding="utf-8")
+    if re.search(r"(?im)^\s*(?:[-*]\s*)?(?:TODO|TBD)\b", text):
+        return True
+    lowered = text.lower()
+    return "se entrega en su fase dedicada" in lowered or "placeholder documentation" in lowered
+
+
+def _coverage_delta(root: Path, domain: str, expected: frozenset[str]) -> tuple[list[str], list[str]]:
+    actual = _coverage_ids(root, domain)
+    return sorted(expected - actual), sorted(actual - expected)
 
 
 def _internal_paths_check(root: Path) -> dict[str, Any]:
@@ -273,32 +294,35 @@ def _internal_paths_check(root: Path) -> dict[str, Any]:
         manifest = _load_manifest(root)
     except Exception:
         return _fail("COVERAGE_UNAVAILABLE")
-    phase = str(manifest.get("phase", ""))
-    if not phase.startswith("H"):
+    if not str(manifest.get("phase", "")).startswith("H"):
         return _pass(required_count=0)
-    required = (
-        "docs/manual/tutorial/README.md",
-        "docs/manual/language-reference/README.md",
-        "docs/manual/howto/README.md",
-        "docs/manual/integrations/README.md",
-        "docs/manual/internals/README.md",
-        "docs/manual/faq.md",
-        "docs/manual/versions/v1.md",
-        "docs/manual/versions/v2.md",
-        "docs/manual/versions/v3.md",
-        "docs/manual/versions/v31.md",
-        "docs/manual/versions/deprecations.md",
-    )
+    required = _final_required_paths()
     missing = [rel for rel in required if not (root / rel).is_file()]
     if missing:
         return _fail("MISSING_INTERNAL_DOCUMENTATION_PATHS", missing=missing)
-    placeholder_hits: list[str] = []
-    for rel in required:
-        text = (root / rel).read_text(encoding="utf-8").lower()
-        if any(token in text for token in ("todo", "tbd", "se entrega en su fase dedicada", "placeholder")):
-            placeholder_hits.append(rel)
-    if placeholder_hits:
-        return _fail("PLACEHOLDER_DOCUMENTATION", paths=placeholder_hits)
+    placeholders = [rel for rel in required if _placeholder_document(root / rel)]
+    if placeholders:
+        return _fail("PLACEHOLDER_DOCUMENTATION", paths=placeholders)
+
+    missing_language, extra_language = _coverage_delta(root, "language_constructs", FINAL_LANGUAGE_CONSTRUCTS)
+    missing_sources, extra_sources = _coverage_delta(root, "source_profiles", FINAL_SOURCE_PROFILES)
+    missing_ir, extra_ir = _coverage_delta(root, "ir_runtime_profiles", FINAL_IR_RUNTIME_PROFILES)
+    missing_integrations, extra_integrations = _coverage_delta(root, "integrations", FINAL_INTEGRATIONS)
+    missing_versions, extra_versions = _coverage_delta(root, "version_domains", FINAL_VERSION_DOMAINS)
+    if any((missing_language, extra_language, missing_sources, extra_sources, missing_ir, extra_ir, missing_integrations, extra_integrations, missing_versions, extra_versions)):
+        return _fail(
+            "INCOMPLETE_FINAL_COVERAGE",
+            missing_language_constructs=missing_language,
+            extra_language_constructs=extra_language,
+            missing_source_profiles=missing_sources,
+            extra_source_profiles=extra_sources,
+            missing_ir_runtime_profiles=missing_ir,
+            extra_ir_runtime_profiles=extra_ir,
+            missing_integrations=missing_integrations,
+            extra_integrations=extra_integrations,
+            missing_version_domains=missing_versions,
+            extra_version_domains=extra_versions,
+        )
     return _pass(required_count=len(required))
 
 
@@ -334,9 +358,7 @@ def _source_bindings_check(root: Path) -> dict[str, Any]:
             if not source.is_file():
                 errors.append(f"bound source missing: {rel}")
                 continue
-            expected = source.read_text(encoding="utf-8")
-            observed = fence.group(1)
-            if observed != expected:
+            if fence.group(1) != source.read_text(encoding="utf-8"):
                 errors.append(f"source fence drift: {page.relative_to(root).as_posix()} -> {rel}")
                 continue
             count += 1
@@ -377,6 +399,10 @@ def _example_cases_check(root: Path) -> dict[str, Any]:
                 raise ValueError("case field set mismatch")
             if case["schema"] != "TEV_SCRIPT_DOCUMENTATION_CASE_V1":
                 raise ValueError("case schema mismatch")
+            if case["operation"] not in {"check", "compile", "run"}:
+                raise ValueError("unsupported documentation case operation")
+            if not isinstance(case["units"], dict) or not isinstance(case["effect_inputs"], dict):
+                raise ValueError("case units/effect_inputs must be objects")
             for rel in [case["source"], *case["units"].values()]:
                 if not _safe_rel(rel) or len(PurePosixPath(rel).parts) != 1:
                     raise ValueError(f"unsafe case path: {rel}")
@@ -402,6 +428,111 @@ def _example_cases_check(root: Path) -> dict[str, Any]:
     if errors:
         return _fail("INVALID_EXAMPLE_CASES", error="; ".join(errors))
     return _pass(case_count=count)
+
+
+def _diagnostic_shard(root: Path) -> tuple[set[str], set[str], list[str]]:
+    path = root / _DIAGNOSTIC_SHARD
+    if not path.is_file():
+        return set(), set(), []
+    value = _read_json(path)
+    if not isinstance(value, dict) or set(value) != {"schema", "language_version", "families"}:
+        raise ValueError("diagnostic shard field set mismatch")
+    if value["schema"] != "TEV_SCRIPT_DIAGNOSTIC_COVERAGE_V31" or value["language_version"] != "3.1.0":
+        raise ValueError("diagnostic shard identity mismatch")
+    families = value["families"]
+    if not isinstance(families, list):
+        raise ValueError("diagnostic families must be a list")
+    covered: set[str] = set()
+    authorities: set[str] = set()
+    undocumented: set[str] = set()
+    previous_key = ""
+    for family in families:
+        if not isinstance(family, dict) or set(family) != {"prefix", "codes", "page", "authority"}:
+            raise ValueError("diagnostic family field set mismatch")
+        prefix, codes, page, authority = family["prefix"], family["codes"], family["page"], family["authority"]
+        if not isinstance(prefix, str) or not prefix.startswith("TEVS_V31_") or not prefix.endswith("_"):
+            raise ValueError("invalid diagnostic prefix")
+        key = f"{prefix}\x00{authority}\x00{page}"
+        if key < previous_key:
+            raise ValueError("diagnostic families must be sorted")
+        previous_key = key
+        if not _safe_rel(page) or not (root / page).is_file():
+            raise ValueError(f"diagnostic page missing: {page}")
+        if not _safe_rel(authority) or not (root / authority).is_file():
+            raise ValueError(f"diagnostic authority missing: {authority}")
+        authorities.add(authority)
+        if not isinstance(codes, list) or not codes:
+            raise ValueError(f"diagnostic codes must be nonempty: {prefix}")
+        if codes == ["*"]:
+            authority_text = (root / authority).read_text(encoding="utf-8")
+            discovered = sorted({code for code in _DIAG_RE.findall(authority_text) if code.startswith(prefix)})
+            if not discovered:
+                raise ValueError(f"wildcard diagnostic family is empty: {authority}:{prefix}")
+            page_text = (root / page).read_text(encoding="utf-8")
+            for identifier in discovered:
+                covered.add(identifier)
+                if identifier not in page_text:
+                    undocumented.add(identifier)
+            continue
+        if codes != sorted(set(codes)):
+            raise ValueError(f"diagnostic codes must be sorted unique: {prefix}")
+        for suffix in codes:
+            if not isinstance(suffix, str) or re.fullmatch(r"[A-Z0-9_]+", suffix) is None:
+                raise ValueError(f"invalid diagnostic suffix: {suffix!r}")
+            covered.add(prefix + suffix)
+    return covered, authorities, sorted(undocumented)
+
+
+def _current_diagnostic_authorities(root: Path) -> set[str]:
+    if not _phase(root).startswith(("F", "G", "H")):
+        return set()
+    result: set[str] = set()
+    package = root / "tev_script"
+    if package.is_dir():
+        for path in sorted(package.glob("*v31.py")):
+            result.add(path.relative_to(root).as_posix())
+        for name in ("program_ir_v5_total.py", "runtime_v5_total.py"):
+            path = package / name
+            if path.is_file():
+                result.add(path.relative_to(root).as_posix())
+    tools = root / "tools"
+    if tools.is_dir():
+        for path in sorted(tools.glob("*v31.py")):
+            result.add(path.relative_to(root).as_posix())
+    return result
+
+
+def _diag_inventory_check(root: Path) -> dict[str, Any]:
+    manifest_rows = _coverage_rows(root, "diagnostics")
+    covered = {row["id"] for row in manifest_rows}
+    authorities = {row["authority"] for row in manifest_rows}
+    try:
+        shard_codes, shard_authorities, undocumented = _diagnostic_shard(root)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return _fail("INVALID_DIAGNOSTIC_COVERAGE", error=str(exc), diagnostic_count=0, missing_diagnostics=[], extra_diagnostics=[])
+    covered |= shard_codes
+    authorities |= shard_authorities
+    authorities |= _current_diagnostic_authorities(root)
+    actual: set[str] = set()
+    for rel in sorted(authorities):
+        path = root / rel
+        if not path.is_file():
+            continue
+        try:
+            actual.update(_DIAG_RE.findall(path.read_text(encoding="utf-8")))
+        except UnicodeDecodeError:
+            continue
+    missing = sorted(actual - covered)
+    extra = sorted(covered - actual)
+    payload: dict[str, Any] = {
+        "diagnostic_count": len(actual),
+        "missing_diagnostics": missing,
+        "extra_diagnostics": extra,
+    }
+    if undocumented:
+        payload["undocumented_diagnostics"] = undocumented
+        return _fail("UNDOCUMENTED_DIAGNOSTICS", **payload)
+    return _pass(**payload) if not missing and not extra else _fail("DIAGNOSTIC_COVERAGE_MISMATCH", **payload)
 
 
 def _cli_surface(path: Path) -> set[str]:
@@ -459,8 +590,7 @@ def _historical_classification_check(root: Path) -> dict[str, Any]:
         manifest = _load_manifest(root)
     except Exception:
         return _fail("COVERAGE_UNAVAILABLE")
-    phase = str(manifest.get("phase", ""))
-    if not phase.startswith("H"):
+    if not str(manifest.get("phase", "")).startswith("H"):
         return _pass(classified_versions=0)
     required = {
         "v1.md": ("HISTORICAL", "compat"),
