@@ -177,15 +177,22 @@ def test_shard_authority_scopes_public_inventory(tmp_path: Path) -> None:
         "# Diagnostics\n\nTEVS_V31_ONE\n\nTEVS_V31_TWO\n",
         encoding="utf-8",
     )
-    (tmp_path / "tev_script" / "unrelated_internal.py").write_text(
-        "INTERNAL = 'TEVS_V31_INTERNAL_ONLY'\n",
+    (tmp_path / "tev_script" / "unrelated_internal_v31.py").write_text(
+        "INTERNAL = 'TEVS_V31_INTERNAL_PACKAGE_ONLY'\n",
+        encoding="utf-8",
+    )
+    tools = tmp_path / "tools"
+    tools.mkdir(parents=True, exist_ok=True)
+    (tools / "unrelated_internal_v31.py").write_text(
+        "INTERNAL = 'TEVS_V31_INTERNAL_TOOL_ONLY'\n",
         encoding="utf-8",
     )
     _write_shard(tmp_path, codes=["*"])
     check = validate_documentation(tmp_path)["checks"]["DIAGNOSTIC_COVERAGE"]
     assert check["status"] == "PASS"
     assert check["diagnostic_count"] == 2
-    assert "TEVS_V31_INTERNAL_ONLY" not in check["missing_diagnostics"]
+    assert "TEVS_V31_INTERNAL_PACKAGE_ONLY" not in check["missing_diagnostics"]
+    assert "TEVS_V31_INTERNAL_TOOL_ONLY" not in check["missing_diagnostics"]
 
 
 def test_missing_v31_diagnostic_fails_closed(tmp_path: Path) -> None:
