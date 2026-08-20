@@ -52,13 +52,17 @@ Content-addresses la admission. Alterar verifier/receipt/authority/requisito inv
 
 ## Construcción API
 
-La clase pública:
+La clase pública root:
 
 ```text
 VerifiedProofAdmissionV1
 ```
 
-proporciona `build(...)`; mappings serializados se validan con `validate_verified_proof_admission` internamente y a través de las rutas de compilación/CLI que consumen admissions.
+proporciona `build(...)`.
+
+Mappings serializados se validan con `validate_verified_proof_admission` en `tev_script.program_ir_v5_total` y a través de las rutas de compilación/CLI que consumen admissions. Ese validador standalone **no se exporta desde `tev_script.__all__`**; es una superficie avanzada del módulo V5, no un símbolo adicional de la API root.
+
+`VerifiedProofAdmissionV1.build` liga hashes y calcula la identidad de admission; no sustituye la verificación externa que produjo `verification_receipt_hash`.
 
 ## Entrada CLI
 
