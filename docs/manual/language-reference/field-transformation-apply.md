@@ -51,11 +51,20 @@ transformation_hash
 
 ## `required_before_hash`
 
-Liga la transformación al estado previo exacto. Si el Field observado cambió, Apply falla; no realiza un merge implícito de estado stale.
+Es **opcional en el modelo programático**.
+
+- `None`: la Transformation no está pinned a un `field_hash` concreto; las reglas de remove/add/profile siguen aplicándose sobre el Field que recibe Apply.
+- `<64-hex>`: liga la Transformation a un snapshot exacto; otro Field produce rechazo antes de aplicar el delta.
+
+La gramática semantic-process V3/Total-Core 3.1 actual no tiene una cláusula source para este campo. `compile_semantic_process_v3` llama `field_transformation(...)` sin `required_before_hash`, así que los statements `transform ...` de fuente producen `None`.
+
+Los bridge transforms generados por `invoke_v4`, en cambio, sí pasan `required_before_hash=field.field_hash` para fijar el snapshot al que añaden el receipt child.
 
 ## Remove/add
 
-`remove_fact_hashes` señala facts del Field previo. `add_facts` contiene facts nuevos canónicos. Duplicados/contradicciones estructurales se validan según el contrato.
+`remove_fact_hashes` señala facts que deben estar disponibles para el delta. `add_facts` contiene facts nuevos canónicos. Duplicados/colisiones estructurales se validan según el contrato.
+
+Que `required_before_hash` sea `None` no convierte una eliminación de fact ausente en éxito.
 
 ## `result_profile`
 
@@ -69,9 +78,11 @@ Puede conservar o cambiar el profile explícitamente. El cambio de profile forma
 
 `proof_requirement_hashes` declara evidencia necesaria para admitir la ejecución bajo Total-Core. Un requisito no se considera satisfecho por existir como hash.
 
+También aquí hay que distinguir modelo de source: la statement `transform` del semantic-process actual no expone proof requirements; una Transformation proof-open entra por la superficie programática/IR. La proof admission es siempre externa.
+
 ## `transformation_hash`
 
-Se deriva del cuerpo canónico completo. Cambiar precondición, add/remove, effects/resources o proof requirements cambia la identidad.
+Se deriva del cuerpo canónico completo. Cambiar precondición opcional, add/remove, effects/resources o proof requirements cambia la identidad.
 
 ## Apply
 
@@ -79,11 +90,13 @@ Conceptualmente:
 
 ```text
 F_before + T
-    ↓ validate precondition and requirements
+    ↓ validate optional pin, delta and proof state
 F_after + ApplyReceipt
 ```
 
 Un Apply estructuralmente válido produce un nuevo Field; no muta F_before.
+
+Si T tiene `required_before_hash`, se comprueba antes del delta. Después se valida que todos los remove targets existan, que las adiciones no dupliquen facts restantes y que profile/requirements sean coherentes.
 
 ## Apply receipt
 
@@ -117,7 +130,7 @@ En runtime, proof-open Apply crea una transformation execution-local ligada a ad
 
 `invoke_v4` también utiliza este modelo. Tras ejecutar un child receipt, el runtime crea un fact bridge y una Transformation derivada para añadirlo al Field.
 
-Si el Apply de bridge no cierra como PASS, el runtime falla con `TEVS_V31_RUNTIME_BRIDGE_APPLY`; no inserta el fact por un atajo interno.
+La bridge Transformation sí queda pinned al Field observado inmediatamente antes de la proyección. Si el Apply de bridge no cierra como PASS, el runtime falla con `TEVS_V31_RUNTIME_BRIDGE_APPLY`; no inserta el fact por un atajo interno.
 
 ## Control por `branch_fact`
 
@@ -130,7 +143,8 @@ En un root Total-Core, transformations se ordenan por `transformation_hash`. El 
 ## Fallos representativos
 
 - Field/fact no canónico;
-- required_before_hash distinto;
+- `required_before_hash` mal formado o distinto cuando existe;
+- remove target ausente;
 - transformation hash alterado;
 - transformation desconocida en `apply`;
 - proof requirement no admitido;
@@ -141,6 +155,8 @@ En un root Total-Core, transformations se ordenan por `transformation_hash`. El 
 
 - `spec/TEV_SCRIPT_SEMANTIC_APPLY_CALCULUS_V0.md`
 - `tev_script/omega_semantic_basis_v1.py`
+- `spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md`
+- `tev_script/source_semantic_process_v3.py`
 - `spec/TEV_SCRIPT_V31_TOTAL_CORE.md`
 - `tev_script/program_ir_v5_total.py`
 - `tev_script/runtime_v5_total.py`
