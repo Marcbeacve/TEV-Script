@@ -73,9 +73,9 @@ El schema V1 de admission sólo admite el estado verificado en el artefacto admi
 
 Se calcula sobre todos los campos anteriores salvo él mismo. Manipular el receipt, verifier o authority cambia la identidad de admission.
 
-## Construcción desde Python
+## Construcción desde la API pública Python
 
-La API pública expone la clase y el validador. Esquemáticamente:
+La API root pública expone `VerifiedProofAdmissionV1`, que construye y liga una admission ya verificada:
 
 ```python
 from tev_script import VerifiedProofAdmissionV1, compile_total_core_v31
@@ -94,7 +94,23 @@ program = compile_total_core_v31(
 )
 ```
 
-Los cuatro hashes deben proceder de artefactos/autoridades reales del sistema integrador; no uses los strings del ejemplo como evidencia.
+Los cuatro hashes deben proceder de artefactos/autoridades reales del sistema integrador; no uses strings arbitrarios como evidencia.
+
+`VerifiedProofAdmissionV1.build(...)` valida forma e identidad de los hashes y calcula `admission_hash`, pero **no ejecuta la demostración** ni verifica por sí mismo que el receipt externo represente una prueba correcta. Esa autoridad pertenece al proceso/verificador que produjo el receipt.
+
+## Validar una admission serializada
+
+La implementación contiene también:
+
+```text
+validate_verified_proof_admission(value)
+```
+
+en `tev_script.program_ir_v5_total`. Acepta una instancia o mapping con el field set exacto, reconstruye la admission y rechaza schema/status/hash manipulados.
+
+Esta función **no se exporta desde `tev_script.__all__`**. Por tanto no debe describirse como uno de los símbolos de la API root estable. La CLI versionada la usa para validar JSON de proof admission antes de compilar; un embedding que la importe directamente está usando una superficie avanzada del módulo V5 y debe mantener explícita esa dependencia.
+
+Si la admission ya forma parte de un Program IR V5 completo, la API root `validate_total_core_program(...)` vuelve a validar las admissions como parte de la identidad total del programa.
 
 ## Admission estructural al construir el programa
 
