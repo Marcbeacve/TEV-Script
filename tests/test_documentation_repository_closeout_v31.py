@@ -95,9 +95,23 @@ def test_host_support_matrix_does_not_overclaim_total_core_targets() -> None:
     matrix = (ROOT / "docs" / "manual" / "integrations" / "README.md").read_text(
         encoding="utf-8"
     )
-    assert "| Python |" in matrix and "**CURRENT**" in matrix
-    assert "| JavaScript |" in matrix and "**CURRENT / independent required target**" in matrix
-    assert "| C# |" in matrix and "**COMPATIBILITY**" in matrix
-    assert "| Unity |" in matrix and "**COMPATIBILITY host**" in matrix
-    assert "| Browser-WASM |" in matrix and "**COMPATIBILITY gate**" in matrix
-    assert "| WASI |" in matrix and "**COMPATIBILITY gate**" in matrix
+
+    def row(name: str) -> str:
+        prefix = f"| {name} |"
+        matches = [line for line in matrix.splitlines() if line.startswith(prefix)]
+        assert len(matches) == 1, f"expected exactly one support row for {name!r}"
+        return matches[0]
+
+    python = row("Python")
+    javascript = row("JavaScript")
+    csharp = row("C#")
+    unity = row("Unity")
+    browser = row("Browser-WASM")
+    wasi = row("WASI")
+
+    assert "**CURRENT**" in python and "Total-Core" in python
+    assert "**CURRENT / independent required target**" in javascript
+    assert "**COMPATIBILITY**" in csharp and "no afirmar runtime V5" in csharp
+    assert "**COMPATIBILITY host**" in unity and "no runtime V5 Total-Core certificado" in unity
+    assert "**COMPATIBILITY gate**" in browser and "no V5 Total-Core browser certificado" in browser
+    assert "**COMPATIBILITY gate**" in wasi and "no V5 Total-Core WASI certificado" in wasi
