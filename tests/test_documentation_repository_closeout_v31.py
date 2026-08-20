@@ -9,11 +9,14 @@ from tools.validate_documentation_v31 import validate_documentation
 
 
 ROOT = Path(__file__).resolve().parents[1]
+_MANUAL = ROOT / "docs" / "manual"
 _NEGATIVE_BINDING = re.compile(
     r"<!--\s*tevdoc-source:\s*([^>]+?)\s*-->\s*"
     r"<!--\s*tevdoc-expect-diagnostic:\s*(TEVS_[A-Z0-9_]+)\s*-->",
     re.MULTILINE,
 )
+_MARKDOWN_LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+_CODE_FENCE = re.compile(r"```.*?```", re.DOTALL)
 
 
 def test_real_repository_documentation_receipt_passes() -> None:
@@ -46,9 +49,33 @@ def test_final_navigation_and_diagnostic_pages_exist() -> None:
     assert missing == []
 
 
+def test_internal_markdown_links_resolve_inside_repository() -> None:
+    broken: list[str] = []
+    escaped: list[str] = []
+    for page in sorted(_MANUAL.rglob("*.md")):
+        text = _CODE_FENCE.sub("", page.read_text(encoding="utf-8"))
+        for raw_target in _MARKDOWN_LINK.findall(text):
+            target = raw_target.strip()
+            if target.startswith(("https://", "http://", "mailto:", "#")):
+                continue
+            path_text = target.split("#", 1)[0]
+            if not path_text:
+                continue
+            resolved = (page.parent / path_text).resolve()
+            try:
+                resolved.relative_to(ROOT)
+            except ValueError:
+                escaped.append(f"{page.relative_to(ROOT).as_posix()} -> {target}")
+                continue
+            if not resolved.exists():
+                broken.append(f"{page.relative_to(ROOT).as_posix()} -> {target}")
+    assert escaped == []
+    assert broken == []
+
+
 def test_displayed_negative_examples_match_their_canonical_case() -> None:
     observed = 0
-    for page in sorted((ROOT / "docs" / "manual").rglob("*.md")):
+    for page in sorted(_MANUAL.rglob("*.md")):
         text = page.read_text(encoding="utf-8")
         for match in _NEGATIVE_BINDING.finditer(text):
             observed += 1
@@ -75,7 +102,7 @@ def test_manual_has_no_stale_phase_placeholders() -> None:
         "placeholder documentation",
     )
     hits: list[str] = []
-    for page in sorted((ROOT / "docs" / "manual").rglob("*.md")):
+    for page in sorted(_MANUAL.rglob("*.md")):
         text = page.read_text(encoding="utf-8")
         lowered = text.lower()
         if re.search(r"(?im)^\s*(?:[-*]\s*)?(?:TODO|TBD)\b", text):
@@ -92,9 +119,7 @@ def test_host_support_matrix_does_not_overclaim_total_core_targets() -> None:
         "python_reference",
         "javascript_independent_required",
     ]
-    matrix = (ROOT / "docs" / "manual" / "integrations" / "README.md").read_text(
-        encoding="utf-8"
-    )
+    matrix = (_MANUAL / "integrations" / "README.md").read_text(encoding="utf-8")
 
     def row(name: str) -> str:
         prefix = f"| {name} |"
