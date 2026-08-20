@@ -2,9 +2,16 @@
 
 ## Estado
 
-Filesystem no es un runtime target. Es una **capability/provider boundary V2 compatible** que puede alimentar unidades effects y physical command realization bajo un contrato seguro.
+Filesystem no es un runtime target. Es una **capability/provider boundary V2 compatible** con dos niveles que no deben confundirse:
 
-El único perfil físico V2 conforming definido por la spec es:
+```text
+Effects R1 observation    file.read
+Effects R2 command        file.replace
+```
+
+La ruta Total-Core 3.1 actual admite children `effects` **R1 de observación**. No admite Effects R2 de `command/request` como unidades hijas V5.
+
+El perfil filesystem V2 definido por la spec contiene:
 
 ```text
 observation file.read(Text) -> Text
@@ -13,9 +20,47 @@ command     file.replace(Text, Text)
 
 No existe ambient `open()` portable.
 
+## Frontera Total-Core actual: R1 sí, R2 no
+
+`compile_total_core_v31` compila una unidad declarada:
+
+```text
+unit Fs profile effects;
+```
+
+mediante `compile_effect_program_v2`, es decir, la ruta **Effects R1 observation-only**. Si la fuente hija contiene:
+
+```text
+command file.replace(Text,Text);
+request file.replace(...);
+```
+
+ese compilador falla cerrado con:
+
+```text
+TEVS_V2_EFFECT_R2_REQUIRED
+```
+
+porque esa sintaxis requiere `compile_effect_command_program_v2` y el contrato R2 separado.
+
+La frontera no se evita precompilando el R2 por fuera: `TotalCoreUnitV1` current valida el schema V4 Effects admitido por Total-Core y no convierte automáticamente un artefacto R2 command en una unidad Effects R1.
+
+Por tanto, en el estado actual:
+
+```text
+file.read evidence/scenario
+    → puede alimentar un child Effects R1 Total-Core
+
+file.replace command/request
+    → contrato/provider V2 R2 compatible
+    → NO es hoy un child Total-Core admitido por compile_total_core_v31
+```
+
+Una futura integración R2→V5 necesita una frontera/schema/validator explícitamente admitidos y su conformance; no debe inferirse por compartir la palabra `effects`.
+
 ## Root authority
 
-El provider abre una raíz autorizada como objeto directory y conserva el handle. `authority_scope_hash` liga spelling canónico, plataforma e identidad del objeto/volume.
+El provider filesystem abre una raíz autorizada como objeto directory y conserva el handle. `authority_scope_hash` liga spelling canónico, plataforma e identidad del objeto/volume.
 
 Reemplazar el path por otro directorio no conserva authority aunque el string sea igual.
 
@@ -32,7 +77,7 @@ El argumento es relativo a la raíz. Se rechazan antes del acceso:
 
 La traversal debe ser handle-relative y no-follow; no `lstat` seguido de path access vulnerable a TOCTOU.
 
-## `file.read`
+## `file.read` — observation R1
 
 - abre target una vez bajo root pinned;
 - exige regular non-reparse file;
@@ -40,11 +85,13 @@ La traversal debe ser handle-relative y no-follow; no `lstat` seguido de path ac
 - overflow → `TEVS_FILE_READ_BUDGET`;
 - strict UTF-8;
 - evidence liga byte count + SHA-256;
-- runtime posterior reproduce scenario, no relee el host.
+- runtime posterior puede reproducir el scenario en vez de releer el host.
 
-## `file.replace`
+Esta es la parte del perfil filesystem que encaja conceptualmente con el child `effects` R1 admitido actualmente por Total-Core, siempre que se construya el scenario exacto exigido por la capability table del artefacto hijo.
 
-El provider:
+## `file.replace` — command R2
+
+El provider R2:
 
 1. pin parent por traversal segura;
 2. crea temporary regular file no-reparse;
@@ -55,6 +102,8 @@ El provider:
 7. fsync parent donde el contrato/plataforma lo permita.
 
 El rename es el linearization point.
+
+Esta operación pertenece a la vía `command/request` R2. Su existencia y sus receipts **no demuestran** que el frontend/runtime Total-Core current pueda incorporar ese command como child V5.
 
 ## Symlinks/reparse attacks
 
@@ -79,7 +128,7 @@ final_sha256
 receipt_hash
 ```
 
-El receipt demuestra la operación del provider en su linearization point; no demuestra que otro proceso no cambiara el archivo después.
+El receipt demuestra la operación del provider en su linearization point; no demuestra que otro proceso no cambiara el archivo después ni concede soporte R2 al root V5.
 
 ## Failure/cleanup
 
@@ -89,14 +138,19 @@ Cleanup actúa sobre el temporary ya abierto, no hace un lookup inseguro nuevo q
 
 ## Relación con Total-Core
 
-Una unit V2 effects puede usar evidence/intents filesystem y ser child V4 de Total-Core. El root V5 sigue sin poseer filesystem ambient. El provider vive fuera y su evidence/receipt debe preservarse en la cadena correspondiente.
+Una unit V2 Effects R1 puede usar observaciones filesystem como `file.read` y convertirse en child V4 de Total-Core si su evidence/scenario es válido. El root V5 sigue sin poseer filesystem ambient.
+
+Effects R2 (`file.replace`, `request`) permanece en su ruta V2 de command planning/realization y provider físico. Total-Core current **no admite Effects R2** como child mediante `compile_total_core_v31`.
 
 ## Sobre el fixture documental 3.1
 
-`examples/docs/v31/integrations/filesystem/` comprueba la source Total-Core current, no realiza un acceso de filesystem físico.
+`examples/docs/v31/integrations/filesystem/` comprueba la source Total-Core current. No realiza acceso de filesystem físico, no ejecuta `file.read` real y no demuestra `file.replace` R2 dentro de V5.
 
 ## Autoridad
 
 - `spec/TEV_SCRIPT_V2_FILESYSTEM_CAPABILITIES.md`
+- `tev_script/source_effect_program_v2.py`
+- `tev_script/program_ir_v5_total.py`
+- `tev_script/source_total_core_v31.py`
 - `schemas/tev-script-v2-filesystem-artifacts.schema.json`
 - provider/validators filesystem del repositorio.
