@@ -41,6 +41,7 @@ FINAL_IR_RUNTIME = {
     "runtime_abi:v5-total-v1:total_core",
 }
 FINAL_INTEGRATIONS = {"browser-wasm", "csharp", "filesystem", "javascript", "python", "unity", "wasi"}
+FINAL_VERSION_DOMAINS = {"language", "source_profile", "linked_program", "program_ir", "runtime_abi", "checkpoint", "package"}
 
 
 def _identity(root: Path) -> None:
@@ -137,6 +138,7 @@ def _write_manifest(root: Path, *, complete: bool) -> None:
         domains["source_profiles"] = [_row(value) for value in sorted(FINAL_SOURCE_PROFILES)]
         domains["ir_runtime_profiles"] = [_row(value) for value in sorted(FINAL_IR_RUNTIME)]
         domains["integrations"] = [_row(value) for value in sorted(FINAL_INTEGRATIONS)]
+        domains["version_domains"] = [_row(value) for value in sorted(FINAL_VERSION_DOMAINS)]
     (root / "docs" / "manual" / "DOCUMENTATION_COVERAGE_V1.json").write_text(json.dumps({
         "schema": "TEV_SCRIPT_DOCUMENTATION_COVERAGE_V1",
         "package_version": "3.1.2",
