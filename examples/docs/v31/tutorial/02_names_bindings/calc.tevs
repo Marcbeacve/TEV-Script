@@ -1,0 +1,3 @@
+script Bindings version "2.0.0";
+fn sum(a:Int,b:Int)->Int=a+b;
+entry main:Int=sum(4,5);

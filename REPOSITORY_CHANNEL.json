@@ -94,15 +94,11 @@
         "commands": [
           [
             "python",
-            "RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py"
-          ],
-          [
-            "python",
-            "RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py"
+            "RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py"
           ]
         ],
         "exclude": [],
-        "horizon": "CERTIFY_FULL",
+        "horizon": "PLATFORM_COMPLETION",
         "include": [
           "REPOSITORY_CHANNEL.json",
           "AGENTS.md",
@@ -110,16 +106,22 @@
           "DESIGN_DECISION.json",
           "descriptor.json",
           "pyproject.toml",
-          "RUN_TEV_SCRIPT_V1_*.py",
+          "requirements-certification.txt",
+          "RUN_TEV_SCRIPT_PLATFORM_COMPLETION.py",
+          "tev_script/platform_*.py",
+          "tev_script/version.py",
+          "tev_script/release_metadata_v31.py",
           "tools/**",
           "spec/**",
           "schemas/**",
           "conformance/**",
+          "runtime_js_v31/**",
           "runtimes/csharp/**",
+          "packaging/**",
           "docs/VALIDATION.md"
         ],
         "priority": 30,
-        "rule_id": "v1-certify-full"
+        "rule_id": "platform-completion"
       }
     ]
   }

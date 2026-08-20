@@ -12,7 +12,7 @@ from tev_script.platform_release import (
     validate_platform_release,
 )
 from tev_script.platform_release_receipt import verify_platform_release_receipt
-from tev_script.version import PACKAGE_VERSION
+from tev_script.version import PACKAGE_VERSION, PUBLISHED_PREDECESSOR_PACKAGE_VERSION
 
 
 def _git_blob_sha1(data: bytes) -> str:
@@ -59,7 +59,8 @@ def _platform_fixture(root: Path) -> None:
     (root / "spec" / "TEV_SCRIPT_3_1_PLATFORM.md").write_text(
         f"package_version = {PACKAGE_VERSION}\n"
         "language_version = 3.1.0\n"
-        "current_profile = total_core\n",
+        "current_profile = total_core\n"
+        f"published_predecessor_package = {PUBLISHED_PREDECESSOR_PACKAGE_VERSION}\n",
         encoding="utf-8",
     )
     (root / "spec" / "TEV_SCRIPT_VERSION_MATRIX.json").write_text(

@@ -77,8 +77,10 @@ Profile/schema correspondence is exact:
 ```text
 pure      -> TEV_SCRIPT_PROGRAM_IR_V4_PURE_V1
 recursive -> TEV_SCRIPT_PROGRAM_IR_V4_RECURSIVE_V1
-effects   -> TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_V1
+effects   -> TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_V1  (Effects R1 observation-only)
 ```
+
+`TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_R2_V1` with profile `effects_r2_plan` is a distinct Program IR V4 contract. It MUST NOT be accepted as a Total-Core `profile = effects` child by this V5 Total-Core profile. Admitting Effects R2 in a future Total-Core profile requires an explicit profile/schema/validator/bridge extension and its own conformance evidence; the shared word “effects” is not sufficient authority.
 
 `unit_hash` is SHA-256 over canonical JSON of:
 
@@ -198,15 +200,19 @@ program_ir_hash
 run_receipt_hash
 ```
 
-Pure and recursive bridges additionally bind their result type, encoded result, result hash and evaluation-step count. Effects bridges additionally bind final state, final-state hash, capability transcript hash, evaluation steps and observation-call count.
+Pure and recursive bridges additionally bind their result type, encoded result, result hash and evaluation-step count. Effects bridges in this profile refer specifically to Effects R1 and additionally bind final state, final-state hash, capability transcript hash, evaluation steps and observation-call count.
 
 The Field mutation that adds a bridge fact MUST itself be expressed through a derived Field transformation and Apply; the runtime must not mutate Field storage out-of-band.
 
-## 9. Effect authority boundary
+This profile defines no implicit bridge for `TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_R2_V1` command plans.
 
-An embedded V4 effects unit may deterministically compute observations, state transitions and command intent according to existing V4 semantics. It does not thereby gain physical effect authority.
+## 9. Effects R1 authority boundary
 
-Physical commit remains outside portable Total-Core execution and requires the existing explicit provider/grant boundary. A V4 command plan is evidence or intent, never an ambient capability grant.
+An embedded V4 effects unit under this Total-Core profile may deterministically consume its explicit observation scenario and compute Effects R1 state transitions. It does not thereby gain physical effect authority.
+
+Effects R2 command/request planning uses the distinct `TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_R2_V1` contract and is outside the admitted Total-Core child set defined by this specification. A V4 R2 command plan MUST NOT be treated as if it were an Effects R1 child receipt or as if it had crossed the V5 bridge.
+
+Physical commit remains outside portable Total-Core execution and requires an explicit provider/grant boundary. No observation transcript, R1 child receipt, R2 command plan or content hash is by itself an ambient capability grant.
 
 ## 10. Canonical serialization
 
@@ -216,7 +222,7 @@ Canonical bytes are UTF-8 bytes of TEVScript canonical JSON. Unknown V5 root/uni
 
 TEVScript 3.1 MUST preserve:
 
-- Program IR V4 validators and execution semantics;
+- Program IR V4 validators and execution semantics, including the distinction between Effects R1 and Effects R2;
 - Program IR V5 semantic-process 3.0 behavior;
 - MAX 3.0 Field/Transformation identities;
 - the published `tev-script-portable-reference==3.0.0` artifact as immutable predecessor evidence.

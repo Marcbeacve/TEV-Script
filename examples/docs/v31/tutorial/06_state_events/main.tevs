@@ -1,0 +1,10 @@
+process Tutorial06 version "3.1.0";
+authority aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+quantum_steps 8;
+fact Idle = state.idle ["machine"];
+fact Running = state.running ["machine"];
+field actual = [Idle];
+transform Activate effects bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb resources cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc remove [Idle] add [Running];
+label Start = apply Activate End;
+label End = halt;
+entry Start;

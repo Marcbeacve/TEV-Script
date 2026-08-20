@@ -1,0 +1,4 @@
+script DataModels version "2.0.0";
+generic record Box<T> { value: T; }
+generic fn box<T>(x:T)->Box<T>=Box(value=x);
+entry main:Box<Int>=box<Int>(7);

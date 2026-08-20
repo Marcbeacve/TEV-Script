@@ -1,0 +1,6 @@
+process FirstProgram version "3.1.0";
+authority aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+quantum_steps 1;
+field actual = [];
+label done = halt;
+entry done;

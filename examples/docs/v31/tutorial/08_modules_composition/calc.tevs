@@ -1,0 +1,3 @@
+script Calc version "2.0.0";
+fn add1(x:Int)->Int=x+1;
+entry main:Int=add1(4);

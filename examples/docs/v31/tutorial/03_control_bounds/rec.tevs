@@ -1,0 +1,3 @@
+script Rec version "2.0.0";
+recursive fn factorial(n:Int)->Int decreases n max_depth 8 = if n==0 then 1 else n*self(n-1);
+entry main:Int=factorial(5);

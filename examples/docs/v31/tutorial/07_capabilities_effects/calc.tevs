@@ -1,0 +1,12 @@
+script Calc version "2.0.0";
+state count:Int=0;
+state last:Int=0;
+capability observation sensor.read(Int)->Int;
+action tick(bias:Int) {
+    observe sample=sensor.read(count);
+    let next:Int=sample+bias;
+    set last=sample;
+    set count=next;
+    assert count>0;
+}
+entry main=tick(3);

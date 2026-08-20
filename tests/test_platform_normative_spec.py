@@ -54,6 +54,14 @@ def test_repository_normative_index_is_current() -> None:
     assert len(receipt["normative_set_sha256"]) == 64
 
 
+def test_total_core_normative_effect_profile_matches_current_r1_runtime() -> None:
+    text = (ROOT / "spec" / "TEV_SCRIPT_V31_TOTAL_CORE.md").read_text(encoding="utf-8")
+    assert "Effects R1 observation-only" in text
+    assert "TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_R2_V1" in text
+    assert "MUST NOT be accepted as a Total-Core `profile = effects` child" in text
+    assert "An embedded V4 effects unit may deterministically compute observations, state transitions and command intent" not in text
+
+
 def test_normative_validation_emits_sha256_for_each_file(tmp_path: Path) -> None:
     _write_fixture(tmp_path)
     receipt = validate_normative_index(tmp_path)

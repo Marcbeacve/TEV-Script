@@ -8,6 +8,7 @@ import tomllib
 from typing import Any
 
 from .version import (
+    ARCHIVED_V31_PACKAGE_VERSION,
     CURRENT_LANGUAGE_VERSION,
     CURRENT_PROFILE,
     PACKAGE_VERSION,
@@ -101,6 +102,8 @@ def collect_current_version_facts(root: Path) -> dict[str, str]:
         "source.package": PACKAGE_VERSION,
         "source.language": CURRENT_LANGUAGE_VERSION,
         "source.profile": CURRENT_PROFILE,
+        "source.published_predecessor_package": PUBLISHED_PREDECESSOR_PACKAGE_VERSION,
+        "source.archived_v31_package": ARCHIVED_V31_PACKAGE_VERSION,
         "root.pyproject.package": str(root_project.get("version", "")),
         "published_v31.pyproject.package": str(v31_project.get("version", "")),
         "release_metadata_v31.language": release_version,
@@ -110,6 +113,10 @@ def collect_current_version_facts(root: Path) -> dict[str, str]:
         "platform_spec.package": _spec_assignment(root / _PLATFORM_SPEC, "package_version"),
         "platform_spec.language": _spec_assignment(root / _PLATFORM_SPEC, "language_version"),
         "platform_spec.profile": _spec_assignment(root / _PLATFORM_SPEC, "current_profile"),
+        "platform_spec.published_predecessor_package": _spec_assignment(
+            root / _PLATFORM_SPEC,
+            "published_predecessor_package",
+        ),
         "version_matrix.language": matrix_language,
         "version_matrix.package": matrix_package,
     }
@@ -146,13 +153,16 @@ def validate_current_version_identity(root: Path) -> dict[str, object]:
             "source.package": PACKAGE_VERSION,
             "source.language": CURRENT_LANGUAGE_VERSION,
             "source.profile": CURRENT_PROFILE,
+            "source.published_predecessor_package": PUBLISHED_PREDECESSOR_PACKAGE_VERSION,
+            "source.archived_v31_package": ARCHIVED_V31_PACKAGE_VERSION,
             "root.pyproject.package": PACKAGE_VERSION,
-            "published_v31.pyproject.package": PUBLISHED_PREDECESSOR_PACKAGE_VERSION,
+            "published_v31.pyproject.package": ARCHIVED_V31_PACKAGE_VERSION,
             "release_metadata_v31.language": CURRENT_LANGUAGE_VERSION,
             "descriptor_v31.language": CURRENT_LANGUAGE_VERSION,
             "platform_spec.package": PACKAGE_VERSION,
             "platform_spec.language": CURRENT_LANGUAGE_VERSION,
             "platform_spec.profile": CURRENT_PROFILE,
+            "platform_spec.published_predecessor_package": PUBLISHED_PREDECESSOR_PACKAGE_VERSION,
             "version_matrix.language": CURRENT_LANGUAGE_VERSION,
             "version_matrix.package": PACKAGE_VERSION,
         }
@@ -173,18 +183,27 @@ def validate_current_version_identity(root: Path) -> dict[str, object]:
             "package_version": PACKAGE_VERSION,
             "language_version": CURRENT_LANGUAGE_VERSION,
             "published_predecessor_package_version": PUBLISHED_PREDECESSOR_PACKAGE_VERSION,
+            "archived_v31_package_version": ARCHIVED_V31_PACKAGE_VERSION,
             "profile": CURRENT_PROFILE,
             "facts": facts,
             "mismatches": mismatches,
             "binding_errors": binding_errors,
         }
-    except (OSError, UnicodeError, ValueError, SyntaxError, json.JSONDecodeError, tomllib.TOMLDecodeError) as error:
+    except (
+        OSError,
+        UnicodeError,
+        ValueError,
+        SyntaxError,
+        json.JSONDecodeError,
+        tomllib.TOMLDecodeError,
+    ) as error:
         return {
             "schema": "TEV_SCRIPT_PLATFORM_VERSION_IDENTITY_V3",
             "status": "FAIL",
             "package_version": PACKAGE_VERSION,
             "language_version": CURRENT_LANGUAGE_VERSION,
             "published_predecessor_package_version": PUBLISHED_PREDECESSOR_PACKAGE_VERSION,
+            "archived_v31_package_version": ARCHIVED_V31_PACKAGE_VERSION,
             "profile": CURRENT_PROFILE,
             "facts": {},
             "mismatches": [],

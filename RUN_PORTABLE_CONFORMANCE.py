@@ -6,6 +6,9 @@ import sys
 import tempfile
 from pathlib import Path
 
+from tev_script.canonical import canonical_json
+from tev_script.compiler import compile_path
+from tev_script.conformance import run_conformance
 from tev_script.json_io import load_strict_json
 
 ROOT = Path(__file__).resolve().parent
@@ -43,6 +46,12 @@ def run(arguments: list[str], *, cwd: Path = ROOT) -> str:
     emit_text(completed.stdout)
     emit_text(completed.stderr, stream=sys.stderr)
     return completed.stdout
+
+
+def python_receipt_bytes(source: Path, scenario: Path) -> bytes:
+    bundle = compile_path(source)
+    receipt = run_conformance(bundle.ir, load_strict_json(scenario))
+    return (canonical_json(receipt) + "\n").encode("utf-8")
 
 
 def validate_schemas() -> None:
@@ -170,22 +179,16 @@ def validate_receipt_parity() -> dict[str, dict[str, str]]:
         for vector_id, source_name in VECTORS:
             python_receipt = temporary_root / f"{vector_id}.python.receipt.json"
             js_receipt = temporary_root / f"{vector_id}.javascript.receipt.json"
-            scenario_path = f"conformance/{vector_id}.scenario.json"
-            run([
-                sys.executable,
-                "-m",
-                "tev_script.cli",
-                "conformance",
-                f"examples/{source_name}",
-                scenario_path,
-                "--output",
-                str(python_receipt),
-            ])
+            source_path = ROOT / "examples" / source_name
+            scenario_path = ROOT / "conformance" / f"{vector_id}.scenario.json"
+            python_receipt.write_bytes(
+                python_receipt_bytes(source_path, scenario_path)
+            )
             js_receipt.write_bytes(
                 run([
                     "node",
                     "javascript/src/run-conformance.mjs",
-                    scenario_path,
+                    scenario_path.relative_to(ROOT).as_posix(),
                 ]).encode("utf-8")
             )
             if python_receipt.read_bytes() != js_receipt.read_bytes():
