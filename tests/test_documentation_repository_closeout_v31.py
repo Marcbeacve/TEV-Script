@@ -51,6 +51,18 @@ def test_final_navigation_and_diagnostic_pages_exist() -> None:
     assert missing == []
 
 
+def test_validation_recipe_contains_every_repository_channel_command() -> None:
+    policy = json.loads((ROOT / "REPOSITORY_CHANNEL.json").read_text(encoding="utf-8"))
+    validation_text = (ROOT / "docs" / "VALIDATION.md").read_text(encoding="utf-8")
+    missing: list[str] = []
+    for rule in policy["validation"]["rules"]:
+        for command in rule["commands"]:
+            for token in command[1:]:
+                if token not in validation_text:
+                    missing.append(f"{rule['rule_id']}: {token}")
+    assert missing == []
+
+
 def test_internal_markdown_links_resolve_inside_repository() -> None:
     broken: list[str] = []
     escaped: list[str] = []
