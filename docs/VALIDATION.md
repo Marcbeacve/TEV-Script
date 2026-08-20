@@ -2,24 +2,148 @@
 
 ## Current certified surface
 
-La evidencia histórica/certificada existente permanece autoritativa en sus receipts; este documento no la reescribe. Los gates de plataforma, conformance multihost, C#, WASM/WASI, schema y determinismo siguen siendo independientes del gate documental.
+```text
+PYTHON_TESTS=29 PASS
+JAVASCRIPT_TESTS=21 PASS
+CANONICAL_JSON_VECTORS=PASS
+STRICT_JSON_INPUT_BOUNDARY=PASS
+CONFORMANCE_SCENARIOS=4 PASS
+PYTHON_JAVASCRIPT_BYTE_PARITY=PASS
+CSHARP_CORE_BUILD=PASS_OBSERVED_WINDOWS_DOTNET_10_0_302
+CSHARP_GATE1_SMOKE=PASS
+CSHARP_CANONICAL_VECTORS=12 PASS
+CSHARP_STRICT_JSON_BOUNDARY=PASS
+CSHARP_STRICT_UTF8_BOUNDARY=PASS
+CSHARP_IR_NEGATIVE_CAMPAIGN=PASS
+CSHARP_MISSING_CAPABILITY_FAIL_CLOSED=PASS
+CSHARP_PYTHON_JAVASCRIPT_BYTE_PARITY=PASS
+DETERMINISTIC_UTF8_LF_OUTPUT=PASS
+REDIRECTED_STDIO_UNICODE=PASS
+POWERSHELL_MATERIALIZER_STATIC_STRUCTURE=PASS
+```
 
-## Validación de documentación 3.1
+Authoritative receipt hashes remain:
 
-Ejecución focal durante desarrollo:
+```text
+PLAYER_RECEIPT_HASH=b275ccc6530ad84c0f96320ba1c8893b401638a926a99a78479d99fbd3c4aba5
+MATRIX_RECEIPT_HASH=70df629159b6088aa3807deea217d4cdb06f28a41042aac1f6ebff6332179500
+PLAYER_IDLE_RECEIPT_HASH=647d3211f7411b88c155d658ba4c9494482378cde75c9f427dc4e38475acd17c
+EVENT_CHAIN_RECEIPT_HASH=5fcbd07512192ec298ff18bc313c71418e079e04d303aa3514a49ab91462371d
+```
+
+## C# conformance evidence
+
+Observed on Windows x64 with .NET SDK 10.0.302 / `Microsoft.NETCore.App
+10.0.10`. `TevScript.Core` targets `netstandard2.1`; the smoke and conformance
+hosts target `net8.0` with `RollForward=Major` so newer installed runtimes can
+execute the test hosts.
+
+C# consumes the same `TEV_SCRIPT_CONFORMANCE_SCENARIO_V1` fixtures as the other
+runtimes and produces the exact same canonical bytes for all four receipts. It
+also passes the canonical-vector and negative-boundary campaign.
+
+Evidence:
+
+```text
+evidence/reference-v0.2/csharp-conformance-windows-dotnet10.json
+```
+
+## JSON Schema continuity and global certification
+
+`RUN_PORTABLE_CONFORMANCE.py` uses the external `jsonschema` package when it is
+available. Historical V0.2 evidence that was produced without that optional
+development dependency remains historical evidence and is not rewritten as a
+PASS.
+
+For ordinary development/diagnostic runs, the portable tool may still report:
+
+```text
+JSON_SCHEMA_VALIDATION=SKIPPED_DEPENDENCY_UNAVAILABLE
+```
+
+That status is **not sufficient for global V1 certification**. The global
+`RUN_TEV_SCRIPT_V1_PRECERTIFY.py` treats `jsonschema` as a certification-tool
+dependency and requires:
+
+```text
+JSON_SCHEMA_VALIDATION=PASS
+```
+
+It also runs `RUN_TEV_SCRIPT_V1_FRONTEND_CLOSURE.py --require-zero-skips` and
+requires explicit zero skip counts for the V1, IR V3 and V0.2 Python regression
+suites. This prevents unittest skips written to stderr from being mistaken for
+a complete global PASS.
+
+`jsonschema` is **not** added to the TEV Script Python runtime dependency set.
+The production wheel's zero-runtime-dependency contract and the certification
+environment's stronger validation-tool requirements are separate concerns.
+
+V0.2 Browser-WASM and WASI execution remain separate mandatory dynamic
+witnesses provided by `tools/validate_v0_2_portable_hosts.py`.
+
+## Commands
+
+Development/diagnostic V0.2 checks:
+
+```powershell
+python .\RUN_PORTABLE_CONFORMANCE.py
+python .\tools\validate_v0_2_portable_hosts.py
+
+pwsh -NoProfile -ExecutionPolicy Bypass `
+  -File .\RUN_TEV_SCRIPT_CSHARP_CONFORMANCE_V1.ps1
+```
+
+Global V1 certification environment preflight includes `jsonschema` in addition
+to the host toolchain:
+
+```powershell
+python -c "import importlib.metadata; print(importlib.metadata.version('jsonschema'))"
+node --version
+dotnet --version
+wasmtime --version
+```
+
+Then the global campaign is:
+
+```powershell
+python .\RUN_TEV_SCRIPT_V1_PRECERTIFY.py
+python .\RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py
+```
+
+The second command is valid only after the candidate is still an exact clean
+commit/tree. `CERTIFY_FULL` re-runs PRECERTIFY and independently validates its
+receipt.
+
+For an exact committed V0.2/C# candidate, rerun with:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass `
+  -File .\RUN_TEV_SCRIPT_CSHARP_CONFORMANCE_V1.ps1 `
+  -RequireClean
+```
+
+No GitHub Action is authoritative or required.
+
+## TEV_SCRIPT_LANGUAGE_COMPLETENESS_V1
+
+Language-closure evidence is stored at `evidence/reference-v0.2/language-completeness-v1-windows-dotnet10.json`. The dynamic language regression ran once. Gates 5, 6 and 7 were not dynamically rerun. Functional payload SHA-256 identity: `e7af8fbe431507d52981600bef9721960a44dcccba7d97dd6ce6a79bcd413eef`. Stable release remains NO.
+
+## TEVScript 3.1 documentation validation
+
+The documentation validator is a leaf quality gate. It verifies documentation/source binding, executable documentation cases, public CLI/API coverage, current V31 diagnostics, historical classification and final documentation shape without changing semantic/platform authority.
+
+Development focal validation:
 
 ```powershell
 python -m pytest -q tests/test_documentation_v31.py tests/test_documentation_coverage_v31.py tests/test_documentation_source_bindings_v31.py tests/test_documentation_example_cases_v31.py tests/test_documentation_diagnostics_v31.py tests/test_documentation_public_surface_v31.py tests/test_documentation_closure_v31.py
 python tools/validate_documentation_v31.py --root .
 ```
 
-Regresión de identidad/plataforma exigida antes de cerrar el parche:
+Required platform regression before documentation closeout:
 
 ```powershell
 python -m pytest -q tests/test_platform_version_identity.py tests/test_platform_normative_spec.py tests/test_platform_version_matrix.py tests/test_platform_tooling.py
 python -m tev_script.cli platform-check --root .
 ```
 
-Como el parche modifica `tests/**`, `examples/**`, `tools/**` y documentación normativa/indexada, la certificación final debe ejecutar además cualquier comando causalmente seleccionado por `REPOSITORY_CHANNEL.json`. El validador documental es un leaf gate y no rebaja los gates semánticos existentes.
-
-No hay GitHub Action autoritativa. La evidencia de cierre debe corresponder a un commit/tree exacto y limpio. `MERGE_AUTHORITY` y `PUBLICATION_AUTHORITY` permanecen falsas hasta autorización explícita.
+Because this documentation implementation changes `tests/**`, `examples/**` and `tools/**`, final certification must also execute every causally selected command from `REPOSITORY_CHANNEL.json` on the exact clean candidate. This documentation gate cannot downgrade those requirements. `MERGE_AUTHORITY` and `PUBLICATION_AUTHORITY` remain false until separately authorized.
