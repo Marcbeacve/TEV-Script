@@ -72,6 +72,10 @@ def _identity(root: Path) -> None:
 
 
 def _required_docs() -> tuple[str, ...]:
+    getting_started = [
+        "README.md", "installation.md", "first-program.md", "cli-workflow.md",
+        "project-layout.md", "editor-lsp.md", "mental-model.md",
+    ]
     tutorial = ["README.md"] + [
         "01-values-exactness.md", "02-names-bindings-expressions.md", "03-control-bounds.md",
         "04-functions-types.md", "05-data-models.md", "06-state-events.md",
@@ -97,7 +101,8 @@ def _required_docs() -> tuple[str, ...]:
         "README.md", "pipeline.md", "semantic-identity.md", "ir-strata.md",
         "runtime-boundaries.md", "proof-capability-boundaries.md", "validation-architecture.md",
     ]
-    result = ["docs/manual/README.md", "docs/manual/faq.md"]
+    result = ["docs/manual/README.md", "docs/manual/faq.md", "docs/manual/glossary.md"]
+    result += [f"docs/manual/getting-started/{name}" for name in getting_started]
     result += [f"docs/manual/tutorial/{name}" for name in tutorial]
     result += [f"docs/manual/language-reference/{name}" for name in language]
     result += [f"docs/manual/howto/{name}" for name in howto]
