@@ -523,25 +523,6 @@ def _diagnostic_shard(root: Path) -> tuple[set[str], set[str], list[str]]:
     return covered, authorities, sorted(undocumented)
 
 
-def _current_diagnostic_authorities(root: Path) -> set[str]:
-    if not _phase(root).startswith(("F", "G", "H")):
-        return set()
-    result: set[str] = set()
-    package = root / "tev_script"
-    if package.is_dir():
-        for path in sorted(package.glob("*v31.py")):
-            result.add(path.relative_to(root).as_posix())
-        for name in ("program_ir_v5_total.py", "runtime_v5_total.py"):
-            path = package / name
-            if path.is_file():
-                result.add(path.relative_to(root).as_posix())
-    tools = root / "tools"
-    if tools.is_dir():
-        for path in sorted(tools.glob("*v31.py")):
-            result.add(path.relative_to(root).as_posix())
-    return result
-
-
 def _diag_inventory_check(root: Path) -> dict[str, Any]:
     manifest_rows = _coverage_rows(root, "diagnostics")
     covered = {row["id"] for row in manifest_rows}
@@ -552,7 +533,6 @@ def _diag_inventory_check(root: Path) -> dict[str, Any]:
         return _fail("INVALID_DIAGNOSTIC_COVERAGE", error=str(exc), diagnostic_count=0, missing_diagnostics=[], extra_diagnostics=[])
     covered |= shard_codes
     authorities |= shard_authorities
-    authorities |= _current_diagnostic_authorities(root)
     actual: set[str] = set()
     for rel in sorted(authorities):
         path = root / rel
