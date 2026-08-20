@@ -130,12 +130,12 @@ Language-closure evidence is stored at `evidence/reference-v0.2/language-complet
 
 ## TEVScript 3.1 documentation validation
 
-The documentation validator is a leaf quality gate. It verifies documentation/source binding, executable documentation cases, public CLI/API coverage, current V31 diagnostics, historical classification and final documentation shape without changing semantic/platform authority.
+The documentation validator is a leaf quality gate. It verifies documentation/source binding, executable documentation cases, public CLI/API coverage, current V31 diagnostics, historical classification and final documentation shape without changing semantic/platform authority. The repository-closeout test additionally points the validator at the real repository tree, checks final navigation/diagnostic pages, binds displayed negative examples to their canonical `case.json`, rejects stale phase placeholders and protects the current host-support matrix from overclaiming V5 targets.
 
 Development focal validation:
 
 ```powershell
-python -m pytest -q tests/test_documentation_v31.py tests/test_documentation_coverage_v31.py tests/test_documentation_source_bindings_v31.py tests/test_documentation_example_cases_v31.py tests/test_documentation_diagnostics_v31.py tests/test_documentation_public_surface_v31.py tests/test_documentation_closure_v31.py tests/test_documentation_run_cases_v31.py tests/test_documentation_cli_aliases_v31.py
+python -m pytest -q tests/test_documentation_v31.py tests/test_documentation_coverage_v31.py tests/test_documentation_source_bindings_v31.py tests/test_documentation_example_cases_v31.py tests/test_documentation_diagnostics_v31.py tests/test_documentation_public_surface_v31.py tests/test_documentation_closure_v31.py tests/test_documentation_run_cases_v31.py tests/test_documentation_cli_aliases_v31.py tests/test_documentation_repository_closeout_v31.py
 python tools/validate_documentation_v31.py --root .
 ```
 
