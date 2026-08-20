@@ -117,7 +117,7 @@ La tabla de instrucciones **no se reordena en validación**: su orden es semánt
 
 ## `quantum_steps`
 
-Todo root 3.1 declara:
+Cada root 3.1 declara:
 
 ```text
 quantum_steps N;
