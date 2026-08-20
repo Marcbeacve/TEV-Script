@@ -1,8 +1,10 @@
-# Cómo preparar una unidad effects y sus capabilities
+# Cómo preparar una unidad Effects R1 y sus capabilities
 
 ## Objetivo
 
-Compilar una unidad V2 effects dentro de Total-Core sin inventar observaciones, authority ni command commit.
+Compilar una unidad V2 **Effects R1 observation-only** dentro de Total-Core sin inventar observaciones ni authority.
+
+Este HOWTO describe la ruta current admitida por `compile_total_core_v31`. Effects R2 (`command/request`) tiene un pipeline de planning separado y no es un child Total-Core current.
 
 ## 1. Escribe la unidad
 
@@ -25,9 +27,11 @@ entry main=sample();
 unit Sensors profile effects;
 ```
 
+En Total-Core current, ese `profile effects` selecciona el schema V4 Effects R1 admitido; no significa “R1 o R2 indistintamente”.
+
 ## 3. No inventes `effect_inputs`
 
-El artefacto effects necesita un scenario ligado a la capability table real que produce la compilación de la fuente. No copies hashes de un ejemplo.
+El artefacto Effects R1 necesita un scenario ligado a la capability table real que produce la compilación de la fuente. No copies hashes de un ejemplo.
 
 La estructura conceptual incluye:
 
@@ -68,6 +72,8 @@ scenario = effect_scenario_skeleton_v2(compiled)
 
 La skeleton contiene los IDs/hashes de capability correctos y `calls` vacíos. El integrador/provider autorizado rellena evidence de llamadas concretas.
 
+`compile_effect_program_v2` es deliberadamente R1. Si la fuente contiene `command` o `request`, falla con `TEVS_V2_EFFECT_R2_REQUIRED` en vez de promoverla silenciosamente.
+
 ## 5. Construye `sensors.json`
 
 La CLI 3.1 espera el objeto de effect input con campo `scenario` y opcional `current_state`:
@@ -79,7 +85,7 @@ La CLI 3.1 espera el objeto de effect input con campo `scenario` y opcional `cur
 }
 ```
 
-No añadas campos arbitrarios: el shape es cerrado.
+No añadas campos arbitrarios: el shape es cerrado. `current_state` contiene valores runtime que serán validados/canonicalizados contra el state schema del child.
 
 ## 6. Compila el root
 
@@ -96,16 +102,25 @@ tev-script compile .\main.tevs `
 
 ## 7. Entiende qué se ejecuta
 
-El Program IR V4 Effects contiene una instancia ligada al scenario. Al `invoke_v4`:
+El Program IR V4 Effects R1 contiene una instancia ligada al scenario. Al `invoke_v4`:
 
-- se valida el artefacto;
+- se valida el artefacto R1;
 - se reproducen/consumen las observaciones declaradas;
 - se calcula estado final/receipt;
-- el receipt se proyecta al Field padre.
+- el receipt R1 se proyecta al Field padre.
 
-## 8. Commit físico separado
+## 8. Commands/actuación pertenecen a Effects R2 separado
 
-Para commands/actuación, el portable runtime puede producir intent. El provider externo decide commit bajo grant/policy y debe producir evidencia propia.
+La sintaxis:
+
+```text
+command file.replace(Text,Text);
+request file.replace("out.txt","hello");
+```
+
+pertenece a Effects R2 y se compila/plannifica con las autoridades R2 correspondientes (`compile_effect_command_program_v2`, Program IR `TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_R2_V1`, providers/grants).
+
+Ese plan puede producir intención de command, pero el commit físico sigue detrás del provider/grant y **R2 no es hoy un child admitido por `compile_total_core_v31`**.
 
 Nunca hagas:
 
@@ -117,7 +132,7 @@ sin receipt de la frontera de realización.
 
 ## Repetibilidad
 
-Misma fuente + distinto scenario puede conservar source semantic hash y cambiar Program IR hash/result. Eso es esperado: observación de ejecución no es fuente.
+Misma fuente R1 + distinto scenario puede conservar source semantic hash y cambiar Program IR hash/result. Eso es esperado: observación de ejecución no es fuente.
 
 ## Errores frecuentes
 
@@ -126,10 +141,13 @@ Misma fuente + distinto scenario puede conservar source semantic hash y cambiar 
 - usar capability_table_hash de otra compilación;
 - call con arguments diferentes a los esperados;
 - return mal tipado;
-- suponer que el provider existe porque la source declara la capability.
+- suponer que el provider existe porque la source declara la capability;
+- intentar meter un child R2 `command/request` en Total-Core como si `profile effects` admitiera ambos schemas.
 
 ## Referencia
 
 - `docs/manual/language-reference/state-events-effects.md`
+- `docs/manual/integrations/filesystem.md`
 - `spec/TEV_SCRIPT_V2_LANGUAGE.md`
+- `spec/TEV_SCRIPT_PROGRAM_IR_V4.md`
 - `spec/TEV_SCRIPT_V31_TOTAL_CORE.md`
