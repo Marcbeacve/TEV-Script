@@ -5,6 +5,8 @@ from pathlib import Path
 import re
 
 from tev_script.descriptor_v31 import v31_descriptor
+from tev_script.runtime_v5_total import initial_total_core_checkpoint, run_total_core_quantum
+from tev_script.source_total_core_v31 import compile_total_core_v31
 from tools.validate_documentation_v31 import validate_documentation
 
 
@@ -107,6 +109,31 @@ def test_every_positive_documentation_case_executes_runtime() -> None:
         assert case["expected_diagnostic_code"] is None, rel
     assert positives, "documentation must contain positive executable cases"
     assert negatives, "documentation must retain negative executable controls"
+
+
+def test_capability_tutorial_binds_observation_and_final_state() -> None:
+    case_dir = _EXAMPLES / "tutorial" / "07_capabilities_effects"
+    case = json.loads((case_dir / "case.json").read_text(encoding="utf-8"))
+    process_source = (case_dir / case["source"]).read_text(encoding="utf-8")
+    unit_sources = {
+        unit_id: (case_dir / rel).read_text(encoding="utf-8")
+        for unit_id, rel in case["units"].items()
+    }
+    program = compile_total_core_v31(
+        process_source,
+        unit_sources=unit_sources,
+        effect_inputs=case["effect_inputs"],
+    )
+    result = run_total_core_quantum(program, initial_total_core_checkpoint(program))
+    assert result.status == "HALTED"
+    bridges = [fact for fact in result.field.facts if fact.relation == "tev.tutorial.capability"]
+    assert len(bridges) == 1
+    payload = bridges[0].arguments[0]
+    assert isinstance(payload, dict)
+    final_state = {row["name"]: row["value"] for row in payload["final_state"]}
+    assert final_state["count"] == {"$int": "13"}
+    assert final_state["last"] == {"$int": "10"}
+    assert payload["observation_calls"] == 1
 
 
 def test_displayed_negative_examples_match_their_canonical_case() -> None:
