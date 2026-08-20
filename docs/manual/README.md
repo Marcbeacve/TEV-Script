@@ -12,7 +12,7 @@ TEVScript es un lenguaje/plataforma determinista con valores portables, identida
 - **API Python:** [`library-reference/`](library-reference/)
 - **CLI:** [`cli-reference/`](cli-reference/)
 - **Recetas:** [`howto/`](howto/)
-- **Python/JS/C#/Unity/WASM/WASI/filesystem:** [`integrations/`](integrations/)
+- **Hosts e integraciones (current + compatibilidad):** [`integrations/`](integrations/)
 - **Diagnósticos estructurados:** [`diagnostics/`](diagnostics/)
 - **Pipeline, IR y runtime:** [`internals/`](internals/)
 - **Versiones/deprecaciones:** [`versions/`](versions/)
@@ -38,6 +38,8 @@ Total-Core 3.1 combina un proceso semántico con unidades Program IR V4 `pure`, 
 ## Autoridad y host
 
 El manual no redefine el lenguaje. La autoridad normativa vive en `spec/`, especialmente `TEV_SCRIPT_3_1_PLATFORM.md`, `TEV_SCRIPT_V31_TOTAL_CORE.md` y `TEV_SCRIPT_VERSION_MATRIX.json`. Si un host convierte un valor, concede filesystem/red, llama a Unity o materializa un efecto físico, esa responsabilidad sigue fuera de la semántica portable salvo que un contrato explícito la admita.
+
+La matriz de [`integrations/`](integrations/) distingue qué hosts ejecutan Total-Core current y cuáles conservan contratos de compatibilidad. La existencia de un adapter o gate histórico no se presenta como soporte V5 si no existe evidencia específica.
 
 ## Documentación ejecutable
 
