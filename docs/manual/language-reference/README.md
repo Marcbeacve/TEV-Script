@@ -20,19 +20,21 @@ root Total-Core 3.1
     process/fact/field/transform/labels/unit/invoke_v4
     comentarios de línea raíz: # al inicio lógico de línea
 
-unidad V2 pure/recursive/effects
+unidad V2 pure/recursive/effects R1
     script/module/fn/record/state/action/...
     comentarios V2: //
 ```
 
 Una unidad declarada `unit Calc profile pure` sigue siendo fuente V2 `2.0.0`; no se escribe con el header `process ... 3.1.0`.
 
+En la ruta Total-Core current, `unit ... profile effects` se compila como **effects R1 observation-only** (`TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_V1`). Effects R2 `command/request` usa el contrato distinto `TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_R2_V1 / effects_r2_plan` y no es un child V5 current.
+
 ## Ruta actual recomendada
 
 ```text
 process 3.1 Total-Core
     ↓ contiene/referencia
-unidades V4
+unidades V4 pure/recursive/effects R1
     ↑ compiladas desde
 fuente V2 compatible
 ```
@@ -46,7 +48,7 @@ La ruta V3 `3.0.0 semantic_process` permanece compatible/histórica y aporta la 
 - [`expressions.md`](expressions.md) — expresiones puras, operadores, llamadas, match, folds y tareas.
 - [`declarations-and-functions.md`](declarations-and-functions.md) — declaraciones, funciones, genéricos, recursión y entries.
 - [`control-and-bounds.md`](control-and-bounds.md) — control finito, recursion contracts, quanta y PC.
-- [`state-events-effects.md`](state-events-effects.md) — estado V2, observations, commands y frontera física.
+- [`state-events-effects.md`](state-events-effects.md) — estado V2, Effects R1 observations, Effects R2 commands y frontera física.
 - [`modules.md`](modules.md) — módulos/linking y unidades V4.
 - [`semantic-process.md`](semantic-process.md) — facts, Field, transform y labels V3/3.1.
 - [`field-transformation-apply.md`](field-transformation-apply.md) — semántica operacional central.
@@ -67,7 +69,8 @@ perfil de fuente actual               total_core
 semantic process compatible           3.0.0
 unidades de fuente V2 compatibles     2.0.0
 Program IR raíz actual                V5 Total-Core
-Program IR de unidades                V4
+Program IR de unidades                V4 (pure/recursive/effects R1)
+Effects R2 command plan               V4 separado, no child V5 current
 ```
 
 Consulta `docs/manual/versions/` para separar package/language/profile/IR/runtime/checkpoint.
@@ -75,6 +78,7 @@ Consulta `docs/manual/versions/` para separar package/language/profile/IR/runtim
 ## Autoridad primaria
 
 - `spec/TEV_SCRIPT_V2_LANGUAGE.md`
+- `spec/TEV_SCRIPT_PROGRAM_IR_V4.md`
 - `spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md`
 - `spec/TEV_SCRIPT_V31_TOTAL_CORE.md`
 - `spec/TEV_SCRIPT_VERSION_MATRIX.json`
