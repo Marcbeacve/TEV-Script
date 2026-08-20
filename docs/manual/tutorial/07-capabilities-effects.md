@@ -10,28 +10,27 @@ tener autoridad para realizarla
 
 El lenguaje puede describir observaciones, estado, comandos o intención de actuar. El mundo externo sólo se toca mediante contratos explícitos del host/provider. Esto evita que una función aparentemente portable gane filesystem, red, reloj o actuadores por accidente.
 
-## Ejemplo base sin autoridad externa
+## Ejemplo ejecutable: un child `effects` real
+
+El proceso raíz declara una unidad V4 de perfil `effects` y proyecta su receipt al Field Total-Core:
 
 <!-- tevdoc-source: examples/docs/v31/tutorial/07_capabilities_effects/main.tevs -->
 ```tevs
 process Tutorial07 version "3.1.0";
 authority aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
 quantum_steps 8;
-unit Calc profile pure;
+unit Calc profile effects;
 field actual = [];
 label Start = invoke_v4 Calc result tev.tutorial.capability End;
 label End = halt;
 entry Start;
 ```
 
-Esta unidad es `pure`: no puede observar un sensor ni escribir un archivo. Es una base útil porque deja claro que **la ausencia de capability no se rellena con una API del host**.
+La unidad hija es fuente V2 effects y usa una observación tipada real:
 
-## Una observación V2 real
-
-La suite de producto usa una fuente effects de esta forma:
-
-```text
-script Demo version "2.0.0";
+<!-- tevdoc-source: examples/docs/v31/tutorial/07_capabilities_effects/calc.tevs -->
+```tevs
+script Calc version "2.0.0";
 state count:Int=0;
 state last:Int=0;
 capability observation sensor.read(Int)->Int;
@@ -45,25 +44,80 @@ action tick(bias:Int) {
 entry main=tick(3);
 ```
 
+Este ejemplo ya no se limita a compilar. Su `case.json` ejecuta el quantum Total-Core con un scenario exacto y exige `HALTED`.
+
+## Capability declarada
+
 La línea:
 
 ```text
 capability observation sensor.read(Int)->Int;
 ```
 
-describe la firma que la unidad puede observar. No contiene un objeto Python, una URL ni un driver concreto.
+describe una firma. No contiene un objeto Python, una URL ni un driver concreto. El child sólo sabe que puede solicitar una observación `sensor.read` con un `Int` y recibir otro `Int`.
+
+La identidad canónica de este contrato en el ejemplo es:
+
+```text
+contract_hash = 7d21ba0b6b6ae82d9987eac1b4b514ba4e4ef22039cc72b498b9caa3aa1be26a
+```
+
+y la tabla de capabilities que contiene ese único contrato queda ligada por:
+
+```text
+capability_table_hash = 78b40fca1cc70fbb34e48f94af75ffbb9af2c7db4918f23a34a0ed7a53af1cd7
+```
+
+Esos hashes se derivan del contrato canónico; no son permisos físicos.
 
 ## Scenario: evidencia externa de ejecución
 
-Una unidad V4 `effects` no puede inventar la respuesta de `sensor.read`. Al construir el artefacto ejecutable, el host aporta un scenario ligado a:
+La unidad no puede inventar la respuesta de `sensor.read`. El caso documental aporta esta llamada scripted:
 
-- `capability_table_hash`;
-- `capability_id`;
-- `contract_hash`;
-- argumentos esperados;
-- retorno observado/reproducido.
+```json
+{
+  "capability_table_hash": "78b40fca1cc70fbb34e48f94af75ffbb9af2c7db4918f23a34a0ed7a53af1cd7",
+  "capabilities": [
+    {
+      "capability_id": "sensor.read",
+      "contract_hash": "7d21ba0b6b6ae82d9987eac1b4b514ba4e4ef22039cc72b498b9caa3aa1be26a",
+      "calls": [
+        {
+          "arguments": [{"$int":"0"}],
+          "return": {"$int":"10"}
+        }
+      ]
+    }
+  ]
+}
+```
 
-Cambiar el scenario no cambia la semántica de fuente de la unidad, pero sí puede cambiar el Program IR V4 concreto y su resultado de ejecución. Esto separa **programa** de **instancia observacional**.
+El estado inicial tiene `count=0`, así que la llamada esperada es exactamente `sensor.read(0)`. El scenario devuelve `10`.
+
+Cambiar el scenario no cambia la semántica de fuente de la unidad, pero sí puede cambiar el Program IR V4 concreto, el receipt y el resultado de ejecución. Esto separa **programa** de **instancia observacional**.
+
+## Ejecución paso a paso
+
+Con `bias=3`:
+
+```text
+count inicial = 0
+sensor.read(0) = 10
+sample = 10
+next = 10 + 3 = 13
+last  = 10
+count = 13
+assert count > 0  → PASS
+```
+
+El child effects termina por tanto con estado semántico equivalente a:
+
+```text
+count = 13
+last  = 10
+```
+
+Su receipt liga, entre otras identidades, el scenario, transcript de capability, estado final y pasos de evaluación.
 
 ## `observe`
 
@@ -73,13 +127,19 @@ Esta distinción permite replay: una ejecución posterior puede sustituir la obs
 
 ## Estado local de la unidad effects
 
-En el ejemplo, `count` y `last` son estado de la unidad. `set` actualiza el estado propuesto según la semántica de effects. Ese estado no es el mismo objeto que el `Field` Total-Core padre.
+`count` y `last` son estado de la unidad V4 effects. `set` actualiza ese estado bajo la semántica del child. Ese estado **no es** el mismo objeto que el `Field` Total-Core padre.
 
-Al volver al padre, `invoke_v4` proyecta el resultado/receipt como un fact puente. No comparte referencias mutables con la unidad.
+Al terminar `invoke_v4`, el runtime V5 empaqueta el receipt child en un fact con relación:
+
+```text
+tev.tutorial.capability
+```
+
+y lo añade al Field padre mediante una Transformation puente derivada + `Apply`. El child no recibe una referencia mutable al Field V5.
 
 ## Observación no equivale a acción física
 
-Una observación puede tener costes o incluso consecuencias en algunos sistemas reales. Por eso el modelo general no supone que «read» sea mágicamente gratuito/reversible. El contrato de recurso/efecto debe especificarlo cuando importe.
+El scenario del tutorial es scripted: no demuestra que exista un sensor físico. En un deployment real, obtener una observación puede tener costes o consecuencias. El modelo general no supone que «read» sea mágicamente gratuito o reversible.
 
 La arquitectura mantiene separadas al menos estas preguntas:
 
@@ -95,7 +155,7 @@ La última no puede anular las anteriores.
 
 ## Comandos e intención
 
-V2 posee una vía posterior para comandos, por ejemplo conceptualmente:
+V2 posee una vía posterior para comandos, por ejemplo:
 
 ```text
 command file.replace(Text,Text);
@@ -111,12 +171,25 @@ action publish() {
 Un proceso 3.1 puede declarar:
 
 ```text
-unit Sensors profile effects;
+unit Calc profile effects;
 ```
 
 pero entonces `effect_inputs` debe corresponder exactamente a las unidades `effects` declaradas. Omitir la evidencia requerida o proporcionar inputs para una unidad `pure` falla cerrado.
 
-El schema hijo debe ser exactamente el V4 Effects correspondiente. Un perfil declarado no puede disfrazar un artefacto de otro tipo.
+El schema hijo debe ser exactamente Program IR V4 Effects. Un perfil declarado no puede disfrazar un artefacto de otro tipo.
+
+## Contrapruebas
+
+Deben fallar, entre otros:
+
+- capability usada pero no declarada;
+- scenario con `capability_table_hash` distinto;
+- `contract_hash` distinto;
+- llamada scripted con argumentos diferentes a los que produce la acción;
+- retorno con encoding/tipo no canónico;
+- `effect_inputs` con conjunto distinto a las unidades effects;
+- intento de llamada host como `open(...)` dentro de código puro;
+- tratar un command intent como si fuera receipt de commit físico.
 
 ## Filesystem, red y Unity
 
@@ -128,16 +201,6 @@ El mismo principio se aplica a integraciones concretas:
 - navegador/WASI: sólo capacidades que el host expone deliberadamente.
 
 No hay «ambient authority» por estar ejecutando TEVScript dentro de un proceso que sí tiene esos permisos.
-
-## Fallos esperables
-
-- capability usada pero no declarada;
-- scenario sin la capability requerida;
-- `contract_hash` que no coincide;
-- argumentos/retorno incompatibles con la firma;
-- `effect_inputs` con conjunto distinto a las unidades effects;
-- intento de llamada host como `open(...)` dentro de código puro;
-- tratar un command intent como si fuera receipt de commit físico.
 
 ## Regla práctica
 
@@ -159,5 +222,6 @@ Si dos de esas columnas se han fusionado, probablemente estás ocultando una fro
 - `spec/TEV_SCRIPT_V2_LANGUAGE.md`.
 - `spec/TEV_SCRIPT_V2_FILESYSTEM_CAPABILITIES.md`.
 - `tev_script/source_effect_program_v2.py`.
+- `tev_script/ir_v4_effects.py`.
 - `spec/TEV_SCRIPT_PROGRAM_IR_V4.md`.
 - `spec/TEV_SCRIPT_V31_TOTAL_CORE.md`, sección de effect authority boundary.
