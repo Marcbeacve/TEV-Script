@@ -2,7 +2,7 @@
 
 Hasta ahora las unidades puras calculaban valores y el proceso padre casi no tenía estado. Total-Core cambia el foco: el estado semántico del proceso se expresa como un `Field` inmutable y las modificaciones admisibles como `Transformation`.
 
-La idea importante es que **estado** no significa «un objeto mutable cualquiera». Cada snapshot tiene identidad canónica y cada transición se valida contra el estado que afirma transformar.
+La idea importante es que **estado** no significa «un objeto mutable cualquiera». Cada snapshot tiene identidad canónica y cada transición declara de forma explícita qué facts elimina, cuáles añade y qué metadata de efecto/recursos la identifica. El modelo programático completo puede además fijar un `required_before_hash` exacto; la gramática semantic-process V3/3.1 actual no expone esa cláusula y compila sus transforms con ese campo en `None`.
 
 ## Ejemplo ejecutable: `Idle → Running`
 
@@ -56,7 +56,7 @@ add    [Running]
 
 Los campos `effects` y `resources` son hashes explícitos del perfil correspondiente. **No son permisos físicos**. Identifican información del contrato; no conceden acceso a una máquina, archivo o red.
 
-Al compilar, la transformación queda ligada al hash del Field previo exigido. Por eso no puede aplicarse indiferentemente sobre cualquier estado.
+En la fuente semantic-process actual, `Activate` queda **sin pin de Field exacto** (`required_before_hash = None`). Su aplicabilidad dinámica sigue exigiendo que los facts de `remove` existan y que el delta sea válido. Si necesitas una Transformation programática ligada a un snapshot exacto, `FieldTransformationV1` sí soporta `required_before_hash`; no debes fingir que esa opción ya existe como sintaxis `transform` de fuente.
 
 ## `apply`
 
@@ -66,7 +66,7 @@ La instrucción:
 label Start = apply Activate End;
 ```
 
-pide aplicar `Activate` y continuar en `End`. El runtime comprueba el contrato de la transformación. Si la precondición de estado no coincide, el Apply no puede inventar un PASS.
+pide aplicar `Activate` y continuar en `End`. El runtime comprueba el contrato de la transformación. En este ejemplo, si `Idle` ya no estuviera en el Field, la eliminación fallaría; para una Transformation programática pinned, un `required_before_hash` distinto también haría fallar Apply.
 
 El resultado conceptual es:
 
@@ -103,11 +103,11 @@ Para sistemas externos, además, «ocurrió un evento» y «se produjo un efecto
 La representación por Fields permite:
 
 - comparar estado antes/después;
-- ligar una transición a una precondición exacta;
 - obtener hashes reproducibles;
 - conservar evidencia histórica sin mutarla;
 - reanudar procesos con checkpoints ligados a estado;
-- detectar una transición aplicada sobre un estado obsoleto.
+- usar `required_before_hash` cuando una Transformation construida por API/IR necesita un pin exacto;
+- detectar por ausencia de facts un delta que ya no es aplicable.
 
 ## Contrapruebas
 
@@ -115,7 +115,7 @@ Una implementación debe rechazar, entre otras cosas:
 
 - una transformación que referencia un fact inexistente;
 - el mismo fact en `remove` y `add` cuando el contrato lo prohíbe;
-- una transición cuyo `required_before_hash` no coincide con el Field observado;
+- una Transformation programática pinned cuyo `required_before_hash` no coincide con el Field observado;
 - un target de label inexistente;
 - un runtime que modifique el Field por fuera de `Apply` y después fabrique el receipt.
 
@@ -128,4 +128,5 @@ Los hashes `bbbb...` y `cccc...` son identidades sintéticas. No prueban que exi
 - `spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md`: sintaxis de facts/fields/transforms/labels heredada por el frontend Total-Core.
 - `spec/TEV_SCRIPT_SEMANTIC_APPLY_CALCULUS_V0.md`: modelo Field/Transformation/Apply.
 - `spec/TEV_SCRIPT_V31_TOTAL_CORE.md`: integración y ejecución V5 actual.
+- `tev_script/source_semantic_process_v3.py`: muestra que la sintaxis `transform` actual no pasa `required_before_hash`.
 - `tev_script/omega_semantic_basis_v1.py`: implementación de referencia de Field/Transformation.
