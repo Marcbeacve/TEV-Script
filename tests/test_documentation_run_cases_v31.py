@@ -145,6 +145,9 @@ def test_total_core_source_path_rejects_r2_effect_command_children() -> None:
     tutorial = (ROOT / "docs" / "manual" / "tutorial" / "07-capabilities-effects.md").read_text(encoding="utf-8")
     total_core = (ROOT / "docs" / "manual" / "language-reference" / "total-core.md").read_text(encoding="utf-8")
     effects = (ROOT / "docs" / "manual" / "language-reference" / "state-events-effects.md").read_text(encoding="utf-8")
+    language_index = (ROOT / "docs" / "manual" / "language-reference" / "README.md").read_text(encoding="utf-8")
+    api = (ROOT / "docs" / "manual" / "library-reference" / "current-total-core.md").read_text(encoding="utf-8")
+    version = (ROOT / "docs" / "manual" / "versions" / "v31.md").read_text(encoding="utf-8")
 
     assert "Effects R1" in filesystem and "Effects R2" in filesystem
     assert "no admite Effects R2" in filesystem
@@ -153,3 +156,7 @@ def test_total_core_source_path_rejects_r2_effect_command_children() -> None:
     assert "no admite Effects R2" in total_core
     assert "Effects R1" in effects and "Effects R2" in effects
     assert "no incorpora Effects R2" in effects
+    assert "effects R1" in language_index
+    assert "Effects R1" in api and "Effects R2" in api
+    assert "no acepta" in api
+    assert "Effects R1" in version and "Effects R2" in version
