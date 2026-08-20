@@ -77,7 +77,7 @@ Conceptualmente:
 F1 = F0 ∪ { tev.app.calc(...) }
 ```
 
-La adición se realiza mediante una Transformation puente derivada + Apply.
+La adición se realiza mediante una Transformation puente derivada + Apply. Esa bridge Transformation sí queda pinned al `field_hash` observado antes de añadir el fact.
 
 ## Paso 3 — `Rec`
 
@@ -98,6 +98,10 @@ F3 = (F2 - { Pending }) ∪ { Complete }
 ```
 
 Los facts puente permanecen. El workflow cambia de estado sin borrar la evidencia de computación que condujo a él.
+
+Hay una sutileza importante: el statement `transform Finish ...` de la gramática semantic-process actual se compila con `required_before_hash = None`. Por eso los bridge facts añadidos antes de `Finish` no invalidan un pin inexistente. El Apply sigue siendo gobernado: `Pending` debe continuar presente para que `remove [Pending]` sea válido, `Complete` no puede colisionar y el resto del contrato de Transformation se comprueba.
+
+Si construyes una `FieldTransformationV1` por API con un `required_before_hash` exacto, entonces sí debes aplicarla sobre ese snapshot concreto; no es lo que expresa esta source `transform`.
 
 ## Paso 5 — Halt
 
@@ -136,7 +140,7 @@ Modificar el cuerpo de `Calc` puede cambiar su semantic hash, Program IR hash, u
 
 ## Qué ocurre si cambia el estado inicial
 
-Cambiar `Pending` o el Field inicial cambia identidades y también la precondición de `Finish`. La Transformation no es un parche universal aplicable a cualquier Field.
+Cambiar `Pending`, sus argumentos o el Field inicial cambia las identidades del programa/estado y puede hacer que `Finish` deje de ser aplicable si ya no existe el fact que pretende retirar. No afirmamos que la source `transform` esté pinned por hash, porque el frontend actual no expresa ese pin.
 
 ## Qué NO hace esta aplicación
 
@@ -180,5 +184,6 @@ Cuando puedas clasificar esas cinco cosas sin mirar el manual, ya tienes el mode
 - `spec/TEV_SCRIPT_PROGRAM_IR_V4.md`.
 - `spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md`.
 - `spec/TEV_SCRIPT_V31_TOTAL_CORE.md`.
+- `tev_script/source_semantic_process_v3.py`.
 - `tev_script/source_total_core_v31.py`.
 - `tev_script/runtime_v5_total.py`.
