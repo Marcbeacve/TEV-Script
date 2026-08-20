@@ -135,7 +135,7 @@ The documentation validator is a leaf quality gate. It verifies documentation/so
 Development focal validation:
 
 ```powershell
-python -m pytest -q tests/test_documentation_v31.py tests/test_documentation_coverage_v31.py tests/test_documentation_source_bindings_v31.py tests/test_documentation_example_cases_v31.py tests/test_documentation_diagnostics_v31.py tests/test_documentation_public_surface_v31.py tests/test_documentation_closure_v31.py
+python -m pytest -q tests/test_documentation_v31.py tests/test_documentation_coverage_v31.py tests/test_documentation_source_bindings_v31.py tests/test_documentation_example_cases_v31.py tests/test_documentation_diagnostics_v31.py tests/test_documentation_public_surface_v31.py tests/test_documentation_closure_v31.py tests/test_documentation_run_cases_v31.py tests/test_documentation_cli_aliases_v31.py
 python tools/validate_documentation_v31.py --root .
 ```
 
