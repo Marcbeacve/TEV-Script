@@ -99,7 +99,7 @@ def _write_manifest(root: Path, codes: list[str]) -> None:
     )
 
 
-def _write_shard(root: Path) -> None:
+def _write_shard(root: Path, *, codes: list[str] | None = None) -> None:
     (root / "docs" / "manual" / "DIAGNOSTIC_COVERAGE_V31.json").write_text(
         json.dumps(
             {
@@ -108,7 +108,7 @@ def _write_shard(root: Path) -> None:
                 "families": [
                     {
                         "prefix": "TEVS_V31_",
-                        "codes": ["ONE", "TWO"],
+                        "codes": ["ONE", "TWO"] if codes is None else codes,
                         "page": "docs/manual/diagnostics.md",
                         "authority": "tev_script/current.py",
                     }
@@ -143,6 +143,49 @@ def test_sharded_diagnostic_inventory_expands_when_root_domain_is_empty(tmp_path
         "missing_diagnostics": [],
         "extra_diagnostics": [],
     }
+
+
+def test_wildcard_shard_discovers_authority_codes_and_requires_page_mentions(tmp_path: Path) -> None:
+    _write_foundation(tmp_path)
+    _write_manifest(tmp_path, [])
+    (tmp_path / "docs" / "manual" / "diagnostics.md").write_text(
+        "# Diagnostics\n\nTEVS_V31_ONE\n\nTEVS_V31_TWO\n",
+        encoding="utf-8",
+    )
+    _write_shard(tmp_path, codes=["*"])
+    check = validate_documentation(tmp_path)["checks"]["DIAGNOSTIC_COVERAGE"]
+    assert check == {
+        "status": "PASS",
+        "diagnostic_count": 2,
+        "missing_diagnostics": [],
+        "extra_diagnostics": [],
+    }
+
+    (tmp_path / "docs" / "manual" / "diagnostics.md").write_text(
+        "# Diagnostics\n\nTEVS_V31_ONE\n",
+        encoding="utf-8",
+    )
+    check = validate_documentation(tmp_path)["checks"]["DIAGNOSTIC_COVERAGE"]
+    assert check["status"] == "FAIL"
+    assert "TEVS_V31_TWO" in check.get("undocumented_diagnostics", [])
+
+
+def test_shard_authority_scopes_public_inventory(tmp_path: Path) -> None:
+    _write_foundation(tmp_path)
+    _write_manifest(tmp_path, [])
+    (tmp_path / "docs" / "manual" / "diagnostics.md").write_text(
+        "# Diagnostics\n\nTEVS_V31_ONE\n\nTEVS_V31_TWO\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "tev_script" / "unrelated_internal.py").write_text(
+        "INTERNAL = 'TEVS_V31_INTERNAL_ONLY'\n",
+        encoding="utf-8",
+    )
+    _write_shard(tmp_path, codes=["*"])
+    check = validate_documentation(tmp_path)["checks"]["DIAGNOSTIC_COVERAGE"]
+    assert check["status"] == "PASS"
+    assert check["diagnostic_count"] == 2
+    assert "TEVS_V31_INTERNAL_ONLY" not in check["missing_diagnostics"]
 
 
 def test_missing_v31_diagnostic_fails_closed(tmp_path: Path) -> None:
