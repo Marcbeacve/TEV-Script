@@ -7,6 +7,7 @@ No todos pertenecen a la misma generación semántica. Esta referencia los separ
 ## Familias
 
 - [`current-total-core.md`](current-total-core.md) — 16 símbolos Total-Core 3.1 actuales.
+- [`advanced-embedding.md`](advanced-embedding.md) — hooks avanzados de embedding, incluido `task_strategy`, sin ampliar la API root estable.
 - [`python-host-v1.md`](python-host-v1.md) — 5 símbolos del host de producción Python para IR V3.
 - [`ir-v3.md`](ir-v3.md) — 13 símbolos de valores, validación, runtime, checkpoint y conformance IR V3.
 - [`v1-compiler.md`](v1-compiler.md) — 16 símbolos del pipeline/compiler V1 compatible.
@@ -27,6 +28,8 @@ run_total_core_quantum
 ```
 
 y usa la CLI pública cuando no necesites embedding Python.
+
+Si necesitas controlar la realización de tareas V4 desde el host, consulta [`advanced-embedding.md`](advanced-embedding.md). Es una frontera especializada: no convierte sus tipos auxiliares en símbolos estables de `tev_script.__all__`.
 
 Las APIs V1/V0.2/IR V3 siguen siendo públicas por compatibilidad y por contratos de integración existentes; su presencia en `__all__` no significa que debas reconstruir un proyecto Total-Core moderno con ellas.
 
