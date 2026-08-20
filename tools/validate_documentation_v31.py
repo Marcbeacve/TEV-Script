@@ -349,11 +349,10 @@ def _source_bindings_check(root: Path) -> dict[str, Any]:
             if not preceding:
                 errors.append(f"unbound tevs fence: {page.relative_to(root).as_posix()}")
                 continue
-            directive = preceding[-1]
-            intervening = [item for item in directives if directive.end() <= item.start() < fence.start()]
-            if intervening:
+            if len(preceding) != 1:
                 errors.append(f"multiple source directives bind one fence: {page.relative_to(root).as_posix()}")
                 continue
+            directive = preceding[0]
             used.add(directive.start())
             rel = directive.group(1).strip()
             if not _safe_rel(rel):
@@ -578,13 +577,14 @@ def _cli_surface(path: Path) -> set[str]:
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute) or not node.args:
             continue
-        if not isinstance(node.args[0], ast.Constant) or not isinstance(node.args[0].value, str):
-            continue
-        value = node.args[0].value
         if node.func.attr == "add_parser":
-            result.add("command:" + value)
-        elif node.func.attr == "add_argument" and value.startswith("-"):
-            result.add("option:" + value)
+            first = node.args[0]
+            if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                result.add("command:" + first.value)
+        elif node.func.attr == "add_argument":
+            for argument in node.args:
+                if isinstance(argument, ast.Constant) and isinstance(argument.value, str) and argument.value.startswith("-"):
+                    result.add("option:" + argument.value)
     return result
 
 
