@@ -47,21 +47,23 @@ No se eliminan documentos históricos sólo para simplificar la navegación. Se 
 
 ## 5. Ejemplos ejecutables
 
-Un ejemplo presentado como ejecutable debe tener una única copia ejecutable canónica bajo `examples/docs/v31/`. El Markdown lo enlaza inmediatamente antes del bloque mediante:
+Un ejemplo presentado como ejecutable debe tener una única copia ejecutable canónica bajo `examples/docs/v31/`. El Markdown lo enlaza antes del bloque mediante:
 
 ```text
 <!-- tevdoc-source: ruta/al/archivo.tevs -->
 ```
 
-El bloque mostrado debe coincidir byte a byte con el archivo, salvo normalización CRLF/LF y la posible eliminación de un único salto de línea terminal.
+La directiva sólo tiene significado estructural cuando está fuera de un code fence. Mostrar su sintaxis dentro de un bloque `text`, como en esta propia página, no crea un binding.
 
-Los ejemplos negativos añaden:
+El contenido del bloque `tevs` debe coincidir **exactamente** con el archivo canónico leído como UTF-8. El salto de línea terminal forma parte del contenido cuando existe; el validador no corrige silenciosamente diferencias entre la copia documentada y la fuente.
+
+Los ejemplos negativos pueden añadir:
 
 ```text
 <!-- tevdoc-expect-diagnostic: TEVS_CODIGO_EXACTO -->
 ```
 
-y su `case.json` debe exigir el mismo diagnóstico. Si un ejemplo que debe fallar empieza a pasar, la documentación falla su validación.
+y su `case.json` debe exigir el mismo diagnóstico. La autoridad ejecutable del resultado esperado es `case.json`; si un ejemplo que debe fallar empieza a pasar o emite otro código, la documentación falla su validación.
 
 ## 6. Afirmaciones de estado
 
@@ -97,7 +99,7 @@ Nunca se corrige una explicación para que coincida con un comportamiento accide
 
 ## 8. Cobertura
 
-`docs/manual/DOCUMENTATION_COVERAGE_V1.json` será el inventario machine-readable que enlaza superficies públicas actuales con sus páginas y evidencia. Tener una entrada en esa matriz no convierte el manual en autoridad semántica; demuestra que una superficie ya autoritativa no ha quedado sin explicar.
+`docs/manual/DOCUMENTATION_COVERAGE_V1.json` es el inventario machine-readable que enlaza superficies públicas actuales con sus páginas y evidencia. Tener una entrada en esa matriz no convierte el manual en autoridad semántica; demuestra que una superficie ya autoritativa no ha quedado sin explicar.
 
 Una superficie pública actual sin cobertura es un fallo documental. Una superficie documentada como actual que ya no existe también lo es.
 
