@@ -71,7 +71,7 @@ def _write_foundation(root: Path) -> None:
     )
 
 
-def _manifest(codes: list[str]) -> dict[str, object]:
+def _manifest(codes: list[str], *, phase: str = "TEST") -> dict[str, object]:
     domains: dict[str, list[dict[str, str]]] = {name: [] for name in DOMAINS}
     domains["diagnostics"] = [
         {
@@ -87,14 +87,14 @@ def _manifest(codes: list[str]) -> dict[str, object]:
         "package_version": "3.1.2",
         "language_version": "3.1.0",
         "profile": "total_core",
-        "phase": "TEST",
+        "phase": phase,
         "domains": domains,
     }
 
 
-def _write_manifest(root: Path, codes: list[str]) -> None:
+def _write_manifest(root: Path, codes: list[str], *, phase: str = "TEST") -> None:
     (root / "docs" / "manual" / "DOCUMENTATION_COVERAGE_V1.json").write_text(
-        json.dumps(_manifest(codes), sort_keys=True),
+        json.dumps(_manifest(codes, phase=phase), sort_keys=True),
         encoding="utf-8",
     )
 
@@ -172,7 +172,7 @@ def test_wildcard_shard_discovers_authority_codes_and_requires_page_mentions(tmp
 
 def test_shard_authority_scopes_public_inventory(tmp_path: Path) -> None:
     _write_foundation(tmp_path)
-    _write_manifest(tmp_path, [])
+    _write_manifest(tmp_path, [], phase="F_TEST")
     (tmp_path / "docs" / "manual" / "diagnostics.md").write_text(
         "# Diagnostics\n\nTEVS_V31_ONE\n\nTEVS_V31_TWO\n",
         encoding="utf-8",
