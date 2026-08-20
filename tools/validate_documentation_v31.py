@@ -39,6 +39,7 @@ _EXPECTED_IDENTITY = {
 _DIAG_RE = re.compile(r"TEVS_V31_[A-Z0-9_]+")
 _SOURCE_DIRECTIVE_RE = re.compile(r"<!--\s*tevdoc-source:\s*([^>]+?)\s*-->")
 _FENCE_RE = re.compile(r"```tevs\n(.*?)```", re.DOTALL)
+_ANY_FENCE_RE = re.compile(r"```[^\n]*\n.*?```", re.DOTALL)
 _COVERAGE_PATH = Path("docs/manual/DOCUMENTATION_COVERAGE_V1.json")
 _DIAGNOSTIC_SHARD = Path("docs/manual/DIAGNOSTIC_COVERAGE_V31.json")
 
@@ -339,7 +340,12 @@ def _source_bindings_check(root: Path) -> dict[str, Any]:
     errors: list[str] = []
     for page in sorted(manual.rglob("*.md")):
         text = page.read_text(encoding="utf-8")
-        directives = list(_SOURCE_DIRECTIVE_RE.finditer(text))
+        fenced_spans = [match.span() for match in _ANY_FENCE_RE.finditer(text)]
+        directives = [
+            match
+            for match in _SOURCE_DIRECTIVE_RE.finditer(text)
+            if not any(start <= match.start() < end for start, end in fenced_spans)
+        ]
         fences = list(_FENCE_RE.finditer(text))
         if not directives and not fences:
             continue
