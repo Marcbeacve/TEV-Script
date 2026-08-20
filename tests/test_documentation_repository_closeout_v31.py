@@ -71,6 +71,15 @@ def test_advanced_embedding_documents_task_strategy_boundary() -> None:
     assert "advanced-embedding.md" in index
 
 
+def test_proof_admission_docs_match_root_api_boundary() -> None:
+    page = (_MANUAL / "tutorial" / "13-proof-admissions.md").read_text(encoding="utf-8")
+    assert "VerifiedProofAdmissionV1" in tev_script.__all__
+    assert "validate_verified_proof_admission" not in tev_script.__all__
+    assert "validate_verified_proof_admission" in page
+    assert "no se exporta desde `tev_script.__all__`" in page
+    assert "La API pública expone la clase y el validador" not in page
+
+
 def test_validation_recipe_contains_every_repository_channel_command() -> None:
     policy = json.loads((ROOT / "REPOSITORY_CHANNEL.json").read_text(encoding="utf-8"))
     validation_text = (ROOT / "docs" / "VALIDATION.md").read_text(encoding="utf-8")
