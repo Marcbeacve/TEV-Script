@@ -123,7 +123,9 @@ El `source_semantic_hash` hijo puede seguir igual porque el scenario no es fuent
 
 ## Validación de artefacto
 
-La CLI `validate-total`/la ruta generic correspondiente no recompila source: carga strict JSON y llama `validate_total_core_program`.
+La CLI versionada de bajo nivel `tev_script.cli_v31` posee `validate-total`: carga strict JSON y llama `validate_total_core_program` sin recompilar source. **No es un subcomando de la CLI genérica pública `tev-script`.**
+
+En la superficie pública current, `tev-script compile` valida antes de escribir el artefacto y `tev-script run` vuelve a cargar y validar el Program IR antes de ejecutar. La API Python pública también expone `validate_total_core_program`.
 
 Unknown fields, orden canónico incorrecto o hash alterado fallan.
 
