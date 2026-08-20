@@ -1,6 +1,6 @@
 # Integraciones y hosts
 
-Esta sección separa **soporte del lenguaje current** de **compatibilidad de runtimes/adapters históricos**. Que exista código C#/Unity/WASM/WASI en el repositorio no implica automáticamente que ese host ejecute Program IR V5 Total-Core.
+Esta sección separa **soporte del lenguaje current** de **compatibilidad de runtimes/adapters históricos**. Que exista código C#/Unity/WASM/WASI o un provider físico en el repositorio no implica automáticamente que ese host/efecto ejecute Program IR V5 Total-Core.
 
 ## Matriz actual
 
@@ -12,13 +12,19 @@ Esta sección separa **soporte del lenguaje current** de **compatibilidad de run
 | Unity | adapter C# portable V2/Core con gates Editor/Mono/IL2CPP | **COMPATIBILITY host**, no runtime V5 Total-Core certificado |
 | Browser-WASM | Gate 6B sobre C# `TevScript.Core` portable | **COMPATIBILITY gate**, no V5 Total-Core browser certificado |
 | WASI | Gate C# de **IR V3** con checkpoint/restart | **COMPATIBILITY gate**, no V5 Total-Core WASI certificado |
-| Filesystem | capability profile V2 `file.read` / `file.replace` + provider seguro | **COMPATIBLE child/provider boundary**, no runtime target por sí solo |
+| Filesystem | V2 `file.read` Effects R1 + `file.replace` Effects R2/provider | **R1 observation puede alimentar child Total-Core; R2 command no es child V5 current** |
 
 La autoridad de runtime targets current del descriptor 3.1 enumera `python_reference` y `javascript_independent_required`.
 
+## Effects R1/R2 en integraciones
+
+El `profile effects` de una unit Total-Core current corresponde a `TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_V1` (Effects R1 observation-only).
+
+`TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_R2_V1` / `effects_r2_plan` es un contrato V4 distinto para command planning. Que una integración tenga provider/receipts R2 no la convierte automáticamente en child V5. La spec Total-Core exige una extensión explícita de profile/schema/validator/bridge antes de admitir R2.
+
 ## Sobre `examples/docs/v31/integrations/`
 
-Esos casos son **fixtures semánticos/documentales 3.1** que el validator compila con el frontend current. No son por sí solos evidencia de que el host cuyo nombre aparece en la carpeta haya ejecutado V5. La evidencia host real está en los gates/receipts específicos citados por cada página.
+Esos casos son **fixtures semánticos/documentales 3.1** que el validator compila con el frontend current. No son por sí solos evidencia de que el host cuyo nombre aparece en la carpeta haya ejecutado V5 ni de que una operación física haya ocurrido. La evidencia host/provider real está en los gates/receipts específicos citados por cada página.
 
 ## Regla de integración
 
