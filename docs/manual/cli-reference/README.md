@@ -14,11 +14,13 @@ conformance
 platform-check
 ```
 
-y la opción raíz:
+y la opción raíz TEV declarada explícitamente:
 
 ```text
 --version
 ```
+
+`argparse` añade además su ayuda estándar `-h` / `--help` al parser raíz y a los subcomandos. Esa ayuda generada es pública para el usuario, pero no forma parte del inventario de opciones TEV declaradas que `DOCUMENTATION_COVERAGE_V1.json` deriva de llamadas explícitas `add_argument`.
 
 Las líneas históricas `tev-script-v1`, `tev-script-v2`, `tev-script-v3` y el entry point explícito `tev-script-v31` son superficies versionadas/compatibles; no se mezclan con el camino recomendado de un usuario nuevo.
 
