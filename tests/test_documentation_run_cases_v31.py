@@ -3,9 +3,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from tev_script import TevScriptError
+from tev_script.source_total_core_v31 import compile_total_core_v31
 from tools.validate_documentation_v31 import validate_documentation
 
 
+ROOT = Path(__file__).resolve().parents[1]
 DOMAINS = (
     "language_constructs",
     "cli_surface",
@@ -105,3 +108,41 @@ def test_run_case_executes_quantum_and_observes_halted(tmp_path: Path) -> None:
         "status": "PASS",
         "case_count": 1,
     }
+
+
+def test_total_core_source_path_rejects_r2_effect_command_children() -> None:
+    root_source = (
+        'process EffectBoundary version "3.1.0";\n'
+        'authority aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;\n'
+        'quantum_steps 4;\n'
+        'unit Fs profile effects;\n'
+        'field actual = [];\n'
+        'label Start = invoke_v4 Fs result tev.test.filesystem End;\n'
+        'label End = halt;\n'
+        'entry Start;\n'
+    )
+    child_source = (
+        'script Fs version "2.0.0";\n'
+        'command file.replace(Text,Text);\n'
+        'action publish() {\n'
+        '    request file.replace("out.txt","hello");\n'
+        '}\n'
+        'entry main=publish();\n'
+    )
+
+    try:
+        compile_total_core_v31(
+            root_source,
+            unit_sources={"Fs": child_source},
+            effect_inputs={"Fs": {"scenario": {}}},
+        )
+    except TevScriptError as exc:
+        assert exc.diagnostic.code == "TEVS_V2_EFFECT_R2_REQUIRED"
+    else:
+        raise AssertionError("Total-Core source path must reject Effects R2 command/request children")
+
+    filesystem = (ROOT / "docs" / "manual" / "integrations" / "filesystem.md").read_text(encoding="utf-8")
+    tutorial = (ROOT / "docs" / "manual" / "tutorial" / "07-capabilities-effects.md").read_text(encoding="utf-8")
+    assert "Effects R1" in filesystem and "Effects R2" in filesystem
+    assert "no admite Effects R2" in filesystem
+    assert "no admite children R2" in tutorial
