@@ -9,7 +9,7 @@ El último capítulo une las piezas principales sin añadir autoridad externa in
 5. aplica una Transformation raíz `Pending → Complete`;
 6. termina en `halt`.
 
-Todo ocurre dentro de un único quantum finito y sin filesystem/red/actuadores.
+La secuencia completa ocurre dentro de un único quantum finito y sin filesystem/red/actuadores.
 
 ## Programa raíz
 
