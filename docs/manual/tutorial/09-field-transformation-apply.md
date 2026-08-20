@@ -63,21 +63,29 @@ remove Idle
 add    Active
 ```
 
-Una Transformation puede además ligar:
+El objeto programático `FieldTransformationV1` puede ligar:
 
-- `required_before_hash`;
+- `required_before_hash` opcional;
 - perfil de resultado;
 - `effect_set_hash`;
 - `resource_vector_hash`;
-- requisitos de prueba.
+- requisitos de prueba;
+- add/remove de facts.
 
 Es una **descripción identificable de cambio**, no un callback de host.
 
-## Precondición exacta
+## Precondición exacta: capacidad del modelo, no keyword de source actual
 
-La transformación compilada queda ligada al Field antes esperado. Si otro actor ha cambiado el estado y el hash ya no coincide, Apply falla en lugar de aplicar un parche sobre una realidad diferente.
+`FieldTransformationV1` permite `required_before_hash=<field_hash>`. Cuando ese campo no es `None`, Apply exige el snapshot exacto y falla ante estado stale.
 
-Esta propiedad convierte muchos errores de «estado stale» en discrepancias detectables.
+La gramática `transform ...` de semantic-process V3/Total-Core 3.1 **no expone actualmente un argumento `required_before_hash`**. `compile_semantic_process_v3` construye esas transformations sin el pin, por lo que `Activate` del ejemplo tiene `required_before_hash = None`.
+
+Eso no vuelve el Apply incondicional: `remove [Idle]` todavía exige que `Idle` exista y las reglas de add/remove/profile siguen validándose. Simplemente hay que distinguir:
+
+```text
+source transform actual        → delta sin pin exacto de Field
+FieldTransformationV1 por API  → puede incluir required_before_hash
+```
 
 ## Effect/resource hashes
 
@@ -107,15 +115,15 @@ Separar orden semántico de orden accidental del contenedor host es esencial par
 
 ## Proof-open transformations
 
-Una Transformation puede llevar `proof_requirement_hashes`. Total-Core sólo admite estructuralmente su ejecución cuando existe una `VerifiedProofAdmissionV1` exacta para cada requisito y la autoridad coincide.
+Una `FieldTransformationV1` puede llevar `proof_requirement_hashes`. Total-Core sólo admite estructuralmente un `apply` que la use cuando existe una `VerifiedProofAdmissionV1` exacta para cada requisito y la autoridad coincide.
 
-La fuente 3.1 no fabrica esa admisión. Es evidencia externa inyectada por el build/integrador.
+La fuente semantic-process/3.1 actual tampoco expone proof requirements en su statement `transform`; las proof-open transformations pertenecen a la superficie programática/IR. Y, en cualquier caso, la fuente nunca fabrica la admisión: es evidencia externa inyectada por build/integrador.
 
 ## Bridge de `invoke_v4`
 
-Cuando `invoke_v4` termina, el runtime construye un fact de resultado y una transformación puente derivada. Incluso esa proyección se añade al Field usando `Apply`; el runtime no tiene un atajo privilegiado para mutar almacenamiento interno.
+Cuando `invoke_v4` termina, el runtime construye un fact de resultado y una transformación puente derivada. Esa transformación sí fija `required_before_hash` al `field_hash` observado inmediatamente antes del bridge. La proyección se añade usando `Apply`; el runtime no tiene un atajo privilegiado para mutar almacenamiento interno.
 
-Esto hace que el mecanismo de composición y el mecanismo semántico compartan la misma disciplina.
+Esto hace que el mecanismo de composición y el mecanismo semántico compartan la misma disciplina y, para bridges, evita aplicar el delta sobre otro snapshot.
 
 ## Contrapruebas
 
@@ -123,7 +131,8 @@ Deben fallar:
 
 - transformación desconocida;
 - target de PC fuera de rango;
-- transformación aplicada a un Field con `required_before_hash` distinto;
+- Transformation programática pinned aplicada a un Field con `required_before_hash` distinto;
+- remove de un fact que ya no existe;
 - proof requirement sin admisión exacta;
 - admisión con autoridad diferente;
 - IR que cambia el orden canónico de tablas que sí son ordenadas;
@@ -145,5 +154,6 @@ Ninguno de ellos, aislado, concede autoridad física.
 - `spec/TEV_SCRIPT_SEMANTIC_APPLY_CALCULUS_V0.md`.
 - `tev_script/omega_semantic_basis_v1.py`.
 - `spec/TEV_SCRIPT_V3_SEMANTIC_PROCESS_SOURCE.md`.
+- `tev_script/source_semantic_process_v3.py`.
 - `spec/TEV_SCRIPT_V31_TOTAL_CORE.md`.
 - `tev_script/program_ir_v5_total.py` y `tev_script/runtime_v5_total.py`.
