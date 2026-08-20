@@ -136,6 +136,38 @@ def test_capability_tutorial_binds_observation_and_final_state() -> None:
     assert payload["observation_calls"] == 1
 
 
+def test_complete_application_binds_child_results_and_field_transition() -> None:
+    case_dir = _EXAMPLES / "tutorial" / "15_complete_application"
+    case = json.loads((case_dir / "case.json").read_text(encoding="utf-8"))
+    process_source = (case_dir / case["source"]).read_text(encoding="utf-8")
+    unit_sources = {
+        unit_id: (case_dir / rel).read_text(encoding="utf-8")
+        for unit_id, rel in case["units"].items()
+    }
+    program = compile_total_core_v31(
+        process_source,
+        unit_sources=unit_sources,
+        effect_inputs=case["effect_inputs"],
+    )
+    result = run_total_core_quantum(program, initial_total_core_checkpoint(program))
+    assert result.status == "HALTED"
+
+    def one(relation: str):
+        matches = [fact for fact in result.field.facts if fact.relation == relation]
+        assert len(matches) == 1, relation
+        return matches[0]
+
+    assert not [fact for fact in result.field.facts if fact.relation == "app.pending"]
+    assert one("app.complete").arguments == ("workflow",)
+
+    calc_payload = one("tev.app.calc").arguments[0]
+    rec_payload = one("tev.app.rec").arguments[0]
+    assert isinstance(calc_payload, dict)
+    assert isinstance(rec_payload, dict)
+    assert calc_payload["result_encoded"] == {"$int": "5"}
+    assert rec_payload["result_encoded"] == {"$int": "120"}
+
+
 def test_displayed_negative_examples_match_their_canonical_case() -> None:
     observed = 0
     for page in sorted(_MANUAL.rglob("*.md")):
