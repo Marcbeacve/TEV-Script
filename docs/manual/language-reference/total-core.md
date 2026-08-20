@@ -45,6 +45,8 @@ unit <stable-id> profile pure|recursive|effects;
 
 Cada declaración exige una entrada homónima en `unit_sources` durante compilación.
 
+En la implementación current, `profile effects` significa **Program IR V4 Effects R1 observation-only**. No es un alias genérico para todos los perfiles effects V2 posteriores.
+
 ## `invoke_v4`
 
 Sólo se reconoce en un body de label con forma:
@@ -67,6 +69,30 @@ effect_inputs: mapping unit_id -> {
 ```
 
 El set de keys debe coincidir exactamente con units `effects`.
+
+Este input materializa la instancia de un child **Effects R1**: scenario de observaciones y estado inicial opcional. No convierte un child `command/request` R2 en una unidad Total-Core válida.
+
+## Effects R1 frente a Effects R2
+
+La ruta de compilación current es:
+
+```text
+compile_total_core_v31
+    ↓
+compile_effect_program_v2
+    ↓
+Program IR V4 Effects R1
+```
+
+`compile_effect_program_v2` rechaza sintaxis `command`/`request` con:
+
+```text
+TEVS_V2_EFFECT_R2_REQUIRED
+```
+
+porque esa sintaxis pertenece a `compile_effect_command_program_v2` y al contrato Effects R2 separado.
+
+El validador de `TotalCoreUnitV1` current también exige el schema V4 Effects R1 admitido. Por tanto, **Total-Core no admite Effects R2** como child ni por la ruta de fuente ni por simple sustitución de un artefacto R2 precompilado.
 
 ## Proof admissions
 
@@ -182,7 +208,7 @@ program_ir_hash
 unit_hash
 ```
 
-El mapping V4 se valida mediante el validator de su profile.
+El mapping V4 se valida mediante el validator de su profile. Los perfiles current se corresponden con los schemas admitidos para `pure`, `recursive` y **Effects R1**; el nombre `effects` no habilita R2.
 
 ## Proof admission schema
 
@@ -222,28 +248,34 @@ Además liga steps, child receipts, Field, continuation y next checkpoint.
 
 Pure/recursive child payload: unit identity + result type/encoding/hash + evaluation steps.
 
-Effects child payload: unit identity + final state/hash + capability transcript + evaluation/observation information.
+Effects R1 child payload: unit identity + final state/hash + capability transcript + evaluation/observation information.
 
 El payload entra al Field por derived Transformation + Apply.
 
+No existe en este contrato current un bridge R2 `command/request` implícito.
+
 ## Physical effect boundary
 
-V5 puede ejecutar semántica effects/command intent de un child. No posee autoridad ambient para commit físico. La realización externa permanece detrás del provider/grant existente.
+V5 puede ejecutar la semántica **Effects R1 observacional** de un child admitido y ligar su transcript/estado al Field. No posee autoridad ambient para commit físico.
+
+Los command intents de Effects R2 pertenecen actualmente a su pipeline/provider V2 separado; V5 current no los ejecuta como child. Si una integración futura los incorpora, necesitará un schema/validator/bridge V5 explícito y conformance propia.
 
 ## Compatibilidad
 
 - V2 source sigue `2.0.0`;
-- V4 validators no cambian;
+- Effects R1 y R2 conservan fronteras distintas;
+- V4 validators no se fusionan por nombre de perfil;
 - semantic-process 3.0 sigue `3.0.0`;
 - Total-Core es aditivo.
 
 ## Diagnósticos
 
-La familia current usa `TEVS_V31_*`. Consulta `docs/manual/diagnostics/current-inventory.md`; el inventario está ligado automáticamente a los literals de las autoridades V31.
+La familia current usa `TEVS_V31_*`. Consulta `docs/manual/diagnostics/current-inventory.md`; el inventario está ligado automáticamente a los literals de las autoridades V31 declaradas.
 
 ## Autoridad técnica
 
 - `spec/TEV_SCRIPT_V31_TOTAL_CORE.md`
 - `tev_script/source_total_core_v31.py`
+- `tev_script/source_effect_program_v2.py`
 - `tev_script/program_ir_v5_total.py`
 - `tev_script/runtime_v5_total.py`
