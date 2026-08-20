@@ -106,6 +106,8 @@ Cada `main.tevs` bajo `examples/docs/v31` requiere `case.json`. El validator pue
 
 `DIAGNOSTIC_COVERAGE_V31.json` declara authorities. Families `codes:["*"]` descubren literals current y exigen que cada código aparezca en la página documental. Un código nuevo sin docs rompe el gate.
 
+El alcance es **declarativo, no nominal**: un archivo nuevo llamado `foo_v31.py` no se convierte en autoridad diagnóstica por coincidir con un glob. Sólo los `authority` declarados por `DOCUMENTATION_COVERAGE_V1.json` o `DIAGNOSTIC_COVERAGE_V31.json` participan en el inventario. Si una nueva superficie debe hacer públicos sus diagnósticos, primero debe añadirse explícitamente a esa autoridad documental.
+
 ## Public surface coverage
 
 La CLI se inventaría desde llamadas `argparse.add_parser/add_argument`, incluyendo aliases. La API Python se inventaría desde `tev_script.__all__`. El manifest debe coincidir exactamente, sin missing ni ghost entries.
