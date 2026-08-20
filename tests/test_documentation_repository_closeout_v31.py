@@ -27,6 +27,7 @@ def test_real_repository_documentation_receipt_passes() -> None:
 
 def test_final_navigation_and_diagnostic_pages_exist() -> None:
     required = (
+        "docs/README.md",
         "docs/manual/documentation-policy.md",
         "docs/manual/cli-reference/README.md",
         "docs/manual/library-reference/README.md",
@@ -53,7 +54,8 @@ def test_final_navigation_and_diagnostic_pages_exist() -> None:
 def test_internal_markdown_links_resolve_inside_repository() -> None:
     broken: list[str] = []
     escaped: list[str] = []
-    for page in sorted(_MANUAL.rglob("*.md")):
+    pages = [ROOT / "docs" / "README.md", *sorted(_MANUAL.rglob("*.md"))]
+    for page in pages:
         text = _CODE_FENCE.sub("", page.read_text(encoding="utf-8"))
         for raw_target in _MARKDOWN_LINK.findall(text):
             target = raw_target.strip()
