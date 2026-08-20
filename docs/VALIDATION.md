@@ -1,5 +1,7 @@
 # Validation
 
+> **Current-candidate note:** the PASS lines and receipt hashes already recorded below are preserved historical evidence. They do **not** certify the current `3.1.2` documentation candidate or its present Git HEAD. Authority for the current candidate requires rerunning the causally selected commands listed at the end of this document on the exact clean commit/tree.
+
 ## Current certified surface
 
 ```text
@@ -146,4 +148,15 @@ python -m pytest -q tests/test_platform_version_identity.py tests/test_platform_
 python -m tev_script.cli platform-check --root .
 ```
 
-Because this documentation implementation changes `tests/**`, `examples/**` and `tools/**`, final certification must also execute every causally selected command from `REPOSITORY_CHANNEL.json` on the exact clean candidate. This documentation gate cannot downgrade those requirements. `MERGE_AUTHORITY` and `PUBLICATION_AUTHORITY` remain false until separately authorized.
+### Repository-selected causal validation for this diff
+
+The current documentation branch changes more than `full_after_changed_files = 64` files and touches `docs/**`, `tests/**`, `examples/**`, `tools/**` and normative/specification paths. Therefore `REPOSITORY_CHANNEL.json` selects all three validation rules. On the exact clean candidate, execute the rule commands themselves:
+
+```powershell
+python -c "from pathlib import Path; Path('README.md').read_text(encoding='utf-8')"
+python .\RUN_PORTABLE_CONFORMANCE.py
+python .\RUN_TEV_SCRIPT_V1_CERTIFY_FULL.py
+python .\RUN_TEV_SCRIPT_V1_PYTHON_CERTIFY_FULL.py
+```
+
+The focal documentation/platform commands above are additional closeout evidence; they do not replace these repository-selected commands. No result from a previous commit can certify a later documentation edit. `MERGE_AUTHORITY` and `PUBLICATION_AUTHORITY` remain false until separately authorized.
