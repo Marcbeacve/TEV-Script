@@ -17,6 +17,8 @@ entry StepA;
 
 Con presupuesto 1, el primer quantum ejecuta un salto y devuelve `SUSPENDED`. El resultado contiene `next_checkpoint` y una continuation exacta.
 
+El `case.json` de este capítulo exige `epochs=2`. Por tanto el documentation gate no se detiene en la primera suspensión: toma `first.next_checkpoint`, ejecuta un segundo quantum y vuelve a exigir `SUSPENDED`. La continuidad entre epochs forma parte del ejemplo ejecutable.
+
 ## Checkpoint inicial
 
 La API pública crea el primer estado con:
@@ -58,7 +60,7 @@ La misma API de runtime acepta el checkpoint sucesor:
 second = run_total_core_quantum(program, checkpoint_1)
 ```
 
-`second` pertenece al siguiente epoch y produce otra continuation ligada a la primera.
+`second` pertenece al siguiente epoch y produce otra continuation ligada a la primera. Esto es exactamente lo que ejecuta el caso documental de dos epochs.
 
 La cadena no es una lista decorativa; cada enlace verifica identidades.
 
