@@ -1,1 +1,1 @@
-{"schema":"TEV_SCRIPT_DOCUMENTATION_CASE_V1","operation":"check","source":"main.tevs","units":{"Rec":"rec.tevs"},"effect_inputs":{},"proof_admissions":[],"epochs":1,"expected_returncode":0,"expected_status":"PASS","expected_diagnostic_code":null}
+{"schema":"TEV_SCRIPT_DOCUMENTATION_CASE_V1","operation":"run","source":"main.tevs","units":{"Rec":"rec.tevs"},"effect_inputs":{},"proof_admissions":[],"epochs":1,"expected_returncode":0,"expected_status":"HALTED","expected_diagnostic_code":null}
