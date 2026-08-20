@@ -58,8 +58,17 @@ con correspondencia exacta de schema:
 ```text
 pure      → TEV_SCRIPT_PROGRAM_IR_V4_PURE_V1
 recursive → TEV_SCRIPT_PROGRAM_IR_V4_RECURSIVE_V1
-effects   → TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_V1
+effects   → TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_V1  (Effects R1)
 ```
+
+Aquí `effects` significa **Effects R1 observation-only**. El schema posterior:
+
+```text
+TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_R2_V1
+profile = effects_r2_plan
+```
+
+es otro contrato V4 y no forma parte de esos tres child schemas current.
 
 Un perfil declarado y un schema hijo que no coinciden producen `TEVS_V31_TOTAL_UNIT_SCHEMA` o la frontera equivalente de compilación.
 
@@ -73,11 +82,13 @@ Su receipt expone resultado tipado, representación canónica, hash de resultado
 
 Una unidad recursiva conserva el contrato de recursión V2/V4: medida decreciente, profundidad acotada y presupuesto. V5 no cambia `self`, la medida ni la evaluación; sólo llama al runtime V4 Recursive.
 
-## `effects`
+## `effects` — R1 current
 
-Una unidad effects incorpora estado/observaciones y, en perfiles posteriores, intención de command. Requiere evidencia externa (`effect_inputs`) para la instancia concreta. Su receipt puede ligar estado final, transcript de capabilities y observaciones.
+Una unidad `profile effects` current incorpora estado y observaciones Effects R1. Requiere evidencia externa (`effect_inputs`) para la instancia concreta. Su receipt liga estado final, transcript de capabilities, observaciones y accounting.
 
-Que V5 pueda ejecutar ese artefacto **no concede commit físico**. El provider/grant externo sigue siendo necesario.
+Que V5 pueda ejecutar ese artefacto **no concede commit físico**. El provider/grant externo sigue siendo necesario para cualquier acceso real usado al producir evidencia.
+
+Effects R2 añade `command/request` planning en su propio schema. `compile_total_core_v31` no lo admite como child: la ruta source usa `compile_effect_program_v2`, que falla con `TEVS_V2_EFFECT_R2_REQUIRED` ante command syntax, y `TotalCoreUnitV1` tampoco acepta el schema R2 como `profile effects`.
 
 ## `program_ir_hash`
 
@@ -107,7 +118,7 @@ El mapping V4 se desacopla mediante canonical JSON antes de almacenarse en la un
 Hay dos niveles, pero no dos semánticas:
 
 ```text
-V4 validator → ¿el hijo es un artefacto V4 válido de su perfil?
+V4 validator → ¿el hijo es un artefacto V4 válido de su profile/schema exacto?
 V5 validator → ¿esta unidad está bien identificada e integrada en el root Total-Core?
 ```
 
@@ -130,6 +141,8 @@ result_hash
 evaluation_steps
 ```
 
+Para Effects R1 añade estado final, transcript de capabilities, observation count y hashes correspondientes. No existe un bridge R2 command implícito en este perfil Total-Core.
+
 ## Límites
 
 Una unidad puede tener su propio presupuesto de evaluación además del presupuesto V5 del quantum. El receipt Total-Core conserva ambos contadores en vez de mezclarlos.
@@ -138,15 +151,23 @@ Una unidad puede tener su propio presupuesto de evaluación además del presupue
 
 - profile no soportado;
 - schema V4 distinto al profile;
+- R2 suministrado como si fuera child `effects` R1;
 - `program_ir_hash` manipulado;
 - `unit_hash` manipulado;
 - dos unidades con igual `unit_id`;
 - `invoke_v4` que referencia una unidad desconocida;
 - artefacto V4 válido pero aportado como fuente de otra unidad.
 
+## Dónde ver los otros perfiles ejecutados
+
+- capítulo 07: child Effects R1 real con observación y estado final;
+- capítulo 08: composición `pure + recursive` real;
+- este capítulo: construcción/identidad del wrapper V5 de unidad.
+
 ## Autoridad técnica
 
 - `spec/TEV_SCRIPT_PROGRAM_IR_V4.md`.
 - `tev_script/program_ir_v4.py`.
+- `tev_script/program_ir_v4_effect_commands.py` para el contrato R2 separado.
 - `spec/TEV_SCRIPT_V31_TOTAL_CORE.md`, secciones V4 child units y runtime bridge.
 - `tev_script/program_ir_v5_total.py` y `tev_script/runtime_v5_total.py`.
