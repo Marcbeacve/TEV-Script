@@ -38,7 +38,9 @@ compile_total_core_v31(
 ) -> TotalCoreProgramV1
 ```
 
-Compila fuente de proceso `3.1.0` a un `TotalCoreProgramV1`. `unit_sources` es obligatorio incluso si está vacío; su conjunto de claves debe coincidir exactamente con las unidades declaradas. `effect_inputs` debe corresponder exactamente a las unidades `effects`. Las proof admissions permanecen evidencia externa.
+Compila fuente de proceso `3.1.0` a un `TotalCoreProgramV1`. `unit_sources` es obligatorio incluso si está vacío; su conjunto de claves debe coincidir exactamente con las unidades declaradas. `effect_inputs` debe corresponder exactamente a las unidades `effects`, que en la ruta Total-Core actual son **Effects R1** observacionales. Las proof admissions permanecen evidencia externa.
+
+La ruta `compile_total_core_v31` no acepta children **Effects R2** con `command`/`request`; esos programas pertenecen al contrato R2 separado y fallan con `TEVS_V2_EFFECT_R2_REQUIRED` cuando se intentan introducir por esta frontera.
 
 Puede lanzar `TevScriptError` con códigos `TEVS_V31_SOURCE_*` o de las capas V4/IR subyacentes cuando una unidad o evidencia es inválida.
 
@@ -134,8 +136,10 @@ Perfiles admitidos:
 ```text
 pure
 recursive
-effects
+effects   # Effects R1
 ```
+
+`effects` significa aquí **Effects R1**. `TEV_SCRIPT_PROGRAM_IR_V4_EFFECTS_R2_V1` / `effects_r2_plan` no forma parte del child set admitido por `TotalCoreUnitV1` en la ruta V5 actual.
 
 El schema V4 incrustado debe coincidir con el perfil y su `program_ir_hash` se revalida. La unidad resultante conserva `program_ir_hash` y añade `unit_hash`.
 
