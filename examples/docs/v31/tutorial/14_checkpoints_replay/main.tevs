@@ -1,8 +1,7 @@
 process Tutorial14 version "3.1.0";
 authority aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
-quantum_steps 8;
-unit Calc profile pure;
+quantum_steps 1;
 field actual = [];
-label Start = invoke_v4 Calc result tev.tutorial.checkpoint End;
-label End = halt;
-entry Start;
+label StepA = jump StepB;
+label StepB = jump StepA;
+entry StepA;
