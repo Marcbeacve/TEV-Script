@@ -14,17 +14,27 @@ Compila una raíz Total-Core 3.1 a Program IR V5 canónico. Usa la misma validac
 
 ## Argumentos
 
-`SOURCE` es la fuente `.tevs` raíz.
+`SOURCE` es la ruta de la fuente `.tevs` raíz.
 
 ## Opciones
 
-`--unit NAME=PATH`, `--effect-input NAME=JSON` y `--proof-admission JSON` tienen el mismo contrato que en [`check.md`](check.md).
+`--unit NAME=PATH`, `--effect-input NAME=JSON` y `--proof-admission JSON` tienen el mismo contrato de rutas que en [`check.md`](check.md): `PATH` apunta a una fuente hija y cada metavar `JSON` representa una ruta a un archivo JSON que la CLI carga/valida; no es JSON inline.
 
 `--output PROGRAM_IR` / `-o PROGRAM_IR` es obligatorio y selecciona la ruta del artefacto de salida.
 
 ## Archivos aceptados
 
 La entrada de proyecto sigue el mismo contrato de `check`. La salida es Program IR V5 Total-Core canónico serializado como JSON.
+
+Ejemplo con evidencia `effects` persistida en archivo:
+
+```text
+tev-script compile main.tevs \
+  --unit Sensors=sensors.tevs \
+  --effect-input Sensors=effects.json \
+  --proof-admission proof-a.json \
+  -o program.json
+```
 
 ## stdout
 
@@ -68,7 +78,9 @@ tev-script compile main.tevs --unit Calc=calc.tevs -o program.json
 
 ## Ejemplo negativo
 
-Si el `SOURCE` declara una unidad `effects` y falta su `--effect-input` obligatorio, la compilación falla. El compilador no inventa ni reutiliza evidencia ambiental implícita.
+Si `SOURCE` declara una unidad `effects` y falta su `--effect-input` obligatorio, la compilación falla. El compilador no inventa ni reutiliza evidencia ambiental implícita.
+
+Pasar `--effect-input Sensors={...}` tampoco introduce JSON inline: esa cadena se interpreta como una ruta de archivo y fallará si no existe un archivo con ese nombre.
 
 ## Identidad canónica
 
