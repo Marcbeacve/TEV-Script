@@ -26,7 +26,7 @@ label End = halt;
 entry Start;
 ```
 
-La unidad hija es fuente V2 effects y usa una observación tipada real:
+La unidad hija es fuente V2 Effects R1 y usa una observación tipada real:
 
 <!-- tevdoc-source: examples/docs/v31/tutorial/07_capabilities_effects/calc.tevs -->
 ```tevs
@@ -153,7 +153,7 @@ La arquitectura mantiene separadas al menos estas preguntas:
 
 La última no puede anular las anteriores.
 
-## Comandos e intención
+## Comandos e intención: Effects R2
 
 V2 posee una vía posterior para comandos, por ejemplo:
 
@@ -164,7 +164,44 @@ action publish() {
 }
 ```
 
-`request` produce intención/plan bajo el contrato correspondiente. No significa que el runtime portable haya escrito ya el archivo. El **commit físico** permanece detrás del provider/grant.
+Esa sintaxis pertenece a **Effects R2**, no al Effects R1 observation-only que Total-Core admite actualmente como child.
+
+`request` produce intención/plan bajo el contrato R2 correspondiente. No significa que el runtime portable haya escrito ya el archivo. El **commit físico** permanece detrás del provider/grant.
+
+## Frontera current: Total-Core no admite children R2
+
+Esta distinción es operacional, no sólo terminológica. La ruta current:
+
+```text
+compile_total_core_v31
+    ↓ unit ... profile effects
+compile_effect_program_v2
+    ↓
+Program IR V4 Effects R1
+```
+
+usa `compile_effect_program_v2`. Si la fuente hija contiene `command` o `request`, ese compilador falla con:
+
+```text
+TEVS_V2_EFFECT_R2_REQUIRED
+```
+
+y exige `compile_effect_command_program_v2`, que pertenece a la vía R2 separada.
+
+Además, la unidad V5 current valida el schema Effects R1 admitido; no convierte automáticamente un Program IR R2 command en un child V5 por compartir el nombre `effects`.
+
+Por tanto:
+
+```text
+observation capability + scenario R1
+    → sí: child Total-Core current
+
+command/request R2
+    → no: no es child Total-Core current
+    → requiere su pipeline/provider R2 separado
+```
+
+Una futura unión R2→Total-Core tendría que definir/admitir explícitamente esa frontera y demostrar conformance. No debe suponerse por analogía.
 
 ## Total-Core y unidades `effects`
 
@@ -174,9 +211,9 @@ Un proceso 3.1 puede declarar:
 unit Calc profile effects;
 ```
 
-pero entonces `effect_inputs` debe corresponder exactamente a las unidades `effects` declaradas. Omitir la evidencia requerida o proporcionar inputs para una unidad `pure` falla cerrado.
+pero en la implementación current ese perfil se refiere al child **Effects R1**. `effect_inputs` debe corresponder exactamente a las unidades `effects` declaradas. Omitir la evidencia requerida o proporcionar inputs para una unidad `pure` falla cerrado.
 
-El schema hijo debe ser exactamente Program IR V4 Effects. Un perfil declarado no puede disfrazar un artefacto de otro tipo.
+El schema hijo debe ser exactamente el Program IR V4 Effects admitido por Total-Core. Un perfil declarado no puede disfrazar un artefacto de otro tipo ni un R2 como R1.
 
 ## Contrapruebas
 
@@ -188,6 +225,7 @@ Deben fallar, entre otros:
 - llamada scripted con argumentos diferentes a los que produce la acción;
 - retorno con encoding/tipo no canónico;
 - `effect_inputs` con conjunto distinto a las unidades effects;
+- child con `command/request` R2 en `compile_total_core_v31`;
 - intento de llamada host como `open(...)` dentro de código puro;
 - tratar un command intent como si fuera receipt de commit físico.
 
@@ -195,7 +233,7 @@ Deben fallar, entre otros:
 
 El mismo principio se aplica a integraciones concretas:
 
-- filesystem: raíz y operaciones scoped;
+- filesystem: `file.read` observacional puede alimentar R1; `file.replace` command pertenece a R2 separado;
 - red: provider explícito, si existe en el deployment;
 - Unity: movimiento/cambio de escena/IO detrás del adaptador autorizado;
 - navegador/WASI: sólo capacidades que el host expone deliberadamente.
@@ -223,5 +261,7 @@ Si dos de esas columnas se han fusionado, probablemente estás ocultando una fro
 - `spec/TEV_SCRIPT_V2_FILESYSTEM_CAPABILITIES.md`.
 - `tev_script/source_effect_program_v2.py`.
 - `tev_script/ir_v4_effects.py`.
+- `tev_script/program_ir_v5_total.py`.
+- `tev_script/source_total_core_v31.py`.
 - `spec/TEV_SCRIPT_PROGRAM_IR_V4.md`.
 - `spec/TEV_SCRIPT_V31_TOTAL_CORE.md`, sección de effect authority boundary.
