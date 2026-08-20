@@ -1,3 +1,4 @@
-script Calc version "2.0.0";
-fn add1(x:Int)->Int=x+1;
-entry main:Int=add1(4);
+script DataModels version "2.0.0";
+generic record Box<T> { value: T; }
+generic fn box<T>(x:T)->Box<T>=Box(value=x);
+entry main:Box<Int>=box<Int>(7);
