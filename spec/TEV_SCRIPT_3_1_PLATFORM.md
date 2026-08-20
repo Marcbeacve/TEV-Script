@@ -7,9 +7,9 @@ This document does not replace predecessor language, IR, value-model or runtime 
 ## 1. Current identity
 
 ```text
-package_version              = 3.1.2
-language_version             = 3.1.0
-current_profile              = total_core
+package_version = 3.1.2
+language_version = 3.1.0
+current_profile = total_core
 published_predecessor_package = 3.1.1
 ```
 
