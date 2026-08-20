@@ -13,7 +13,7 @@ authority aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
 quantum_steps 8;
 unit Rec profile recursive;
 field actual = [];
-label Start = invoke_v4 Rec result tev.tutorial.recursion End;
+label Start = invoke_v4 Rec result tev.tutorial.recursive End;
 label End = halt;
 entry Start;
 ```
