@@ -75,6 +75,10 @@ FINAL_VERSION_DOMAINS = frozenset({
 
 
 def _final_required_paths() -> tuple[str, ...]:
+    getting_started = [
+        "README.md", "installation.md", "first-program.md", "cli-workflow.md",
+        "project-layout.md", "editor-lsp.md", "mental-model.md",
+    ]
     tutorial = ["README.md"] + [
         "01-values-exactness.md", "02-names-bindings-expressions.md", "03-control-bounds.md",
         "04-functions-types.md", "05-data-models.md", "06-state-events.md",
@@ -100,7 +104,8 @@ def _final_required_paths() -> tuple[str, ...]:
         "README.md", "pipeline.md", "semantic-identity.md", "ir-strata.md",
         "runtime-boundaries.md", "proof-capability-boundaries.md", "validation-architecture.md",
     ]
-    result = ["docs/manual/README.md", "docs/manual/faq.md"]
+    result = ["docs/manual/README.md", "docs/manual/faq.md", "docs/manual/glossary.md"]
+    result += [f"docs/manual/getting-started/{name}" for name in getting_started]
     result += [f"docs/manual/tutorial/{name}" for name in tutorial]
     result += [f"docs/manual/language-reference/{name}" for name in language]
     result += [f"docs/manual/howto/{name}" for name in howto]
@@ -383,6 +388,8 @@ def _example_cases_check(root: Path) -> dict[str, Any]:
     count = 0
     try:
         from tev_script.diagnostics import TevScriptError
+        from tev_script.program_ir_v5_total import validate_verified_proof_admission
+        from tev_script.runtime_v5_total import initial_total_core_checkpoint, run_total_core_quantum
         from tev_script.source_total_core_v31 import compile_total_core_v31
     except Exception as exc:
         if mains:
@@ -399,21 +406,49 @@ def _example_cases_check(root: Path) -> dict[str, Any]:
                 raise ValueError("case field set mismatch")
             if case["schema"] != "TEV_SCRIPT_DOCUMENTATION_CASE_V1":
                 raise ValueError("case schema mismatch")
-            if case["operation"] not in {"check", "compile", "run"}:
+            operation = case["operation"]
+            if operation not in {"check", "compile", "run"}:
                 raise ValueError("unsupported documentation case operation")
             if not isinstance(case["units"], dict) or not isinstance(case["effect_inputs"], dict):
                 raise ValueError("case units/effect_inputs must be objects")
-            for rel in [case["source"], *case["units"].values()]:
+            if not isinstance(case["proof_admissions"], list):
+                raise ValueError("case proof_admissions must be a list")
+            epochs = case["epochs"]
+            if isinstance(epochs, bool) or not isinstance(epochs, int) or not 1 <= epochs <= 1_000_000:
+                raise ValueError("case epochs outside admitted bound")
+            for rel in [case["source"], *case["units"].values(), *case["proof_admissions"]]:
                 if not _safe_rel(rel) or len(PurePosixPath(rel).parts) != 1:
                     raise ValueError(f"unsafe case path: {rel}")
             process_source = (main.parent / case["source"]).read_text(encoding="utf-8")
             units = {unit_id: (main.parent / rel).read_text(encoding="utf-8") for unit_id, rel in case["units"].items()}
+            proofs = []
+            for rel in case["proof_admissions"]:
+                raw = _read_json(main.parent / rel)
+                if not isinstance(raw, Mapping):
+                    raise ValueError(f"proof admission must be an object: {rel}")
+                proofs.append(validate_verified_proof_admission(raw))
             expected_code = case["expected_diagnostic_code"]
             observed_code: str | None = None
             try:
-                compile_total_core_v31(process_source, unit_sources=units, effect_inputs=case["effect_inputs"], proof_admissions=())
+                program = compile_total_core_v31(
+                    process_source,
+                    unit_sources=units,
+                    effect_inputs=case["effect_inputs"],
+                    proof_admissions=tuple(proofs),
+                )
                 observed_status = "PASS"
                 observed_returncode = 0
+                if operation == "run":
+                    checkpoint = initial_total_core_checkpoint(program)
+                    last = None
+                    for _ in range(epochs):
+                        last = run_total_core_quantum(program, checkpoint)
+                        checkpoint = last.next_checkpoint
+                        if last.status == "HALTED":
+                            break
+                    if last is None:
+                        raise ValueError("run case executed zero epochs")
+                    observed_status = last.status
             except TevScriptError as exc:
                 observed_status = "FAIL"
                 observed_returncode = 2
