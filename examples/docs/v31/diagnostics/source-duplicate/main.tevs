@@ -1,0 +1,2 @@
+process DuplicateA version "3.1.0";
+process DuplicateB version "3.1.0";

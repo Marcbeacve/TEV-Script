@@ -1,0 +1,12 @@
+{
+  "schema": "TEV_SCRIPT_DIAGNOSTIC_COVERAGE_V31",
+  "language_version": "3.1.0",
+  "families": [
+    {"prefix":"TEVS_V31_","codes":["*"],"page":"docs/manual/diagnostics/current-inventory.md","authority":"tev_script/cli_v31.py"},
+    {"prefix":"TEVS_V31_","codes":["*"],"page":"docs/manual/diagnostics/current-inventory.md","authority":"tev_script/lsp_v31.py"},
+    {"prefix":"TEVS_V31_","codes":["*"],"page":"docs/manual/diagnostics/current-inventory.md","authority":"tev_script/program_ir_v5_total.py"},
+    {"prefix":"TEVS_V31_","codes":["*"],"page":"docs/manual/diagnostics/current-inventory.md","authority":"tev_script/release_metadata_v31.py"},
+    {"prefix":"TEVS_V31_","codes":["*"],"page":"docs/manual/diagnostics/current-inventory.md","authority":"tev_script/runtime_v5_total.py"},
+    {"prefix":"TEVS_V31_","codes":["*"],"page":"docs/manual/diagnostics/current-inventory.md","authority":"tev_script/source_total_core_v31.py"}
+  ]
+}
