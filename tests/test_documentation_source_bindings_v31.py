@@ -104,6 +104,21 @@ def test_exact_bound_tevs_fence_passes(tmp_path: Path) -> None:
     }
 
 
+def test_source_directive_inside_non_tevs_fence_is_documentation_not_binding(tmp_path: Path) -> None:
+    _write_foundation(tmp_path)
+    _page_path(tmp_path).write_text(
+        "# Policy example\n\n"
+        "```text\n"
+        "<!-- tevdoc-source: examples/docs/v31/tutorial/01_exact/main.tevs -->\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    assert validate_documentation(tmp_path)["checks"]["SOURCE_BINDINGS"] == {
+        "status": "PASS",
+        "binding_count": 0,
+    }
+
+
 def test_source_fence_drift_fails_closed(tmp_path: Path) -> None:
     _write_foundation(tmp_path)
     _source_path(tmp_path).write_text("entry Start;\n", encoding="utf-8")
